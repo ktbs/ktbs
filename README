@@ -9,6 +9,6 @@ Dependancies
 
 * rdflib 3.x
 * httplib2
-* webob (ktbs.server)
+* webob (server)
 * nose (developers)
 * pylint (developers)
