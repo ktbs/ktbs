@@ -1,0 +1,13 @@
+===========
+Python kTBS
+===========
+
+A kernel for trace-based systems (python implementation).
+
+Dependancies
+============
+
+* rdflib 3.x
+* rdfrest (ktbs.server)
+* nose (developers)
+* pylint (developers)
