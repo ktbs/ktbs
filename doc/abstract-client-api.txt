@@ -1,0 +1,234 @@
+============================
+Abstract client API for kTBS
+============================
+
+:version: work in progress
+:date: 2010-11-18
+:changelong:
+    2011-04-29  pchampin  applied changes to the kTBS ontology
+    2010-12-01  pchampin  applied changes to the kTBS ontology
+
+
+Resource
+  get_uri() → uri
+  get_graph() → Graph
+      return the RDF graph representing this resource
+      The Graph type is not specified by this API; it is expected to be the
+      corresponding type in the RDF library of choice in the implementing
+      language. It is not specified if the returned graph should be mutable or
+      not, nor if its mutation should be reflected on the internal state of
+      the Resource.
+  set_graph(new_graph:Graph)
+      set the internal state of this Resource with the given new_graph
+      An exception should be raised if new_graph is not a valid graph for this
+      resource.
+  delete()
+      delete this resource from the KTBS
+      If the resource can not be deleted, an exception may be raised.
+
+Ktbs (Resource)
+  list_bases() → [Base]
+  get_base(id:uri) → Base
+      return the trace base identified by the given URI, or null
+  create_base(id:uri?, owner:uri, graph:Graph?) → Base
+   
+
+Base (Base)
+  get(id:uri) → Trace|Model|Method
+      return the element of this base identified by the given URI, or null
+  list_traces() → [Trace]
+  list_models() → [Model]
+  list_methods() → [Method]
+  create_stored_trace(id:uri?, model:uri, origin:str, default_subject:str?,
+                      graph:Graph?) → StoredTrace
+  create_computed_trace(id:uri?, method:uri, sources:[uri]?,
+                        graph:Graph?) → ComputedTrace
+  create_model(id:uri?, properties:[uri=>any]?) → Model
+  create_method(id:uri?, inherits:uri, parameters:[str=>any]?, graph:Graph?)
+               → Method
+
+Trace (Resource)
+  get_model() → Model
+  get_origin() → str
+  list_sources() → [Trace]
+  list_transformed_traces() → [Trace]
+      return the list of the traces of which this trace is a source
+  list_obsels(begin:int?, end:int?, desc:bool?) → [Obsel]
+      return a list of the obsel of this trace matching the parameters
+  get_obsel(id:uri) → Obsel
+
+
+StoredTrace (Trace)
+  set_trace_model(model:uri)
+  set_origin(origin:str)
+  get_default_subject() → str
+  set_default_subject(subject:str)
+  add_obsel(id:uri?, type:uri, begin:int, end:int?, subject:str?,
+            attributes:[uri=>any]?, relations:[uri=>uri]?,
+            inverse_relations:[uri=>uri]?) → Obsel
+
+ComputedTrace(Trace)
+  get_method() → Method
+  set_method(method:uri)
+  list_all_parameters() → [str]
+      list the names of all the parameters set by this trace or its method
+  list_own_parameters() → [str]
+      list the names of all the parameters set by this trace
+  get_parameter(key:str) → str
+      get the value of a parameter (own or inherited from the method)
+  set_parameter(key:str, value:any)
+      set the value of a parameter
+      An exception may be raised if the parameter is already set by the method.
+  del_parameter(key:str)
+      unset the a parameter
+      An exception may be raised if the parameter is already set by the method.
+
+Model (Resource)
+  get(id:uri) → ObsetType | AttributeType | RelationType
+  list_inherited() → [Model]
+      list all inherited models
+      Note that some of these models may not belong to the same KTBS, and may
+      be readonly —see get_readonly below.
+  get_readonly() → bool
+      return true if this trace model is not modifiable
+  list_own_attribute_types() → [AttributeType]
+  list_own_relation_types() → [RelationType]
+  list_own_obsel_types() → [ObselType]
+
+Method (Resource)
+  get_inherited() → Method
+      return the URI of the inherited method, or null
+      Note that returned method may not be stored on this KTBS, or even be a
+      built-in method.
+  set_inherited(method:Method)
+  list_all_parameters() → [str]
+      list the names of all the parameters set by this method or its parent
+  list_own_parameters() → [str]
+      list the names of all the parameters set by this method
+  get_parameter(key:str) → str
+      get the value of a parameter (own or inherited from the parent method)
+  set_parameter(key:str, value:any)
+      set the value of a parameter
+      An exception may be raised if the parameter is already set by the parent.
+  del_parameter(key:str)
+      unset the a parameter
+      An exception may be raised if the parameter is already set by the parent.
+
+ObselType (Resource)
+  list_own_supertypes() → [ObselType]
+      list the direct supertypes of this obsel type
+  list_own_subtypes() → [ObselType]
+      list the direct supertypes of this obsel type
+  list_own_attributes() → [AttributeType]
+      list the attribute types having this obsel type for domain
+  list_own_relations() → [RelationType]
+      list the relation types having this obsel type for domain
+  list_own_inverse_relations() → [RelationType]
+      list the relation types having this obsel type for range
+  list_all_supertypes() → [ObselType]
+      list the supertypes of this obsel type (direct or inherited)
+  list_all_subtypes() → [ObselType]
+      list the supertypes of this obsel type (direct or inherited)
+  list_all_attributes() → [AttributeType]
+      list the attribute types of this obsel type (direct or inherited)
+  list_all_relations() → [RelationType]
+      list the relation types of this obsel type (direct or inherited)
+  list_all_inverse_relations() → [RelationType]
+      list the relation types of this obsel type (direct or inherited)
+
+AttributeType (Resource)
+  get_domain() → ObselType
+  set_domain(ot:ObselType)
+  get_range() → uri
+  set_range(datatype:uri)
+
+RelationType (Resource)
+  list_own_supertypes() → [RelationType]
+      list the direct supertypes of this relation type
+  list_own_subtypes() → [RelationType]
+      list the direct supertypes of this relation type
+  list_all_supertypes() → [RelationType]
+      list the supertypes of this relation type (direct or inherited)
+  list_all_subtypes() → [RelationType]
+      list the supertypes of this relation type (direct or inherited)
+  get_domain() → ObselType
+  set_domain(ot:ObselType)
+  get_range() → ObselType
+  set_range(ot:ObselType)
+
+Obsel (Resource)
+  get_trace() → Trace
+  get_obsel_type() → ObselType
+  get_begin() → int
+  get_end() → int
+  get_subject() → int
+  list_attributes() → [uri]
+  list_attribute_value(id:uri) → [any]
+  list_relations() → [uri]
+  list_related_obsels(id:uri) → [Obsel]
+  list_inverse_relations() → [uri]
+  list_relating_obsels(id:uri) → [Obsel]
+
+General Rules
+=============
+
+* Whenever parameter is named 'id:uri', it should be possible to provide a
+  relative URI, which will be resolved against the URI of the target object.
+
+* The order of the parameter is important. Whenever an optional parameter is to
+  be omitted, it can be set to NULL or named parameters (language permitting)
+  can be used for the following parameters.
+
+* For all get_X methods accepting a parameter, the result should be null if no
+  object matches the parameter.
+
+* For all create_X methods, an exception may be raised if the given URI is
+  invalid or already in use. The optional parameter graph can contain an
+  arbitrary description of the resource to be created and anciliarry resources; 
+  an exception may be raised if that graph is not valid.
+
+* All modification operations (set_*, delete) on model elements (ObselType,
+  AttributeType, RelationType) actually modify the model from which they were
+  accessed. If the model is readonly (see the get_readonly method), those
+  methods may raise an exception.
+
+
+Design Rationale
+================
+
+* As method-controlled attributes are not possible or easy to implement in some/
+  languages, this abstract API only defines *methods*, in order to provide the
+  least common denominator.
+
+* For the same reason, whenever mutiple values are to be returned, it
+  prescribes the use of a list (or the closest match in the target language,
+  e.g. Array in javascript).
+
+* However, adaptations are also recommended, depending on the features of the
+  target language. All those adaptations should be documented with the given
+  API. Below is a list of recommended adaptations:
+
+  * for languages supporting read-only attributes, it is recommended
+    to provide a read-only attribute 'x' for every method get_x(); if get_x
+    has optional parameters, 'x' should be equivalent to calling it with 0
+    parameters.
+
+    It is also recommended to provide a read-only attribute 'xs' for every
+    method list_xs(); if list_xs has optional parameters, 'xs' should be
+    equivalent to calling it with 0 parameters.
+
+  * for languages supporting method-controlled attributes, it is recommended
+    to make attribute 'x' settable whenever there is a method set_x(val);
+    if set_x has additional optional parameters, 'x' should be equivalent to
+    calling it with only the first parameter.
+
+  * for language supporting a notion of iterator (which may be more efficient
+    than lists), it is recommended to provide a method iter_xs(...) for every
+    method list_xs(...), acceptin the same parameters.
+
+    NB: implementing list_xs(...) on top of iter_xs(...) should be trivial,
+    and would probably be the way to do. 
+
+  * for language having a tradition of using CamelCase instead of underscore,
+    all method may be renamed by replacing _[a-z] with the corresponding
+    capital letter.

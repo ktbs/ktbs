@@ -1,0 +1,4 @@
+*.pyc
+*~
+DOC_TARGET
+doc/build
