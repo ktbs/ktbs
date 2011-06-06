@@ -22,6 +22,7 @@ in server, client and script.
 All those mixin require
 * __eq__ and __hash__ methods
 * a property uri: a URIRef identifying this resource
+* a property graph: an RDF Graph containing the description of this resource
 * a method ``make_resource(node, context=None)`` used to build another resource
   as the value of a property.
 

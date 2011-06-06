@@ -24,7 +24,7 @@ from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.namespaces import KTBS
 
 @extend_api
-class TraceModelMixin(object):
+class ModelMixin(object):
     """
     I provide the pythonic interface to a trace model.
     """
@@ -32,16 +32,27 @@ class TraceModelMixin(object):
         """
         Return the pythonic instance corresponding to the given uri, or None.
 
-        `uri` can be relative to this TraceModel's URI.
+        `uri` can be relative to this Model's URI.
 
         NB: None if the uri is not found *but also* if it does not identify
-        a TraceModel element (ObselType, AttributeType or RelationType).
+        a Model element (ObselType, AttributeType or RelationType).
         """
         uri = coerce_to_uri(uri, self.uri)
         for rdf_type in self.graph.objects(uri, _RDF_TYPE):
             if rdf_type in (_ATTR_TYPE, _OBSEL_TYPE, _REL_TYPE):
                 return self.make_resource(uri)
         return None
+
+    def iter_inherited(self):
+        """
+        I iter over all the models inherited by this model.
+
+        NB: if make_resource fails to instanciate some models, the URI will be
+        yielded instead, but this should not happen.
+        """
+        make_resource = self.make_resource
+        for uri in self.graph.objects(self.uri, _INHERITS):
+            yield make_resource(uri) or uri
 
     def iter_own_attribute_types(self):
         """
@@ -67,7 +78,32 @@ class TraceModelMixin(object):
         for uri in self.graph.subjects(_RDF_TYPE, _REL_TYPE):
             yield make_resource(uri)
 
-    # TODO MAJOR implement trace-model inheritance and _all_ methods
+    def iter_all_attribute_types(self):
+        """
+        I iter over all the attribute types inherited by this trace model.
+        """
+        ret = set(self.iter_own_attribute_types())
+        for inherited in self.iter_inherited():
+            set.add(inherited.iter_all_attribute_types())
+        return iter(ret)
+
+    def iter_all_obsel_types(self):
+        """
+        I iter over all the obsel types inherited by this trace model.
+        """
+        ret = set(self.iter_own_obsel_types())
+        for inherited in self.iter_inherited():
+            set.add(inherited.iter_all_attribute_types())
+        return iter(ret)
+
+    def iter_all_relation_types(self):
+        """
+        I iter over all the attribute types inherited by this trace model.
+        """
+        ret = set(self.iter_own_relation_types())
+        for inherited in self.iter_inherited():
+            set.add(inherited.iter_all_attribute_types())
+        return iter(ret)
 
 
 @extend_api
@@ -126,16 +162,16 @@ class _ModelTypeMixin(_ModelElementMixin):
         I iter over all the subtypes of this type (included itself and
         inherited ones).
         """
-        return _closure(self, "subtypes")
+        return _closure(self, "own_subtypes")
 
     def iter_all_supertypes(self):
         """
         I iter over all the supertypes of this type (included itself and
         inherited ones).
         """
-        return _closure(self, "supertypes")
+        return _closure(self, "own_supertypes")
 
-    def iter_subtypes(self):
+    def iter_own_subtypes(self):
         """
         I iter over the direct subtypes of this type.
         """
@@ -143,7 +179,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         for uri in self.graph.subjects(self._SUPER_TYPE_PROP):
             yield make_resource(uri)
 
-    def iter_supertypes(self):
+    def iter_own_supertypes(self):
         """
         I iter over the direct supertypes of this type.
         """
@@ -162,7 +198,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         if tuple(others) == (None,):
             return True
         others = set(others)
-        mine = set(self.all_supertypes)
+        mine = set(self.iter_all_supertypes())
         if others - mine:
             return False
         else:
@@ -178,7 +214,7 @@ class AttributeTypeMixin(_ModelElementMixin):
         """
         I hold the direct domain of this attribute, or None.
         """
-        uri = self.get_object(_HAS_ADOMAIN)
+        uri = next(self.graph.objects(self.uri, _HAS_ADOMAIN), None)
         if uri is None:
             return None
         else:
@@ -190,11 +226,7 @@ class AttributeTypeMixin(_ModelElementMixin):
 
         Returns the type as a URIRef
         """
-        uri = self.get_object(_HAS_ARANGE)
-        if uri is None:
-            return None
-        else:
-            return uri
+        return next(self.graph.object(self.uri, _HAS_ARANGE), None)
     #
 
 @extend_api
@@ -206,40 +238,48 @@ class ObselTypeMixin(_ModelTypeMixin):
 
     _SUPER_TYPE_PROP = KTBS.hasSuperObselType
 
+    def iter_own_attributes(self):
+        """
+        I iter over the attributes directly allowed for this type.
+        """
+        make_resource = self.make_resource
+        for uri in self.graph.subjects(_HAS_ADOMAIN, self.uri):
+            yield make_resource(uri)
+
+    def iter_own_relations(self):
+        """
+        I iter over the relations directly allowing this type as domain.
+        """
+        make_resource = self.make_resource
+        for uri in self.graph.subjects(_HAS_RDOMAIN, self.uri):
+            yield make_resource(uri)
+
+    def iter_own_inverse_relations(self):
+        """
+        I iter over the relations directly allowing this type as range.
+        """
+        make_resource = self.make_resource
+        for uri in self.graph.subjects(_HAS_RRANGE, self.uri):
+            yield make_resource(uri)
+
     def iter_all_attributes(self):
         """
         I iter over all the attributes allowed for this type.
         """
         seen = set()
-        for typ in self.all_supertypes:
+        for typ in self.iter_all_supertypes():
             for attr in typ.attributes:
                 if attr not in seen:
                     yield attr
                     seen.add(attr)
 
-    def iter_all_incoming_relations(self):
-        """
-        I iter over all the relations allowing this type as range.
-        """
-        seen = set()
-        for typ in self.all_supertypes:
-            for rel in typ.incoming_relations:
-                if rel not in seen:
-                    yield rel
-                    seen.add(rel)
-                    for rel2 in rel.all_subtypes:
-                        if rel2 not in seen:
-                            if self.matches(*rel2.all_ranges):
-                                yield rel2
-                                seen.add(rel2)
-
-    def iter_all_outgoing_relations(self):
+    def iter_all_relations(self):
         """
         I iter over all the relations allowing this type as domain.
         """
         seen = set()
-        for typ in self.all_supertypes:
-            for rel in typ.outgoing_relations:
+        for typ in self.iter_all_supertypes():
+            for rel in typ.own_relations:
                 if rel not in seen:
                     yield rel
                     seen.add(rel)
@@ -249,29 +289,22 @@ class ObselTypeMixin(_ModelTypeMixin):
                                 yield rel2
                                 seen.add(rel2)
 
-    def iter_attributes(self):
+    def iter_all_inverse_relations(self):
         """
-        I iter over the attributes directly allowed for this type.
+        I iter over all the relations allowing this type as range.
         """
-        make_resource = self.make_resource
-        for uri in self.iter_subjects(_HAS_ADOMAIN):
-            yield make_resource(uri)
+        seen = set()
+        for typ in self.iter_all_supertypes():
+            for rel in typ.inverse_relations:
+                if rel not in seen:
+                    yield rel
+                    seen.add(rel)
+                    for rel2 in rel.all_subtypes:
+                        if rel2 not in seen:
+                            if self.matches(*rel2.all_ranges):
+                                yield rel2
+                                seen.add(rel2)
 
-    def iter_incoming_relations(self):
-        """
-        I iter over the relations directly allowing this type as range.
-        """
-        make_resource = self.make_resource
-        for uri in self.iter_subjects(_HAS_RRANGE):
-            yield make_resource(uri)
-
-    def iter_outgoing_relations(self):
-        """
-        I iter over the relations directly allowing this type as domain.
-        """
-        make_resource = self.make_resource
-        for uri in self.iter_subjects(_HAS_RDOMAIN):
-            yield make_resource(uri)
     #
 
 @extend_api
@@ -285,7 +318,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the direct domain of this relation, or None.
         """
-        uri = self.get_object(_HAS_RDOMAIN)
+        uri = next(self.graph.objects(self.uri, _HAS_RDOMAIN), None)
         if uri is None:
             return None
         else:
@@ -295,7 +328,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the direct range of this relation, or None.
         """
-        uri = self.get_object(_HAS_RRANGE)
+        uri = next(self.get_object(self.uri, _HAS_RRANGE), None)
         if uri is None:
             return None
         else:
@@ -306,7 +339,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         I iter over all the domains (direct or inherited) of this relation.
         """
         seen = set()
-        for rtype in self.all_supertypes:
+        for rtype in self.iter_all_supertypes():
             rdomain = rtype.domain
             if rdomain is not None and rdomain not in seen:
                 yield rdomain
@@ -317,7 +350,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         I iter over all the ranges (direct or inherited) of this relation.
         """
         seen = set()
-        for rtype in self.all_supertypes:
+        for rtype in self.iter_all_supertypes():
             rrange = rtype.range
             if rrange is not None and rrange not in seen:
                 yield rrange
@@ -349,3 +382,4 @@ _HAS_ADOMAIN = KTBS.hasAttributeDomain
 _HAS_ARANGE = KTBS.hasAttributeRange
 _HAS_RDOMAIN = KTBS.hasRelationDomain
 _HAS_RRANGE = KTBS.hasRelationRange
+_INHERITS = KTBS.inheritsModel

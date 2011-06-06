@@ -94,6 +94,9 @@ Model (Resource)
   list_own_attribute_types() → [AttributeType]
   list_own_relation_types() → [RelationType]
   list_own_obsel_types() → [ObselType]
+  list_all_attribute_types() → [AttributeType]
+  list_all_relation_types() → [RelationType]
+  list_all_obsel_types() → [ObselType]
 
 Method (Resource)
   get_inherited() → Method
