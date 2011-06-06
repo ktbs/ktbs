@@ -25,6 +25,13 @@ Resource
   delete()
       delete this resource from the KTBS
       If the resource can not be deleted, an exception may be raised.
+  get_label() → str
+      returns the skos:prefLabel, or an rdfs:label, or the last part of the URI
+  set_label(str)
+      sets the skos:prefLabel
+  del_label()
+      removes the skos:prefLabel (but leaves unchanged the rdfs:label if any)
+  
 
 Ktbs (Resource)
   list_bases() → [Base]
@@ -48,6 +55,7 @@ Base (Base)
                → Method
 
 Trace (Resource)
+  get_base() → Base
   get_model() → Model
   get_origin() → str
   list_sources() → [Trace]
@@ -63,9 +71,9 @@ StoredTrace (Trace)
   set_origin(origin:str)
   get_default_subject() → str
   set_default_subject(subject:str)
-  add_obsel(id:uri?, type:uri, begin:int, end:int?, subject:str?,
-            attributes:[uri=>any]?, relations:[uri=>uri]?,
-            inverse_relations:[uri=>uri]?) → Obsel
+  create_obsel(id:uri?, type:uri, begin:int, end:int?, subject:str?,
+               attributes:[uri=>any]?, relations:[uri=>uri]?,
+               inverse_relations:[uri=>uri]?) → Obsel
 
 ComputedTrace(Trace)
   get_method() → Method
@@ -84,6 +92,7 @@ ComputedTrace(Trace)
       An exception may be raised if the parameter is already set by the method.
 
 Model (Resource)
+  get_base() → Base
   get(id:uri) → ObsetType | AttributeType | RelationType
   list_inherited() → [Model]
       list all inherited models
@@ -99,6 +108,7 @@ Model (Resource)
   list_all_obsel_types() → [ObselType]
 
 Method (Resource)
+  get_base() → Base
   get_inherited() → Method
       return the URI of the inherited method, or null
       Note that returned method may not be stored on this KTBS, or even be a
@@ -118,6 +128,7 @@ Method (Resource)
       An exception may be raised if the parameter is already set by the parent.
 
 ObselType (Resource)
+  get_model() → ObselType)
   list_own_supertypes() → [ObselType]
       list the direct supertypes of this obsel type
   list_own_subtypes() → [ObselType]
@@ -140,12 +151,14 @@ ObselType (Resource)
       list the relation types of this obsel type (direct or inherited)
 
 AttributeType (Resource)
+  get_model() → ObselType)
   get_domain() → ObselType
   set_domain(ot:ObselType)
   get_range() → uri
   set_range(datatype:uri)
 
 RelationType (Resource)
+  get_model() → ObselType)
   list_own_supertypes() → [RelationType]
       list the direct supertypes of this relation type
   list_own_subtypes() → [RelationType]
@@ -166,11 +179,17 @@ Obsel (Resource)
   get_end() → int
   get_subject() → str
   list_attributes() → [uri]
-  list_attribute_value(id:uri) → [any]
+  list_attribute_values(id:uri) → [any]
+  get_attribute_value(id:uri) → any
+      return any of the values if there are several, or null if there are none
   list_relations() → [uri]
   list_related_obsels(id:uri) → [Obsel]
+  get_related_obsel(id:uri) → any
+      return any of the values if there are several, or null if there are none
   list_inverse_relations() → [uri]
   list_relating_obsels(id:uri) → [Obsel]
+  get_relating_obsel(id:uri) → any
+      return any of the values if there are several, or null if there are none
 
 General Rules
 =============
