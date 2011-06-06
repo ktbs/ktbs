@@ -18,7 +18,10 @@
 """
 I provide the pythonic interface to methods.
 """
-from ktbs.common.utils import extend_api
+from rdflib import Literal
+
+from ktbs.common.base import InBaseMixin
+from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.namespaces import KTBS
 
 @extend_api
@@ -44,16 +47,56 @@ class WithParametersMixin(object):
         not duplicated.
         """
         parameters = self._get_inherited_parameters()
-        for parameter in self.iter_objects(_HAS_PARAMETER):
+        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
             key, value = parameter.split("=", 1)
             parameters[key] = value
         return parameters
 
-    # TODO MAJOR implement the parameter related iter_ methods
+    def iter_own_parameters(self):
+        """
+        I iter over the parameter names defined by this resource.
+        """
+        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
+            key, _ = parameter.split("=", 1)
+            yield key
+
+    def iter_all_parameters(self):
+        """
+        I iter over all the parameters (own and inherited) of this resource
+        """
+        return iter(self.parameters_as_dict)
+
+    def get_parameter(self, key):
+        """
+        I return a parameter value.
+        """
+        return self.parameters_as_dict.get(key)
+
+    def set_parameter(self, key, value):
+        """
+        I set a parameter value.
+        """
+        if key in self._get_inherited_parameters():
+            raise ValueError("Can not %s inherited parameter '%s'"
+                             % ((value is None) and "delete" or "set", key))
+        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
+            akey, _ = parameter.split("=", 1)
+            if akey == key:
+                self.graph.remove((self.uri, _HAS_PARAMETER, parameter))
+                break
+        if value is not None:
+            self.graph.add((self.uri, _HAS_PARAMETER,
+                            Literal("%s=%s" % (key, value))))
+        
+    def del_parameter(self, key):
+        """
+        I delete a parameter value.
+        """
+        self.set_parameter(key, None)
 
 
 @extend_api
-class MethodMixin(WithParametersMixin):
+class MethodMixin(WithParametersMixin, InBaseMixin):
     """
     I provide the pythonic interface to methods.
     """
@@ -61,18 +104,28 @@ class MethodMixin(WithParametersMixin):
     def get_inherited(self):
         """
         I return the inherited method.
-
-        NB: for built-in methods, I return the URI itself.
         """
-        method_uri = self.get_object(_INHERITS)
-        return self.make_resource(method_uri) or method_uri
+        method_uri = next(self.graph.objects(self.uri, _INHERITS), None)
+        if method_uri is None:
+            return None
+        else:
+            return self.make_resource(method_uri, _METHOD) or method_uri
+
+    def set_inherited(self, value):
+        """
+        I set the inherited method.
+        """
+        # TODO include transaction management here?
+        self.graph.remove((self.uri, _INHERITS, None))
+        self.graph.add((self.uri, _INHERITS, coerce_to_uri(value)))
 
     def _get_inherited_parameters(self):
         """
         Required by WithParametersMixin.
         """
-        return getattr(self.inherited, "parameters", None) or {}
+        return getattr(self.inherited, "parameters_as_dict", None) or {}
 
 
 _HAS_PARAMETER = KTBS.hasParameter
 _INHERITS = KTBS.inherits
+_METHOD = KTBS.Method

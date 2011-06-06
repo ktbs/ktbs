@@ -16,35 +16,36 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide the pythonic interface to ktbs root.
+I provide the pythonic interface common to all kTBS resources.
 """
-from urlparse import urljoin
-
-from ktbs.common.utils import coerce_to_uri, extend_api
-from ktbs.namespaces import KTBS
+from ktbs.common.utils import extend_api, short_name
 
 @extend_api
-class KtbsRootMixin(object):
+class ResourceMixin(object):
     """
-    I provide the pythonic interface common to ktbs root.
+    I provide the pythonic interface common to all kTBS resources.
     """
-    #pylint: disable-msg=R0903
-    #    too few public methods
 
-    def iter_bases(self):
-        """
-        I iter over all elements owned by this base.
-        """
-        make_resource = self.make_resource
-        for obs in self.graph.objects(self.uri, _HAS_BASE):
-            yield make_resource(obs, _BASE)
+    # NB: do not implement get_uri and get_graph, as @extend_api may override
+    # the underlying attributes uri and graph
 
-    def get_base(self, uri):
+    def get_label(self):
         """
-        I return the base corresponding to the given URI.
+        Return a user-friendly label for this resource.
         """
-        base_uri = coerce_to_uri(urljoin(self.uri, uri))
-        return self.make_resource(base_uri, _BASE)
+        # TODO MINOR first search for skos:prefLabel and rdfs:label
+        return short_name(self.uri)
 
-_BASE = KTBS.Base
-_HAS_BASE = KTBS.hasBase    
+    def set_label(self):
+        """
+        Set the skos:prefLabel of this resource.
+        """
+        pass
+        # TODO MINOR implement set_label
+
+    def del_label(self):
+        """
+        Remove the skos:prefLabel of this resource.
+        """
+        pass
+        # TODO MINOR implement del_label

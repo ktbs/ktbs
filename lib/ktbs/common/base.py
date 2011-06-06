@@ -18,41 +18,89 @@
 """
 I provide the pythonic interface to bases.
 """
-from ktbs.common.utils import extend_api
+from rdflib import RDF
+from urlparse import urldefrag, urljoin
+
+from ktbs.common.resource import ResourceMixin
+from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.namespaces import KTBS
 
-from rdflib import RDFS
-
 @extend_api
-class BaseMixin(object):
+class BaseMixin(ResourceMixin):
     """
     I provide the pythonic interface common to bases.
     """
 
-    def get_label(self):
+    def _iter_contained(self):
         """
-        I return a rdfs:label, if any, of this base.
+        Yield the URI and type of every element of this base.
         """
-        return next(self.graph.objects(self.uri, _LABEL), None)
-
-    def iter_labels(self):
+        query_template = """
+            PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+            SELECT DISTINCT ?s ?t
+            WHERE { <%s> k:contains ?s . ?s a ?t . }
         """
-        I iter over all rdfs:label of this base.
+        return iter(self.graph.query(query_template % self.uri))
+            
+    def iter_traces(self):
         """
-        make_resource = self.make_resource
-        for label in self.graph.objects(self.uri, _LABEL):
-            yield make_resource(label)
-
-    def iter_contained(self):
-        """
-        I iter over all elements contained by this base.
+        Iter over all the traces (stored or computed) of this base.
         """
         make_resource = self.make_resource
-        for elt in self.graph.objects(self.uri, _CONTAINS):
-            yield make_resource(elt)
+        for uri, typ in self._iter_contained():
+            if typ == _STORED_TRACE or typ == _COMPUTED_TRACE:
+                yield make_resource(uri, typ)
 
-    # TODO MAJOT implement iter_traces, iter_models, iter_methods
+    def iter_models(self):
+        """
+        Iter over all the trace models of this base.
+        """
+        make_resource = self.make_resource
+        for uri, typ in self._iter_contained():
+            if typ == _MODEL:
+                yield make_resource(uri, typ)
+
+    def iter_methods(self):
+        """
+        Iter over all the methods of this base.
+        """
+        make_resource = self.make_resource
+        for uri, typ in self._iter_contained():
+            if typ == _METHOD:
+                yield make_resource(uri, typ)
+
+    def get(self, uri):
+        """
+        Return one of the element contained in the base.
+        """
+        elt_uri = coerce_to_uri(urljoin(self.uri, uri))
+        typ = next(self.graph.objects(self.uri, _RDF_TYPE), None)
+        if typ not in (_STORED_TRACE, _COMPUTED_TRACE, _MODEL, _METHOD):
+            return None
+        else:
+            return self.make_resource(elt_uri, typ)
+
+
+@extend_api
+class InBaseMixin(ResourceMixin):
+    """
+    Common mixin for all elements of a trace base.
+    """
+    #pylint: disable-msg=R0903
+    # Too few public methods
+
+    def get_base(self):
+        """
+        Return the trace base this element belongs to.
+        """
+        base_uri = urldefrag(self.uri)[0].rfind("/", 0, -1)
+        return self.make_resource(base_uri, _BASE)
 
         
 _CONTAINS = KTBS.contains    
-_LABEL = RDFS.label
+_BASE = KTBS.Base
+_STORED_TRACE = KTBS.StoredTrace
+_COMPUTED_TRACE = KTBS.ComputedTrace
+_MODEL = KTBS.TraceModel
+_METHOD = KTBS.Method
+_RDF_TYPE = RDF.type

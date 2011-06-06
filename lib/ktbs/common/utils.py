@@ -82,4 +82,12 @@ def extend_api(cls):
 
     return cls
 
+def short_name(uri):
+    """
+    Return the last part of the URI (fragment of path element).
+    """
+    hashpos = uri.rfind("#")
+    slashpos = uri.rfind("/")
+    return uri[max(hashpos, slashpos)+1:]
+
 _INTERESTING_METHOD = re.compile("get_|set_|iter_")

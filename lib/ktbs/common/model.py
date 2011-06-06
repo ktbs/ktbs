@@ -20,14 +20,17 @@ I provide the pythonic interface to trace models and their components.
 """
 from rdflib import RDF
 
+from ktbs.common.base import InBaseMixin
+from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.namespaces import KTBS
 
 @extend_api
-class ModelMixin(object):
+class ModelMixin(InBaseMixin):
     """
     I provide the pythonic interface to a trace model.
     """
+
     def get(self, uri):
         """
         Return the pythonic instance corresponding to the given uri, or None.
@@ -40,7 +43,7 @@ class ModelMixin(object):
         uri = coerce_to_uri(uri, self.uri)
         for rdf_type in self.graph.objects(uri, _RDF_TYPE):
             if rdf_type in (_ATTR_TYPE, _OBSEL_TYPE, _REL_TYPE):
-                return self.make_resource(uri)
+                return self.make_resource(uri, rdf_type)
         return None
 
     def iter_inherited(self):
@@ -107,7 +110,7 @@ class ModelMixin(object):
 
 
 @extend_api
-class _ModelElementMixin(object):
+class _ModelElementMixin(ResourceMixin):
     """
     I provide the common pythonic interface to any element of trace models.
 
@@ -139,7 +142,7 @@ class _ModelElementMixin(object):
         """
         return isinstance(self, RelationTypeMixin)
 
-    def get_trace_model(self):
+    def get_model(self):
         """
         Return the trace model of this element.
         """

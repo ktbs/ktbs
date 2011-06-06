@@ -86,10 +86,10 @@ ComputedTrace(Trace)
       get the value of a parameter (own or inherited from the method)
   set_parameter(key:str, value:any)
       set the value of a parameter
-      An exception may be raised if the parameter is already set by the method.
+      An exception may be raised if the parameter is inherited.
   del_parameter(key:str)
-      unset the a parameter
-      An exception may be raised if the parameter is already set by the method.
+      unset a parameter
+      An exception may be raised if the parameter is inherited.
 
 Model (Resource)
   get_base() → Base
@@ -122,10 +122,10 @@ Method (Resource)
       get the value of a parameter (own or inherited from the parent method)
   set_parameter(key:str, value:any)
       set the value of a parameter
-      An exception may be raised if the parameter is already set by the parent.
+      An exception may be raised if the parameter is inherited.
   del_parameter(key:str)
-      unset the a parameter
-      An exception may be raised if the parameter is already set by the parent.
+      unset a parameter
+      An exception may be raised if the parameter is inherited.
 
 ObselType (Resource)
   get_model() → ObselType)

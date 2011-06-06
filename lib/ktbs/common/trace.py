@@ -18,12 +18,13 @@
 """
 I provide the pythonic interface to traces (abstract and stored).
 """
+from ktbs.common.base import InBaseMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.iso8601 import parse_date, ParseError
 from ktbs.namespaces import KTBS
 
 @extend_api
-class TraceMixin(object):
+class TraceMixin(InBaseMixin):
     """
     I provide the pythonic interface common to all traces.
     """
