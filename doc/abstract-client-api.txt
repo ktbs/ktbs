@@ -73,7 +73,7 @@ StoredTrace (Trace)
   set_default_subject(subject:str)
   create_obsel(id:uri?, type:uri, begin:int, end:int?, subject:str?,
                attributes:[uri=>any]?, relations:[uri=>uri]?,
-               inverse_relations:[uri=>uri]?) → Obsel
+               inverse_relations:[uri=>uri]?, source_obsels:[Obsel]?) → Obsel
 
 ComputedTrace(Trace)
   get_method() → Method
@@ -178,6 +178,7 @@ Obsel (Resource)
   get_begin() → int
   get_end() → int
   get_subject() → str
+  list_source_obsels() → [Obsel]
   list_attributes() → [uri]
   list_attribute_values(id:uri) → [any]
   get_attribute_value(id:uri) → any
@@ -190,6 +191,11 @@ Obsel (Resource)
   list_relating_obsels(id:uri) → [Obsel]
   get_relating_obsel(id:uri) → any
       return any of the values if there are several, or null if there are none
+  # obsel modification (trace amendment)
+  add_attribute_value(id:uri, value:any)
+  del_attribute_value(id:uri, value:any)
+  add_related_obsel(id:uri, value:Obsel)
+  del_related_obsel(id:uri, value:Obsel)
 
 General Rules
 =============
