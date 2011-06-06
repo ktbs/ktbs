@@ -164,7 +164,7 @@ Obsel (Resource)
   get_obsel_type() → ObselType
   get_begin() → int
   get_end() → int
-  get_subject() → int
+  get_subject() → str
   list_attributes() → [uri]
   list_attribute_value(id:uri) → [any]
   list_relations() → [uri]
