@@ -14,35 +14,24 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+"""
+I provide the client implementation of a trace Base.
+"""
+from httplib2 import Http
+from rdflib import RDF
+#from rdfrest.client import ProxyStore
 
-"""
-I provide the pythonic interface to ktbs root.
-"""
-from ktbs.common.utils import coerce_to_uri, extend_api
+from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.common.base import BaseMixin
 from ktbs.namespaces import KTBS
 
-@extend_api
-class KtbsRootMixin(object):
+class Base(BaseMixin, Resource):
+    """I implement a client proxy on the root of a kTBS.
     """
-    I provide the pythonic interface common to ktbs root.
-    """
-    #pylint: disable-msg=R0903
-    #    too few public methods
 
-    def iter_bases(self):
-        """
-        I iter over all elements owned by this base.
-        """
-        make_resource = self.make_resource
-        for obs in self.graph.objects(self.uri, _HAS_BASE):
-            yield make_resource(obs, _BASE)
+    # TODO implement create_X
 
-    def get_base(self, uri):
-        """
-        I return the base corresponding to the given URI.
-        """
-        base_uri = coerce_to_uri(uri, self.uri)
-        return self.make_resource(base_uri, _BASE)
 
-_BASE = KTBS.Base
-_HAS_BASE = KTBS.hasBase    
+RESOURCE_MAKER[KTBS.Base] = Base
+
+_RDF_TYPE = RDF.type

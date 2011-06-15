@@ -16,33 +16,22 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide the pythonic interface to ktbs root.
+I provide a python implementation of the abstract client API for kTBS.
+
+I implement the following adaptations to the abstract client API:
+
+* adaptations suggested by the abstract client API:
+
+  * read-only or read-write properties corresponding to get/set methods
+  * read-only properties corresponding to list methods
+  * iter methods corresponding to list methods
+
+* specific adaptation:
+
+  * Any object with a ``uri`` property is acceptable wherever a URI is
+    expected; this include any instance of `ktbs.client.resource.Resource` or
+    its subclasses.
+
+  * Datetimes can be used instead of integers for representing timecodes in
+    traces when the trace model and origin allow the conversion.
 """
-from ktbs.common.utils import coerce_to_uri, extend_api
-from ktbs.namespaces import KTBS
-
-@extend_api
-class KtbsRootMixin(object):
-    """
-    I provide the pythonic interface common to ktbs root.
-    """
-    #pylint: disable-msg=R0903
-    #    too few public methods
-
-    def iter_bases(self):
-        """
-        I iter over all elements owned by this base.
-        """
-        make_resource = self.make_resource
-        for obs in self.graph.objects(self.uri, _HAS_BASE):
-            yield make_resource(obs, _BASE)
-
-    def get_base(self, uri):
-        """
-        I return the base corresponding to the given URI.
-        """
-        base_uri = coerce_to_uri(uri, self.uri)
-        return self.make_resource(base_uri, _BASE)
-
-_BASE = KTBS.Base
-_HAS_BASE = KTBS.hasBase    

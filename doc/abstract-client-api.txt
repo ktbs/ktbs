@@ -37,7 +37,7 @@ Ktbs (Resource)
   list_bases() → [Base]
   get_base(id:uri) → Base
       return the trace base identified by the given URI, or null
-  create_base(id:uri?, owner:uri, graph:Graph?) → Base
+  create_base(id:uri?, graph:Graph?) → Base
    
 
 Base (Base)

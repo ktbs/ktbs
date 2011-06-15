@@ -86,8 +86,8 @@ def short_name(uri):
     """
     Return the last part of the URI (fragment of path element).
     """
-    hashpos = uri.rfind("#")
-    slashpos = uri.rfind("/")
+    hashpos = uri.rfind("#", 0, -1)
+    slashpos = uri.rfind("/", 0, -1)
     return uri[max(hashpos, slashpos)+1:]
 
 _INTERESTING_METHOD = re.compile("get_|set_|iter_")

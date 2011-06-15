@@ -19,7 +19,7 @@
 I provide the pythonic interface to bases.
 """
 from rdflib import RDF
-from urlparse import urldefrag, urljoin
+from urlparse import urldefrag
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
@@ -73,7 +73,7 @@ class BaseMixin(ResourceMixin):
         """
         Return one of the element contained in the base.
         """
-        elt_uri = coerce_to_uri(urljoin(self.uri, uri))
+        elt_uri = coerce_to_uri(uri, self.uri)
         typ = next(self.graph.objects(self.uri, _RDF_TYPE), None)
         if typ not in (_STORED_TRACE, _COMPUTED_TRACE, _MODEL, _METHOD):
             return None

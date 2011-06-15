@@ -18,6 +18,9 @@
 """
 I provide the pythonic interface common to all kTBS resources.
 """
+from rdflib import Literal, RDFS
+
+from ktbs.namespaces import SKOS
 from ktbs.common.utils import extend_api, short_name
 
 @extend_api
@@ -33,19 +36,25 @@ class ResourceMixin(object):
         """
         Return a user-friendly label for this resource.
         """
-        # TODO MINOR first search for skos:prefLabel and rdfs:label
+        # TODO MINOR use transaction with graph
+        pref_label = next(self.graph.objects(self.uri, SKOS.prefLabel), None)
+        if pref_label is not None:
+            return pref_label
+        label = next(self.graph.objects(self.uri, RDFS.label), None)
+        if label is not None:
+            return label
         return short_name(self.uri)
 
-    def set_label(self):
+    def set_label(self, value):
         """
         Set the skos:prefLabel of this resource.
         """
-        pass
-        # TODO MINOR implement set_label
+        # TODO MINOR use transaction with graph
+        self.del_label()
+        self.graph.add((self.uri, SKOS.prefLabel, Literal(value)))
 
     def del_label(self):
         """
         Remove the skos:prefLabel of this resource.
         """
-        pass
-        # TODO MINOR implement del_label
+        self.graph.remove((self.uri, SKOS.prefLabel, None))
