@@ -4,80 +4,76 @@ Abstract client API for kTBS
 
 :version: work in progress
 :date: 2010-11-18
-:changelong:
+:changelog:
+    2011-06-15  pchampin  discussion with oaubert and abelin
     2011-04-29  pchampin  applied changes to the kTBS ontology
     2010-12-01  pchampin  applied changes to the kTBS ontology
 
 
 Resource
   get_uri() → uri
-  get_graph() → Graph
-      return the RDF graph representing this resource
-      The Graph type is not specified by this API; it is expected to be the
-      corresponding type in the RDF library of choice in the implementing
-      language. It is not specified if the returned graph should be mutable or
-      not, nor if its mutation should be reflected on the internal state of
-      the Resource.
-  set_graph(new_graph:Graph)
-      set the internal state of this Resource with the given new_graph
-      An exception should be raised if new_graph is not a valid graph for this
-      resource.
+  is_synced() → bool
+      return true if the resource is in sync with the data at its URI
   delete()
       delete this resource from the KTBS
       If the resource can not be deleted, an exception may be raised.
   get_label() → str
-      returns the skos:prefLabel, or an rdfs:label, or the last part of the URI
+      returns a user-friendly label
   set_label(str)
-      sets the skos:prefLabel
+      set a user-friendly label
   del_label()
-      removes the skos:prefLabel (but leaves unchanged the rdfs:label if any)
+      reset the user-friendly label to its default value
   
 
 Ktbs (Resource)
   list_bases() → [Base]
   get_base(id:uri) → Base
       return the trace base identified by the given URI, or null
-  create_base(id:uri?, graph:Graph?) → Base
+  create_base(id:uri?) → Base
    
 
 Base (Base)
-  get(id:uri) → Trace|Model|Method
+  get(id:uri) → Trace|Model|Method|ObselType|AttributeType|RelationType|Obsel
       return the element of this base identified by the given URI, or null
   list_traces() → [Trace]
   list_models() → [Model]
   list_methods() → [Method]
-  create_stored_trace(id:uri?, model:uri, origin:str, default_subject:str?,
-                      graph:Graph?) → StoredTrace
-  create_computed_trace(id:uri?, method:uri, sources:[uri]?,
-                        graph:Graph?) → ComputedTrace
-  create_model(id:uri?, properties:[uri=>any]?) → Model
-  create_method(id:uri?, inherits:uri, parameters:[str=>any]?, graph:Graph?)
-               → Method
+  create_stored_trace(id:uri?, model:Model, origin:str, default_subject:str?)
+                     → StoredTrace
+  create_computed_trace(id:uri?, method:Model, sources:[Trace]?)
+                       → ComputedTrace
+  create_model(id:uri?) → Model
+  create_method(id:uri?, inherits:Method, parameters:[str=>any]?) → Method
 
 Trace (Resource)
   get_base() → Base
   get_model() → Model
   get_origin() → str
+      temporal origin, either opaque string (id) or ISO xxx datetime
   list_sources() → [Trace]
   list_transformed_traces() → [Trace]
       return the list of the traces of which this trace is a source
-  list_obsels(begin:int?, end:int?, desc:bool?) → [Obsel]
+  list_obsels(begin:int?, end:int?, reverse:bool?) → [Obsel]
       return a list of the obsel of this trace matching the parameters
   get_obsel(id:uri) → Obsel
-
+      return the obsel of this trace identified by the URI, or null
 
 StoredTrace (Trace)
-  set_trace_model(model:uri)
+  set_trace_model(model:Model)
   set_origin(origin:str)
   get_default_subject() → str
+      the default subject is associated to new obsels if they do not specify
+      a subject at creation time
   set_default_subject(subject:str)
-  create_obsel(id:uri?, type:uri, begin:int, end:int?, subject:str?,
-               attributes:[uri=>any]?, relations:[uri=>uri]?,
-               inverse_relations:[uri=>uri]?, source_obsels:[Obsel]?) → Obsel
+  create_obsel(id:uri?, type:ObselType, begin:int, end:int?, subject:str?,
+               attributes:[AttributeType=>any]?,
+               relations:[RelationType=>Obsel]?,
+               inverse_relations:[RelationType=>Obsel]?,
+               source_obsels:[Obsel]?) → Obsel
 
 ComputedTrace(Trace)
   get_method() → Method
-  set_method(method:uri)
+  set_method(method:Method)
   list_all_parameters() → [str]
       list the names of all the parameters set by this trace or its method
   list_own_parameters() → [str]
@@ -93,13 +89,17 @@ ComputedTrace(Trace)
 
 Model (Resource)
   get_base() → Base
-  get(id:uri) → ObsetType | AttributeType | RelationType
+  get_unit() → str
+      TODO find stable reference to unit names
+  set_unit(unit:str)
+  get(id:uri) → ObselType | AttributeType | RelationType
+      return the element of this model identified by the URI, or null
+  get_readonly() → bool
+      return true if this trace model is not modifiable
   list_inherited() → [Model]
       list all inherited models
       Note that some of these models may not belong to the same KTBS, and may
       be readonly —see get_readonly below.
-  get_readonly() → bool
-      return true if this trace model is not modifiable
   list_own_attribute_types() → [AttributeType]
   list_own_relation_types() → [RelationType]
   list_own_obsel_types() → [ObselType]
@@ -107,12 +107,23 @@ Model (Resource)
   list_all_relation_types() → [RelationType]
   list_all_obsel_types() → [ObselType]
 
+  add_inherited(m:Model)
+  remove_inherited(m:Model)
+  create_obsel_type(id:uri?, supertypes:[ObselType]?) → ObselType
+  create_attribute_type(id:uri?, domain:ObselType?, range:uri?) → AttributeType
+      the range uri is an XML-Schema datatype URI
+      TODO specify a minimum list of datatypes that must be supported
+  create_relation_type(id:uri?, domain:ObselType?, range:ObselType?,
+                       supertypes:[RelationType]?)
+                      → RelationType
+
+
 Method (Resource)
   get_base() → Base
   get_inherited() → Method
-      return the URI of the inherited method, or null
-      Note that returned method may not be stored on this KTBS, or even be a
-      built-in method.
+      return the inherited method, or null
+      Note that returned method may not be stored on this KTBS, or can even be
+      a built-in method.
   set_inherited(method:Method)
   list_all_parameters() → [str]
       list the names of all the parameters set by this method or its parent
@@ -128,27 +139,33 @@ Method (Resource)
       An exception may be raised if the parameter is inherited.
 
 ObselType (Resource)
-  get_model() → ObselType)
+  get_model() → Model
   list_own_supertypes() → [ObselType]
       list the direct supertypes of this obsel type
   list_own_subtypes() → [ObselType]
       list the direct supertypes of this obsel type
-  list_own_attributes() → [AttributeType]
+  list_own_attribute_types() → [AttributeType]
       list the attribute types having this obsel type for domain
-  list_own_relations() → [RelationType]
+  list_own_relation_types() → [RelationType]
       list the relation types having this obsel type for domain
-  list_own_inverse_relations() → [RelationType]
+  list_own_inverse_relation_types() → [RelationType]
       list the relation types having this obsel type for range
   list_all_supertypes() → [ObselType]
       list the supertypes of this obsel type (direct or inherited)
   list_all_subtypes() → [ObselType]
       list the supertypes of this obsel type (direct or inherited)
-  list_all_attributes() → [AttributeType]
+  list_all_attribute_types() → [AttributeType]
       list the attribute types of this obsel type (direct or inherited)
-  list_all_relations() → [RelationType]
+  list_all_relation_types() → [RelationType]
       list the relation types of this obsel type (direct or inherited)
-  list_all_inverse_relations() → [RelationType]
+  list_all_inverse_relation_types() → [RelationType]
       list the relation types of this obsel type (direct or inherited)
+  create_attribute_type(id:uri?, range:uri?) → AttributeType
+  create_relation_type(id:uri?, range:ObselType?, supertypes:[RelationType]?)
+                      → RelationType
+  add_supertype(ot:ObselType)
+  remove_supertype(ot:ObselType)
+  
 
 AttributeType (Resource)
   get_model() → ObselType)
@@ -171,6 +188,8 @@ RelationType (Resource)
   set_domain(ot:ObselType)
   get_range() → ObselType
   set_range(ot:ObselType)
+  add_supertype(rt:RelationType)
+  remove_supertype(rt:RelationType)
 
 Obsel (Resource)
   get_trace() → Trace
@@ -179,23 +198,18 @@ Obsel (Resource)
   get_end() → int
   get_subject() → str
   list_source_obsels() → [Obsel]
-  list_attributes() → [uri]
-  list_attribute_values(id:uri) → [any]
-  get_attribute_value(id:uri) → any
-      return any of the values if there are several, or null if there are none
-  list_relations() → [uri]
-  list_related_obsels(id:uri) → [Obsel]
-  get_related_obsel(id:uri) → any
-      return any of the values if there are several, or null if there are none
-  list_inverse_relations() → [uri]
-  list_relating_obsels(id:uri) → [Obsel]
-  get_relating_obsel(id:uri) → any
-      return any of the values if there are several, or null if there are none
+  list_attribute_types() → [AttributeType]
+  list_relation_types() → [RelationType]
+  list_related_obsels(rt:RelationType) → [Obsel]
+  list_inverse_relation_types() → [RelationTtype]
+  list_relating_obsels(rt:RelationType) → [Obsel]
+  get_attribute_value(at:AttributeType) → any
+      return the value of the given attribute type for this obsel
   # obsel modification (trace amendment)
-  add_attribute_value(id:uri, value:any)
-  del_attribute_value(id:uri, value:any)
-  add_related_obsel(id:uri, value:Obsel)
-  del_related_obsel(id:uri, value:Obsel)
+  set_attribute_value(at:AttributeType, value:any)
+  del_attribute_value(at:AttributeType)
+  add_related_obsel(rt:RelationType, value:Obsel)
+  del_related_obsel(rt:RelationType, value:Obsel)
 
 General Rules
 =============
@@ -211,9 +225,7 @@ General Rules
   object matches the parameter.
 
 * For all create_X methods, an exception may be raised if the given URI is
-  invalid or already in use. The optional parameter graph can contain an
-  arbitrary description of the resource to be created and anciliarry resources; 
-  an exception may be raised if that graph is not valid.
+  invalid or already in use.
 
 * All modification operations (set_*, delete) on model elements (ObselType,
   AttributeType, RelationType) actually modify the model from which they were
