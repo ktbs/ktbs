@@ -142,7 +142,7 @@ class ProxyStore(Store):
             #print "Content-Type %s, rdflib parser %s" % (content_type,
             #                                             self._format)
 
-        self._etags = header['etag']
+        self._etags = header.get('etag')
 
     def _parse(self, header, content):
         """ Parses the received data to build the graph to cache.
@@ -169,8 +169,9 @@ class ProxyStore(Store):
         # Which serialization ? The same as we received but does rdflib supply
         # all kind of parsing / serialization ?
         headers = {'Content-Type': '%s; charset=UTF-8'
-                   % _CONTENT_TYPE_SERIALIZERS[self._format],
-                   'If-Match': self._etags,}
+                   % _CONTENT_TYPE_SERIALIZERS[self._format],}
+        if self._etags:
+                   headers['If-Match'] = self._etags
         data = self._graph.serialize(format=self._format)
 
         LOG.debug("[sent headers]\n%s", headers)
