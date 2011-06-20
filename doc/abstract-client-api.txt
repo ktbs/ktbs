@@ -5,6 +5,7 @@ Abstract client API for kTBS
 :version: work in progress
 :date: 2010-11-18
 :changelog:
+    2011-06-20  pchampin  added support for "list datatypes"
     2011-06-15  pchampin  discussion with oaubert and abelin
     2011-04-29  pchampin  applied changes to the kTBS ontology
     2010-12-01  pchampin  applied changes to the kTBS ontology
@@ -110,9 +111,14 @@ Model (Resource)
   add_inherited(m:Model)
   remove_inherited(m:Model)
   create_obsel_type(id:uri?, supertypes:[ObselType]?) → ObselType
-  create_attribute_type(id:uri?, domain:ObselType?, range:uri?) → AttributeType
-      the range uri is an XML-Schema datatype URI
+  create_attribute_type(id:uri?, domain:ObselType?, range:uri?,
+                        range_is_list:bool?) → AttributeType
+      the range uri is an XML-Schema datatype URI;
+      range_is_list indicates whether the attributes accepts a single value
+      (false, default) or a list of values (true).
+      NB: if range represent a "list datatype", range_is_list must not be true
       TODO specify a minimum list of datatypes that must be supported
+      TODO define a URI for representing "list of X" for each supported datatype
   create_relation_type(id:uri?, domain:ObselType?, range:ObselType?,
                        supertypes:[RelationType]?)
                       → RelationType
@@ -160,22 +166,28 @@ ObselType (Resource)
       list the relation types of this obsel type (direct or inherited)
   list_all_inverse_relation_types() → [RelationType]
       list the relation types of this obsel type (direct or inherited)
-  create_attribute_type(id:uri?, range:uri?) → AttributeType
+  create_attribute_type(id:uri?, range:uri?, range_is_list:book?)
+                       → AttributeType
+      shortcut to Model.create_attribute_type where this ObselType is the domain
   create_relation_type(id:uri?, range:ObselType?, supertypes:[RelationType]?)
                       → RelationType
+      shortcut to Model.create_relation_type where this ObselType is the domain
   add_supertype(ot:ObselType)
   remove_supertype(ot:ObselType)
   
 
 AttributeType (Resource)
-  get_model() → ObselType)
+  get_model() → Model
   get_domain() → ObselType
   set_domain(ot:ObselType)
   get_range() → uri
-  set_range(datatype:uri)
+  set_range(datatype:uri, is_list:bool?)
+      is_list indicates whether the attribute accepts a single value (false,
+      default) or a list of values (true)
+      NB: if range represent a "list datatype", range_is_list must not be true
 
 RelationType (Resource)
-  get_model() → ObselType)
+  get_model() → Model
   list_own_supertypes() → [RelationType]
       list the direct supertypes of this relation type
   list_own_subtypes() → [RelationType]
