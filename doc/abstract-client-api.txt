@@ -1,10 +1,11 @@
-============================
+x============================
 Abstract client API for kTBS
 ============================
 
 :version: work in progress
 :date: 2010-11-18
 :changelog:
+    2011-06-21  pchampin  simplified API for list of inherited things
     2011-06-20  pchampin  added support for "list datatypes"
     2011-06-15  pchampin  discussion with oaubert and abelin
     2011-04-29  pchampin  applied changes to the kTBS ontology
@@ -13,11 +14,12 @@ Abstract client API for kTBS
 
 Resource
   get_uri() → uri
-  is_synced() → bool
-      return true if the resource is in sync with the data at its URI
+  get_sync_status() → str
+      return "ok" if the resource is in sync with the data at its URI,
+      else any other string describing the reason why it is not.
   delete()
       delete this resource from the KTBS
-      If the resource can not be deleted, an exception may be raised.
+      If the resource can not be deleted, an exception must be raised.
   get_label() → str
       returns a user-friendly label
   set_label(str)
@@ -75,18 +77,18 @@ StoredTrace (Trace)
 ComputedTrace(Trace)
   get_method() → Method
   set_method(method:Method)
-  list_all_parameters() → [str]
-      list the names of all the parameters set by this trace or its method
-  list_own_parameters() → [str]
-      list the names of all the parameters set by this trace
+  list_parameters(include_inherited:bool?) → [str]
+      list the names of all the parameters of this trace
+      include_inherited defaults to true and means that parameters inherited
+      from the method should be included
   get_parameter(key:str) → str
       get the value of a parameter (own or inherited from the method)
   set_parameter(key:str, value:any)
       set the value of a parameter
-      An exception may be raised if the parameter is inherited.
+      An exception must be raised if the parameter is inherited.
   del_parameter(key:str)
       unset a parameter
-      An exception may be raised if the parameter is inherited.
+      An exception must be raised if the parameter is inherited.
 
 Model (Resource)
   get_base() → Base
@@ -97,16 +99,21 @@ Model (Resource)
       return the element of this model identified by the URI, or null
   get_readonly() → bool
       return true if this trace model is not modifiable
-  list_inherited() → [Model]
-      list all inherited models
+  list_inherited(include_inherited:bool?) → [Model]
+      list inherited models
       Note that some of these models may not belong to the same KTBS, and may
       be readonly —see get_readonly below.
-  list_own_attribute_types() → [AttributeType]
-  list_own_relation_types() → [RelationType]
-  list_own_obsel_types() → [ObselType]
-  list_all_attribute_types() → [AttributeType]
-  list_all_relation_types() → [RelationType]
-  list_all_obsel_types() → [ObselType]
+      include_inherited defaults to true and means that models indirectly
+      inherited should be included
+  list_attribute_types(include_inherited:bool?) → [AttributeType]
+      include_inherited defaults to true and means that attributes types
+      from inherited models should be included
+  list_relation_types(include_inherited:bool?) → [RelationType]
+      include_inherited defaults to true and means that relation types
+      from inherited models should be included
+  list_obsel_types(include_inherited:bool?) → [ObselType]
+      include_inherited defaults to true and means that obsel types
+      from inherited models should be included
 
   add_inherited(m:Model)
   remove_inherited(m:Model)
@@ -131,47 +138,49 @@ Method (Resource)
       Note that returned method may not be stored on this KTBS, or can even be
       a built-in method.
   set_inherited(method:Method)
-  list_all_parameters() → [str]
+  list_parameters(include_inherited:bool?) → [str]
       list the names of all the parameters set by this method or its parent
-  list_own_parameters() → [str]
-      list the names of all the parameters set by this method
+      include_inherited defaults to true and means that parameters from the
+      parent method should be included
   get_parameter(key:str) → str
       get the value of a parameter (own or inherited from the parent method)
   set_parameter(key:str, value:any)
       set the value of a parameter
-      An exception may be raised if the parameter is inherited.
+      An exception must be raised if the parameter is inherited.
   del_parameter(key:str)
       unset a parameter
-      An exception may be raised if the parameter is inherited.
+      An exception must be raised if the parameter is inherited.
 
 ObselType (Resource)
   get_model() → Model
-  list_own_supertypes() → [ObselType]
+  list_direct_supertypes() → [ObselType]
       list the direct supertypes of this obsel type
-  list_own_subtypes() → [ObselType]
+  list_direct_subtypes() → [ObselType]
       list the direct supertypes of this obsel type
-  list_own_attribute_types() → [AttributeType]
-      list the attribute types having this obsel type for domain
-  list_own_relation_types() → [RelationType]
-      list the relation types having this obsel type for domain
-  list_own_inverse_relation_types() → [RelationType]
-      list the relation types having this obsel type for range
   list_all_supertypes() → [ObselType]
       list the supertypes of this obsel type (direct or inherited)
   list_all_subtypes() → [ObselType]
       list the supertypes of this obsel type (direct or inherited)
-  list_all_attribute_types() → [AttributeType]
+  list_attribute_types(include_inherited:bool?) → [AttributeType]
       list the attribute types of this obsel type (direct or inherited)
-  list_all_relation_types() → [RelationType]
+      include_inherited defaults to true and means that attributes types
+      inherited from supertypes should be included
+  list_relation_types(include_inherited:bool?) → [RelationType]
       list the relation types of this obsel type (direct or inherited)
-  list_all_inverse_relation_types() → [RelationType]
+      include_inherited defaults to true and means that relation types
+      inherited from supertypes should be included
+  list_inverse_relation_types(include_inherited:bool?) → [RelationType]
       list the relation types of this obsel type (direct or inherited)
+      include_inherited defaults to true and means that inverse relation types
+      inherited from supertypes should be included
   create_attribute_type(id:uri?, range:uri?, range_is_list:book?)
                        → AttributeType
-      shortcut to Model.create_attribute_type where this ObselType is the domain
+      shortcut to get_model().create_attribute_type where this ObselType is the
+      domain
   create_relation_type(id:uri?, range:ObselType?, supertypes:[RelationType]?)
                       → RelationType
-      shortcut to Model.create_relation_type where this ObselType is the domain
+      shortcut to get_model().create_relation_type where this ObselType is the
+      domain
   add_supertype(ot:ObselType)
   remove_supertype(ot:ObselType)
   
@@ -188,9 +197,9 @@ AttributeType (Resource)
 
 RelationType (Resource)
   get_model() → Model
-  list_own_supertypes() → [RelationType]
+  list_direct_supertypes() → [RelationType]
       list the direct supertypes of this relation type
-  list_own_subtypes() → [RelationType]
+  list_direct_subtypes() → [RelationType]
       list the direct supertypes of this relation type
   list_all_supertypes() → [RelationType]
       list the supertypes of this relation type (direct or inherited)
@@ -236,13 +245,13 @@ General Rules
 * For all get_X methods accepting a parameter, the result should be null if no
   object matches the parameter.
 
-* For all create_X methods, an exception may be raised if the given URI is
+* For all create_X methods, an exception must be raised if the given URI is
   invalid or already in use.
 
 * All modification operations (set_*, delete) on model elements (ObselType,
   AttributeType, RelationType) actually modify the model from which they were
   accessed. If the model is readonly (see the get_readonly method), those
-  methods may raise an exception.
+  methods must raise an exception.
 
 
 Design Rationale
