@@ -5,6 +5,7 @@ Abstract client API for kTBS
 :version: work in progress
 :date: 2010-11-18
 :changelog:
+    2011-06-26  pchampin  moved id to the end for several create_X methods
     2011-06-21  pchampin  simplified API for list of inherited things
     2011-06-20  pchampin  added support for "list datatypes"
     2011-06-15  pchampin  discussion with oaubert and abelin
@@ -41,12 +42,12 @@ Base (Base)
   list_traces() → [Trace]
   list_models() → [Model]
   list_methods() → [Method]
-  create_stored_trace(id:uri?, model:Model, origin:str, default_subject:str?)
+  create_stored_trace(model:Model, origin:str, default_subject:str?, id:uri?)
                      → StoredTrace
-  create_computed_trace(id:uri?, method:Model, sources:[Trace]?)
+  create_computed_trace(method:Model, sources:[Trace]?, id:uri?)
                        → ComputedTrace
   create_model(id:uri?) → Model
-  create_method(id:uri?, inherits:Method, parameters:[str=>any]?) → Method
+  create_method(inherits:Method, parameters:[str=>any]?, id:uri) → Method
 
 Trace (Resource)
   get_base() → Base
@@ -62,17 +63,17 @@ Trace (Resource)
       return the obsel of this trace identified by the URI, or null
 
 StoredTrace (Trace)
-  set_trace_model(model:Model)
+  set_model(model:Model)
   set_origin(origin:str)
   get_default_subject() → str
       the default subject is associated to new obsels if they do not specify
       a subject at creation time
   set_default_subject(subject:str)
-  create_obsel(id:uri?, type:ObselType, begin:int, end:int?, subject:str?,
+  create_obsel(type:ObselType, begin:int, end:int?, subject:str?,
                attributes:[AttributeType=>any]?,
                relations:[RelationType=>Obsel]?,
                inverse_relations:[RelationType=>Obsel]?,
-               source_obsels:[Obsel]?) → Obsel
+               source_obsels:[Obsel]?, id:uri?) → Obsel
 
 ComputedTrace(Trace)
   get_method() → Method
