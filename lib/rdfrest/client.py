@@ -285,7 +285,8 @@ class ProxyStore(Store):
         LOG.debug("-- ProxyStore._parse_content() using %s format", 
                   self._format)
 
-        self._graph.parse(StringIO(content), format=self._format)
+        self._graph.parse(StringIO(content), format=self._format,
+                          publicID=self._identifier)
 
     def _pull(self):
         """Update cache before an operation.
