@@ -18,7 +18,7 @@
 """
 I provide the pythonic interface to obsels.
 """
-from rdflib import RDF, URIRef
+from rdflib import Literal, RDF
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
@@ -34,14 +34,15 @@ class ObselMixin(ResourceMixin):
         """
         I return the trace containing this obsel.
         """
-        return self.make_resource(self.get_object(_HAS_TRACE))
+        return self.make_resource(next(self.graph.objects(self.uri,
+                                                          _HAS_TRACE)))
 
     def get_obsel_type(self):
         """
         I return the obsel type of this obsel.
         """
         tmodel = self.trace.trace_model
-        for typ in self.iter_objects(_RDF_TYPE):
+        for typ in self.graph.objects(self.uri, _RDF_TYPE):
             ret = tmodel.get(typ)
             if ret is not None:
                 return ret
@@ -50,7 +51,7 @@ class ObselMixin(ResourceMixin):
         """
         I return the begin timestamp of the obsel.
         """
-        return int(self.get_object(_HAS_BEGIN))
+        return int(next(self.graph.objects(self.uri, _HAS_BEGIN)))
 
     def get_begin_dt(self):
         """
@@ -58,96 +59,136 @@ class ObselMixin(ResourceMixin):
 
         We use a better implementation than the standard one.
         """
-        return parse_date(self.get_object(_HAS_BEGIN_DT))
+        return parse_date(next(self.graph.objects(self.uri, _HAS_BEGIN_DT)))
 
     def get_end(self):
         """
         I return the end timestamp of the obsel.
         """
-        return int(self.get_object(_HAS_END))
+        return int(next(self.graph.objects(self.uri, _HAS_END)))
 
     def get_end_dt(self):
         """
         I return the end timestamp of the obsel.
         """
-        return parse_date(self.get_object(_HAS_END_DT))
+        return parse_date(next(self.graph.objects(self.uri, _HAS_END_DT)))
 
     def get_subject(self):
         """
         I return the subject of the obsel.
         """
-        return self.get_object(_HAS_SUBJECT)
+        return next(self.graph.objects(self.uri, _HAS_SUBJECT))
 
-    @property
-    def outgoing(self):
+    def iter_source_obsels(self):
         """
-        I provide mapping-like access to outgoing properties.
-
-        When iterated, I yield all outgoing properties of this object
-        (relation types, attribute types and other RDF properties).
-
-        When indexed by a given property (using [property]), I iter over all
-        the values of that property. Indices can be RelationTypes,
-        AttributeTYpes, RDF.Nodes or URIs as strings.
+        I iter over the source obsels of the obsel.
         """
-        return _PropertyMapping(self, 1)
+        make_resource = self.make_resource
+        for i in self.graph.objects(self.uri, _HAS_SOURCE_OBSEL):
+            yield make_resource(i, _OBSEL)
 
-    @property
-    def incoming(self):
+    def iter_attribute_types(self):
         """
-        I provide mapping-like access to incomping properties.
-
-        :see-also: `outgoing`
+        I iter over all attribute types set for this obsel.
         """
-        return _PropertyMapping(self, -1)
-
-    # TODO MAJOR implement attribute and relation iter_ methods
-
-
-
-class _PropertyMapping(object):
-    """
-    I implement mapping-like access to properties of an obsels.
-    """
-    #pylint: disable-msg=R0903
-
-    def __init__(self, obsel, direction):
-        self.obsel = obsel
-        self.type_getter = obsel.trace.trace_model.get
         query_str = """
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        SELECT DISTINCT ?p
-        WHERE { GRAPH <%%s> {
-            %s
-            FILTER (?p != rdf:type
-                && !regex(str(?p), "^http://liris.cnrs.fr/silex/2009/ktbs#")
-            )
-        }}"""
-        if direction == 1:
-            query_str %= "<%s> ?p []"
-            self.iter_values = obsel.iter_objects
-        else:
-            assert direction == -1
-            query_str %= "[] ?p <%s>"
-            self.iter_values = obsel.iter_subjects
-        query_str %= (obsel.uri, )
-        self.iter_pred = query_str
+            SELECT ?at
+            WHERE {
+                <%s> ?at ?value .
+                OPTIONAL {
+                    ?value <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t
+                }
+                FILTER (!bound(?t))
+            }
+        """ % self.uri
+        make_resource = self.make_resource
+        for atype in self.graph.query(query_str):
+            if not atype.startswith(KTBS):
+                yield make_resource(atype, _ATTRIBUTE_TYPE)
 
-    def __iter__(self):
-        for pred, in self.obsel.graph.query(self.iter_pred):
-            yield self.type_getter(pred) or pred
+    def iter_relation_types(self):
+        """
+        I iter over all outgoing relation types for this obsel.
+        """
+        query_str = """
+            SELECT ?rt
+            WHERE {
+                <%s> ?rt ?related .
+                ?related <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
+            }
+        """ % self.uri
+        make_resource = self.make_resource
+        for rtype in self.graph.query(query_str):
+            yield make_resource(rtype, _RELATION_TYPE)
 
-    def __getitem__(self, predicate):
-        make_resource = self.obsel.make_resource
-        for i in self.iter_values(coerce_to_uri(predicate)):
-            if isinstance(i, URIRef):
-                i = make_resource(i) or i
-            yield i
+    def iter_related_obsels(self, rtype):
+        """
+        I iter over all obsels pointed by an outgoing relation.
+        """
+        rtype = coerce_to_uri(rtype, self.uri)
+        query_str = """
+            SELECT ?related
+            WHERE {
+                <%s> <%s> ?related .
+                ?related <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
+            }
+        """ % (self.uri, rtype)
+        make_resource = self.make_resource
+        for rtype in self.graph.query(query_str):
+            yield make_resource(rtype, _OBSEL)
 
+    def iter_inverse_relation_types(self):
+        """
+        I iter over all incoming relation types for this obsel.
+        """
+        query_str = """
+            SELECT ?rt
+            WHERE {
+                ?relating ?rt <%s> .
+                ?relating <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
+            }
+        """ % self.uri
+        make_resource = self.make_resource
+        for rtype in self.graph.query(query_str):
+            yield make_resource(rtype, _RELATION_TYPE)
+
+    def iter_relating_obsels(self, rtype):
+        """
+        I iter over all incoming relation types for this obsel.
+        """
+        rtype = coerce_to_uri(rtype, self.uri)
+        query_str = """
+            SELECT ?relating
+            WHERE {
+                ?relating <%s> <%s> .
+                ?relating <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
+            }
+        """ % (rtype, self.uri)
+        make_resource = self.make_resource
+        for binding in self.graph.query(query_str):
+            yield make_resource(binding[0], _OBSEL)
+
+    def get_attribute_value(self, atype):
+        """
+        I return the value of the given attribut type for this obsel, or None.
+        """
+        atype = coerce_to_uri(atype, self.uri)
+        ret = next(self.graph.objects(self.uri, atype), None)
+        if isinstance(ret, Literal):
+            ret = ret.toPython()
+        return ret
+
+    # TODO MAJOR implement attribute and relation methods (set_, del_, add_)
+
+
+_ATTRIBUTE_TYPE = KTBS.AttributeType
 _HAS_BEGIN = KTBS.hasBegin
 _HAS_BEGIN_DT = KTBS.hasBeginDT
 _HAS_END = KTBS.hasEnd
 _HAS_END_DT = KTBS.hasEndDT
+_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
 _HAS_SUBJECT = KTBS.hasSubject
 _HAS_TRACE = KTBS.hasTrace
+_OBSEL = KTBS.Obsel
 _RDF_TYPE = RDF.type
+_RELATION_TYPE = KTBS.RelationType

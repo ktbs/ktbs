@@ -20,7 +20,7 @@ I provide the pythonic interface to computed traces.
 """
 from ktbs.common.method import WithParametersMixin
 from ktbs.common.trace import TraceMixin
-from ktbs.common.utils import extend_api
+from ktbs.common.utils import coerce_to_uri, extend_api
 from ktbs.namespaces import KTBS
 
 @extend_api
@@ -30,18 +30,26 @@ class ComputedTraceMixin(TraceMixin, WithParametersMixin):
     """
     def get_method(self):
         """
-        I return the transformation method of this trace.
-
-        NB: for built-in methods, I return the URI itself.
+        I return the method of this trace.
         """
-        method_uri = self.get_object(_HAS_METHOD)
-        return self.make_resource(method_uri) or method_uri
+        method_uri = next(self.graph.objects(self.uri, _HAS_METHOD))
+        return self.make_resource(method_uri)
+
+    def set_method(self, method):
+        """I set the method of this trace.
+        method can be a Method or a URI; relative URIs are resolved againts
+        this trace's URI.
+        """
+        method_uri = coerce_to_uri(method, self.uri)
+        with self:
+            self.graph.remove((self.uri, _HAS_METHOD, None))
+            self.graph.add((self.uri, _HAS_METHOD, method_uri))
 
     def _get_inherited_parameters(self):
         """
         Required by WithParametersMixin.
         """
-        return getattr(self.method, "parameters", None) or {}
+        return self.method.parameters_as_dict()
 
 
 _HAS_METHOD = KTBS.hasMethod

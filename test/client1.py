@@ -16,11 +16,24 @@ def main():
     print "----- root.label: ", root.label
     #root.label = "Another label"
     #print root.label
-    base1 = root.create_base("base1/")
-    print "----- base1.label: ", base1.label
-    #base1.label = "A new base"
-    #print "----- base1.label: ", base1.label
-    print "----- base1.url: ", base1.uri
+    base2 = root.create_base("base2/")
+    try:
+        print "----- base2.label: ", base2.label
+        #base2.label = "A new base"
+        #print "----- base2.label: ", base2.label
+        print "----- base2.url: ", base2.uri
+        print "----- bases: ", [ b.label for b in root.bases ]
+    finally:
+        base2.delete()
+
+    base1 = root.get_base("base1/")
+    print "----- base1.label", base1.label
+    t01 = base1.get("t01/")
+    print "----- t01.label", t01.label
+    #t01.label = "Coucou"
+    #print "----- t01.label", t01.label
+    print "----- t01.obsels", [ o.label for o in t01.obsels ]
+    print [at.label for at in t01.obsels[0].attribute_types ]
 
 if __name__ == "__main__":
     main()

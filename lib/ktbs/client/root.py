@@ -22,7 +22,6 @@ from rdflib import BNode, Graph, RDF
 #from rdfrest.client import ProxyStore
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
-import ktbs.client.base # ensure that Base is registered in RESOURCE_MAKER
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import coerce_to_uri
 from ktbs.namespaces import KTBS
@@ -31,13 +30,19 @@ class KtbsRoot(KtbsRootMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
     """
 
-    def create_base(self, uri, graph=None):
-        """TODO docstring
+    def create_base(self, id=None, graph=None):
+        """Create a new base in this kTBS.
+        id: either None, a relative URI or a BNode present in graph
+        graph: if not none, may contain additional properties for the new base
         """
-        if uri is None:
+        #pylint: disable-msg=W0622
+        #    redefining built-in 'id'
+        if id is None:
             uri = BNode()
+        elif isinstance(id, BNode):
+            uri = id
         else:
-            uri = coerce_to_uri(uri, self.uri)
+            uri = coerce_to_uri(id, self.uri)
         if graph is None:
             graph = Graph()
         graph.add((uri, _RDF_TYPE, _BASE))
@@ -60,3 +65,6 @@ _RDF_TYPE = RDF.type
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase
 
+# the following import ensures that Base is registered in RESOURCE_MAKER
+import ktbs.client.base #pylint: disable-msg=W0611
+# NB: we have to disable pylint W0611 (Unused import)

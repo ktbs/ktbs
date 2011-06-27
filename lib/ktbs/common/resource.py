@@ -36,25 +36,30 @@ class ResourceMixin(object):
         """
         Return a user-friendly label for this resource.
         """
-        # TODO MINOR use transaction with graph
         pref_label = next(self.graph.objects(self.uri, SKOS.prefLabel), None)
         if pref_label is not None:
-            return pref_label
+            return str(pref_label)
+
         label = next(self.graph.objects(self.uri, RDFS.label), None)
         if label is not None:
-            return label
-        return short_name(self.uri)
+            return str(label)
+
+        ret = short_name(self.uri)
+        if ret[-1] == "/":
+            ret = ret[:-1]
+        return ret
 
     def set_label(self, value):
         """
         Set the skos:prefLabel of this resource.
         """
-        # TODO MINOR use transaction with graph
-        self.del_label()
-        self.graph.add((self.uri, SKOS.prefLabel, Literal(value)))
+        with self:
+            self.del_label()
+            self.graph.add((self.uri, SKOS.prefLabel, Literal(value)))
 
     def del_label(self):
         """
         Remove the skos:prefLabel of this resource.
         """
-        self.graph.remove((self.uri, SKOS.prefLabel, None))
+        with self:
+            self.graph.remove((self.uri, SKOS.prefLabel, None))

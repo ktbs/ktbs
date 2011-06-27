@@ -69,12 +69,14 @@ class BaseMixin(ResourceMixin):
             if typ == _METHOD:
                 yield make_resource(uri, typ)
 
-    def get(self, uri):
+    def get(self, id):
         """
         Return one of the element contained in the base.
         """
-        elt_uri = coerce_to_uri(uri, self.uri)
-        typ = next(self.graph.objects(self.uri, _RDF_TYPE), None)
+        #pylint: disable-msg=W0622
+        #  Redefining built-in id
+        elt_uri = coerce_to_uri(id, self.uri)
+        typ = next(self.graph.objects(elt_uri, _RDF_TYPE), None)
         if typ not in (_STORED_TRACE, _COMPUTED_TRACE, _MODEL, _METHOD):
             return None
         else:

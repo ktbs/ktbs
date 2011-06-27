@@ -17,7 +17,7 @@
 """
 I provide the client implementation of a trace Base.
 """
-from httplib2 import Http
+#from httplib2 import Http
 from rdflib import RDF
 #from rdfrest.client import ProxyStore
 
@@ -35,3 +35,10 @@ class Base(BaseMixin, Resource):
 RESOURCE_MAKER[KTBS.Base] = Base
 
 _RDF_TYPE = RDF.type
+
+# the following import ensures that required classes are registered in
+# RESOURCE_MAKER (Model, StoredTrace, ComputedTrace, Method)
+#import ktbs.client.method #pylint: disable-msg=W0611
+import ktbs.client.model #pylint: disable-msg=W0611
+import ktbs.client.trace #pylint: disable-msg=W0611,W0404
+# NB: we have to disable pylint W0611 (Unused import) and W0404 (Reimport)

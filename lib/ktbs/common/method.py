@@ -52,19 +52,16 @@ class WithParametersMixin(object):
             parameters[key] = value
         return parameters
 
-    def iter_own_parameters(self):
+    def iter_parameters(self, include_inherited=True):
+        """I iter over the parameter of this resource.
         """
-        I iter over the parameter names defined by this resource.
-        """
-        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
-            key, _ = parameter.split("=", 1)
-            yield key
-
-    def iter_all_parameters(self):
-        """
-        I iter over all the parameters (own and inherited) of this resource
-        """
-        return iter(self.parameters_as_dict)
+        if include_inherited:
+            for i in self.parameters_as_dict:
+                yield i
+        else:
+            for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
+                key, _ = parameter.split("=", 1)
+                yield key
 
     def get_parameter(self, key):
         """
@@ -79,14 +76,19 @@ class WithParametersMixin(object):
         if key in self._get_inherited_parameters():
             raise ValueError("Can not %s inherited parameter '%s'"
                              % ((value is None) and "delete" or "set", key))
-        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
-            akey, _ = parameter.split("=", 1)
+        parameter = None
+        for i in self.graph.objects(self.uri, _HAS_PARAMETER):
+            akey, _ = i.split("=", 1)
             if akey == key:
-                self.graph.remove((self.uri, _HAS_PARAMETER, parameter))
+                parameter = i
                 break
-        if value is not None:
-            self.graph.add((self.uri, _HAS_PARAMETER,
-                            Literal("%s=%s" % (key, value))))
+
+        with self:
+            if parameter is not None:
+                self.graph.remove((self.uri, _HAS_PARAMETER, parameter))
+            if value is not None:
+                self.graph.add((self.uri, _HAS_PARAMETER,
+                                Literal("%s=%s" % (key, value))))
         
     def del_parameter(self, key):
         """

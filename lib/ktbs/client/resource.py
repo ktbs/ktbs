@@ -23,6 +23,7 @@ with a given RDF type; `Resource.make_resource` relies on it.
 from httplib2 import Http
 from rdflib import Graph, RDF
 from rdfrest.client import ProxyStore
+from threading import RLock
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
@@ -44,9 +45,11 @@ class Resource(ResourceMixin):
         # (not calling __init__ for mixin)
         self._uri = uri = coerce_to_uri(uri)
         if graph is None:
-            graph = Graph(ProxyStore(uri), identifier=uri)
+            graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
             graph.open(uri)
         self._graph = graph
+        self._transaction_level = 0
+        self._transaction_lock = RLock()
 
     def __eq__(self, other):
         """I am equal to any other `Resource` with the same URI.
@@ -60,17 +63,21 @@ class Resource(ResourceMixin):
 
     def __enter__(self):
         """Start a transaction with this resource.
+        NB: This also locks the resource for the current thread.
         """
-        pass
-        # TODO implement session once they are implemented in ProxyStore
+        self._transaction_lock.acquire()
+        self._transaction_level += 1
 
     def __exit__(self, typ, value, traceback):
-        """Exit a transaction.
+        """Exit a transaction with this resource.
         """
-        if typ is None:
-            self._graph.commit()
-        else:
-            self._graph.rollback()
+        self._transaction_level -= 1
+        if self._transaction_level == 0:
+            if typ is None:
+                self._graph.commit()
+            else:
+                self._graph.rollback()
+        self._transaction_lock.release()
 
     def get_uri(self):
         """TODO docstring
@@ -107,7 +114,7 @@ class Resource(ResourceMixin):
         """TODO docstring
         """
         rheader, _rcontent = Http().request(self.uri, 'DELETE')
-        if rheader.status % 100 != 2:
+        if int(rheader.status) / 100 != 2:
             raise ValueError(rheader)
         # TODO improve exception here
 

@@ -14,21 +14,36 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
-
 """
-I provide pythonic interfaces for KTBS elements as mixin classes, to be reused
-in server, client and script.
-
-All those mixin require
-* __eq__ and __hash__ methods
-* __enter__ and __exit__ methods for managing transactions
-* a property uri: a URIRef identifying this resource
-* a property graph: an RDF Graph containing the description of this resource
-* a method ``make_resource(node, node_type=None)`` used to build another
-  resource as the value of a property.
-
-Note that not all classes in `ktbs.server` inherit the corresponding mixin
-class from `ktbs.common`, and when they do, they sometimes use low-level code
-when the mixin class provides a high-level interface, mostly for performance
-considerations.
+I provide the client implementation of trace models and their elements.
 """
+#pylint: disable-msg=R0904
+#    too many public methods
+
+from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.common.model import (ModelMixin, AttributeTypeMixin, ObselTypeMixin,
+                               RelationTypeMixin)
+from ktbs.namespaces import KTBS
+
+
+class Model(ModelMixin, Resource):
+    """TODO docstring"""
+    pass
+
+class AttributeType(AttributeTypeMixin, Resource):
+    """TODO docstring"""
+    pass
+
+class ObselType(ObselTypeMixin, Resource):
+    """TODO docstring"""
+    pass
+
+class RelationType(RelationTypeMixin, Resource):
+    """TODO docstring"""
+    pass
+
+
+RESOURCE_MAKER[KTBS.Model] = Model
+RESOURCE_MAKER[KTBS.ObselType] = ObselType
+RESOURCE_MAKER[KTBS.AttributeType] = AttributeType
+RESOURCE_MAKER[KTBS.RelationType] = RelationType

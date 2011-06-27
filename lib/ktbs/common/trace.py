@@ -18,9 +18,11 @@
 """
 I provide the pythonic interface to traces (abstract and stored).
 """
+from rdflib import Literal
+
 from ktbs.common.base import InBaseMixin
 from ktbs.common.utils import coerce_to_uri, extend_api
-from ktbs.iso8601 import parse_date, ParseError
+from ktbs.iso8601 import parse_date
 from ktbs.namespaces import KTBS
 
 @extend_api
@@ -28,62 +30,37 @@ class TraceMixin(InBaseMixin):
     """
     I provide the pythonic interface common to all traces.
     """
-    def iter_obsels(self, begin=None, end=None, desc=False):
-        """
-        Iter over the obsels of this trace.
-
-        The obsel are sorted by their end timestamp, then their begin
-        timestamp, then their identifier. If desc is true, the order is
-        inversed.
-
-        If given, begin and/or end are interpreted as the (included)
-        boundaries of an interval; only obsels entirely contained in this
-        interval will be yielded.
-
-        * begin: an int, datetime or Obsel
-        * end: an int, datetime or Obsel
-        * desc: an object with a truth value
-
-        NB: the order of "recent" obsels may vary even if the trace is not
-        amended, since collectors are not bound to respect the order in begin
-        timestamps and identifiers.
-        """
-        if begin or end or desc:
-            raise NotImplementedError(
-                "iter_obsels parameters not implemented yet")
-            # TODO MAJOR implement parameters of iter_obsels
-        make_resource = self.make_resource
-        for obs in self.graph.subjects(_HAS_TRACE, self.uri):
-            yield make_resource(obs)
-
-    def get_obsel(self, uri):
+    def get_obsel(self, id):
         """
         Return the obsel with the given uri.
 
         `uri` may be relative to the URI of the trace.
         """
-        uri = coerce_to_uri(uri, self.uri)
+        #pylint: disable-msg=W0622
+        #  Redefining built-in id
+        uri = coerce_to_uri(id, self.uri)
         return self.make_resource(uri)
 
     def get_model(self):
         """
         I return the trace model of this trace.
         """
-        tmodel_uri = self.get_object(_HAS_MODEL)
+        tmodel_uri = next(self.graph.objects(self.uri, _HAS_MODEL))
         return self.make_resource(tmodel_uri)
         # TODO MAJOR make_resource return None for external models; fix this
 
-    def get_origin(self):
+    def get_origin(self, as_datetime=False):
         """
-        I return the origin of this trace, as a python datetime or a str.
+        I return the origin of this trace.
 
-        Only if the origin can not be converted to a datetime is it returned
-        as a str.
+        If `as_datetime` is true, get_origin will try to convert the return
+        value to datetime, or raise an exception on a failure.
+
         """
-        origin = self.get_object(_HAS_ORIGIN)
-        try:
+        origin = next(self.object.objects(self.uri, _HAS_ORIGIN))
+        if as_datetime:
             return parse_date(origin)
-        except ParseError:
+        else:
             return origin
 
     def iter_sources(self):
@@ -91,7 +68,7 @@ class TraceMixin(InBaseMixin):
         I iter over the sources of this computed trace.
         """
         make_resource = self.make_resource
-        for src in self.iter_objects(_HAS_SOURCE):
+        for src in self.graph.objects(self.uri, _HAS_SOURCE):
             yield make_resource(src)
 
     def iter_transformed_traces(self):
@@ -99,7 +76,7 @@ class TraceMixin(InBaseMixin):
         Iter over the traces having this trace as a source.
         """
         make_resource = self.make_resource
-        for trc in self.iter_subjects(_HAS_SOURCE):
+        for trc in self.graph.subjects(self.uri, _HAS_SOURCE):
             yield make_resource(trc)
 
 
@@ -107,9 +84,48 @@ class StoredTraceMixin(TraceMixin):
     """
     I provide the pythonic interface to stored traces.
     """
-    pass
+    def set_model(self, model):
+        """I set the model of this trace.
+        model can be a Model or a URI; relative URIs are resolved against this
+        trace's URI.
+        """
+        model_uri = coerce_to_uri(model, self.uri)
+        with self:
+            self.graph.remove((self.uri, _HAS_MODEL, None))
+            self.graph.add((self.uri, _HAS_MODEL, model_uri))
+
+    def set_origin(self, origin):
+        """I set the origin of this trace.
+        origin can be a string or a datetime.
+        """
+        isoformat = getattr(origin, "isoformat", None)
+        if isoformat is not None:
+            origin = isoformat()
+        origin = Literal(origin)
+        with self:
+            self.graph.remove((self.uri, _HAS_ORIGIN, None))
+            self.graph.add((self.uri, _HAS_ORIGIN, origin))
+
+    def get_default_subject(self):
+        """
+        I return the default subject of this trace.
+        """
+        return next(self.graph.objects(self.uri, _HAS_DEFAULT_SUBJECT),
+                    None)
+
+    def set_default_subject(self, subject):
+        """I set the default subject of this trace.
+        """
+        subject = Literal(subject)
+        with self:
+            self.graph.remove((self.uri, _HAS_DEFAULT_SUBJECT, None))
+            self.graph.add((self.uri, _HAS_DEFAULT_SUBJECT, subject))
+
+
     # TODO MAJOR implement part of the abstract API
 
+
+_HAS_DEFAULT_SUBJECT = KTBS.hasDefaultSubject
 _HAS_MODEL = KTBS.hasModel
 _HAS_ORIGIN = KTBS.hasOrigin
 _HAS_SOURCE = KTBS.hasSource

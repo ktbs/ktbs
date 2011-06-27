@@ -37,11 +37,13 @@ class KtbsRootMixin(object):
         for obs in self.graph.objects(self.uri, _HAS_BASE):
             yield make_resource(obs, _BASE)
 
-    def get_base(self, uri):
+    def get_base(self, id):
         """
         I return the base corresponding to the given URI.
         """
-        base_uri = coerce_to_uri(uri, self.uri)
+        #pylint: disable-msg=W0622
+        #  Redefining built-in id
+        base_uri = coerce_to_uri(id, self.uri)
         return self.make_resource(base_uri, _BASE)
 
 _BASE = KTBS.Base
