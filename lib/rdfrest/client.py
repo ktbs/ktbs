@@ -183,7 +183,6 @@ class ProxyStore(Store):
 
         self.configuration = self._configuration_extraction(configuration)
 
-        # return UNKNOWN
         if (self._identifier is None) or len(self._identifier) == 0:
             if PS_CONFIG_URI in self.configuration.keys():
                 self._identifier = self.configuration[PS_CONFIG_URI]
@@ -294,6 +293,8 @@ class ProxyStore(Store):
         """
         LOG.debug("-- _pull() ... start ...")
 
+        assert self._identifier is not None, "The store must be open."
+
         # TODO - If there is a problem to get the graph (wrong address, ....)
         # Set an indication to notify it
         header, content = self.httpserver.request(self._identifier)
@@ -330,6 +331,8 @@ class ProxyStore(Store):
         """
 
         LOG.debug("-- _push() ... start ... --")
+
+        assert self._identifier is not None, "The store must be open."
 
         # TODO : How to build the "PUT" request ?
         # Which data in the header ? 
@@ -381,6 +384,8 @@ class ProxyStore(Store):
 
         LOG.debug("-- ProxyStore.add(triple=%s, context=%s, quoted=%s) --", 
                   triple, context, quoted)
+
+        assert self._identifier is not None, "The store must be open."
 
         # TODO : Wrong, assert is made to test bugs
         assert self._format is not None, "The store must be open."
