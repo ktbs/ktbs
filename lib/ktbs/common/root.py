@@ -46,5 +46,16 @@ class KtbsRootMixin(object):
         base_uri = coerce_to_uri(id, self.uri)
         return self.make_resource(base_uri, _BASE)
 
+    def iter_builtin_methods(self):
+        """
+        I list all the builtin methods implemented by this kTBS.
+        """
+        make_resource = self.make_resource
+        for obs in self.graph.objects(self.uri, _HAS_BUILTIN_METHOD):
+            yield make_resource(obs, _METHOD)
+        
+
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase    
+_HAS_BUILTIN_METHOD = KTBS.hasBuiltinMethod    
+_METHOD = KTBS.Method

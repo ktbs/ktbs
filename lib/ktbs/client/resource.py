@@ -110,13 +110,19 @@ class Resource(ResourceMixin):
         maker = RESOURCE_MAKER[typ]
         return maker(uri, graph)
 
-    def delete(self):
+    def remove(self):
         """TODO docstring
         """
         rheader, _rcontent = Http().request(self.uri, 'DELETE')
         if int(rheader.status) / 100 != 2:
             raise ValueError(rheader)
         # TODO improve exception here
+
+    def get_readonly(self):
+        """TODO docstring
+        """
+        return self and False #used self to lure pylint
+        # TODO find a good way to know if this resource is readonly
 
 _RDF_TYPE = RDF.type
                 

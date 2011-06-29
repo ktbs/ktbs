@@ -17,23 +17,51 @@
 """
 I provide the client implementation of a trace Base.
 """
-#from httplib2 import Http
-from rdflib import RDF
+from rdflib import Graph, RDF
 #from rdfrest.client import ProxyStore
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.base import BaseMixin
+from ktbs.common.utils import coerce_to_node, coerce_to_uri, post_graph
 from ktbs.namespaces import KTBS
 
 class Base(BaseMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
     """
 
-    # TODO implement create_X
+    def create_model(self, parents=None, id=None, graph=None):
+        """Create a new model in this trace base.
+        id: either None, a relative URI or a BNode present in graph
+        graph: if not none, may contain additional properties for the new base
+        """
+        #pylint: disable-msg=W0622
+        #    redefining built-in 'id'
+        self_uri = self.uri
+        node = coerce_to_node(id, self_uri)
+        if graph is None:
+            graph = Graph()
+        graph.add((node, _RDF_TYPE, _MODEL))
+        graph.add((self.uri, _CONTAINS, node))
+
+        uri = self_uri
+        add = graph.add
+        for parent in parents or ():
+            parent = coerce_to_uri(parent, uri)
+            add((node, _HAS_PARENT_MODEL, parent))
+
+        rheaders, _rcontent = post_graph(graph, self.uri)
+        created_uri = rheaders['location']
+        # TODO MAJOR parse content and feed the graph to make_resource
+        return self.make_resource(created_uri, _MODEL)
+
+    # TODO implement other create_X
 
 
 RESOURCE_MAKER[KTBS.Base] = Base
 
+_CONTAINS = KTBS.contains
+_HAS_PARENT_MODEL = KTBS.hasParentModel
+_MODEL = KTBS.Model
 _RDF_TYPE = RDF.type
 
 # the following import ensures that required classes are registered in

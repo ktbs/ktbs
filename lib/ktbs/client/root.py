@@ -17,13 +17,12 @@
 """
 I provide the client implementation of KtbsRoot.
 """
-from httplib2 import Http
-from rdflib import BNode, Graph, RDF
+from rdflib import Graph, RDF
 #from rdfrest.client import ProxyStore
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.root import KtbsRootMixin
-from ktbs.common.utils import coerce_to_uri
+from ktbs.common.utils import coerce_to_node, post_graph
 from ktbs.namespaces import KTBS
 
 class KtbsRoot(KtbsRootMixin, Resource):
@@ -37,24 +36,12 @@ class KtbsRoot(KtbsRootMixin, Resource):
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
-        if id is None:
-            uri = BNode()
-        elif isinstance(id, BNode):
-            uri = id
-        else:
-            uri = coerce_to_uri(id, self.uri)
+        node = coerce_to_node(id, self.uri)
         if graph is None:
             graph = Graph()
-        graph.add((uri, _RDF_TYPE, _BASE))
-        graph.add((self.uri, _HAS_BASE, uri))
-        data = graph.serialize(format="n3")
-        headers = {
-            'content-type': 'text/turtle',
-            }
-        rheaders, _rcontent = Http().request(self.uri, 'POST', data,
-                                           headers=headers)
-        if rheaders.status / 100 != 2:
-            raise ValueError(rheaders) # TODO make a better exception
+        graph.add((node, _RDF_TYPE, _BASE))
+        graph.add((self.uri, _HAS_BASE, node))
+        rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
         # TODO MAJOR parse content and feed the graph to make_resource
         return self.make_resource(created_uri, _BASE)

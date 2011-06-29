@@ -103,7 +103,7 @@ class ObselMixin(ResourceMixin):
         """ % self.uri
         make_resource = self.make_resource
         for atype in self.graph.query(query_str):
-            if not atype.startswith(KTBS):
+            if not atype.startswith(KTBS) and atype != _RDF_TYPE:
                 yield make_resource(atype, _ATTRIBUTE_TYPE)
 
     def iter_relation_types(self):

@@ -103,23 +103,26 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
     I provide the pythonic interface to methods.
     """
 
-    def get_inherited(self):
+    def get_parent(self):
         """
         I return the inherited method.
         """
-        method_uri = next(self.graph.objects(self.uri, _INHERITS), None)
+        method_uri = next(self.graph.objects(self.uri, _HAS_PARENT_METHOD),
+                          None)
         if method_uri is None:
             return None
         else:
             return self.make_resource(method_uri, _METHOD) or method_uri
 
-    def set_inherited(self, value):
+    def set_parent(self, method):
         """
-        I set the inherited method.
+        I set the parent method.
         """
         # TODO include transaction management here?
-        self.graph.remove((self.uri, _INHERITS, None))
-        self.graph.add((self.uri, _INHERITS, coerce_to_uri(value)))
+        method = coerce_to_uri(method, self.uri)
+        with self:
+            self.graph.remove((self.uri, _HAS_PARENT_METHOD, None))
+            self.graph.add((self.uri, _HAS_PARENT_METHOD, method))
 
     def _get_inherited_parameters(self):
         """
@@ -129,5 +132,5 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
 
 
 _HAS_PARAMETER = KTBS.hasParameter
-_INHERITS = KTBS.inherits
+_HAS_PARENT_METHOD = KTBS.hasParentMethod
 _METHOD = KTBS.Method

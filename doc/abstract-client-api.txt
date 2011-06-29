@@ -1,10 +1,11 @@
-x============================
+============================
 Abstract client API for kTBS
 ============================
 
 :version: work in progress
 :date: 2010-11-18
 :changelog:
+    2011-06-29  pchampin  applied feedback from the actionscript implementation
     2011-06-26  pchampin  moved id to the end for several create_X methods
     2011-06-21  pchampin  simplified API for list of inherited things
     2011-06-20  pchampin  added support for "list datatypes"
@@ -18,14 +19,16 @@ Resource
   get_sync_status() → str
       return "ok" if the resource is in sync with the data at its URI,
       else any other string describing the reason why it is not.
-  delete()
-      delete this resource from the KTBS
-      If the resource can not be deleted, an exception must be raised.
+  get_readonly() → bool
+      return true if this resource is not modifiable
+  remove()
+      remove this resource from the KTBS
+      If the resource can not be removed, an exception must be raised.
   get_label() → str
       returns a user-friendly label
   set_label(str)
       set a user-friendly label
-  del_label()
+  reset_label()
       reset the user-friendly label to its default value
   
 
@@ -34,6 +37,8 @@ Ktbs (Resource)
   get_base(id:uri) → Base
       return the trace base identified by the given URI, or null
   create_base(id:uri?) → Base
+  list_builtin_methods() → [Method]
+      list the builtin methods supported by the kTBS
    
 
 Base (Base)
@@ -41,20 +46,26 @@ Base (Base)
       return the element of this base identified by the given URI, or null
   list_traces() → [Trace]
   list_models() → [Model]
+      list the models stored in that base
   list_methods() → [Method]
-  create_stored_trace(model:Model, origin:str, default_subject:str?, id:uri?)
+      list the methods stored in that base
+  create_stored_trace(model:Model, origin:str?, default_subject:str?, id:uri?)
                      → StoredTrace
-  create_computed_trace(method:Model, sources:[Trace]?, id:uri?)
+      list the stored traces stored in that base
+      if origin is not specified, a fresh opaque string is generated
+  create_computed_trace(method:Method, sources:[Trace]?, id:uri?)
                        → ComputedTrace
-  create_model(id:uri?) → Model
-  create_method(inherits:Method, parameters:[str=>any]?, id:uri) → Method
+      list the computed traces stored in that base
+  create_model(parents:[Model]?, id:uri?) → Model
+  create_method(parent:Method, parameters:[str=>any]?, id:uri) → Method
 
 Trace (Resource)
   get_base() → Base
   get_model() → Model
   get_origin() → str
-      temporal origin, either opaque string (id) or ISO xxx datetime
-  list_sources() → [Trace]
+      an opaque string representing the temporal origin of the trace:
+      two traces with the same origin can be temporally compared
+  list_source_traces() → [Trace]
   list_transformed_traces() → [Trace]
       return the list of the traces of which this trace is a source
   list_obsels(begin:int?, end:int?, reverse:bool?) → [Obsel]
@@ -98,14 +109,12 @@ Model (Resource)
   set_unit(unit:str)
   get(id:uri) → ObselType | AttributeType | RelationType
       return the element of this model identified by the URI, or null
-  get_readonly() → bool
-      return true if this trace model is not modifiable
-  list_inherited(include_inherited:bool?) → [Model]
-      list inherited models
+  list_parents(include_indirect:bool?) → [Model]
+      list parent models
       Note that some of these models may not belong to the same KTBS, and may
-      be readonly —see get_readonly below.
-      include_inherited defaults to true and means that models indirectly
-      inherited should be included
+      be readonly —see get_readonly.
+      include_indirect defaults to false and means that parent's parents should
+      be returned as well.
   list_attribute_types(include_inherited:bool?) → [AttributeType]
       include_inherited defaults to true and means that attributes types
       from inherited models should be included
@@ -116,29 +125,29 @@ Model (Resource)
       include_inherited defaults to true and means that obsel types
       from inherited models should be included
 
-  add_inherited(m:Model)
-  remove_inherited(m:Model)
-  create_obsel_type(id:uri?, supertypes:[ObselType]?) → ObselType
-  create_attribute_type(id:uri?, domain:ObselType?, range:uri?,
-                        range_is_list:bool?) → AttributeType
+  add_parent(m:Model)
+  remove_parent(m:Model)
+  create_obsel_type(supertypes:[ObselType]?, id:uri?) → ObselType
+  create_attribute_type(domain:ObselType?, range:uri?, range_is_list:bool?,
+                        id:uri?) → AttributeType
       the range uri is an XML-Schema datatype URI;
       range_is_list indicates whether the attributes accepts a single value
       (false, default) or a list of values (true).
       NB: if range represent a "list datatype", range_is_list must not be true
       TODO specify a minimum list of datatypes that must be supported
       TODO define a URI for representing "list of X" for each supported datatype
-  create_relation_type(id:uri?, domain:ObselType?, range:ObselType?,
-                       supertypes:[RelationType]?)
+  create_relation_type(domain:ObselType?, range:ObselType?,
+                       supertypes:[RelationType]?, id:uri?)
                       → RelationType
 
 
 Method (Resource)
   get_base() → Base
-  get_inherited() → Method
-      return the inherited method, or null
+  get_parent() → Method
+      return the parent method, or null
       Note that returned method may not be stored on this KTBS, or can even be
       a built-in method.
-  set_inherited(method:Method)
+  set_parent(method:Method)
   list_parameters(include_inherited:bool?) → [str]
       list the names of all the parameters set by this method or its parent
       include_inherited defaults to true and means that parameters from the
@@ -154,24 +163,25 @@ Method (Resource)
 
 ObselType (Resource)
   get_model() → Model
-  list_direct_supertypes() → [ObselType]
-      list the direct supertypes of this obsel type
-  list_direct_subtypes() → [ObselType]
-      list the direct supertypes of this obsel type
-  list_all_supertypes() → [ObselType]
-      list the supertypes of this obsel type (direct or inherited)
-  list_all_subtypes() → [ObselType]
-      list the supertypes of this obsel type (direct or inherited)
+  list_supertypes(include_indirect:bool?) → [ObselType]
+      list the supertypes of this obsel type
+      include_indirect defaults to false; if true, all supertypes are listed,
+      including indirect supertypes and this obsel type itself
+  list_subtypes(include_indirect:bool?) → [ObselType]
+      list the subtypes of this obsel type from the same model
+      include_indirect defaults to false; if true, all subtypes from the same
+      model are listed, including indirect supertypes and this obsel type
+      itself
   list_attribute_types(include_inherited:bool?) → [AttributeType]
       list the attribute types of this obsel type (direct or inherited)
       include_inherited defaults to true and means that attributes types
       inherited from supertypes should be included
   list_relation_types(include_inherited:bool?) → [RelationType]
-      list the relation types of this obsel type (direct or inherited)
+      list the outgoing relation types of this obsel type (direct or inherited)
       include_inherited defaults to true and means that relation types
       inherited from supertypes should be included
   list_inverse_relation_types(include_inherited:bool?) → [RelationType]
-      list the relation types of this obsel type (direct or inherited)
+      list the inverse relation types of this obsel type (direct or inherited)
       include_inherited defaults to true and means that inverse relation types
       inherited from supertypes should be included
   create_attribute_type(id:uri?, range:uri?, range_is_list:book?)
@@ -188,28 +198,29 @@ ObselType (Resource)
 
 AttributeType (Resource)
   get_model() → Model
-  get_domain() → ObselType
-  set_domain(ot:ObselType)
-  get_range() → uri
-  set_range(datatype:uri, is_list:bool?)
+  get_obsel_type() → ObselType
+  set_obsel_type(ot:ObselType)
+  get_data_type() → uri
+  set_data_type(datatype:uri, is_list:bool?)
       is_list indicates whether the attribute accepts a single value (false,
       default) or a list of values (true)
       NB: if range represent a "list datatype", range_is_list must not be true
 
 RelationType (Resource)
   get_model() → Model
-  list_direct_supertypes() → [RelationType]
-      list the direct supertypes of this relation type
-  list_direct_subtypes() → [RelationType]
-      list the direct supertypes of this relation type
-  list_all_supertypes() → [RelationType]
-      list the supertypes of this relation type (direct or inherited)
-  list_all_subtypes() → [RelationType]
-      list the supertypes of this relation type (direct or inherited)
-  get_domain() → ObselType
-  set_domain(ot:ObselType)
-  get_range() → ObselType
-  set_range(ot:ObselType)
+  list_supertypes(include_indirect:bool?) → [RelationType]
+      list the supertypes of this relation type
+      include_indirect defaults to false; if true, all supertypes are listed,
+      including indirect supertypes and this relation type itself
+  list_subtypes(include_indirect:bool?) → [RelationType]
+      list the subtypes of this relation type from the same model
+      include_indirect defaults to false; if true, all subtypes from the same
+      model are listed, including indirect supertypes and this relation type
+      itself
+  get_origin() → ObselType
+  set_origin(ot:ObselType)
+  get_destination() → ObselType
+  set_destination(ot:ObselType)
   add_supertype(rt:RelationType)
   remove_supertype(rt:RelationType)
 

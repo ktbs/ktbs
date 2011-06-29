@@ -18,7 +18,8 @@
 """
 I provide utility functions for pythonic interfaces.
 """
-from rdflib import URIRef
+from httplib2 import Http
+from rdflib import BNode, URIRef
 import re
 from urlparse import urljoin
 
@@ -35,6 +36,19 @@ def coerce_to_uri(obj, base=None):
     if not isinstance(ret, URIRef):
         ret = URIRef(ret)
     return ret
+
+def coerce_to_node(obj, base=None):
+    """
+    I do the same as coerce_to_uri above, but in addition:
+    * if obj is None, I will return a fresh BNode
+    * if obj is a BNode, I will return it
+    """
+    if obj is None:
+        return BNode()
+    elif isinstance(obj, BNode):
+        return obj
+    else:
+        return coerce_to_uri(obj, base)
 
 def extend_api(cls):
     """
@@ -89,5 +103,19 @@ def short_name(uri):
     hashpos = uri.rfind("#", 0, -1)
     slashpos = uri.rfind("/", 0, -1)
     return uri[max(hashpos, slashpos)+1:]
+
+def post_graph(graph, uri):
+    """
+    I post the given graph to the given URI, and raise an exception on error.
+    """
+    data = graph.serialize(format="n3")
+    headers = {
+        'content-type': 'text/turtle',
+        }
+    rheaders, rcontent = Http().request(uri, 'POST', data, headers=headers)
+    if rheaders.status / 100 != 2:
+        raise ValueError(rheaders) # TODO make a better exception
+    
+    return rheaders, rcontent
 
 _INTERESTING_METHOD = re.compile("get_|set_|iter_")

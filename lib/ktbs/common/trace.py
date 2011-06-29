@@ -57,18 +57,18 @@ class TraceMixin(InBaseMixin):
         value to datetime, or raise an exception on a failure.
 
         """
-        origin = next(self.object.objects(self.uri, _HAS_ORIGIN))
+        origin = next(self.object.objects(self.uri, _HAS_TRACE_ORIGIN))
         if as_datetime:
             return parse_date(origin)
         else:
             return origin
 
-    def iter_sources(self):
+    def iter_source_traces(self):
         """
         I iter over the sources of this computed trace.
         """
         make_resource = self.make_resource
-        for src in self.graph.objects(self.uri, _HAS_SOURCE):
+        for src in self.graph.objects(self.uri, _HAS_SOURCE_TRACE):
             yield make_resource(src)
 
     def iter_transformed_traces(self):
@@ -76,10 +76,11 @@ class TraceMixin(InBaseMixin):
         Iter over the traces having this trace as a source.
         """
         make_resource = self.make_resource
-        for trc in self.graph.subjects(self.uri, _HAS_SOURCE):
+        for trc in self.graph.subjects(self.uri, _HAS_SOURCE_TRACE):
             yield make_resource(trc)
 
 
+@extend_api
 class StoredTraceMixin(TraceMixin):
     """
     I provide the pythonic interface to stored traces.
@@ -103,8 +104,8 @@ class StoredTraceMixin(TraceMixin):
             origin = isoformat()
         origin = Literal(origin)
         with self:
-            self.graph.remove((self.uri, _HAS_ORIGIN, None))
-            self.graph.add((self.uri, _HAS_ORIGIN, origin))
+            self.graph.remove((self.uri, _HAS_TRACE_ORIGIN, None))
+            self.graph.add((self.uri, _HAS_TRACE_ORIGIN, origin))
 
     def get_default_subject(self):
         """
@@ -127,6 +128,6 @@ class StoredTraceMixin(TraceMixin):
 
 _HAS_DEFAULT_SUBJECT = KTBS.hasDefaultSubject
 _HAS_MODEL = KTBS.hasModel
-_HAS_ORIGIN = KTBS.hasOrigin
-_HAS_SOURCE = KTBS.hasSource
+_HAS_TRACE_ORIGIN = KTBS.hasOrigin # should be renamed one day?
+_HAS_SOURCE_TRACE = KTBS.hasSource # should be renamed one day?
 _HAS_TRACE = KTBS.hasTrace

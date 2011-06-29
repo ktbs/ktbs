@@ -66,8 +66,15 @@ class Trace(Resource):
             raise NotImplementedError(
                 "iter_obsels parameters not implemented yet")
             # TODO MAJOR implement parameters of iter_obsels
+        query_str = """
+            SELECT ?obs WHERE {
+                ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
+                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?t
+            }
+            ORDER BY ?t
+        """ % self.uri
         make_resource = self.make_resource
-        for obs in self._obsels.subjects(_HAS_TRACE, self.uri):
+        for obs in self._obsels.query(query_str):
             yield make_resource(obs, _OBSEL)
 
     

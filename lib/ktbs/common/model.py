@@ -62,20 +62,20 @@ class ModelMixin(InBaseMixin):
                 return self.make_resource(uri, rdf_type)
         return None
 
-    def iter_inherited(self, include_inherited=True):
+    def iter_parents(self, include_indirect=False):
         """
-        I iter over all the models inherited by this model.
+        I iter over all the parent models of this model.
         """
         make_resource = self.make_resource
         cache = set()
-        for uri in self.graph.objects(self.uri, _INHERITS):
+        for uri in self.graph.objects(self.uri, _HAS_PARENT_MODEL):
             model = make_resource(uri) or uri
-            if include_inherited:
+            if include_indirect:
                 cache.add(model)
             yield model
-        if include_inherited:
+        if include_indirect:
             for model in list(cache):
-                for i in model.iter_inherited(True):
+                for i in model.iter_indirect(True):
                     if i not in cache:
                         cache.add(i)
                         yield i
@@ -116,7 +116,7 @@ class ModelMixin(InBaseMixin):
                 for rtype in inherited.iter_relation_types(False):
                     yield rtype
 
-    # TODO implement add_inherited, remove_inherited, create_*
+    # TODO implement add_parent, remove_parent, create_*
 
 @extend_api
 class _ModelElementMixin(ResourceMixin):
@@ -169,35 +169,31 @@ class _ModelTypeMixin(_ModelElementMixin):
     """
     _SUPER_TYPE_PROP = None
 
-    def iter_all_subtypes(self):
+    def iter_subtypes(self, include_indirect=False):
         """
-        I iter over all the subtypes of this type (included itself and
-        inherited ones).
+        I list the subtypes of this type from the same model.
+        If include_indirect is True, all subtype from the same model are
+        listed, including indirect supertypes and this type itself
         """
-        return _closure(self, "direct_subtypes")
+        if include_indirect:
+            return _closure(self, "subtypes")
+        else:
+            make_resource = self.make_resource
+            return ( make_resource(uri) 
+                     for uri in self.graph.subjects(self._SUPER_TYPE_PROP) )
 
-    def iter_all_supertypes(self):
+    def iter_supertypes(self, include_indirect=False):
         """
-        I iter over all the supertypes of this type (included itself and
-        inherited ones).
+        I list the supertypes of this type.
+        If include_indirect is True, all supertypes are listed,
+        including indirect supertypes and this type itself
         """
-        return _closure(self, "direct_supertypes")
-
-    def iter_direct_subtypes(self):
-        """
-        I iter over the direct subtypes of this type.
-        """
-        make_resource = self.make_resource
-        for uri in self.graph.subjects(self._SUPER_TYPE_PROP):
-            yield make_resource(uri)
-
-    def iter_direct_supertypes(self):
-        """
-        I iter over the direct supertypes of this type.
-        """
-        make_resource = self.make_resource
-        for uri in self.graph.objects(self._SUPER_TYPE_PROP):
-            yield make_resource(uri)
+        if include_indirect:
+            return _closure(self, "supertypes")
+        else:
+            make_resource = self.make_resource
+            return ( make_resource(uri)
+                     for uri in self.graph.objects(self._SUPER_TYPE_PROP) )
 
     def matches(self, *others):
         """
@@ -210,7 +206,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         if tuple(others) == (None,):
             return True
         others = set(others)
-        mine = set(self.iter_all_supertypes())
+        mine = set(self.iter_supertypes(True))
         if others - mine:
             return False
         else:
@@ -222,25 +218,25 @@ class AttributeTypeMixin(_ModelElementMixin):
     """
     I provide the pythonic interface to an attribute type.
     """
-    def get_domain(self):
+    def get_obsel_type(self):
         """
-        I hold the direct domain of this attribute, or None.
+        I hold the obsel type containing this attribute, or None.
         """
-        uri = next(self.graph.objects(self.uri, _HAS_ADOMAIN), None)
+        uri = next(self.graph.objects(self.uri, _HAS_AOBSELTYPE), None)
         if uri is None:
             return None
         else:
             return self.make_resource(uri)
 
-    def get_range(self):
+    def get_data_type(self):
         """
-        I hold the direct range of this attribute, or None.
+        I hold the data type allowed for this attribute, or None (any).
 
         Returns the type as a URIRef
         """
-        return next(self.graph.object(self.uri, _HAS_ARANGE), None)
+        return next(self.graph.object(self.uri, _HAS_ADATATYPE), None)
 
-    # TODO implement set_domain, set_range
+    # TODO implement set_obsel_type, set_data_type
 
 @extend_api
 class ObselTypeMixin(_ModelTypeMixin):
@@ -256,34 +252,34 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the attribute types allowed for this type.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_ADOMAIN, self.uri):
+        for uri in self.graph.subjects(_HAS_AOBSELTYPE, self.uri):
             yield make_resource(uri)
         if include_inherited:
-            for supertype in self.iter_all_supertypes():
+            for supertype in self.iter_supertypes(True):
                 for atype in supertype.iter_attribute_types(False):
                     yield atype                
 
     def iter_relation_types(self, include_inherited=True):
         """
-        I iter over the relations allowing this type as domain.
+        I iter over the relation types having this obsel type as origin.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_RDOMAIN, self.uri):
+        for uri in self.graph.subjects(_HAS_RORIGIN, self.uri):
             yield make_resource(uri)
         if include_inherited:
-            for supertype in self.iter_all_supertypes():
+            for supertype in self.iter_supertypes(True):
                 for rtype in supertype.iter_relation_types(False):
                     yield rtype                            
 
     def iter_inverse_relation_types(self, include_inherited=True):
         """
-        I iter over the relations allowing this type as range.
+        I iter over the relation types having this obsel type as destination.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_RRANGE, self.uri):
+        for uri in self.graph.subjects(_HAS_RDESTINATION, self.uri):
             yield make_resource(uri)
         if include_inherited:
-            for supertype in self.iter_all_supertypes():
+            for supertype in self.iter_supertypes(True):
                 for rtype in supertype.iter_inverse_relation_types(False):
                     yield rtype
 
@@ -296,21 +292,21 @@ class RelationTypeMixin(_ModelTypeMixin):
     """
     _SUPER_TYPE_PROP = KTBS.hasSuperRelationType
 
-    def get_domain(self):
+    def get_origin(self):
         """
-        I hold the direct domain of this relation, or None.
+        I hold the origin obsel type this relation, or None.
         """
-        uri = next(self.graph.objects(self.uri, _HAS_RDOMAIN), None)
+        uri = next(self.graph.objects(self.uri, _HAS_RORIGIN), None)
         if uri is None:
             return None
         else:
             return self.make_resource(uri)
 
-    def get_range(self):
+    def get_destination(self):
         """
-        I hold the direct range of this relation, or None.
+        I hold the destination obsel type this relation, or None.
         """
-        uri = next(self.get_object(self.uri, _HAS_RRANGE), None)
+        uri = next(self.get_object(self.uri, _HAS_RDESTINATION), None)
         if uri is None:
             return None
         else:
@@ -321,7 +317,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         I iter over all the domains (direct or inherited) of this relation.
         """
         seen = set()
-        for rtype in self.iter_all_supertypes():
+        for rtype in self.iter_supertypes(True):
             rdomain = rtype.domain
             if rdomain is not None and rdomain not in seen:
                 yield rdomain
@@ -332,7 +328,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         I iter over all the ranges (direct or inherited) of this relation.
         """
         seen = set()
-        for rtype in self.iter_all_supertypes():
+        for rtype in self.iter_supertypes(True):
             rrange = rtype.range
             if rrange is not None and rrange not in seen:
                 yield rrange
@@ -361,9 +357,9 @@ _ATTR_TYPE = KTBS.AttributeType
 _RDF_TYPE = RDF.type
 _OBSEL_TYPE = KTBS.ObselType
 _REL_TYPE = KTBS.RelationType
-_HAS_ADOMAIN = KTBS.hasAttributeDomain
-_HAS_ARANGE = KTBS.hasAttributeRange
-_HAS_RDOMAIN = KTBS.hasRelationDomain
-_HAS_RRANGE = KTBS.hasRelationRange
+_HAS_AOBSELTYPE = KTBS.hasAttributeDomain # should be renamed at some point?
+_HAS_ADATATYPE = KTBS.hasAttributeRange # should be renamed at some point?
+_HAS_RORIGIN = KTBS.hasRelationDomain # should be renamed at some point?
+_HAS_RDESTINATION = KTBS.hasRelationRange # should be renamed at some point?
 _HAS_UNIT = KTBS.hasUnit
-_INHERITS = KTBS.inheritsModel
+_HAS_PARENT_MODEL = KTBS.hasParentModel
