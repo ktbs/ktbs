@@ -9,6 +9,6 @@ Dependancies
 
 * rdflib 3.x
 * httplib2
-* webob (server)
+* webob (server part only)
 * nose (developers)
 * pylint (developers)
