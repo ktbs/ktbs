@@ -1,0 +1,14 @@
+========
+RDF REST
+========
+
+A framework for RDF-based REST-ful services.
+
+Dependancies
+============
+
+* rdflib 3.x
+* httplib2
+* webob (server part only)
+* nose (developers)
+* pylint (developers)
