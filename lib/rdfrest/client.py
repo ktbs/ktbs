@@ -24,10 +24,10 @@ I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 """
 
 import types
-import os
 from StringIO import StringIO
 import httplib
 import httplib2
+from tempfile import mkdtemp 
 
 #http://docs.python.org/howto/logging-cookbook.html
 import logging
@@ -43,6 +43,8 @@ from rdflib.graph import Graph
 #from rdflib.parser import Parser
 #from rdflib.serializer import Serializer
 #from rdflib.plugin import plugins
+
+CACHE_DIR = mkdtemp("http_cache")
 
 _CONTENT_TYPE_PARSERS = {}
 _CONTENT_TYPE_SERIALIZERS = {}
@@ -157,7 +159,7 @@ class ProxyStore(Store):
         if PS_CONFIG_HTTP_CACHE in configuration.keys():
             self.httpserver = httplib2.Http(configuration[PS_CONFIG_HTTP_CACHE])
         else:
-            self.httpserver = httplib2.Http(os.getcwd() + "/.cache")
+            self.httpserver = httplib2.Http(CACHE_DIR)
 
         # Store will call open() if configuration is not None
         Store.__init__(self, configuration)
@@ -212,7 +214,8 @@ class ProxyStore(Store):
 
         return VALID_STORE
 
-    def _configuration_extraction(self, configuration):
+    @staticmethod
+    def _configuration_extraction(configuration):
         """ Extract configuration data passed to ProxyStore.
 
             What do we do if configuration is passed twice (once in __init__

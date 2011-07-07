@@ -18,7 +18,7 @@
 I demonstrate the rdfrest framework with an example server.
 """
 from os.path import abspath, dirname, join
-from sys import path
+from sys import path, stderr
 
 source_dir = dirname(dirname(abspath(__file__)))
 lib_dir = join(source_dir, "lib")
@@ -150,7 +150,7 @@ def main():
     service = FooBarService(config)
     service.bootstrap()
 
-    print "===", "Starting server on", base
+    print >>stderr, "===", "Starting server on", base
     make_server("localhost", 8001, service).serve_forever()
 
 if __name__ == "__main__":

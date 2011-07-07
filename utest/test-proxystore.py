@@ -29,6 +29,9 @@ from rdflib.graph import Graph
 from rdflib.store import VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 
 from nose.tools import raises
+from os.path import abspath, dirname, join
+from subprocess import Popen, PIPE
+from time import sleep
 
 from rdfrest.client import ProxyStore
 from rdfrest.client import StoreIdentifierError, GraphChangedError
@@ -36,6 +39,20 @@ from rdfrest.client import PS_CONFIG_URI, PS_CONFIG_USER, PS_CONFIG_PWD
 from rdfrest.client import PS_CONFIG_HTTP_CACHE, PS_CONFIG_HTTP_RESPONSE
 
 import logging
+
+PROCESS = None
+
+def setUp():
+    global PROCESS
+    PROCESS = Popen([join(dirname(dirname(abspath(__file__))),
+                          "test", "rdfrest_demo.py")], stderr=PIPE)
+    # then wait for the server to actually start:
+    # we know that it will write on its stderr when ready
+    PROCESS.stderr.read(1)
+
+def tearDown():
+    PROCESS.terminate()
+    
 
 def test_identifier_no_open():
     """ Pass the URI as identifier to __init__() but does not explicitely
