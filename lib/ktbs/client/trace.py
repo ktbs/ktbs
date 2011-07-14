@@ -74,8 +74,9 @@ class Trace(Resource):
             ORDER BY ?t
         """ % self.uri
         make_resource = self.make_resource
-        for obs in self._obsels.query(query_str):
-            yield make_resource(obs, _OBSEL)
+        obsels_graph = self._obsels
+        for obs in obsels_graph.query(query_str):
+            yield make_resource(obs, _OBSEL, obsels_graph)
 
     
 
