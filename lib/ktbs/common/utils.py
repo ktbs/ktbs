@@ -104,17 +104,17 @@ def short_name(uri):
     slashpos = uri.rfind("/", 0, -1)
     return uri[max(hashpos, slashpos)+1:]
 
-def post_graph(graph, uri):
+def post_graph(graph, uri, format="n3"):
     """
     I post the given graph to the given URI, and raise an exception on error.
     """
-    data = graph.serialize(format="n3")
+    data = graph.serialize(format=format)
     headers = {
         'content-type': 'text/turtle',
         }
     rheaders, rcontent = Http().request(uri, 'POST', data, headers=headers)
     if rheaders.status / 100 != 2:
-        raise ValueError(rheaders) # TODO make a better exception
+        raise ValueError(rheaders, rcontent) # TODO make a better exception
     
     return rheaders, rcontent
 

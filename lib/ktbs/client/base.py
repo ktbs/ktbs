@@ -40,7 +40,7 @@ class Base(BaseMixin, Resource):
         node = coerce_to_node(id, self_uri)
         if graph is None:
             graph = Graph()
-        graph.add((node, _RDF_TYPE, _MODEL))
+        graph.add((node, _RDF_TYPE, _TRACE_MODEL))
         graph.add((self.uri, _CONTAINS, node))
 
         uri = self_uri
@@ -52,7 +52,7 @@ class Base(BaseMixin, Resource):
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
         # TODO MAJOR parse content and feed the graph to make_resource
-        return self.make_resource(created_uri, _MODEL)
+        return self.make_resource(created_uri, _TRACE_MODEL)
 
     # TODO implement other create_X
 
@@ -61,7 +61,7 @@ RESOURCE_MAKER[KTBS.Base] = Base
 
 _CONTAINS = KTBS.contains
 _HAS_PARENT_MODEL = KTBS.hasParentModel
-_MODEL = KTBS.Model
+_TRACE_MODEL = KTBS.TraceModel
 _RDF_TYPE = RDF.type
 
 # the following import ensures that required classes are registered in

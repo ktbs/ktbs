@@ -43,7 +43,7 @@ class RelationType(RelationTypeMixin, Resource):
     pass
 
 
-RESOURCE_MAKER[KTBS.Model] = Model
+RESOURCE_MAKER[KTBS.TraceModel] = Model
 RESOURCE_MAKER[KTBS.ObselType] = ObselType
 RESOURCE_MAKER[KTBS.AttributeType] = AttributeType
 RESOURCE_MAKER[KTBS.RelationType] = RelationType
