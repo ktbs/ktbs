@@ -61,6 +61,12 @@ PS_CONFIG_PWD = "password"
 PS_CONFIG_HTTP_CACHE = "path"
 PS_CONFIG_HTTP_RESPONSE = "httpresponse"
 
+ACCEPT = ",".join( ";q=".join(pair) for pair in [
+        ("text/nt",             "1"),
+        ("text/turtle",         "0.8"),
+        ("application/rdf+xml", "0.6"),
+])
+
 def _get_rdflib_parsers():
     """ Try to get rdflib registered Parsers.
         TODO But how to make an automatic match Content-Type / rdflib parser ?
@@ -80,13 +86,15 @@ def _get_rdflib_parsers():
     _CONTENT_TYPE_PARSERS["text/x-turtle"] = FORMAT_N3
     _CONTENT_TYPE_PARSERS["application/turtle"] = FORMAT_N3
 
-    _CONTENT_TYPE_PARSERS["application/rdf+xml"] = "application/rdf+xml"
+    _CONTENT_TYPE_PARSERS["application/rdf+xml"] = "xml"#"application/rdf+xml"
+    _CONTENT_TYPE_PARSERS["text/nt"] = FORMAT_NT # seems to be more efficient
 
 def _get_rdflib_serializers():
     """ Try to get rdflib registered Serializers.
         TODO Automate ?
     """
     _CONTENT_TYPE_SERIALIZERS[FORMAT_N3] = "text/turtle"
+    _CONTENT_TYPE_SERIALIZERS[FORMAT_NT] = "text/nt"
     _CONTENT_TYPE_SERIALIZERS[FORMAT_XML] = "application/rdf+xml"
 
 # Build rdflib parsers list from content-type
@@ -287,6 +295,9 @@ class ProxyStore(Store):
         LOG.debug("-- ProxyStore._parse_content() using %s format", 
                   self._format)
 
+        parse_format = self._format
+        if parse_format == "nt":
+            parse_format = "n3" # seems to be more efficient!...
         self._graph.parse(StringIO(content), format=self._format,
                           publicID=self._identifier)
 
@@ -300,8 +311,11 @@ class ProxyStore(Store):
 
         # TODO - If there is a problem to get the graph (wrong address, ....)
         # Set an indication to notify it
-        header, content = self.httpserver.request(self._identifier)
-
+        req_headers = {
+            "accept": ACCEPT,
+            }
+        header, content = self.httpserver.request(self._identifier,
+                                                  headers=req_headers)
         LOG.debug("[received header]\n%s", header)
 
         # TODO Refine, test and define use-cases
@@ -342,7 +356,9 @@ class ProxyStore(Store):
         # Which serialization ? The same as we received but does rdflib supply
         # all kind of parsing / serialization ?
         headers = {'Content-Type': '%s; charset=UTF-8'
-                   % _CONTENT_TYPE_SERIALIZERS[self._format],}
+                   % _CONTENT_TYPE_SERIALIZERS[self._format],
+                   'Accept': ACCEPT,
+                   }
         if self._etags:
             headers['If-Match'] = self._etags
         data = self._graph.serialize(format=self._format)
@@ -492,6 +508,18 @@ class ProxyStore(Store):
             :param configuration: Configuration string identifying the store
         """
         LOG.debug("******** destroy (%s) ", configuration)
+
+    def query(self, graph, query_object, initNs={}, initBindings={}, **kwargs):
+        """ I provide SPARQL query processing as a store.
+
+        I simply pass through the query to the underlying graph. This prevents
+        an external SPARQL engine to make multiple accesses to that store,
+        which can generate HTTP traffic.
+        """
+        assert graph.store is self
+        self._pull()
+        return self._graph.query(query_object, initNs=initNs,
+                                 initBindings=initBindings, **kwargs)
 
 class GraphChangedError(Exception):
     """ Exception to be raised when the user tries to change graph data
