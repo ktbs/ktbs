@@ -39,7 +39,11 @@ class Resource(ResourceMixin):
     graph = None
 
     def __init__(self, uri, graph=None):
-        """TODO docstring
+        """Initialize Resource common subclass.
+
+        :param uri: Absolute or relative URI.
+        :param graph: If no graph is given, it is build from the serialization 
+        retrived for this uri.
         """
         #pylint: disable-msg=W0231
         # (not calling __init__ for mixin)

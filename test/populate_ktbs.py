@@ -17,7 +17,7 @@ from logging import basicConfig, DEBUG
 from sys import stdout
 
 def main():
-    basicConfig(filename='populate-ktbs.log',level=DEBUG)
+    basicConfig(filename='populate_ktbs.log',level=DEBUG)
 
     root = KtbsRoot("http://localhost:8001/")
     print "----- root.label: ", root.label
@@ -25,6 +25,9 @@ def main():
     base1 = root.create_base("base1/")
 
     model1 = base1.create_model(parents=None, id="model1/")
+
+    trc_01 = base1.create_stored_trace(model="model1/", origin=None, 
+             default_subject=None, id="t01/")
 
     try:
         print "----- base1.label: ", base1.label
@@ -34,7 +37,11 @@ def main():
         print "----- model1.label: ", model1.label
         print "----- model1.uri: ", model1.uri
 
+        print "----- trc_01.label: ", trc_01.label
+        print "----- trc_01.uri: ", trc_01.uri
+
     finally:
+        trc_01.remove()
         model1.remove()
         base1.remove()
 
