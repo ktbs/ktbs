@@ -127,18 +127,20 @@ Model (Resource)
 
   add_parent(m:Model)
   remove_parent(m:Model)
-  create_obsel_type(supertypes:[ObselType]?, id:uri?) → ObselType
-  create_attribute_type(domain:ObselType?, range:uri?, range_is_list:bool?,
-                        id:uri?) → AttributeType
+  create_obsel_type(label:str, supertypes:[ObselType]?, id:uri?) → ObselType
+      NB: if id is not provided, label is used to mint a human-friendly URI
+  create_attribute_type(label:str, domain:ObselType?, range:uri?,
+                        range_is_list:bool?, id:uri?) → AttributeType
       the range uri is an XML-Schema datatype URI;
       range_is_list indicates whether the attributes accepts a single value
       (false, default) or a list of values (true).
       NB: if range represent a "list datatype", range_is_list must not be true
+      NB: if id is not provided, label is used to mint a human-friendly URI
       TODO specify a minimum list of datatypes that must be supported
       TODO define a URI for representing "list of X" for each supported datatype
-  create_relation_type(domain:ObselType?, range:ObselType?,
-                       supertypes:[RelationType]?, id:uri?)
-                      → RelationType
+  create_relation_type(label:str, domain:ObselType?, range:ObselType?,
+                       supertypes:[RelationType]?, id:uri?) → RelationType
+      NB: if id is not provided, label is used to mint a human-friendly URI
 
 
 Method (Resource)

@@ -23,6 +23,8 @@ from rdflib import BNode, URIRef
 import re
 from urlparse import urljoin
 
+from rdfrest.utils import check_new, make_fresh_resource
+
 def coerce_to_uri(obj, base=None):
     """
     I convert to URIRef an object that can be either a URIRef, an object with a
@@ -96,6 +98,34 @@ def extend_api(cls):
 
     return cls
 
+def mint_uri(label, target, uri=None):
+    """
+    Mint a URI for a resource posted to `target` based on `label`.
+
+    :param label:  the label for the resource to create
+    :param target: the resource "containing" the resource to create
+    :param uri:    if provided, wil be used instead (must be fresh)
+
+    :return: a URI not present in `target.graph`
+    :rtype: rdflib.URIRef
+    :raise: ValueError if `uri` is provided and is already in use
+    """
+    if uri is not None:
+        uri = coerce_to_uri(uri, target.uri)
+        if not check_new(target.graph, uri):
+            raise ValueError("URI already in use <%s>" % uri)
+    else:
+        graph = target.graph
+        prefix = target.uri
+        if prefix[-1] != "/":
+            prefix = "%s#" % prefix
+        uri = URIRef("%s%s" % (prefix, _NON_ALPHA.sub(label, "-")))
+        if not check_new(graph, uri):
+            prefix = "%s-" % uri
+            uri = make_fresh_resource(graph, prefix)
+    return uri
+        
+
 def short_name(uri):
     """
     Return the last part of the URI (fragment of path element).
@@ -104,11 +134,11 @@ def short_name(uri):
     slashpos = uri.rfind("/", 0, -1)
     return uri[max(hashpos, slashpos)+1:]
 
-def post_graph(graph, uri, format="n3"):
+def post_graph(graph, uri, rdflib_format="n3"):
     """
     I post the given graph to the given URI, and raise an exception on error.
     """
-    data = graph.serialize(format=format)
+    data = graph.serialize(format=rdflib_format)
     headers = {
         'content-type': 'text/turtle',
         }
@@ -119,3 +149,4 @@ def post_graph(graph, uri, format="n3"):
     return rheaders, rcontent
 
 _INTERESTING_METHOD = re.compile("get_|set_|iter_")
+_NON_ALPHA = re.compile(r'[^\w]+')

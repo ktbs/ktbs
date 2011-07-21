@@ -22,8 +22,8 @@ from rdflib import Literal, RDF
 
 from ktbs.common.base import InBaseMixin
 from ktbs.common.resource import ResourceMixin
-from ktbs.common.utils import coerce_to_uri, extend_api
-from ktbs.namespaces import KTBS
+from ktbs.common.utils import coerce_to_uri, extend_api, mint_uri
+from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
 class ModelMixin(InBaseMixin):
@@ -116,7 +116,41 @@ class ModelMixin(InBaseMixin):
                 for rtype in inherited.iter_relation_types(False):
                     yield rtype
 
+    def add_parent(self, model):
+        """
+        I add model as a parent model to this model.
+        """
+        with self:
+            self.graph.add((self.uri, _HAS_PARENT_MODEL,
+                            coerce_to_uri(model, self.uri)))
+
+    def remove_parent(self, model):
+        """
+        I remove model as a parent model to this model.
+        """
+        with self:
+            self.graph.remove((self.uri, _HAS_PARENT_MODEL,
+                               coerce_to_uri(model, self.uri)))
+
+    def create_obsel_type(self, label, supertypes=(), id=None):
+        """
+        I create a new obsel type in this model.
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        graph = self.graph
+        base_uri = self.uri
+        with self:
+            uri = mint_uri(label, self, id)
+            add = graph.add
+            add((uri, _RDF_TYPE, _OBSEL_TYPE))
+            add((uri, _PREF_LABEL, Literal(label)))
+            for i in supertypes:
+                add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
+        return self.make_resource(id, _OBSEL_TYPE, graph) 
+
+
     # TODO implement add_parent, remove_parent, create_*
+
 
 @extend_api
 class _ModelElementMixin(ResourceMixin):
@@ -361,5 +395,8 @@ _HAS_AOBSELTYPE = KTBS.hasAttributeDomain # should be renamed at some point?
 _HAS_ADATATYPE = KTBS.hasAttributeRange # should be renamed at some point?
 _HAS_RORIGIN = KTBS.hasRelationDomain # should be renamed at some point?
 _HAS_RDESTINATION = KTBS.hasRelationRange # should be renamed at some point?
+_HAS_SUPEROTYPE = KTBS.hasSuperObselType
+_HAS_SUPERRTYPE = KTBS.hasSuperRelationType
 _HAS_UNIT = KTBS.hasUnit
 _HAS_PARENT_MODEL = KTBS.hasParentModel
+_PREF_LABEL = SKOS.prefLabel
