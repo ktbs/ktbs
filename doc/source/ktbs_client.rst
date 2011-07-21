@@ -4,11 +4,11 @@ KTBS Client
 KTBS Resource
 -------------
 
+.. inheritance-diagram:: ktbs.client.resource.Resource
+
 .. automodule:: ktbs.client.resource
     :members:
     :undoc-members:
-
-.. inheritance-diagram:: Resource ResourceMixin
 
 KTBS Root
 ---------
