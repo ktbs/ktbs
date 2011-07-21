@@ -234,7 +234,7 @@ class AttributeTypeMixin(_ModelElementMixin):
 
         Returns the type as a URIRef
         """
-        return next(self.graph.object(self.uri, _HAS_ADATATYPE), None)
+        return next(self.graph.objects(self.uri, _HAS_ADATATYPE), None)
 
     # TODO implement set_obsel_type, set_data_type
 
@@ -306,7 +306,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the destination obsel type this relation, or None.
         """
-        uri = next(self.get_object(self.uri, _HAS_RDESTINATION), None)
+        uri = next(self.graph.objects(self.uri, _HAS_RDESTINATION), None)
         if uri is None:
             return None
         else:
