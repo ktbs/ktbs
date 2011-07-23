@@ -18,16 +18,14 @@
 """
 I define useful functions and classes for RDF RESTful services.
 """
-from datetime import datetime
 from functools import wraps
-from md5 import md5
-from rdflib import URIRef
+from random import choice
+from rdflib import BNode, URIRef
 
 def cache_result(callabl):
-    """
-    Decorator for caching the result of a callable.
+    """Decorator for caching the result of a callable.
 
-    It is assumed that callable only has a `self` parameter, and always
+    It is assumed that `callabl` only has a `self` parameter, and always
     returns the same value.
     """
     cache_name = "__cache_%s" % callabl.__name__
@@ -44,21 +42,49 @@ def cache_result(callabl):
         return ret
     return wrapper
 
-def check_new(model, node):
+def check_new(graph, node):
+    """Check that node is absent from graph.
     """
-    Check that node is absent from model (in the given context, if any).
-    """
-    res = model.query("ASK { <%s> ?p ?o }" % node)
+    res = graph.query("ASK { <%s> ?p ?o }" % node)
     if res.askAnswer[0]:
         return False
-    res = model.query("ASK { ?s ?p <%s> }" % node)
+    res = graph.query("ASK { ?s ?p <%s> }" % node)
     if res.askAnswer[0]:
         return False
     return True
 
-def extsplit(path_info):
+def coerce_to_uri(obj, base=None):
+    """I convert `obj` to a URIRef.
+    
+    :param obj:  either an `rdflib.URIRef`, an object with a `uri` attribute
+                 (assumed to be a URIRef) or a string-like URI.
+    :param base: if provided, a string-like absolute URI used to resolve `obj`
+                 if it is itself a string.
+
+    :rtype: rdflib.URIRef
     """
-    Split a URI path into the extension-less path and the extension.
+    ret = obj
+    if not isinstance(ret, URIRef):
+        ret = getattr(ret, "uri", None) or str(ret)
+    if not isinstance(ret, URIRef):
+        ret = URIRef(ret, base)
+    return ret
+
+def coerce_to_node(obj, base=None):
+    """I do the same as :func:`coerce_to_uri` above, but in addition:
+
+    * if `obj` is None, I will return a fresh BNode
+    * if `obj` is a BNode, I will return it
+    """
+    if obj is None:
+        return BNode()
+    elif isinstance(obj, BNode):
+        return obj
+    else:
+        return coerce_to_uri(obj, base)
+
+def extsplit(path_info):
+    """Split a URI path into the extension-less path and the extension.
     """
     dot = path_info.rfind(".")
     slash = path_info.rfind("/")
@@ -68,16 +94,14 @@ def extsplit(path_info):
         return path_info[:dot], path_info[dot+1:]
     #
 
-def make_fresh_resource(model, prefix, suffix=""):
+def make_fresh_resource(graph, prefix, suffix=""):
+    """Creates a URI Node which is not in graph, with given prefix and suffix.
     """
-    Creates a URI Node which is not in model, with given prefix and suffix.
-    """
-    length = 3
+    length = 2
     while True:
-        token = md5(prefix + _NOW().isoformat()).hexdigest()[:length]
+        token = "".join( choice("abcdefghijklmnopqrstuvwxyz0123456789")
+                         for i in range(length) )
         node = URIRef("%s%s%s" % (prefix, token, suffix))
-        if check_new(model, node):
+        if check_new(graph, node):
             return node
         length += 1
-
-_NOW = datetime.now

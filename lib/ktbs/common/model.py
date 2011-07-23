@@ -22,8 +22,9 @@ from rdflib import Literal, RDF
 
 from ktbs.common.base import InBaseMixin
 from ktbs.common.resource import ResourceMixin
-from ktbs.common.utils import coerce_to_uri, extend_api, mint_uri
+from ktbs.common.utils import extend_api, mint_uri
 from ktbs.namespaces import KTBS, SKOS
+from rdfrest.utils import coerce_to_uri
 
 @extend_api
 class ModelMixin(InBaseMixin):

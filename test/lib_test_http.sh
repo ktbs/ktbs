@@ -72,7 +72,7 @@ assert () {
                 echo "Keeping server alive for testing..."
                 wait $TEST_SERVER_PID
             fi
-            exit
+            exit 1
         fi
     fi
 }

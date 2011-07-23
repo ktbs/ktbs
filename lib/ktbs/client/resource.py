@@ -26,7 +26,8 @@ from rdfrest.client import ProxyStore
 from threading import RLock
 
 from ktbs.common.resource import ResourceMixin
-from ktbs.common.utils import coerce_to_uri, extend_api
+from ktbs.common.utils import extend_api
+from rdfrest.utils import coerce_to_uri
 
 RESOURCE_MAKER = {}
 

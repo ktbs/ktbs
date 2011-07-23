@@ -21,5 +21,3 @@ I contain useful namespace objects.
 from rdflib import Namespace
 
 RDFREST = Namespace("http://liris.cnrs.fr/silex/2009/rdfrest#")
-DC = Namespace("http://purl.org/dc/elements/1.1/")
-FOAF = Namespace("http://xmlns.com/foaf/0.1/")

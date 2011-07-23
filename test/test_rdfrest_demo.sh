@@ -200,7 +200,7 @@ check_post 201 localhost:8001/ /dev/stdin uri_and_fragments \
     <<<$(make_new_foo '<with_frag>' "<> :rw_in <with_frag#frag> .")
 check_post 201 localhost:8001/ /dev/stdin new_bar <<<$(make_new_bar)
 check_post 201 localhost:8001/ /dev/stdin new_bar_bnode <<<$(make_new_bar '_:x')
-check_post 400 localhost:8001/ /dev/stdin new_bar_wrong_URI \
+check_post 403 localhost:8001/ /dev/stdin new_bar_wrong_URI \
     <<<$(make_new_bar '<slashless_uri>')
 }
 

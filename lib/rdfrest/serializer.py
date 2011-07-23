@@ -16,113 +16,192 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide functionality to select the best serialization syntax in
-response to a HTTP query, and serialize an RDF graph accordingly.
+I provide functionalities to register a number of serializers with
+preference levels, associated content-types and file extensions. A
+register also keeps track of preferred namespace prefixes.
 
-I also provide an extension mechanism for adding syntaxes.
+There is a default register from which any specific register inherits.
 """
 
 from bisect import insort
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
-from .namespaces import RDFREST
+from rdfrest.namespaces import RDFREST
 
-_BY_PRIORITY = []
-_BY_EXTENSION = {}
-_BY_MIMETYPE = {}
-_NAMESPACES = [
-    ("rdf", unicode(RDF)),
-    ("rdfs", unicode(RDFS)),
-    ("rdfrest", RDFREST),
-    ]
+from rdfrest.exceptions import SerializeError
 
-def register_namespace(prefix, uri):
+class SerializerRegister(object):
+    """I provide functionalities for registering serializers.
     """
-    Add a standard namespace prefix.
-    """
-    _NAMESPACES.append((prefix, uri))
 
-def register(mimetype, extension, priority=50, callble=None):
-    """
-    Register a serializer. Can also be used as a decorator (see below).
+    __default = None
 
-    * mimetype: a mimetype as a str
-    * etension: a file extension as a str
-    * priority: an integer between 00 and 99 included
-    * callble: a generator yielding the serialization
+    @classmethod
+    def get_default(cls):
+        """I retun the default serializer register.
+        """
+        if SerializerRegister.__default is None:
+            SerializerRegister.__default = SerializerRegister()
+        return SerializerRegister.__default
 
-    See `generate_ttl` for the expected interface of ``callble``.
-
-    If the last parameter is omitted, this function acts as a decorator,
-    registering the decorated callable.
-    """
-    def decorator(decorated):
-        "register the decorated function as a serializer"
-        insort(_BY_PRIORITY, (-priority, mimetype))
-        _BY_EXTENSION[extension] = (mimetype, decorated)
-        _BY_MIMETYPE[mimetype] = (extension, decorated)
-        return decorated
-
-    if callble is None:
-        return decorator
-    else:
-        decorator(callble)
-
-def serialize(graph, request, extension=None):
-    """
-    Serialize graph according to the HTTP request.
-
-    Return a tuple containing a generator, the content type and the extension,
-    or None,None,None if no acceptable serializer can be found.
-
-    Note that the extension, if provided, overrides the HTTP Accept header.
-    """
-    uri = request.resource_uri
-    nsp = list(_NAMESPACES)
-
-    if extension is not None:
-        pair = _BY_EXTENSION.get(extension)
-        if pair is None:
-            return None, None, None
+    def __init__(self):
+        default = SerializerRegister.__default
+        if default is None: # self will become default
+            self._by_pref = []
+            self._by_ctype = {}
+            self._by_ext = {}
+            self._namespaces = {
+                "rdf":     unicode(RDF),
+                "rdfs":    unicode(RDFS),
+                "rdfrest": RDFREST,
+                }
         else:
-            mimetype, callble = pair
-            return callble(nsp, graph, uri), mimetype, extension
-    else:
-        ordered_mimetypes = [ pair[1] for pair in _BY_PRIORITY ]
-        best_mimetype = request.accept.best_match(ordered_mimetypes)
-        if best_mimetype is None:
-            return None, None, None
-        else:
-            extension, callble = _BY_MIMETYPE[best_mimetype]
-            return callble(nsp, graph, uri), best_mimetype, extension
+            # access to protected members:
+            self._by_pref = list(default._by_pref)       #pylint: disable=W0212
+            self._by_ctype = dict(default._by_ctype)     #pylint: disable=W0212
+            self._by_ext = dict(default._by_ext)         #pylint: disable=W0212
+            self._namespaces = dict(default._namespaces) #pylint: disable=W0212
 
-def serialize_version_list(uri, request):
+    def register(self, content_type, extension=None, preference=80):
+        """I return a decorator for registering a serializer.
+
+        The decorated function must have the same prototype as
+        :func:`serialize_rdf_xml`.
+
+        :param content_type: a content-type as a str
+        :param extension:    the file extension associated with this serializer
+        :param preference:   an int between 0 (low) and 100 (high)
+        """
+        assert 0 <= preference <= 100
+        assert content_type not in self._by_ctype, \
+            "%s serializer registered twice" % content_type
+        assert extension not in self._by_ext, \
+            "%s serializer registered twice" % extension
+        def the_decorator(func):
+            "Register `func` as a serializer"
+            insort(self._by_pref,
+                   (100-preference, func, content_type, extension))
+            self._by_ctype[content_type] = (func, extension)
+            self._by_ext[extension] = (func, content_type)
+            return func
+        return the_decorator
+
+    def __iter__(self):
+        """Iter over registered serializers in order of decreasing preference.
+
+        :return: an iterator of tuples (function, content_type, extension)
+        """
+        return ( i[1:] for i in self._by_pref )
+
+    def get_by_content_type(self, content_type):
+        """I return the serializer associated with content_type, or None.
+
+        :return: a tuple (function, extension)
+        """
+        return self._by_ctype.get(content_type)
+
+    def get_by_extension(self, extension):
+        """I return the serializer associated with extension, or None.
+
+        :return: a tuple (function, content_type)
+        """
+        return self._by_ext.get(extension)
+
+    @property
+    def namespaces(self):
+        """A fresh dict representing the registered namespace prefixes.
+        """
+        return dict(self._namespaces)
+
+
+def register(content_type, extension=None, preference=80):
+    """Shortcut to 
+ :meth:`SerializerRegister.register SerializerRegister.get_default().register`
     """
-    Generate a list of available version for the given URI; return an
-    iterable of str and a mimetype.
+    return SerializerRegister.get_default().register(content_type, extension,
+                                                     preference)
 
-    We assume that the URI resoves to an RDF graph. This is used to
-    generate the body of a 406 Not Acceptable error. The best mimetype
-    should be guessed in env.
+
+@register("application/rdf+xml", "rdf", 60)
+@register("application/xml",     "xml", 20)
+def serialize_rdf_xml(graph, sregister, base_uri=None):
+    """I serialize an RDF graph as RDF/XML.
+
+    :param graph:     an RDF graph
+    :type  graph:     rdflib.Graph
+    :param sregister: the serializer register this serializer comes from
+                      (useful for getting namespace prefixes and other info)
+    :type  sregister: SerializerRegister
+    :param base_uri:  the base URI to be used to serialize
+
+    :return: an iterable of UTF-8 encoded byte strings
+    :raise: :class:`~rdfrest.exceptions.SerializeError` if the serializer can
+            not serialize this given graph.
+
+    .. important::
+
+        Serializers that may raise a
+        :class:`~rdfrest.exceptions.SerializeError` must *not* be implemented
+        as generators, or the exception will be raised too late (i.e. when the
+        `HttpFrontend` tries to send the response.
     """
-    #pylint: disable=R0201,W0613
+    if False: # TODO MINOR actually perform some checking
+        raise SerializeError("RDF/XML can not encode this graph")
+    return _serialize_with_rdflib("xml", sregister, graph, base_uri)
 
-    # TODO MINOR implement proper "406 Not Acceptable" message
-    return ["Not Acceptable"], "text/html"
+@register("text/turtle",          "ttl")
+@register("text/n3",              "n3",  20)
+@register("text/x-turtle",        None,   20)
+@register("application/turtle",   None,   20)
+@register("application/x-turtle", None,   20)
+def serialize_turtle(graph, sregister, base_uri=None):
+    """I serialize an RDF graph as Turtle.
 
-@register("text/html", "html", 01)
-def generate_htmlized_turtle(namespaces, graph, uri):
+    See `serialize_rdf_xml` for prototype documentation.
     """
-    I serialize graph in a HTMLized simple turtle form.
+    return _serialize_with_rdflib("n3", sregister, graph, base_uri)
 
-    NB: this generator is associated with the lowest possible priority,
-    so that it can be overriden by other serializers.
+def _serialize_with_rdflib(rdflib_format, sregister, graph, base_uri):
+    "Common implementation of all rdflib-based serialize functions."
+    assert isinstance(rdflib_format, str)
+    assert isinstance(sregister, SerializerRegister)
+    assert isinstance(graph, Graph)
+    assert isinstance(base_uri, URIRef)
+    # copy in another graph to prevent polluting the original graph namespaces
+    # TODO MINOR is there no better way of doing that??
+    ser = Graph()
+    ser_add = ser.add
+    for triple in graph:
+        ser_add(triple)
+    for prefix, nsuri in sregister.namespaces.items():
+        ser.bind(prefix, nsuri)
+    yield ser.serialize(None, format=rdflib_format, base=base_uri)
+
+@register("text/nt",    "nt",  40)
+@register("text/plain", "txt", 20)
+def serialize_ntriples(graph,  _sregister, _base_uri=None):
+    """I serialize an RDF graph as N-Triples.
+
+    See `serialize_rdf_xml` for prototype documentation.
+    """
+    # NB: we do not use _serialize_with_rdflib here, as N-Triples needs to
+    # base_uri or namespace management.
+    yield graph.serialize(format="nt")
+    # TODO MAJOR this could be optimized by yielding one triple after another
+    # for big graphs, this would allow HttpFrontend to send chunked content
+
+
+@register("text/html", "html", 60)
+def serialized_htmlized_turtle(graph, sregister, base_uri):
+    """I serialize graph in a HTMLized simple turtle form.
     """
     #pylint: disable=R0914
     #    too many local variables
 
+    namespaces = sregister.namespaces
+
     ret = (u"<html>\n"
     "<head>\n"
-    "<title>%(uri)s</title>\n"
+    "<title>%(base_uri)s</title>\n"
     """<style text="text/css">
     a { text-decoration: none; }
     .prefixes { font-size: 50%%; float: right; }
@@ -136,21 +215,21 @@ def generate_htmlized_turtle(namespaces, graph, uri):
     ) % locals()
 
     ret += "<h1># "
-    crumbs = uri.split("/")
+    crumbs = base_uri.split("/")
     crumbs[:3] = [ "/".join(crumbs[:3]) ]
     for i in xrange(len(crumbs)-1):
         link = "/".join(crumbs[:i+1]) + "/"
         ret += u'<a href="%s">%s</a>' % (link, crumbs[i] + "/",)
-    ret += u'<a href="%s">%s</a></h1>\n' % (uri, crumbs[-1])
+    ret += u'<a href="%s">%s</a></h1>\n' % (base_uri, crumbs[-1])
 
     ret += "<div>#\n"
-    for ext in _BY_EXTENSION:
-        ret += u'<a href="%s.%s">%s</a>\n' % (uri, ext, ext)
+    for _, _, ext in sregister:
+        ret += u'<a href="%s.%s">%s</a>\n' % (base_uri, ext, ext)
     ret += "</div>\n"
 
     ret += '<div class="prefixes">\n'
-    ret += u"<div>@base &lt;%s&gt; .</div>\n" % uri
-    for prefix, nsuri in namespaces:
+    ret += u"<div>@base &lt;%s&gt; .</div>\n" % base_uri
+    for prefix, nsuri in namespaces.items():
         ret += u"<div>@prefix %s: &lt;%s&gt; .</div>\n" % (prefix, nsuri)
     ret += "</div>\n"
 
@@ -162,69 +241,31 @@ def generate_htmlized_turtle(namespaces, graph, uri):
             if old_subj is not None:
                 ret += ".</div></div></div>\n"
             ret += u'<div class="subj">%s\n' \
-                   % _htmlize_node(namespaces, subj, uri)
+                   % _htmlize_node(namespaces, subj, base_uri)
             old_subj = subj
             old_pred = None
         if pred != old_pred:
             if old_pred is not None:
                 ret += ";</div></div>\n"
             ret += u'\t<div class="pred">%s\n' \
-                   % _htmlize_node(namespaces, pred, uri)
+                   % _htmlize_node(namespaces, pred, base_uri)
             old_pred = pred
         else:
             ret += ",</div>\n"
         ret += u'\t\t<div class="obj">%s\n' \
-               % _htmlize_node(namespaces, obj, uri)
+               % _htmlize_node(namespaces, obj, base_uri)
     ret += ".</div></div></div>\n"
     ret += "</body>\n</html>\n"
     yield ret.encode("utf-8")
-
-@register("text/turtle", "ttl", 60)
-@register("text/n3",     "n3",  40)
-def generate_ttl(namespaces, graph, uri):
-    """
-    I serialize graph in turtle.
-    """
-    return _generate_with_rdflib("turtle", namespaces, graph, uri)
-
-@register("text/nt", "nt", 40)
-def generate_nt(namespaces, graph, uri):
-    """
-    I serialize graph in N-Triple.
-    """
-    return _generate_with_rdflib("nt", namespaces, graph, uri)
-
-@register("application/rdf+xml", "rdf", 40)
-def generate_rdf(namespaces, graph, uri):
-    """
-    I serialize graph in turtle.
-    """
-    return _generate_with_rdflib("pretty-xml", namespaces, graph, uri)
-
-def _generate_with_rdflib(rdf_format, namespaces, graph, uri):
-    """
-    I implement the generic behaviour for using rdflib serializers.
-    """
-    # copy in another graph to prevent polluting the original graph namespaces
-    # TODO MINOR is there no better way of doing that??
-    ser = Graph()
-    ser_add = ser.add
-    for triple in graph:
-        ser_add(triple)
-    for prefix, nsuri in namespaces:
-        ser.bind(prefix, nsuri)
-    yield ser.serialize(None, rdf_format, uri)
 
 def _htmlize_node(namespaces, node, base):
     """
     Generate simple HTML output for the given node.
 
-    Parameters:
-      uri: a Node, unicode or ascii str
-      base: a unicode or ascii str
+    :param uri:  a Node, unicode or ascii str
+    :param base: a unicode or ascii str
 
-    Return:
-      a unicode
+    :rtype: unicode
     """
     #pylint: disable=R0911
 
@@ -263,7 +304,6 @@ def _htmlize_node(namespaces, node, base):
     else:
         return u"_:%s" % node
 
-
 def _make_curie(namespaces, uri, base):
     """
     Convert the given URI to a CURIE if possible.
@@ -275,7 +315,7 @@ def _make_curie(namespaces, uri, base):
     Return:
       a unicode
     """
-    for prefix, nsuri in namespaces:
+    for prefix, nsuri in namespaces.items():
         if uri.startswith(nsuri) and str(uri) != str(nsuri):
             return u"%s:%s" % (prefix, uri[len(nsuri):])
 

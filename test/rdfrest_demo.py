@@ -20,28 +20,26 @@ I demonstrate the rdfrest framework with an example server.
 from os.path import abspath, dirname, join
 from sys import path, stderr
 
-source_dir = dirname(dirname(abspath(__file__)))
-lib_dir = join(source_dir, "lib")
-path.insert(0, lib_dir)
+SOURCE_DIR = dirname(dirname(abspath(__file__)))
+LIB_DIR = join(SOURCE_DIR, "lib")
+path.insert(0, LIB_DIR)
 
-from  warnings import filterwarnings
+from warnings import filterwarnings
 #filterwarnings("ignore", category=DeprecationWarning, module="rdflib")
 filterwarnings("ignore", category=UserWarning, module="rdflib")
 
 import rdflib
 assert rdflib.__version__.startswith("3.")
 
-from rdflib import (ConjunctiveGraph, Graph, Literal, Namespace, plugin, RDF,
-                    RDFS, URIRef)
+from rdflib import (Graph, Literal, Namespace, plugin, RDF, RDFS, URIRef)
 from rdflib.store import Store
 from wsgiref.simple_server import make_server
 
-from rdfrest.mixins import (WithCardinalityMixin, WithPreconditionMixin,
+from rdfrest.http_front import HttpFrontend
+from rdfrest.mixins import (WithCardinalityMixin, BookkeepingMixin,
                             WithReservedNamespacesMixin,
-                            RdfGetMixin, RdfPutMixin, RdfPostMixin,
-                            DeleteMixin,
+                            RdfPutMixin, RdfPostMixin,
                             )
-
 from rdfrest.resource import Resource
 from rdfrest.service import Service
 
@@ -52,65 +50,22 @@ PREFIXES = """
 @prefix rdfs: <%(RDFS)s> .
 """ % globals()
 
-class Foo(WithCardinalityMixin, WithPreconditionMixin,
-          WithReservedNamespacesMixin, RdfGetMixin, RdfPutMixin, Resource):
+class Foo(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
+          RdfPutMixin, Resource):
     """An example resource."""
 
     MAIN_RDF_TYPE = NS.Foo
 
-    @classmethod
-    def iter_reserved_namespaces(cls):
-        for i in super(Foo, cls).iter_puttable_in():
-            yield i
-        yield NS
+    RDF_RESERVED_NS   = [NS,]
+    RDF_PUTABLE_IN    = [NS.rw_in,]
+    RDF_PUTABLE_OUT   = [NS.rw_out,]
+    RDF_PUTABLE_TYPE  = [NS.rw_type,]
+    RDF_POSTABLE_IN   = [NS.ro_in,]
+    RDF_POSTABLE_OUT  = [NS.ro_out,]
+    RDF_POSTABLE_TYPE = [NS.ro_type,]
 
-    @classmethod
-    def iter_puttable_in(cls):
-        for i in super(Foo, cls).iter_puttable_in():
-            yield i
-        yield NS.rw_in
-
-    @classmethod
-    def iter_puttable_out(cls):
-        for i in super(Foo, cls).iter_puttable_out():
-            yield i
-        yield NS.rw_out
-
-    @classmethod
-    def iter_puttable_types(cls):
-        for i in super(Foo, cls).iter_puttable_types():
-            yield i
-        yield NS.rw_type
-
-    @classmethod
-    def iter_postable_in(cls):
-        for i in super(Foo, cls).iter_postable_in():
-            yield i
-        yield NS.ro_in
-
-    @classmethod
-    def iter_postable_out(cls):
-        for i in super(Foo, cls).iter_postable_out():
-            yield i
-        yield NS.ro_out
-
-    @classmethod
-    def iter_postable_types(cls):
-        for i in super(Foo, cls).iter_postable_types():
-            yield i
-        yield NS.ro_type
-
-    @classmethod
-    def iter_cardinality_in(cls):
-        for i in super(Foo, cls).iter_cardinality_in():
-            yield i
-        yield (NS.rw_in, 1, 1)
-
-    @classmethod
-    def iter_cardinality_out(cls):
-        for i in super(Foo, cls).iter_cardinality_out():
-            yield i
-        yield (NS.rw_out, 1, 1)
+    RDF_CARDINALITY_IN  = [(NS.rw_in,  1, 1)]
+    RDF_CARDINALITY_OUT = [(NS.rw_out, 1, 1)]
 
 
 class Bar(Foo, RdfPostMixin):
@@ -118,40 +73,35 @@ class Bar(Foo, RdfPostMixin):
 
     MAIN_RDF_TYPE = NS.Bar
 
-    def ack_posted(self, posted):
-        self.graph.add((self.uri, NS.has_child, posted.uri)) 
-
+    def ack_created(self, created):
+        self._graph.add((self.uri, NS.has_child, created.uri))
 
 class FooBarService(Service):
+    "A demo service"
 
-    def bootstrap(self):
-        base = URIRef(self.base)
-        g = Graph()
-        g.add((base, RDF.type, NS.Bar))
-        g.add((base, RDFS.label, Literal("A test service")))
-        g.add((base, NS.rw_out, Literal("rw_in and rw_out are required")))
-        g.add((NS.something, NS.rw_in, base))
-        assert Bar.check_new_graph(None, base, g) is None
-
-        root = Bar(self, base)
-        root.init(g)
-
+    def bootstrap(self, uri):
+        "A method for initializing the root resource in the service"
+        graph = Graph()
+        graph.add((uri, RDF.type, NS.Bar))
+        graph.add((uri, RDFS.label, Literal("A test service")))
+        graph.add((uri, NS.rw_out, Literal("rw_in and rw_out are required")))
+        graph.add((NS.something, NS.rw_in, uri))
+        return Bar.create(self, uri, graph)
 
 FooBarService.register(Foo)
 FooBarService.register(Bar)
 
 
 def main():
-    config = {}
-    base = URIRef("http://localhost:8001/")
+    "The main function of this test"
     store = plugin.get("IOMemory", Store)()
-    config["rdfrest.store"] = store
-    config["rdfrest.base"] = str(base)
-    service = FooBarService(config)
-    service.bootstrap()
-
-    print >>stderr, "===", "Starting server on", base
-    make_server("localhost", 8001, service).serve_forever()
+    service = FooBarService(store)
+    base = URIRef("http://localhost:8001/")
+    _root = service.bootstrap(base)
+    http = HttpFrontend(service)
+    print >> stderr, "===", "Starting server on", base
+    #make_server("localhost", 8001, http).handle_request()
+    make_server("localhost", 8001, http).serve_forever()
 
 if __name__ == "__main__":
     main()

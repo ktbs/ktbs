@@ -22,8 +22,9 @@ from rdflib import Graph, RDF
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.base import BaseMixin
-from ktbs.common.utils import coerce_to_node, coerce_to_uri, post_graph
+from ktbs.common.utils import post_graph
 from ktbs.namespaces import KTBS
+from rdfrest.utils import coerce_to_node, coerce_to_uri
 
 class Base(BaseMixin, Resource):
     """I implement a client proxy on the root of a kTBS.

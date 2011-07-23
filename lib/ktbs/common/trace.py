@@ -21,9 +21,10 @@ I provide the pythonic interface to traces (abstract and stored).
 from rdflib import Literal
 
 from ktbs.common.base import InBaseMixin
-from ktbs.common.utils import coerce_to_uri, extend_api
+from ktbs.common.utils import extend_api
 from ktbs.iso8601 import parse_date
 from ktbs.namespaces import KTBS
+from rdfrest.utils import coerce_to_uri
 
 @extend_api
 class TraceMixin(InBaseMixin):

@@ -18,8 +18,9 @@
 """
 I provide the pythonic interface to ktbs root.
 """
-from ktbs.common.utils import coerce_to_uri, extend_api
+from ktbs.common.utils import extend_api
 from ktbs.namespaces import KTBS
+from rdfrest.utils import coerce_to_uri
 
 @extend_api
 class KtbsRootMixin(object):

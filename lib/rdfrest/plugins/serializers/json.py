@@ -22,17 +22,17 @@ This serializer is based on http://n2.talis.com/wiki/RDF_JSON_Specification
 """
 from itertools import groupby
 from rdflib import BNode, URIRef
-from ...serializer import serializer_profile
+from rdfrest.serializer import register
 
-@serializer_profile("application/json", "json", 10) 
-def generate_json(_namespaces, model, _uri):
+@register("application/json", "json", 10) 
+def serialize_json(graph, _sregister, _base_uri=None):
     """
     I serialize model in the JSON format.
     """
     query = """
         SELECT ?s ?p ?o WHERE { ?s ?p ?o } ORDER BY ?s ?p ?o
     """
-    results = model.query(query)
+    results = graph.query(query)
     result_tree = (
         (subject, groupby(results_by_subject, lambda t: t[1]))
         for subject, results_by_subject in groupby(results, lambda t: t[0])
@@ -74,4 +74,4 @@ def generate_json(_namespaces, model, _uri):
 
         ret += "  },\n"
     ret += "}\n"
-    return ret
+    yield ret

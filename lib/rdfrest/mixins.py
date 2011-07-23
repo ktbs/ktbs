@@ -25,113 +25,73 @@ behaviour (whose names are starting with *With*).
 This is due to the fact tha "With" mixins do not inherit "HTTP" mixins: they do 
 not strongly depend on them, they only alter their functionality *if* present.
 """
-from datetime import datetime
 from itertools import chain
 from md5 import md5
-from rdflib import BNode, Literal, RDF, URIRef
+from rdflib import BNode, Literal, Graph, RDF, URIRef
 from rdflib.compare import graph_diff
-from StringIO import StringIO
-from webob import Response
-from .iso8601 import parse_date
-from .namespaces import RDFREST, DC
-from .parser import parse
-from .resource import Resource
-from .utils import cache_result
+from time import time
 
-
-class RdfGetMixin(Resource):
-    """
-    I implement a straightforward GET method.
-
-    The GET method simply serializes this resource's RDF description.
-    """
-
-    def http_get(self, request):
-        """
-        Serialize this resource RDF description.
-        """
-        res = Response(request=request)
-        self.negociate_rdf_content(res, self.graph)
-        return res
-
+from rdfrest.exceptions import InvalidDataError, MethodNotAllowedError, \
+    RdfRestException
+from rdfrest.namespaces import RDFREST
+from rdfrest.resource import Resource
+from rdfrest.utils import cache_result
 
 class RdfPutMixin(Resource):
+    """I make the mixed-in class PUTable.
+
+    I provide a simple implementation of
+    :meth:`~rdfrest.resource.Resource.rdf_put`: no paramaters are accepted,
+    and any graph is accepted as long as it passes 
+    :meth:`~rdfrest.resource.Resource.check_new_graph`.
     """
-    I implement a PUT method.
-    The PUT method accept an RDF graph (in any understandable syntax),
-    checks whether the new graph is acceptable,
-    then replace the graph of that resource with it.
-    """
 
-    def http_put(self, request):
+    def rdf_put(self, new_graph, parameters=None):
+        """I override :meth:`rdfrest.resource.Resource.rdf_put`
         """
-        Change this resource's public graph.
-        """
-        # TODO implement a 'diff' format and handle it here
-        #new_graph = parse(request.body_file, request.content_type, self.uri)
-        # FIXME: the above hangs indefinitely, so we do the hack below:
-        # NB: fix it also in RdfPostMixin.http_post
-        # begin-hack
-        body_file = StringIO(request.body)
-        new_graph = parse(body_file, request.content_type, self.uri)
-        # end-hack
-        if new_graph is None:
-            return Response(request=request, status="400 Invalid RDF payload")
-        _, removed, added = graph_diff(self.graph, new_graph)
-        res = self.check_put(request, new_graph, removed, added)
-        if res is None: # then new_graph is acceptable
-            self.graph.remove((None, None, None))
-            add = self.graph.add
-            for triple in new_graph:
-                # TODO faster way to do that?
-                add(triple)
-            res = Response(request=request)
-            self.negociate_rdf_content(res, self.graph)
-        return res
-
-    def check_put(self, _request, _new_graph, _removed, _added):
-        """
-        Check whether `new_graph` is acceptable for PUT.
-
-        If acceptable, None is returned; else, a Response with the appropriate
-        error status should be returned.
-
-        This method may also alter new_graph if required.
-
-        TODO: describe parameters
-        """
-        #pylint: disable=R0201
-        #    Method could be a function
-        return None
+        if parameters is not None:
+            # an empty dict means that a '?' has been added to the URI
+            # so it counts as having parameters
+            raise MethodNotAllowedError("PUT on %s with parameters" % self.uri)
+        errors = self.check_new_graph(self.uri, new_graph, self)
+        if errors:
+            raise InvalidDataError(errors)
+        self._graph.remove((None, None, None))
+        add = self._graph.add
+        for triple in new_graph:
+            add(triple)
 
 
 class RdfPostMixin(Resource):
+    """I make mixed-in class POSTable in order to create child resources.
+
+    I provide a simple implementation of
+    :meth:`~rdfrest.resource.Resource.rdf_post`: no paramaters are accepted;
+    the created resource in the posted graph is recognized by being linked
+    to this resource.
+
+    This basic behaviour can be customized by overriding the following methods:
+
+    * :meth:`find_created`
+    * :meth:`check_posted_graph`
+    * :meth:`ack_created`
     """
-    I implement a POST method.
 
-    The POST method accept an RDF graph (in any understandable syntax),
-    checks whether it represent an acceptable child resource,
-    then create that child resource.
-    """
-
-    def http_post(self, request):
+    def rdf_post(self, new_graph, parameters=None):
+        """I override :meth:`rdfrest.resource.Resource.rdf_post`
         """
-        Create a new child resource.
-        """
-        #new_graph = parse(request.body_file, request.content_type, self.uri)
-        # FIXME: the above hangs indefinitely, so we do the hack below:
-        # NB: fix it also in RdfPutMixin.http_put
-        # begin-hack
-        body_file = StringIO(request.body)
-        new_graph = parse(body_file, request.content_type, self.uri)
-        # end-hack
-
-        if new_graph is None:
-            return Response(request=request, status="400 Invalid RDF payload")
-        created = self.find_created(request, new_graph)
+        if parameters is not None:
+            # an empty dict means that a '?' has been added to the URI
+            # so it counts as having parameters
+            raise MethodNotAllowedError("POST on %s with parameters"
+                                        % self.uri)
+        created = self.find_created(new_graph)
         if created is None:
-            return Response(request=request,
-                            status="400 Can not find created node")
+            raise RdfRestException("Can not find created node")
+        errors = self.check_posted_graph(new_graph, created)
+        if errors:
+            raise InvalidDataError(errors)
+
         get_class = self.service.class_map.get
         resource_class = None
         for typ in new_graph.objects(created, RDF.type):
@@ -139,12 +99,11 @@ class RdfPostMixin(Resource):
             if candidate is None:
                 continue
             if resource_class:
-                return Response(request=request,
-                                status="400 Ambiguous type of posted resource")
+                raise InvalidDataError("Ambiguous type of posted resource")
             resource_class = candidate
 
         if not isinstance(created, URIRef):
-            new_uri = resource_class.mint_uri(created, new_graph, self.uri)
+            new_uri = resource_class.mint_uri(self, new_graph, created)
             add_triple = new_graph.add
             rem_triple = new_graph.remove
             subst = lambda x: (x == created) and new_uri or x
@@ -155,29 +114,21 @@ class RdfPostMixin(Resource):
                 add_triple([ subst(i) for i in triple ])
             created = new_uri
 
-        res = self.check_post(request, created, new_graph)
-        if res: # new_graph is not acceptable to this resource
-            return res
-
-        res = resource_class.check_new_graph(request, created, new_graph)
-        if res: # new_graph is not acceptable to the target class
-            return res
-
-        posted = resource_class(self.service, created)
-        posted.init(new_graph)
-        self.ack_posted(posted)
-
-        return Response(request=request, status="201 Created", headerlist=[
-                ("location", str(created)),
-                ])
+        posted = resource_class.create(self.service, created, new_graph)
+        self.ack_created(posted)
+        return [created]
  
-    def find_created(self, _request, new_graph):
-        """
-        Find the node represented the resource to be created in `new_graph`.
+    def find_created(self, new_graph):
+        """Find the node represented the resource to create in `new_graph`.
 
-        If none can be found, return None.
+        :param new_graph: the posted RDF graph
+        :type  new_graph: rflib.Graph
 
-        The default implementation uses the following heuristics to guess the
+        :return: the node representing the resource to create, or None if it
+                 can not be found.
+        :rtype: rdflib.Node
+
+        This implementation uses the following heuristics to guess the
         created node, but you may wish to override it:
 
         * if the target URI is linked to a single node, that node is returned
@@ -221,276 +172,196 @@ class RdfPostMixin(Resource):
                 return None
         return base # all other candidates are 'fragments' of the base
 
-    def check_post(self, _request, _uri, _new_graph):
-        """
-        Check whether `new_graph` is acceptable for a POST on this resource.
+    def check_posted_graph(self, new_graph, created):
+        """Check whether `new_graph` is acceptable for a POST on this resource.
 
-        If acceptable, None is returned; else, a Response with the appropriate
-        error status should be returned.
+        :param new_graph: the posted RDF graph
+        :type  new_graph: rflib.Graph
+        :param created:   the node representing the resource to create
+        :type  created:   rdflib.Node
 
-        This method may also alter new_graph if required.
-        """
-        #pylint: disable=R0201
-        #    Method could be a function
-        return None
+        :return: `None` on success, else an error message
 
-    def ack_posted(self, posted_resource):
+        This implementation does nothing.
         """
-        I am called just after a new resource has been succesfully posted.
+
+    def ack_created(self, created_resource):
+        """Performs 
+
+        :param created_resource: the just-created resource
+
+        This implementation does nothing.
         """
-        pass
 
     @classmethod
-    def check_new_graph(cls, request, uri, new_graph):
+    def check_new_graph(cls, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """I overrides :meth:`rdfrest.resource.Resource.check_new_graph`
         """
-        Postable resources must have a URI ending with a slash.
-        """
+        ret = super(RdfPostMixin, cls).check_new_graph(uri, new_graph)
         if uri[-1] != "/":
-            return Response(request=request,
-                            status="400 URI should end with '/'")
-        return super(RdfPostMixin, cls).check_new_graph(request, uri,
-                                                        new_graph)
-
-
-class DeleteMixin(Resource):
-    """
-    I implement a DELETE method.
-
-    The DELETE method checks whether this resource can be safely deleted,
-    and if so deletes it from the service.
-    """
-
-    def http_delete(self, request):
-        """
-        Delete this resource.
-        """
-        raise NotImplementedError()
-
-
-class WithPreconditionMixin(Resource):
-    """
-    I implement HTTP headers related to pre-condition in GET and PUT.
-
-    HTTP uses last-modified date and etags to express pre-conditions on GET and
-    PUT. See section 13.3 of :RFC:`2616` .
-    """
-
-    def get_response(self, request):
-        """
-        I override get_response to intercept GET and PUT methods.
-
-        :see-also: `wrap_get`, `wrap_put`
-        """
-        method = request.method
-        if method == "HEAD" or method == "GET":
-            return self.wrap_get(request)
-        elif method == "PUT":
-            return self.wrap_put(request)
-        else:
-            return super(WithPreconditionMixin, self).get_response(request)
-                                     
-    def wrap_get(self, request):
-        """
-        I make the returned `response` object aware of pre-conditions.
-        """
-        res = super(WithPreconditionMixin, self).get_response(request)
-        res.etag = self.get_etag()
-        res.last_modified = self.get_last_modified()
-        # TODO: add cache_control based on last_modified
-        res.conditional_response = True
-        return res
-
-    def wrap_put(self, request):
-        """
-        I check pre-conditions and fail if they are not matched.
-
-        Note that I do *not* allow a PUT if the resource has an etag and no
-        ``IfMatch`` header is provided.
-        """
-        resource_etag = self.get_etag()
-        request_etags = request.if_match
-        if str(request_etags) == "*":
-            return Response("PUT requests must specify an ETag", status=403)
-        match_precondition = request_etags.weak_match(resource_etag)            
-        if not match_precondition:
-            return  Response("precondition failed", status=412)
-
-        res = super(WithPreconditionMixin, self).get_response(request)
-        if res.status[0] == "2": # success
-            self.update_metadata()
-            if res.status[:3] == "200":
-                res.etag = self.get_etag()
-                res.last_modified = self.get_last_modified()
-        return res
-
-    def get_etag(self):
-        """
-        Fetch this resource's ETag from the private graph.
-
-        A new etag is created if needed.
-        """
-        ret = next(self.private.objects(self.uri, _ETAG), None)
-        if ret is None:
-            ret = Literal(md5(self.uri + _NOW().isoformat()).hexdigest())
-            self.private.add((self.uri, _ETAG, ret))
+            ret = _join_errors(ret, "URI must end with '/'")
         return ret
 
-    def get_last_modified(self):
+    @classmethod
+    def mint_uri(cls, target, new_graph, created):
+        """I overrides :meth:`rdfrest.resource.Resource.mint_uri`
         """
-        Fetch this resource's LastModified date from the private graph.
+        uri = super(RdfPostMixin, cls).mint_uri(target, new_graph, created)
+        if uri[-1] != "/":
+            uri = URIRef(uri+"/")
+        return uri
 
-        None is returned if no modification date is stored.
+
+class BookkeepingMixin(Resource):
+    """I add bookkeeping metadata to the mixed-in class.
+
+    Bookkeeping metadata consist of:
+
+    * a weak etag (as defined in section 13.3 of :RFC:`2616`)
+    * a last-modified data
+
+    .. warning::
+
+        Bookkeeping metadata are only automatically managed when using
+        :meth:`~rdfrest.resource.Resource.rdf_put` and
+        :meth:`~rdfrest.resource.Resource.rdf_post` to update the underlying
+        RDF graph.
+
+        Whenever the graph is modified by other ways, :meth:`update_metadata`
+        should be invoked.
+
+    .. note::
+    
+        We are using *weak* etags, because the tag applies to an
+        abstract graph, not to a given serialization.
+    """
+
+    def update_bk_metadata(self):
+        """Update the metadata (etag and last-modified) after a change.
+
+        This method is automatically called by :method:`rdf_put` and
+        :method:`rdf_post`.
         """
-        ret = next(self.private.objects(self.uri, _DC_MODIFIED), None)
-        if ret is not None:
-            ret = parse_date(ret)
+        now = time()
+        new_etag = md5(str(now)).hexdigest()
+        self._private.set((self.uri, _ETAG, Literal(new_etag)))
+        self._private.set((self.uri, _LAST_MODIFIED, Literal(now)))
+
+    @property
+    def etag(self):
+        """I return the etag of this resource.
+        """
+        return str(next(self._private.objects(self.uri, _ETAG)))
+
+    @property
+    def last_modified(self):
+        """I return the time when this resource was last modified.
+
+        :return: number of seconds since EPOCH, as returned by `time.time()`
+        """
+        return next(self._private.objects(self.uri, _LAST_MODIFIED)).toPython()
+
+    @classmethod
+    def store_new_graph(cls, service, uri, new_graph):
+        """I override :meth:`rdfrest.resource.Resource.store_new_graph` to
+        generate bookkeeping metadata.
+        """
+        super(BookkeepingMixin, cls).store_new_graph(service, uri, new_graph)
+        now = time()
+        new_etag = md5(str(now)).hexdigest()
+        private_add = Graph(service.store, URIRef(uri+"#private")).add
+        private_add((uri, _ETAG, Literal(new_etag)))
+        private_add((uri, _LAST_MODIFIED, Literal(now)))
+
+    def rdf_put(self, new_graph, parameters=None):
+        """I override :meth:`rdfrest.resource.Resource.rdf_put` to
+        automatically invoke :meth:`update_bk_metadata`.
+        """
+        super(BookkeepingMixin, self).rdf_put(new_graph, parameters)
+        self.update_bk_metadata()
+
+    def rdf_post(self, new_graph, parameters=None):
+        """I override :meth:`rdfrest.resource.Resource.rdf_post` to
+        automatically invoke :meth:`update_bk_metadata`.
+        """
+        ret = super(BookkeepingMixin, self).rdf_post(new_graph, parameters)
+        self.update_bk_metadata()
         return ret
-
-    def update_metadata(self):
-        """
-        Update the metadata (etag and last-modified) after a change.
-
-        NB: this method is automatically invoked after a succesful PUT.
-        It is provided only to extend the behaviour to other HTTP methods,
-        or to initiate a new resource.
-        """
-        now = _NOW()
-        new_etag = md5(self.uri + now.isoformat()).hexdigest()
-        self.private.set((self.uri, _ETAG, Literal(new_etag)))
-        self.private.set((self.uri, _DC_MODIFIED, Literal(now)))
-
-    def init(self, new_graph):
-        """
-        I override init to add metadata in the private graph.
-        """
-        super(WithPreconditionMixin, self).init(new_graph)
-        self.update_metadata()
 
 
 class WithReservedNamespacesMixin(Resource):
     """ 
     I add reserved namespaces to RdfPutMixin and RdfPostMixin.
 
-    A *reserved namespace* is a set of URI (defined by a common prefix) which
+    A *reserved namespace* is a set of URIs (defined by a common prefix) which
     can not be freely used in PUT or POST requests, as they have a specific
     meaning for the application.
 
-    Reserved namespaces are generated by the `iter_reserved_namespaces` class
-    method.
+    Reserved namespaces are listed in the `RDF_RESERVED_NS` class variable (in addition
+    to those inherited from superclasses).
 
-    The reserved namespace applies to URIs used as predicates and types.
+    The reserved namespace applies to URIs used as predicates and78 types.
     The default rule is that they can not be added at POST time (except for
     the *main type* of the resource), and they can not be changed at PUT time.
+    They can only be inserted and modified by the service itself.
 
     It is however possible to provide exceptions for a class, *i.e.* URIs
     inside a reserved namespace which is usable in a given context: POST only,
     or PUT (and POST); incoming property, outgoing property or type. All those
-    exceptions are generated by one of the following class method:
+    exceptions are listed in the corresponding class variable from the list
+    below (in addition to those inherited from superclasses).
 
-    * `iter_postable_types`
-    * `iter_postable_in`
-    * `iter_postable_out`
-    * `iter_puttable_types`
-    * `iter_puttable_in`
-    * `iter_puttable_out`
+    * `RDF_POSTABLE_IN`
+    * `RDF_POSTABLE_OUT`
+    * `RDF_POSTABLE_TYPES`
+    * `RDF_PUTABLE_IN`
+    * `RDF_PUTABLE_OUT`
+    * `RDF_PUTABLE_TYPES`
 
-    NB: the values yielded by those methods is not supposed to change over
-    time, and may therefore be cached.
+    NB: the values of the class variables are *not* supposed to change over
+    time; if they do, the change may not be effective.
     """
 
     @classmethod
-    def iter_reserved_namespaces(cls):
+    def check_new_graph(cls, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
+        check the reserved namespace constraints.
         """
-        Generate reserved namespaces for this class.
-        """
-        return ()
+        if resource is not None:
+            if added is None or removed is None:
+                _, added, removed = graph_diff(
+                    new_graph,
+                    resource._graph # protected member #pylint: disable=W0212
+                    )
 
-    @classmethod
-    def iter_postable_types(cls):
-        """
-        Generate reserved URIs usable as types at POST time. 
-        """
-        return ()
+        errors = super(WithReservedNamespacesMixin, cls) \
+            .check_new_graph(uri, new_graph, resource, added, removed)
 
-    @classmethod
-    def iter_postable_in(cls):
-        """
-        Generate reserved URIs usable as incoming properties at POST time. 
-        """
-        return ()
+        if resource is None:
+            new_errors = cls.__check_triples(new_graph, "POST", uri)
+        else:
+            triples = chain(removed, added)
+            new_errors = cls.__check_triples(triples, "PUT", uri)
 
-    @classmethod
-    def iter_postable_out(cls):
-        """
-        Generate reserved URIs usable as outgoing properties at POST time. 
-        """
-        return ()
-
-    @classmethod
-    def iter_puttable_types(cls):
-        """
-        Generate reserved URIs usable as types at POST/PUT time. 
-        """
-        return ()
-
-    @classmethod
-    def iter_puttable_in(cls):
-        """
-        Generate reserved URIs usable as incoming properties at POST/PUT time. 
-        """
-        return ()
-
-    @classmethod
-    def iter_puttable_out(cls):
-        """
-        Generate reserved URIs usable as outgoing properties at POST/PUT time. 
-        """
-        return ()
-
-    def check_put(self, request, new_graph, removed, added):
-        """
-        Overrides `rdfrest.mixins.RdfPutMixin.check_put`
-        """
-        super_check = super(WithReservedNamespacesMixin, self).check_put
-        ret = super_check(request, new_graph, removed, added)
-        if ret is not None:
-            return ret
-        triples = chain(removed, added)
-        return self.__check_triples(request, triples, "PUT", self.uri)
-
-    @classmethod
-    def check_new_graph(cls, request, uri, new_graph):
-        """
-        Method used by `rdfrest.mixins.RdfPostMixin`
-        """
-        super_check = super(WithReservedNamespacesMixin, cls).check_new_graph
-        ret = super_check(request, uri, new_graph)
-        if ret is not None:
-            return ret
-
-        return cls.__check_triples(request, new_graph, "POST", uri)
+        return _join_errors(errors, new_errors)
 
     #
     # private method
     #
+
     @classmethod
     @cache_result
     def __get_reserved_namespaces(cls):
         """
         Cache the set of all reserved namespaces.
         """
-        return frozenset(cls.iter_reserved_namespaces())
-
-    @classmethod
-    @cache_result
-    def __get_postable_types(cls):
-        """
-        Cache the set of all postable types.
-        """
-        return frozenset(chain([cls.MAIN_RDF_TYPE],
-                               cls.iter_postable_types(),
-                               cls.iter_puttable_types(),
-                               ))
+        return frozenset(
+            rns
+            for superclass in cls.mro()
+            for rns in getattr(superclass, "RDF_RESERVED_NS", ())
+            )
 
     @classmethod
     @cache_result
@@ -498,9 +369,18 @@ class WithReservedNamespacesMixin(Resource):
         """
         Cache the set of all postable incoming properties.
         """
-        return frozenset(chain(cls.iter_postable_in(),
-                               cls.iter_puttable_in(),
-                               ))
+        return frozenset(chain(
+                (
+                    prop
+                    for superclass in cls.mro()
+                    for prop in getattr(superclass, "RDF_POSTABLE_IN", ())
+                    ),
+                (
+                    prop
+                    for superclass in cls.mro()
+                    for prop in getattr(superclass, "RDF_PUTABLE_IN", ())
+                    ),
+                ))
 
     @classmethod
     @cache_result
@@ -508,17 +388,38 @@ class WithReservedNamespacesMixin(Resource):
         """
         Cache the set of all postable outgoing properties.
         """
-        return frozenset(chain(cls.iter_postable_out(),
-                               cls.iter_puttable_out(),
-                               ))
+        return frozenset(chain(
+                (
+                    prop
+                    for superclass in cls.mro()
+                    for prop in getattr(superclass, "RDF_POSTABLE_OUT", ())
+                    ),
+                (
+                    prop
+                    for superclass in cls.mro()
+                    for prop in getattr(superclass, "RDF_PUTABLE_OUT", ())
+                    ),
+                ))
 
     @classmethod
     @cache_result
-    def __get_puttable_types(cls):
+    def __get_postable_types(cls):
         """
-        Cache the set of all puttable types.
+        Cache the set of all postable types.
         """
-        return frozenset(cls.iter_puttable_types())
+        return frozenset(chain(
+                [cls.MAIN_RDF_TYPE],
+                (
+                    typ
+                    for superclass in cls.mro()
+                    for typ in getattr(superclass, "RDF_POSTABLE_TYPES", ())
+                    ),
+                (
+                    typ
+                    for superclass in cls.mro()
+                    for typ in getattr(superclass, "RDF_PUTABLE_TYPES", ())
+                    ),
+                ))
 
     @classmethod
     @cache_result
@@ -526,7 +427,11 @@ class WithReservedNamespacesMixin(Resource):
         """
         Cache the set of all puttable incoming properties.
         """
-        return frozenset(cls.iter_puttable_in())
+        return frozenset(
+            prop
+            for superclass in cls.mro()
+            for prop in getattr(superclass, "RDF_PUTABLE_IN", ())
+            )
 
     @classmethod
     @cache_result
@@ -534,35 +439,47 @@ class WithReservedNamespacesMixin(Resource):
         """
         Cache the set of all puttable outgoing properties.
         """
-        return frozenset(cls.iter_puttable_out())
+        return frozenset(
+            prop
+            for superclass in cls.mro()
+            for prop in getattr(superclass, "RDF_PUTABLE_OUT", ())
+            )
 
     @classmethod
-    def __check_triples(cls, request, triples, method, uri):
+    @cache_result
+    def __get_puttable_types(cls):
         """
-        Check whether a new graph is valid for the given request.
+        Cache the set of all puttable types.
+        """
+        return frozenset(
+            typ
+            for superclass in cls.mro()
+            for typ in getattr(superclass, "RDF_PUTABLE_TYPES", ())
+            )
 
-        request
-            the request being processed
-        triples
-            an iterable of triples to be changed (removed or added)
-        method
-            "POST" or "PUT", extracted from request
-        uri
-            the URI of the resource being created (POST) or changed (PUT)
+    @classmethod
+    def __check_triples(cls, triples, operation, uri):
+        """Check `triples` respect the reserved namespace constraints.
 
-        Return None if the triples are OK, or a Response with an error status
-        code of there is a problem.
+        :param triples:    an iterable of triples to be changed (created,
+                           removed or added)
+        :param operation:  "POST" or "PUT"
+        :param uri:        the URI of the resource being created (POST) or
+                           updated (PUT)
+
+        :return: None if the triples are OK, or an error message.
         """
 
-        if method == "POST":
+        if operation == "POST":
             types = cls.__get_postable_types()
             in_ = cls.__get_postable_in()
             out = cls.__get_postable_out()
         else:
-            assert method == "PUT"
+            assert operation == "PUT"
             types = cls.__get_puttable_types()
             in_ = cls.__get_puttable_in()
             out = cls.__get_puttable_out()
+
         reserved = cls.__get_reserved_namespaces()
         def is_reserved(a_uri):
             "determine if uri is reserved"
@@ -571,87 +488,89 @@ class WithReservedNamespacesMixin(Resource):
                     return True
             return False
 
+        errors = []
+
         for s, p, o in triples:
             if s == uri:
                 if p == _RDF_TYPE:
                     if is_reserved(o) and o not in types:
-                        return Response("Can not %s type <%s> for <%s>"
-                                        % (method, o, uri),
-                                        "403 Forbidden (reserved type)",
-                                        request=request)
+                        errors.append("Can not %s type <%s> for <%s>"
+                                      % (operation, o, uri))
                 elif is_reserved(p) and p not in out:
-                    return Response("Can not %s property <%s> of <%s>"
-                                    % (method, p, uri),
-                                    "403 Forbidden (reserved out-property)",
-                                    request=request)
+                    errors.append( "Can not %s property <%s> of <%s>"
+                                   % (operation, p, uri))
             elif o == uri:
                 if is_reserved(p) and p not in in_:
-                    return Response("Can not %s property <%s> to <%s>"
-                                    % (method, p, uri),
-                                    "403 Forbidden (reserved in-property)",
-                                    request=request)
+                    errors.append("Can not %s property <%s> to <%s>"
+                                  % (operation, p, uri))
 
-        # NB: cardinality constraints (e.g. required or unique properties)
-        # can not trivially be checked in this loop, as it has no knowledge
-        # of the old graph (only changes), so we manage them in another
-        # plugin.
+        if errors:
+            return "\n".join(errors)
+        else:
+            return None
 
 
 class WithCardinalityMixin(Resource):
     """
-    I add cardinality constrains to RdfPutMixin and RdfPostMixin.
+    I add cardinality constrains on some properties.
 
-    I provide means to express cardinality constraints on some predicate,
-    used as incoming and/or outgoing properties, and override `check_put` and
-    `check_new_graph` to enforce those constraints.
+    I provide means to express cardinality constraints on some predicate, used
+    as incoming and/or outgoing properties, and override `check_new_graph` to
+    enforce those constraints.
 
-    Cardinality constraints are expressed by the following methods, generating
-    triples of the form (predicate_uri, min_cardinality, max_cardinality),
-    respectively for incoming and outgoing properties. ``None`` can be used
-    for min_cardinality or max_cardinality to mean "no constraint".
+    Cardinality constraints are listed in the following class variables,
+    expressed as triples of the form (predicate_uri, min_cardinality,
+    max_cardinality), respectively for incoming and outgoing
+    properties. ``None`` can be used for min_cardinality or max_cardinality to
+    mean "no constraint".
 
-    * `iter_cardinality_in`
-    * `iter_cardinality_out`
+    * `RDF_CARDINALITY_IN`
+    * `RDF_CARDINALITY_OUT`
 
-    NB: the values yielded by those methods is not supposed to change over
-    time, and may therefore be cached.
+    NB: the values of the class variables are *not* supposed to change over
+    time; if they do, the change may not be effective.
     """
 
     @classmethod
-    def iter_cardinality_in(cls):
+    def check_new_graph(cls, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
+        check the cardinality constraints.
         """
-        Generate cardinality constraints for incoming properties.
-        """
-        return ()
+        errors = []
 
-    @classmethod
-    def iter_cardinality_out(cls):
-        """
-        Generate cardinality constraints for outgoing properties.
-        """
-        return ()
+        other_errors = super(WithCardinalityMixin, cls).check_new_graph(
+            uri, new_graph, resource, added, removed)
+        if other_errors is not None:
+            errors.append(other_errors)
 
-    def check_put(self, request, new_graph, removed, added):
-        """
-        Overrides `rdfrest.mixins.RdfPutMixin.check_put`
-        """
-        super_check = super(WithCardinalityMixin, self).check_put
-        ret = super_check(request, new_graph, removed, added)
-        if ret is not None:
-            return ret
-        return self.__check_triples(request, new_graph , self.uri)
+        new_graph_subjects = new_graph.subjects
+        for p, minc, maxc in cls.__get_cardinality_in():
+            nbp = len(list(new_graph_subjects(p, uri)))
+            if minc is not None and nbp < minc:
+                errors.append("Property <%s> to <%s> should have at least %s "
+                              "subjects; it only has %s"
+                              % (p, uri, minc, nbp))
+            if maxc is not None and nbp > maxc:
+                errors.append("Property <%s> to <%s> should have at most "
+                              "%s subjects; it has %s"
+                              % (p, uri, minc, nbp))
 
-    @classmethod
-    def check_new_graph(cls, request, uri, new_graph):
-        """
-        Method used by `rdfrest.mixins.RdfPostMixin`
-        """
-        super_check = super(WithCardinalityMixin, cls).check_new_graph
-        ret = super_check(request, uri, new_graph)
-        if ret is not None:
-            return ret
-
-        return cls.__check_triples(request, new_graph, uri)
+        new_graph_objects = new_graph.objects
+        for p, minc, maxc in cls.__get_cardinality_out():
+            nbp = len(list(new_graph_objects(uri, p)))
+            if minc is not None and nbp < minc:
+                errors.append("Property <%s> of <%s> should have at least "
+                              "%s objects; it only has %s"
+                              % (p, uri, minc, nbp))
+            if maxc is not None and nbp > maxc:
+                errors.append("Property <%s> of <%s> should have at most "
+                              "%s objects; it has %s"
+                              % (p, uri, minc, nbp))
+        if errors:
+            return "\n".join(errors)
+        else:
+            return None
 
     #
     # private method
@@ -662,7 +581,11 @@ class WithCardinalityMixin(Resource):
         """
         Cache the set of cardinality constraints for incoming properties.
         """
-        return frozenset(cls.iter_cardinality_in())
+        return frozenset(
+            constraint
+            for superclass in cls.mro()
+            for constraint in getattr(superclass, "RDF_CARDINALITY_IN", ())
+            )
 
     @classmethod
     @cache_result
@@ -670,57 +593,28 @@ class WithCardinalityMixin(Resource):
         """
         Cache the set of cardinality constraints for outgoing properties.
         """
-        return frozenset(cls.iter_cardinality_out())
-
-    @classmethod
-    def __check_triples(cls, request, new_graph, uri):
-        """
-        Check whether a new graph is valid for the given request.
-
-        request
-            the request being processed
-        new_graph
-            the new graph
-        uri
-            the URI of the resource being created (POST) or changed (PUT)
-
-        Return None if the new_graph is OK, or a Response with an error status
-        code of there is a problem.
-        """
-        new_graph_subjects = new_graph.subjects
-        for p, minc, maxc in cls.__get_cardinality_in():
-            nbp = len(list(new_graph_subjects(p, uri)))
-            if minc is not None and nbp < minc:
-                return Response("Property <%s> to <%s> should have at least "
-                                "%s subjects; it only has %s"
-                                % (p, uri, minc, nbp),
-                                "403 Forbidden (minimum in-cardinality)",
-                                request=request)
-            if maxc is not None and nbp > maxc:
-                return Response("Property <%s> to <%s> should have at most "
-                                "%s subjects; it has %s"
-                                % (p, uri, minc, nbp),
-                                "403 Forbidden (maximum in-cardinality)",
-                                request=request)
-
-        new_graph_objects = new_graph.objects
-        for p, minc, maxc in cls.__get_cardinality_out():
-            nbp = len(list(new_graph_objects(uri, p)))
-            if minc is not None and nbp < minc:
-                return Response("Property <%s> of <%s> should have at least "
-                                "%s objects; it only has %s"
-                                % (p, uri, minc, nbp),
-                                "403 Forbidden (minimum out-cardinality)",
-                                request=request)
-            if maxc is not None and nbp > maxc:
-                return Response("Property <%s> of <%s> should have at most "
-                                "%s objects; it has %s"
-                                % (p, uri, minc, nbp),
-                                "403 Forbidden (maximum out-cardinality)",
-                                request=request)
+        return frozenset(
+            constraint
+            for superclass in cls.mro()
+            for constraint in getattr(superclass, "RDF_CARDINALITY_OUT", ())
+            )
 
 
-_DC_MODIFIED = DC.modified
+def _join_errors(errors, new_error):
+    """I return the joint error message.
+
+    :param errors:    error message, can be None
+    :param new_error: error message, can be None
+
+    :retun: None if no error, else a message
+    """
+    if errors is None:
+        return new_error
+    elif new_error is None:
+        return errors
+    else:
+        return "%s\n%s" % (errors, new_error)
+
 _ETAG = RDFREST.etag
-_NOW = datetime.utcnow
+_LAST_MODIFIED = RDFREST.lastModified
 _RDF_TYPE = RDF.type

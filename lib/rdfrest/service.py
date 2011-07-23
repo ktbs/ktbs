@@ -18,11 +18,9 @@
 """
 I provide the class `Service`, the entry point to an RDF-Rest service.
 """
-from rdflib import Graph, RDF, URIRef
-from webob import Request, Response
+from rdflib import Graph, URIRef
 
-from .utils import extsplit
-
+from rdfrest.namespaces import RDFREST
 
 class Service(object):
     """
@@ -34,56 +32,21 @@ class Service(object):
     that python class with the `Service.register` class method.
     """
 
-    def __init__(self, config):
+    def __init__(self, store):
         """
-        Initializes this RdfRest service with the given configuration.
-
-        :params:
-            :config: a dict containing configuration options (see below)
-
-        :configuration options:
-            :rdfrest.store: a context-aware RDF store (required)
-            :rdfrest.base:  the base URI of the service (required)
-        """
-        self.store = config["rdfrest.store"]
-        self.base = config["rdfrest.base"]
+        Initializes this RdfRest service with the given store.
         
+        :type store: rdflib.store.Store
+        """
+        self.store = store
         self._resource_cache = {}
-
-        self.update_layout()
-
         
-    def update_layout(self):
-        """
-        Check whether the layout of the RDF respository is consistent with
-        this implementation, and update it if possible.
-        """
-        pass
-
-
-    def __call__(self, environ, start_response):
-        """
-        Dispatch request to the appropriate `Resource`.
-        """
-        req = Request(environ)
-        req.resource_uri, req.extension = extsplit(req.path_url)
-
-        resource = self.get_resource(req)
-        if resource:
-            res = resource.get_response(req)
-            res = self.postprocess_response(res)
-        else:
-            res = self.not_found(req)
-        return res(environ, start_response)
-
-
     @classmethod
     def register(cls, py_class):
-        """
-        Register `py_class` as a resource implementation.
+        """Register `py_class` as a resource implementation.
 
         The given class `py_class` must have an attribute MAIN_RDF_TYPE, which
-        is a URIRef. This 
+        is a URIRef.
 
         This method can be used as a class decorator.
         """
@@ -96,19 +59,17 @@ class Service(object):
         assert rdf_type not in class_map, "Conflicting implementation"
         class_map[rdf_type] = py_class
         return py_class
-
             
-    def get_resource(self, request):
-        """
-        Return the `Resource` that will handle the request, or None.
+    def get(self, uri):
+        """Get a resource from this service.
 
-        This method may also alter the request to suit the need of the
-        resource.
+        :param uri: the URI of the resource, stripped from any query-string
+        :type  uri: str
+
+        :return: the resource, or None
        
         :see-also: `register`
-        :see-also: `Wsgi2Resource`
         """
-        uri = request.resource_uri
         resource = self._resource_cache.get(uri)
         if resource is None:
             assert hasattr(self, "class_map"), "No resource class declared"
@@ -117,52 +78,25 @@ class Service(object):
             if len(private) == 0:
                 return None
             uri = URIRef(uri)
-            types = list(private.objects(uri, RDF.type))
-            if len(types) != 1:
-                raise Exception("Resource should have exactly 1 type, "
-                                "found %s (%s)" % (len(types),
-                                                   ",".join(str(t)
-                                                            for t in types)))
+            types = list(private.objects(uri, _HAS_IMPL))
+            assert len(types) == 1, types
             py_class = self.class_map.get(types[0])
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
         return resource
 
+    # TODO MAJOR ensures underlying store supports transactions; if not, they
+    # should perhaps be emulated
+
+    def commit(self):
+        """Commit pending modifications.
+        """
+        self.store.commit()
+
+    def rollback(self):
+        """Rollback pending modifications.
+        """
+        self.store.rollback()
         
-    def postprocess_response(self, response):
-        """
-        Post-process the response returned by a resource.
 
-        :see-also: `get_resource`
-        """
-        #pylint: disable=R0201
-        #    method could be a function (it is intended to be overridden) 
-
-        return response
-
-
-    def not_found(self, request):
-        """
-        Issues a 404 (resource not found) response.
-        """
-        #pylint: disable=R0201,W0613
-        #    method could be a function (it is intended to be overridden) 
-        #    unused argument 'request'
-
-        res = Response("resource not found", status=404)
-        return res
-
-
-    def method_not_allowed(self, request):
-        """
-        Issues a 405 (method not allowed) response.
-        """
-        #pylint: disable=R0201
-        #    method could be a function (it is intended to be overridden) 
-
-        res = Response("method not allowed: %s" % request.method, status=405)
-        return res
-
-
-# TODO MAJOR implement locking mechanism
-# if either env["wsgi.multithread"] or env["wsgi.multiprocess"] is set
+_HAS_IMPL = RDFREST.hasImplementation

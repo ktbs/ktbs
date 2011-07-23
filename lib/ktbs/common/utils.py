@@ -19,38 +19,10 @@
 I provide utility functions for pythonic interfaces.
 """
 from httplib2 import Http
-from rdflib import BNode, URIRef
+from rdflib import URIRef
 import re
-from urlparse import urljoin
 
-from rdfrest.utils import check_new, make_fresh_resource
-
-def coerce_to_uri(obj, base=None):
-    """
-    I convert to URIRef an object that can be either a URIRef, an object with a
-    'uri' attribute (assumed to be a URIRef) or a string-like URI.
-    """
-    ret = obj
-    if not isinstance(ret, URIRef):
-        ret = getattr(ret, "uri", None) or str(ret)
-    if base is not None:
-        ret = urljoin(base, ret)
-    if not isinstance(ret, URIRef):
-        ret = URIRef(ret)
-    return ret
-
-def coerce_to_node(obj, base=None):
-    """
-    I do the same as coerce_to_uri above, but in addition:
-    * if obj is None, I will return a fresh BNode
-    * if obj is a BNode, I will return it
-    """
-    if obj is None:
-        return BNode()
-    elif isinstance(obj, BNode):
-        return obj
-    else:
-        return coerce_to_uri(obj, base)
+from rdfrest.utils import coerce_to_uri, check_new, make_fresh_resource
 
 def extend_api(cls):
     """

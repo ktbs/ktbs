@@ -16,21 +16,41 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide the class `Resource`, the atomic component of an RDF-Rest service.
-"""
-from rdflib import Graph, RDF, RDFS, URIRef
-from webob import Request, Response
-from .serializer import serialize, serialize_version_list
-from .utils import make_fresh_resource
+I provide :class:`Resource`, the atomic component of an RDF-Rest service.
 
+Note that in strict REST, every URI identifies a different
+resource. Query-strings (the part of the URI after the '?') are not an
+exception: ``http://a.b/c/d`` and ``http://a.b/c/d?e=f`` are two
+different resources. In practice however, URIs that differ only by
+their query-string usually identify resources that are closely related
+(if not "variants" of the same resource).  RDF-REST endorses this
+practice by requiring that the `uri` passed to :class:`Resource` is
+stripped from the query-string; the query-string has to be parsed and
+passed as `parameters` to the methods :meth:`Resource.rdf_get`,
+:meth:`Resource.rdf_put`, :meth:`Resource.rdf_post` and
+:meth:`Resource.rdf_delete`.
+
+Hence, an instance of :class:`Resource` handling parameters is really
+managing a family or related resources.
+"""
+from rdflib import Graph, RDFS, URIRef
+from rdflib.graph import ReadOnlyGraphAggregate
+
+from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
+    MethodNotAllowedError
+from rdfrest.namespaces import RDFREST
+from rdfrest.utils import make_fresh_resource
 
 class Resource(object):
     """
-    I provide a framework for implementing `Service` resources.
+    I provide core functionalities for implementing
+    :class:`~rdflib.service.Service` resources.
 
-    :params:
-        :sercive: the `Sercive` instance containing this resource
-        :uri:     the resource URI (as a URIRef)
+    :param service: the service this resource is a part of
+    :type  service: rdfrest.service.Service
+    :param uri:     the resource URI (without query-string, see below)
+    :type  uri:     rdflib.URIRef
+
     """
 
     # subclasses must override this attribute; see Service.register
@@ -41,162 +61,174 @@ class Resource(object):
         self.service = service
         self.uri = uri
         store = service.store
-        self.graph = Graph(store, uri)
-        self.private = Graph(store, URIRef(uri+"#private"))
-    
-    def __call__(self, environ, start_response):
-        """
-        Honnor the WSGI interface.
-
-        If this class needs to be wrapped in a WSGI middleware, it is
-        compatible with the WSGI interface.
-        
-        :see-also: `Wsgi2Resource`
-        """
-        request = Request(environ)
-        response = self.get_response(request)
-        response(environ, start_response)
-
-    def init(self, new_graph):
-        """
-        Initialize RDF graphs.
-
-        ``new_graph`` is an RDF graph which is assumed to have passed
-        `check_new_graph`.
-
-        This method is called to actually create the resource *in the RDF
-        store*. It can be used to automatically generate RDF statements about
-        the resource.
-
-        Note that this method is not necessarily called when the *instance* is
-        created (if it is recreated from an existing resource in the RDF store)
-        so it is *not* a good idea to define instance attributes here.
-        """
-        for triple in new_graph:
-            self.graph.add(triple)
-        self.private.add((URIRef(self.uri), RDF.type, self.MAIN_RDF_TYPE))
-
-    def get_response(self, request):
-        """
-        Dispatch the request to the appropriate http_X method.
-
-        :params:
-                   :request: a `webob.Request` object
-
-        :return:   a `webob.Response` object
-        :see-also: `http_head`
-        """
-        method = request.method
-        implementation = getattr(self, "http_%s" % method.lower(), None)
-        if implementation is None:
-            return self.service.method_not_allowed(request)
-        else:
-            return implementation(request)
-
-    def http_head(self, request):
-        """
-        Default implementation, using http_get.
-
-        :params:
-                   :request: a `webob.Request` object
-
-        :return:   a `webob.Response` object
-        :see-also: `get_response`
-        """
-        http_get = getattr(self, "http_get", None)
-        if http_get is None:
-            return self.service.method_not_allowed(request)
-        else:
-            res = http_get(request)
-            res.body = None
-            return res
-
-    def negociate_rdf_content(self, response, graph):
-        """
-        Populate ``response`` with the appropriate representation of ``graph``.
-
-        I use the content negociation header fields from ``response.request``,
-        and the registered serializers.
-
-        It is assumed that ``response.request`` contains the request.
-
-        Subclasses could override this method to support specialized syntaxes.
-        """
-        req = response.request
-        gen, mimetype, extension = serialize(graph, req, req.extension)
-        if gen is None:
-            if req.extension:
-                # the extension was not recognized
-                return Response("Unknown extension", status=404)
-            else:
-                # no acceptable representation found
-                msg, ctype = serialize_version_list(self.uri, req)
-                return Response(msg, content_type=ctype, status=406)
-                # TODO MINOR should we instead default to RDF/XML ?
-                # This is acceptable per RFC 2616 (HTTP 1.1), and is
-                # apparently considered better practice
-
-        location = "%s.%s" % (self.uri, extension)
-        query_string = req.query_string
-        if query_string:
-            location = "%s?%s" % (location, query_string)
-
-        response.app_iter = gen
-        response.content_type = mimetype
-        response.content_location = location
+        self._graph = Graph(store, uri)
+        self._private = Graph(store, URIRef(uri+"#private"))
 
     @classmethod
-    def check_new_graph(cls, _request, _uri, _new_graph):
+    def create(cls, service, uri, new_graph):
+        """Create a new resource in the service.
+
+        While ``__init__`` assumes that the `service` already contains the
+        resource and only provides a python instance representing it, this
+        method assumes that the resource does not exists yet, and does whatever
+        is needed to create it.
+
+        :param service:   the service in which to create the resource
+        :type  service:   rdfrest.service.Service
+        :param uri:       the URI of the resource to create
+        :type  uri:       rdflib.URIRef
+        :param new_graph: RDF data describing the resource to create
+        :type  new_graph: rdflib.Graph
+
+        :return: an instance of `cls`
+        :raise: :class:`InvalidDataError` if `new_graph` is not acceptable
+
+        This method should *not* be overridden; instead, subclasses may
+        overload :method:`check_new_graph` and :method:`store_new_graph` on
+        which this method relies.
         """
-        I check that a graph is a valid representation of this resource class.
+        errors = cls.check_new_graph(uri, new_graph)
+        if errors is not None:
+            raise InvalidDataError(errors)
+        cls.store_new_graph(service, uri, new_graph)
+        return cls(service, uri)
 
-        If acceptable, None is returned; else, a Response with the appropriate
-        error status should be returned.
+    @classmethod
+    def check_new_graph(cls, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """Check that a graph is a valid representation of this resource class.
 
-        This method may also alter new_graph if required.
+        :param uri:       the URI of the resource described by `new_graph`
+        :type  uri:       rdflib.URIRef
+        :param new_graph: graph to check
+        :type  new_graph: rdflib.Graph
+
+        The following parameters are used when `check_new_graph` is used to
+        update and *existing* resource; for creating a new resource, they will
+        always be `None`.
+
+        :param resource:  the resource to be updated
+        :param added:     if not None, an RDF graph containg triples to be
+                          added
+        :param removed:   if not None, an RDF graph containg triples to be
+                          removed
+
+        :return: `None` on success, else an error message
 
         This class method can be overridden by subclasses that have constraints
         on the representation of their instances.
-
-        TODO: describe parameters
         """
-        return None
 
     @classmethod
-    def mint_uri(cls, _created, new_graph, target_uri):
+    def store_new_graph(cls, service, uri, new_graph):
+        """Store data in order to create a new resource in the service.
+
+        This method *should not* be used directly; it is invoked by
+        :meth:`create`, and can be overloaded by subclasses.
+
+        :param service:   the service in which to create the resource
+        :type  service:   rdfrest.service.Service
+        :param uri:       the URI of the resource to create
+        :type  uri:       rdflib.URIRef
+        :param new_graph: RDF data describing the resource to create
+        :type  new_graph: rdflib.Graph
+
+        Subclasses can overload this method in order to store more metadata;
+        they may also *alter* the resource's graph, but they should ensure that
+        the altered graph is still acceptable according to
+        :meth:`check_new_graph`.
         """
-        I mint a URI for a resource of that class.
+        assert isinstance(uri, URIRef)
+        graph_add = Graph(service.store, uri).add
+        for triple in new_graph:
+            graph_add(triple)
 
-        ``new_graph`` is supposed to be a graph POSTed to ``target_uri``, in
-        which ``created`` is a non-URI node representing the resource to be
-        created, and that resource must of cours be an instance of ``cls``.
+        private_add = Graph(service.store, URIRef(uri+"#private")).add
+        private_add((uri, _HAS_IMPL, cls.MAIN_RDF_TYPE))
 
-        Return the minted URI.
+    @classmethod
+    def mint_uri(cls, target, new_graph, created):
+        """Mint a URI for a resource of that class.
 
-        The default behaviour is to generate a child URI of target_uri, with
-        a trailing slash if this class has an ``http_post`` method.
+        :param target:    the resource to which `new_graph` has been posted
+        :type  target:    rdfrest.resource.Resource
+        :param new_graph: a description of the resource for which to mint a URI
+        :type  new_graph: rdflib.Graph
+        :param created:   the non-URIRef node representing the resource in
+                          $`new_graph`
+        :type  created:   rdflib.Node
+
+        :rtype: rdflib.URIRef
+
+        The default behaviour is to generate a child URI of `target`'s uri,
+        with a name derived from the class name.
         """
-        assert target_uri[-1] == "/"
+        # unsused argument #pylint: disable=W0613
+        target_uri = target.uri
+        if target_uri[-1] != "/":
+            target_uri += "/"
         prefix = "%s%s-" % (target_uri, cls.__name__.lower())
-        if hasattr(cls, "http_post"):
-            suffix = "/"
+        return make_fresh_resource(
+            target._graph, # access to protected member #pylint: disable=W0212
+            prefix,
+            )
+
+    def rdf_get(self, parameters=None):
+        """Return the graph describing this resource.
+
+        More precisely, the returned graph describes the resource
+        identified by the URI `<self.uri>?<parameters>` .
+
+        :param parameters: the query string parameters
+        :type  parameters: dict
+
+        :rtype: rdflib.Graph
+        :raise: :class:`~rdfrest.exceptions.InvalidParametersError`
+
+        The default behaviour is to accept no `parameters`.
+        """
+        if not parameters:
+            return ReadOnlyGraphAggregate([self._graph])
         else:
-            suffix = ""
-        return make_fresh_resource(new_graph, prefix, suffix)
-        
+            raise InvalidParametersError()
 
-class Wsgi2Resource(object):
-    """
-    Wrap an WSGI application into a `Service` resource.
-    """
-    #pylint: disable=R0903
-    #    too few public methods
-    def __init__(self, wsgi_app):
-        self.wsgi_app = wsgi_app
+    def rdf_put(self, new_graph, parameters=None):
+        """Update this resource with RDF data.
 
-    def get_response(self, request):
+        :param new_graph:  an RDF graph
+        :type  new_graph:  rdflib.Graph
+        :param parameters: the query string parameters
+        :type  parameters: dict
+
+        :raise: :class:`~rdfrest.exceptions.RdfRestException`
         """
-        Implement `Resource` API.
-        """
-        return request.get_response(self.wsgi_app)
+        # unused argument #pylint: disable=W0613
+        raise MethodNotAllowedError("PUT on %s" % self.uri)
 
+    def rdf_post(self, new_graph, parameters=None):
+        """
+        Post RDF data to this resource.
+
+        :param new_graph:  an RDF graph
+        :type  new_graph:  rdflib.Graph
+        :param parameters: the query string parameters
+        :type  parameters: dict
+
+        :return: the list of created URIs, possibly empty
+        :raise: :class:`~rdfrest.exceptions.RdfRestException`
+        """
+        # unused argument #pylint: disable=W0613
+        raise MethodNotAllowedError("POST on %s" % self.uri)
+
+    def rdf_delete(self, parameters=None):
+        """Delete this resource from the corresponding service.
+
+        :param parameters: the query string parameters
+        :type  parameters: dict
+
+        :raise: :class:`~rdfrest.exceptions.RdfRestException`
+        """
+        # unused argument #pylint: disable=W0613
+        raise MethodNotAllowedError("DELETE on %s" % self.uri)
+
+_HAS_IMPL = RDFREST.hasImplementation

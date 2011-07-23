@@ -18,12 +18,13 @@
 """
 I provide a PNG serializer based on graphviz.
 """
-import subprocess # see at the end of file why we don't "impot from"
+from subprocess import PIPE, Popen
 
-from ...serializer import serializer_profile
+from rdfrest.exceptions import SerializeError
+from rdfrest.serializer import register
 
-@serializer_profile("text/plain", "dot", 10) 
-def generate_dot(namespaces, graph, uri):
+@register("text/plain", "dot", 10) 
+def serialize_dot(graph, sregister, base_uri=None):
     """
     I serialize graph in the graphviz format.
     """
@@ -32,34 +33,28 @@ def generate_dot(namespaces, graph, uri):
     #   parameters not used (remove this once implemented)
     raise NotImplementedError("dot serialization temporarily unavailable")
 
-@serializer_profile("image/png", "png", 10) 
-def generate_png(namespaces, graph, uri):
+@register("image/png", "png", 10) 
+def serialize_png(graph, sregister, base_uri=None):
     """
     I serialize graph in PNG.
     """
-    return _generate_format("png", namespaces, graph, uri)
+    return _serialize_format("png", graph, sregister, base_uri)
 
-@serializer_profile("image/svg+xml", "svg", 10) 
-def generate_svg(namespaces, graph, uri):
+@register("image/svg+xml", "svg", 10) 
+def serialize_svg(graph, sregister, base_uri=None):
     """
     I serialize graph in SVG.
     """
-    return _generate_format("svg", namespaces, graph, uri)
+    return _serialize_format("svg", graph, sregister, base_uri)
 
-def _generate_format(format_, namespaces, graph, uri):
+def _serialize_format(format_, graph, sregister, base_uri=None):
     """
     I serialize graph to the given format using graphviz.
     """
-    dot_str = generate_dot(namespaces, graph, uri)
-    dot2format = _POPEN(["dot", "-T%s" % format_], stdin=_PIPE, stdout=_PIPE)
+    dot_str = "".join(serialize_dot(graph, sregister, base_uri))
+    dot2format = Popen(["dot", "-T%s" % format_], stdin=PIPE, stdout=PIPE)
     out, _ = dot2format.communicate(dot_str)
     status = dot2format.wait()
     if status != 0:
-        raise Exception("Serializer Error (process 'dot' failed)")
+        raise SerializeError("process 'dot' failed")
     return out
-
-# for some reaon, pylint errs when we import the following symbols with::
-#     from subprocess import PIPE, Popen
-# so we fallback to the following hack
-_POPEN = subprocess.Popen
-_PIPE = subprocess.PIPE
