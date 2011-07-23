@@ -13,6 +13,8 @@ KTBS Resource
 KTBS Root
 ---------
 
+.. inheritance-diagram:: ktbs.client.root.KtbsRoot
+
 .. automodule:: ktbs.client.root
     :members:
     :undoc-members:

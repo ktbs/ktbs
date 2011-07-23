@@ -17,8 +17,10 @@
 """
 I provide the client implementation of a trace Base.
 """
-from rdflib import Graph, RDF
+from rdflib import Graph, RDF, Literal
 #from rdfrest.client import ProxyStore
+
+from datetime import datetime
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.base import BaseMixin
@@ -32,8 +34,10 @@ class Base(BaseMixin, Resource):
 
     def create_model(self, parents=None, id=None, graph=None):
         """Create a new model in this trace base.
-        id: either None, a relative URI or a BNode present in graph
-        graph: if not none, may contain additional properties for the new base
+        :param parents: either None, one or several models this model inherits 
+        from
+        :param id: either None, a relative URI or a BNode present in graph
+        :param graph: if not none, may contain additional properties for ???
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
@@ -55,6 +59,45 @@ class Base(BaseMixin, Resource):
         # TODO MAJOR parse content and feed the graph to make_resource
         return self.make_resource(created_uri, _TRACE_MODEL)
 
+
+    def create_stored_trace(self, model=None, origin=None, 
+                            default_subject=None, id=None, graph=None):
+        """Create a new store trace in this trace base.
+        :param model: Trace associated model
+        :param origin: Typically a timestamp. It can be an opaque string, 
+        meaning that the precise time when the trace was collected is not known
+        :param default_subject: ???
+        :param id: either None ? a relative URI or a BNode present in graph
+        :param graph: if not none, may contain additional properties for ???
+        """
+        #pylint: disable-msg=W0622
+        #    redefining built-in 'id'
+        self_uri = self.uri
+        node = coerce_to_node(id, self_uri)
+
+        if model is None:
+            raise ValueError("You must supply a model for the %s trace."
+                             % id) 
+
+        if graph is None:
+            graph = Graph()
+        graph.add((node, _RDF_TYPE, _STORED_TRACE))
+        graph.add((self.uri, _CONTAINS, node))
+
+        model_uri = coerce_to_uri(model, self_uri)
+        graph.add((node, _HAS_MODEL, model_uri))
+
+        if origin is not None:
+            graph.add((node, _HAS_ORIGIN, origin))
+        else:
+            # TODO what do we use as defaut value ?
+            graph.add((node, _HAS_ORIGIN, Literal(str(datetime.now()))))
+
+        rheaders, _rcontent = post_graph(graph, self.uri)
+        created_uri = rheaders['location']
+        # TODO MAJOR parse content and feed the graph to make_resource ???
+        return self.make_resource(created_uri, _COMPUTED_TRACE)
+
     # TODO implement other create_X
 
 
@@ -64,6 +107,10 @@ _CONTAINS = KTBS.contains
 _HAS_PARENT_MODEL = KTBS.hasParentModel
 _TRACE_MODEL = KTBS.TraceModel
 _RDF_TYPE = RDF.type
+_STORED_TRACE = KTBS.StoredTrace
+_COMPUTED_TRACE = KTBS.ComputedTrace
+_HAS_MODEL = KTBS.hasModel
+_HAS_ORIGIN = KTBS.hasOrigin
 
 # the following import ensures that required classes are registered in
 # RESOURCE_MAKER (Model, StoredTrace, ComputedTrace, Method)
