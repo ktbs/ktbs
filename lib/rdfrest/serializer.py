@@ -197,10 +197,12 @@ def serialized_htmlized_turtle(graph, sregister, base_uri):
     #pylint: disable=R0914
     #    too many local variables
 
-    script = _HTML_SCRIPT
-    style  = _HTML_STYLE
-    footer = _HTML_FOOTER
-    body   = "%s"
+    # the following variables are only used by the template below,
+    # that is why pylint consider them as unused (W0612)
+    script = _HTML_SCRIPT #pylint: disable=W0612
+    style  = _HTML_STYLE  #pylint: disable=W0612
+    footer = _HTML_FOOTER #pylint: disable=W0612
+    body   = "%s"         #pylint: disable=W0612
     
     template = u"""<html>
     <head>
@@ -335,7 +337,7 @@ def _make_curie(namespaces, uri, base):
 
     return u"&lt;%s&gt;" % uri
 
-_HTML_STYLE="""
+_HTML_STYLE = """
     a { text-decoration: none; }
     .prefixes { font-size: 66%%; float: right; }
     .prefix { display: none; }
@@ -345,7 +347,7 @@ _HTML_STYLE="""
     #debug { font-size: 66%%; color: blue }
     """
 
-_HTML_SCRIPT=r"""
+_HTML_SCRIPT = r"""
 
     metadata = {};
 
@@ -500,7 +502,7 @@ _HTML_SCRIPT=r"""
     }
     """
 
-_HTML_FOOTER="""<br /><br /><hr />
+_HTML_FOOTER = """<br /><br /><hr />
     <input type="button" value="edit"
            id="toggle" onclick="toggle_editor()" />
     <div id="editor" hidden="">
