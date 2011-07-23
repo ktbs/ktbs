@@ -136,6 +136,6 @@ def _parse_with_rdflib(content, base_uri, encoding, rdflib_format):
     try:
         graph.parse(data=content, publicID=base_uri, format=rdflib_format)
     except Exception, ex:
-        raise ParseError(ex)
+        raise ParseError(ex.message or str(ex), ex)
     return graph
 

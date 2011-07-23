@@ -100,8 +100,8 @@ def main():
     _root = service.bootstrap(base)
     http = HttpFrontend(service)
     print >> stderr, "===", "Starting server on", base
-    #make_server("localhost", 8001, http).handle_request()
     make_server("localhost", 8001, http).serve_forever()
+    make_server("localhost", 8001, http).handle_request()
 
 if __name__ == "__main__":
     main()

@@ -197,24 +197,25 @@ def serialized_htmlized_turtle(graph, sregister, base_uri):
     #pylint: disable=R0914
     #    too many local variables
 
+    script = _HTML_SCRIPT
+    style  = _HTML_STYLE
+    footer = _HTML_FOOTER
+    body   = "%s"
+    
+    template = u"""<html>
+    <head>
+    <title>%(base_uri)s</title>
+    <style text="text/css">%(style)s</style>
+    <script text="text/javascript">%(script)s</script>
+    </head>
+    <body onload="init_page()">
+    %(body)s
+    %(footer)s
+    </body>\n</html>""" % locals()
+
     namespaces = sregister.namespaces
 
-    ret = (u"<html>\n"
-    "<head>\n"
-    "<title>%(base_uri)s</title>\n"
-    """<style text="text/css">
-    a { text-decoration: none; }
-    .prefixes { font-size: 50%%; float: right; }
-    .prefix { display: none; }
-    .subj { margin-top: 2ex; }
-    .pred { margin-left: 2em ; }
-    .obj  { margin-left: .5em ; display: inline; }
-    </style>"""
-    "</head>\n"
-    "<body>\n"
-    ) % locals()
-
-    ret += "<h1># "
+    ret = "<h1># "
     crumbs = base_uri.split("/")
     crumbs[:3] = [ "/".join(crumbs[:3]) ]
     for i in xrange(len(crumbs)-1):
@@ -224,7 +225,8 @@ def serialized_htmlized_turtle(graph, sregister, base_uri):
 
     ret += "<div>#\n"
     for _, _, ext in sregister:
-        ret += u'<a href="%s.%s">%s</a>\n' % (base_uri, ext, ext)
+        if ext is not None:
+            ret += u'<a href="%s.%s">%s</a>\n' % (base_uri, ext, ext)
     ret += "</div>\n"
 
     ret += '<div class="prefixes">\n'
@@ -256,7 +258,8 @@ def serialized_htmlized_turtle(graph, sregister, base_uri):
                % _htmlize_node(namespaces, obj, base_uri)
     ret += ".</div></div></div>\n"
     ret += "</body>\n</html>\n"
-    yield ret.encode("utf-8")
+
+    yield (template % ret).encode("utf-8")
 
 def _htmlize_node(namespaces, node, base):
     """
@@ -331,3 +334,186 @@ def _make_curie(namespaces, uri, base):
             uri = u"../" + uri[len(parent)+1:]
 
     return u"&lt;%s&gt;" % uri
+
+_HTML_STYLE="""
+    a { text-decoration: none; }
+    .prefixes { font-size: 66%%; float: right; }
+    .prefix { display: none; }
+    .subj { margin-top: 2ex; }
+    .pred { margin-left: 2em ; }
+    .obj  { margin-left: .5em ; display: inline; }
+    #debug { font-size: 66%%; color: blue }
+    """
+
+_HTML_SCRIPT=r"""
+
+    metadata = {};
+
+    function init_page() {
+        if (document.referrer == document.location.href ||
+            document.referrer == document.title) {
+            // heuristic to detect we arrived here from the editor
+            // then automatically re-open the editor
+            toggle_editor();
+        }
+    }
+
+    function toggle_editor() {
+        var editor = document.getElementById("editor");
+        var edit_button = document.getElementById("toggle");
+        if (edit_button.value == "hide editor") {
+            editor.hidden = true;
+            edit_button.value = "show editor";
+        } else {
+            editor.hidden = false;
+            if (edit_button.value == "edit") { // first time
+                reload_editor();
+            }
+            edit_button.value = "hide editor";
+        }
+    }
+
+    function error_message(textarea, msg) {
+        textarea.disabled = 1;
+        textarea.value = msg;
+        document.getElementById("save").disabled = false;
+    }
+
+    function reload_editor() {
+        var textarea = document.getElementById("textarea");
+        var ctype = document.getElementById("ctype");
+        var debug = document.getElementById("debug");
+        var req = make_req();
+        try {
+            req.open("GET", document.title, true);
+            req.setRequestHeader("Accept", ctype.value);
+            req.setRequestHeader("If-None-Match", "\"(force-reload)\"");
+        }
+        catch(err) {
+            error_message(textarea, "error while preparing request: " + err);
+            return;
+        }
+        req.onreadystatechange= function () {
+            if (req.readyState == 4) {
+                if (req.status == 200) {
+                    textarea.value = req.responseText;
+                    ctype.value    = req.getResponseHeader("Content-Type");
+                    metadata.etag  = req.getResponseHeader("Etag");
+                    debug.textContent = "etag: " + metadata.etag;
+                    document.getElementById("save").disabled = false;
+                    textarea.disabled = false;
+                } else {
+                    error_message(textarea,
+                                  "error while loading: " + req.status +
+                                  "\n" + req.responseText);
+                }
+            } else {
+                textarea.value = textarea.value + ".";
+            }
+        };
+        textarea.value = "loading..";
+        req.send();
+    };
+
+    function save_editor() {
+        var textarea = document.getElementById("textarea");
+        var ctype = document.getElementById("ctype");
+        var debug = document.getElementById("debug");
+        var req = make_req();
+        try {
+            req.open("PUT", document.title, true);
+            req.setRequestHeader("Accept", ctype.value);
+            req.setRequestHeader("Content-Type", ctype.value);
+            req.setRequestHeader("If-Match", metadata.etag);
+        }
+        catch(err) {
+            error_message(textarea, "error while preparing request: " + err);
+            return;
+        }
+        req.onreadystatechange= function () {
+            if (req.readyState == 4) {
+                if (req.status == 200) {
+                    textarea.value = req.responseText;
+                    ctype.value = req.getResponseHeader("Content-Type");
+                    metadata.etag   = req.getResponseHeader("Etag");
+                    debug.textContent = "etag: " + metadata.etag;
+                    window.location.assign(document.title+".html");                    
+                } else {
+                    error_message(textarea,
+                                  "error while saving: " + req.status +
+                                  "\n" + req.responseText);
+                }
+            } else {
+                textarea.value = textarea.value + ".";
+            }
+        };
+        var payload = textarea.value;
+        textarea.value = "loading..";
+        req.send(payload);
+    };
+
+    function post_editor() {
+        var textarea = document.getElementById("textarea");
+        var ctype = document.getElementById("ctype");
+        var req = make_req();
+        try {
+            req.open("POST", document.title, true);
+            req.setRequestHeader("Content-Type", ctype.value);
+        }
+        catch(err) {
+            error_message(textarea, "error while preparing request: " + err);
+            return;
+        }
+        req.onreadystatechange= function () {
+            if (req.readyState == 4) {
+                if (req.status == 201) {
+                    var location = req.getResponseHeader("Location");
+                    window.location.assign(location)
+                } else {
+                    error_message(textarea,
+                                  "error while posting: " + req.status +
+                                  "\n" + req.responseText);
+                }
+            } else {
+                textarea.value = textarea.value + ".";
+            }
+        };
+        var payload = textarea.value;
+        textarea.value = "loading..";
+        req.send(payload);
+    };
+
+    function make_req() {
+        var req;
+        try  { req=new XMLHttpRequest(); }
+        catch (e) {
+            try { req=new ActiveXObject("Msxml2.XMLHTTP"); }
+            catch (e) {
+              try { req=new ActiveXObject("Microsoft.XMLHTTP"); }
+              catch (e) {
+                  alert("Your browser does not support AJAX!");
+                  return false;
+              }
+          }
+        }
+        return req;
+    }
+    """
+
+_HTML_FOOTER="""<br /><br /><hr />
+    <input type="button" value="edit"
+           id="toggle" onclick="toggle_editor()" />
+    <div id="editor" hidden="">
+      <textarea id="textarea" cols="80" rows="16"></textarea>
+      <br />
+      <input type="button" value="save" disabled=""
+             id="save" onclick="save_editor()" />
+      <input type="button" value="reload"
+             id="reload" onclick="reload_editor()" />
+      <input type="button" value="post new object"
+             id="post" onclick="post_editor()" />
+      <input id="ctype" value="*/*" />
+      <div id="debug" style="text-color: blue" hidden=""></div>
+    </div>
+    """
+       

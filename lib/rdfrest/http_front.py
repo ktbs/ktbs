@@ -28,6 +28,7 @@ from rdfrest.utils import extsplit
 
 from datetime import datetime
 from webob import Request
+from webob.response import status_reasons
 
 class HttpFrontend(object):
     """The role of the HTTP front-end is to relay requests to and response
@@ -88,18 +89,26 @@ class HttpFrontend(object):
         try:
             response = method(request, resource)
         except CanNotProceedError, ex:
-            response = MyResponse(ex.message, status=409, request=request)
+            response = MyResponse(ex.message,
+                                  status="409 Conflict",
+                                  request=request)
         except InvalidDataError, ex:
-            response = MyResponse(ex.message, status=403, request=request)
+            response = MyResponse(ex.message,
+                                  status="403 Forbidden",
+                                  request=request)
         except InvalidParametersError, ex:
-            response = MyResponse(ex.message, status=404, request=request)
+            response = MyResponse(ex.message,
+                                  status="404 Not Found",
+                                  request=request)
         except MethodNotAllowedError, ex:
             headerlist = [("allow", ", ".join(ex.allowed))]
-            response = MyResponse(ex.message, status=405,
-                                   headerlist=headerlist, request=request)
+            response = MyResponse(ex.message,
+                                  status="405 Method Not Allowed",
+                                  headerlist=headerlist, request=request)
         except ParseError, ex:
-            response = MyResponse(ex.message, status="400 Parse Error",
-                                   request=request)
+            response = MyResponse(ex.message,
+                                  status="400 Bad Request: Parse error",
+                                  request=request)
         except SerializeError, ex:
             response = MyResponse(ex.message, status="550 Serialize Error",
                                    request=request)
@@ -128,17 +137,18 @@ class HttpFrontend(object):
         if ext:
             serializer, ctype = self._serializers.get_by_extension(ext)
             if serializer is None:
-                return self.issue_error(404, request, resource) #Not Found
+                return self.issue_error(404, request, resource)
         else:
             serializer = None
             ctype = request.accept.best_match( ser[1]
                                                for ser in self._serializers )
             if ctype is None:
                 # 406 Not Acceptable
-                version_list = [ "%s%s" % (resource.uri, i[2])
-                                 for i in self._serializers ]
-                return MyResponse("\n".join(version_list), status=406,
-                                   request=request)
+                version_list = [ "<%s.%s>  (%s)" % (resource.uri, i[2], i[1])
+                                 for i in self._serializers if i[2] ]
+                return MyResponse("\n".join(version_list),
+                                  status="406 Not Acceptable",
+                                  request=request)
             # else we can be certain that the serializer exists, so:
             serializer, ext = self._serializers.get_by_content_type(ctype)
 
@@ -227,9 +237,12 @@ class HttpFrontend(object):
     def issue_error(self, status, request, resource):
         """Issues an HTTP error.
 
-        :param status:   the HTTP status (can be an int or a str)
+        :param status:   the HTTP status
+        :type  status:   int
         :param request:  the request being processed
+        :type  request:  webob.Request
         :param resource: the resource being addressed (can be None)
+        :type  resource: rdfrest.resource.Resource
 
         Can be overridden by subclasses to provide custom error messages.
         """
@@ -238,4 +251,8 @@ class HttpFrontend(object):
         # * method could be a function #pylint: disable=R0201 
         # * unsued argument            #pylint: disable=W0613
 
-        return MyResponse("RDF-REST error: %s" % status, status=status)
+        status = "%s %s" % (status, status_reasons[status])
+        res = MyResponse("RDF-REST error: %s\n" % status, status=status)
+        if status[:3] == "405":
+            res.allow = "HEAD, GET, PUT, POST, DELETE"
+        return res

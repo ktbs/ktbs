@@ -57,7 +57,7 @@ class WeakEtag(str):
 
 def new_parse_etag_response(value):
     "I add support for :class:`WeakEtag`"
-    if value.lower()[:2] == "w/":
+    if value is not None and value.lower()[:2] == "w/":
         ret = WeakEtag(old_parse_etag_response(value[2:]))
     else:
         ret = old_parse_etag_response(value)
