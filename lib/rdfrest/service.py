@@ -81,6 +81,7 @@ class Service(object):
             types = list(private.objects(uri, _HAS_IMPL))
             assert len(types) == 1, types
             py_class = self.class_map.get(types[0])
+            assert py_class is not None, "corrupted store"
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
         return resource
