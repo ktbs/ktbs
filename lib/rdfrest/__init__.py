@@ -16,7 +16,11 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-RDF-REST: infrastructure for RDF-based REST services
+Infrastructure for RDF-based REST services
+
+.. todo::
+
+  write general documentation for RDF-REST
 """
 
 import rdflib

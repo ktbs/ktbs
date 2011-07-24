@@ -26,7 +26,7 @@ from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import post_graph
 from ktbs.namespaces import KTBS
-from rdfrest.utils import coerce_to_node, coerce_to_uri
+from rdfrest.utils import coerce_to_node, coerce_to_uri, random_token
 
 class Base(BaseMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
@@ -34,10 +34,11 @@ class Base(BaseMixin, Resource):
 
     def create_model(self, parents=None, id=None, graph=None):
         """Create a new model in this trace base.
-        :param parents: either None, one or several models this model inherits 
-        from
-        :param id: either None, a relative URI or a BNode present in graph
-        :param graph: if not none, may contain additional properties for ???
+
+        :param parents: either None, or an iterable of models from which this
+                        model inherits
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
@@ -63,15 +64,17 @@ class Base(BaseMixin, Resource):
     def create_stored_trace(self, model=None, origin=None, 
                             default_subject=None, id=None, graph=None):
         """Create a new store trace in this trace base.
+
         :param model: Trace associated model
         :param origin: Typically a timestamp. It can be an opaque string, 
-        meaning that the precise time when the trace was collected is not known
-        :param default_subject: ???
-        :param id: either None ? a relative URI or a BNode present in graph
-        :param graph: if not none, may contain additional properties for ???
+             meaning that the precise time when the trace was collected is not
+             known
+        :param default_subject: The subject to set to new obsels when they do
+            not specifify a subject
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
         """
-        #pylint: disable-msg=W0622
-        #    redefining built-in 'id'
+        # redefining built-in 'id' #pylint: disable=W0622
         self_uri = self.uri
         node = coerce_to_node(id, self_uri)
 
@@ -87,11 +90,14 @@ class Base(BaseMixin, Resource):
         model_uri = coerce_to_uri(model, self_uri)
         graph.add((node, _HAS_MODEL, model_uri))
 
-        if origin is not None:
-            graph.add((node, _HAS_ORIGIN, origin))
-        else:
-            # TODO what do we use as defaut value ?
-            graph.add((node, _HAS_ORIGIN, Literal(str(datetime.now()))))
+        if origin is None:
+            origin = random_token(32)
+        elif isinstance(origin, int):
+            origin = datetime.fromtimestamp(origin)
+        graph.add((node, _HAS_ORIGIN, Literal(origin)))
+
+        if default_subject is not None:
+            graph.add((node, _HAS_DEFAULT_SUBBJECT, Literal(default_subject)))
 
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
@@ -104,6 +110,7 @@ class Base(BaseMixin, Resource):
 RESOURCE_MAKER[KTBS.Base] = Base
 
 _CONTAINS = KTBS.contains
+_HAS_DEFAULT_SUBBJECT = KTBS.hasDefaultSubject
 _HAS_PARENT_MODEL = KTBS.hasParentModel
 _TRACE_MODEL = KTBS.TraceModel
 _RDF_TYPE = RDF.type

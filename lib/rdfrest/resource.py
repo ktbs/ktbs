@@ -18,20 +18,24 @@
 """
 I provide :class:`Resource`, the atomic component of an RDF-Rest service.
 
-Note that in strict REST, every URI identifies a different
-resource. Query-strings (the part of the URI after the '?') are not an
-exception: ``http://a.b/c/d`` and ``http://a.b/c/d?e=f`` are two
-different resources. In practice however, URIs that differ only by
-their query-string usually identify resources that are closely related
-(if not "variants" of the same resource).  RDF-REST endorses this
-practice by requiring that the `uri` passed to :class:`Resource` is
-stripped from the query-string; the query-string has to be parsed and
-passed as `parameters` to the methods :meth:`Resource.rdf_get`,
-:meth:`Resource.rdf_put`, :meth:`Resource.rdf_post` and
-:meth:`Resource.rdf_delete`.
+.. _query-strings-in-rdfrest:
 
-Hence, an instance of :class:`Resource` handling parameters is really
-managing a family or related resources.
+.. note:: Query-strings in RDF-REST
+
+  Note that in strict REST, every URI identifies a different
+  resource. Query-strings (the part of the URI after the '?') are not an
+  exception: ``http://a.b/c/d`` and ``http://a.b/c/d?e=f`` are two different
+  resources. In practice however, URIs that differ only by their query-string
+  usually identify resources that are closely related (if not "variants" of
+  the same resource).  RDF-REST endorses this practice by requiring that the
+  `uri` passed to :class:`Resource` is stripped from the query-string; the
+  query-string has to be parsed and passed as `parameters` to the methods
+  :meth:`~Resource.rdf_get`, :meth:`~Resource.rdf_put`,
+  :meth:`~Resource.rdf_post` and :meth:`~Resource.rdf_delete`.
+
+  Hence, an instance of :class:`Resource` handling parameters is really
+  managing a family or related resources.
+
 """
 from rdflib import Graph, RDFS, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
@@ -44,11 +48,12 @@ from rdfrest.utils import make_fresh_resource
 class Resource(object):
     """
     I provide core functionalities for implementing
-    :class:`~rdflib.service.Service` resources.
+    :class:`~rdfrest.service.Service` resources.
 
     :param service: the service this resource is a part of
     :type  service: rdfrest.service.Service
-    :param uri:     the resource URI (without query-string, see below)
+    :param uri:     the resource URI
+                    (`without query-string <query-strings-in-rdfrest>`:ref:)
     :type  uri:     rdflib.URIRef
 
     """
@@ -84,8 +89,8 @@ class Resource(object):
         :raise: :class:`InvalidDataError` if `new_graph` is not acceptable
 
         This method should *not* be overridden; instead, subclasses may
-        overload :method:`check_new_graph` and :method:`store_new_graph` on
-        which this method relies.
+        overload :meth:`check_new_graph` and :meth:`store_new_graph` on which
+        this method relies.
         """
         errors = cls.check_new_graph(uri, new_graph)
         if errors is not None:

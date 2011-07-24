@@ -1,6 +1,12 @@
 KTBS common
 ===========
 
+.. automodule:: ktbs.common
+
+\
+
+.. inheritance-diagram:: ktbs.common.resource ktbs.common.root ktbs.common.base ktbs.common.trace ktbs.common.obsel
+
 KTBS Resource
 -------------
 

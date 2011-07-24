@@ -20,11 +20,13 @@ I provide pythonic interfaces for KTBS elements as mixin classes, to be reused
 in server, client and script.
 
 All those mixin require
-* __eq__ and __hash__ methods
-* __enter__ and __exit__ methods for managing transactions
-* a property uri: a URIRef identifying this resource
-* a property graph: an RDF Graph containing the description of this resource
-* a method ``make_resource(node, node_type=None)`` used to build another
+
+* `__eq__` and `__hash__` methods
+* `__enter__` and `__exit__` methods for managing transactions
+* a property `uri`: a `~rdflib.URIRef`:class: identifying this resource
+* a property `graph`: a `~rdflib.Graph`:class: containing the description of
+  this resource
+* a method `make_resource(node, node_type=None)` used to build another
   resource as the value of a property.
 
 Note that not all classes in `ktbs.server` inherit the corresponding mixin

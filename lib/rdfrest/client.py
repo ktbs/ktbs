@@ -18,7 +18,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-RDF-REST Client module.
+RDF-REST HTTP Client module.
 
 I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 """
@@ -106,6 +106,19 @@ _get_rdflib_serializers()
 class ProxyStore(Store):
     """
     A Proxy store implemention.
+
+   :param configuration: Can be a string or a dictionary. May be 
+        passed to __init__() or to open(). Specified as a
+        configuration string (store database connection string). For
+        KTBS, it is preferably a dictionary which may contain
+        credentials for HTTP requests, the URI of the graph and an
+        httpresponse supplied by the client (contains an RDF
+        serialized graph already posted with HTTPLIB2 and the header
+        of the response). If the parameters are in a string, the
+        format should be "key1:value1;key2:value2".  May be passed to
+        __init__() or to open().  Optionnal.  :param identifier:
+        URIRef identifying the graph to cache in the store.
+
     See http://www.rdflib.net/store/ for the detail of a store.
     Take store.py for the squeletton.
 
@@ -119,24 +132,13 @@ class ProxyStore(Store):
 
     def __init__(self, configuration=None, identifier=None):
         """ ProxyStore initialization.
+
             Creates an empty Graph, intializes the HTTP client.
             Use the defaut for internal graph storage, i.e IOMemory.
             The URIref of the graph must be supplied either in identifier or
             in configuration parameter. It will be checked by open().
             The cache file path could be given in the configuration dictionary
             (__init__ only). We have to search about the memory cache.
-
-            :param configuration: Can be a string or a dictionary. May be 
-            passed to __init__() or to open(). Specified as a configuration 
-            string (store database connection string). For KTBS, it is 
-            preferably a dictionary which may contain credentials for HTTP 
-            requests, the URI of the graph and an httpresponse supplied by the
-            client (contains an RDF serialized graph already posted with 
-            HTTPLIB2 and the header of the response). If the parameters are 
-            in a string, the format should be "key1:value1;key2:value2". 
-            May be passed to __init__() or to open().  Optionnal.
-            :param identifier: URIRef identifying the graph to cache in the 
-            store. 
         """
 
         LOG.debug("-- ProxyStore.init(configuration=%s, identifer=%s) --\n",
@@ -177,15 +179,16 @@ class ProxyStore(Store):
             For the ProxyStore, the identifier is the graph address.
 
             :param configuration: Usually a configuration string of the store 
-            (for database connection). May contain credentials for HTTP 
-            requests. Can be a string or a dictionary. May be passed to 
-            __init__() or to open(). 
+                (for database connection). May contain credentials for HTTP 
+                requests. Can be a string or a dictionary. May be passed to 
+                __init__() or to open(). 
             :param create: True to create a store. This not meaningfull for the
-            ProxyStore. Optionnal.
+                ProxyStore. Optionnal.
 
-            :returns: VALID_STORE on success
-                      UNKNOWN No identifier or wrong identifier
-                      NO_STORE
+
+            :returns: * VALID_STORE on success
+                      * UNKNOWN No identifier or wrong identifier
+                      * NO_STORE
         """
         LOG.debug("-- ProxyStore.open(configuration=%s, create=%s), "
                   "identifier: %s --\n",
@@ -233,9 +236,10 @@ class ProxyStore(Store):
             StoreInvalidConfigurationError exception).
 
             :param configuration: Usually a configuration string of the store 
-            (for database connection). May contain credentials for HTTP 
-            requests. Can be a string or a dictionary. May be passed to 
-            __init__() or to open(). Optionnal.
+                (for database connection). May contain credentials for HTTP 
+                requests. Can be a string or a dictionary. May be passed to 
+                __init__() or to open(). Optionnal.
+
             :returns: A dictionnary with the extracted configuration.
         """
 
@@ -289,7 +293,7 @@ class ProxyStore(Store):
             cache.
 
             :param content: HTTP received data either got by ProxyStore or
-            passed by RDFREST Client.
+                passed by RDFREST Client.
         """
         # Creates the graph
         LOG.debug("-- ProxyStore._parse_content() using %s format", 
@@ -393,10 +397,11 @@ class ProxyStore(Store):
             :param triple: Triple (subject, predicate, object) to add.
             :param context: 
             :param quoted: The quoted argument is interpreted by formula-aware
-            stores to indicate this statement is quoted/hypothetical. It should
-            be an error to not specify a context and have the quoted argument
-            be True. It should also be an error for the quoted argument to be
-            True when the store is not formula-aware. 
+                stores to indicate this statement is quoted/hypothetical. It
+                should be an error to not specify a context and have the
+                quoted argument be True. It should also be an error for the
+                quoted argument to be True when the store is not
+                formula-aware.
 
             :returns: 
         """
@@ -418,12 +423,12 @@ class ProxyStore(Store):
 
 
     def remove(self, triple, context):
-        """ Remove the set of triples matching the pattern from the store
+        """Remove the set of triples matching the pattern from the store
 
-            :param triple: Triple (subject, predicate, object) to remove.
-            :param context: 
+        :param triple: Triple (subject, predicate, object) to remove.
+        :param context: 
 
-            :returns: 
+        :returns: 
         """
         # pylint: disable-msg=W0222
         # Signature differs from overriden method
@@ -439,11 +444,11 @@ class ProxyStore(Store):
         """ Returns an iterator over all the triples (within the conjunctive
         graph or just the given context) matching the given pattern.
 
-            :param triple: Triple (subject, predicate, object) to remove.
-            :param context: ProxyStore is not context aware but it's internal
+        :param triple: Triple (subject, predicate, object) to remove.
+        :param context: ProxyStore is not context aware but it's internal
             cache IOMemory store is. Avoid context parameter.
 
-            :returns: An iterator over the triples.
+        :returns: An iterator over the triples.
         """
         LOG.debug("-- ProxyStore.triples(triple=%s, context=%s) --", 
                   triple, context)
@@ -486,9 +491,10 @@ class ProxyStore(Store):
 
     def close(self, commit_pending_transaction=False):
         """ This closes the database connection. 
+
             :param commit_pending_transaction: Specifies whether to commit all
-            pending transactions before closing (if the store is
-            transactional). 
+                pending transactions before closing (if the store is
+                transactional). 
         """
         LOG.debug("******** close (%s) ", commit_pending_transaction)
 
@@ -505,7 +511,7 @@ class ProxyStore(Store):
         """ This destroys the instance of the store identified by the
         configuration string.
 
-            :param configuration: Configuration string identifying the store
+        :param configuration: Configuration string identifying the store
         """
         LOG.debug("******** destroy (%s) ", configuration)
 

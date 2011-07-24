@@ -17,13 +17,6 @@
 
 """
 I provide useful mixin classes to enhance `rdflib.resource.Resource`.
-
-Note that mixins providing HTTP verbs (RdfGetMixin, RdfPutMixin, RdfPostMixin
-and DeleteMixin) should in general appear *after* mixins altering their
-behaviour (whose names are starting with *With*).
-
-This is due to the fact tha "With" mixins do not inherit "HTTP" mixins: they do 
-not strongly depend on them, they only alter their functionality *if* present.
 """
 from itertools import chain
 from md5 import md5
@@ -228,8 +221,8 @@ class BookkeepingMixin(Resource):
         :meth:`~rdfrest.resource.Resource.rdf_post` to update the underlying
         RDF graph.
 
-        Whenever the graph is modified by other ways, :meth:`update_metadata`
-        should be invoked.
+        Whenever the graph is modified by other ways,
+        :meth:`update_bk_metadata` should be invoked.
 
     .. note::
     
@@ -240,8 +233,8 @@ class BookkeepingMixin(Resource):
     def update_bk_metadata(self):
         """Update the metadata (etag and last-modified) after a change.
 
-        This method is automatically called by :method:`rdf_put` and
-        :method:`rdf_post`.
+        This method is automatically called by :meth:`rdf_put` and
+        :meth:`rdf_post`.
         """
         now = time()
         new_etag = md5(str(now)).hexdigest()

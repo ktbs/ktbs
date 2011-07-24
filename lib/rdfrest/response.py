@@ -34,13 +34,16 @@ Second, webob is broken regarding etags:
 
   (I have to check the RFC).
 
-This monkeypatch fixes this by:
+This module fixes this by:
 
 * introducing a subclass :class:`WeakEtag` of str,
-* patching :func:`webob.descriptors.parse_etag_response` and
-  :func:`webob.descripyors.serialize_etag_response` to handle it correctly;
-* ignoring :meth:`webob.ETagMatcher.weak_match` and always using the ``in``
-  operator instead (this is already what webob does internally).
+* providing alternatives to :func:`webob.descriptors.parse_etag_response` and
+  :func:`webob.descriptors.serialize_etag_response`
+  (:func:`new_parse_etag_response` and :func:`new_serialize_etag_response`
+  respectively) that use :class:`WeakEtag` to handle weak etags correctly,
+* overriding :class:`MyResponse`.`etag` to use the new functions above.
+
+In the long run, these improvements can serve as a base to fix :mod:`webob`.
 
 """
 

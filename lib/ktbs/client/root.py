@@ -32,8 +32,9 @@ class KtbsRoot(KtbsRootMixin, Resource):
 
     def create_base(self, id=None, graph=None):
         """Create a new base in this kTBS.
-        id: either None, a relative URI or a BNode present in graph
-        graph: if not none, may contain additional properties for the new base
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'

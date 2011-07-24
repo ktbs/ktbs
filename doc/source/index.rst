@@ -11,9 +11,15 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   abstract_api
+   ktbs
    ktbs_client
    ktbs_common
-   ktbs_rdfrest
+   rdfrest
+
+.. todo::
+
+  add intersphinx links to ``webob`` and ``rdflib``
 
 Indices and tables
 ==================

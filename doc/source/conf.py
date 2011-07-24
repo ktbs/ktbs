@@ -225,3 +225,9 @@ man_pages = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'http://docs.python.org/': None}
+
+# the member order in the source is relevant; keep it in the doc
+autodoc_member_order='bysource'
+
+# this is work in progress; let the TODOs show
+todo_include_todos=True

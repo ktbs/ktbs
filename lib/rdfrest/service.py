@@ -68,7 +68,7 @@ class Service(object):
 
         :return: the resource, or None
        
-        :see-also: `register`
+        :see-also: :meth:`register`
         """
         resource = self._resource_cache.get(uri)
         if resource is None:

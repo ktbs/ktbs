@@ -99,9 +99,15 @@ def make_fresh_resource(graph, prefix, suffix=""):
     """
     length = 2
     while True:
-        token = "".join( choice("abcdefghijklmnopqrstuvwxyz0123456789")
-                         for i in range(length) )
-        node = URIRef("%s%s%s" % (prefix, token, suffix))
+        node = URIRef("%s%s%s" % (prefix, random_token(length), suffix))
         if check_new(graph, node):
             return node
         length += 1
+
+def random_token(length, characters="abcdefghijklmnopqrstuvwxyz0123456789"):
+    """Create a random opaque string.
+
+    :param length:     the length of the string to generate
+    :param characters: the range of characters to use
+    """
+    return "".join( choice(characters) for i in range(length) )
