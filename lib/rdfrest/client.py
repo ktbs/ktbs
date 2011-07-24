@@ -509,17 +509,24 @@ class ProxyStore(Store):
         """
         LOG.debug("******** destroy (%s) ", configuration)
 
-    def query(self, graph, query_object, initNs={}, initBindings={}, **kwargs):
+    def query(self, graph, query_object, 
+              initNs=None, initBindings=None, **kw): 
         """ I provide SPARQL query processing as a store.
 
         I simply pass through the query to the underlying graph. This prevents
         an external SPARQL engine to make multiple accesses to that store,
         which can generate HTTP traffic.
         """
+        # initNs and initBindings are invalid names for pylint (C0103), but
+        # method `query` is specified by rdflib, so #pylint: disable=C0103
         assert graph.store is self
+        if initNs is None:
+            initNs = {}
+        if initBindings is None:
+            initBindings = {}
         self._pull()
         return self._graph.query(query_object, initNs=initNs,
-                                 initBindings=initBindings, **kwargs)
+                                 initBindings=initBindings, **kw)
 
 class GraphChangedError(Exception):
     """ Exception to be raised when the user tries to change graph data
