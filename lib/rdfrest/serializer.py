@@ -112,14 +112,27 @@ class SerializerRegister(object):
         """
         return dict(self._namespaces)
 
+    def bind_prefix(self, prefix, namespace_uri):
+        """Add a namespace prefix.
+
+        `prefix` must not be already bound in :attr:`namespaces`.
+        """
+        assert prefix not in self._namespaces
+        self._namespaces[prefix] = str(namespace_uri)
+
 
 def register(content_type, extension=None, preference=80):
-    """Shortcut to 
- :meth:`SerializerRegister.register SerializerRegister.get_default().register`
+    """:meth:`~SerializerRegister.register Register` a serializer in
+    the default register.
     """
     return SerializerRegister.get_default().register(content_type, extension,
                                                      preference)
 
+def bind_prefix(prefix, namespace_uri):
+    """:meth:`~SerializerRegister.bind_prefix Bind` a namespace prefix
+    in the default register.
+    """
+    return SerializerRegister.get_default().bind_prefix(prefix, namespace_uri)
 
 @register("application/rdf+xml", "rdf", 60)
 @register("application/xml",     "xml", 20)

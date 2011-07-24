@@ -85,7 +85,7 @@ class RdfPostMixin(Resource):
         if errors:
             raise InvalidDataError(errors)
 
-        get_class = self.service.class_map.get
+        get_class = self.service._class_map.get #pylint: disable=W0212
         resource_class = None
         for typ in new_graph.objects(created, RDF.type):
             candidate = get_class(typ)
@@ -401,7 +401,7 @@ class WithReservedNamespacesMixin(Resource):
         Cache the set of all postable types.
         """
         return frozenset(chain(
-                [cls.MAIN_RDF_TYPE],
+                [cls.RDF_MAIN_TYPE],
                 (
                     typ
                     for superclass in cls.mro()

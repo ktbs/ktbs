@@ -37,7 +37,7 @@ I provide :class:`Resource`, the atomic component of an RDF-Rest service.
   managing a family or related resources.
 
 """
-from rdflib import Graph, RDFS, URIRef
+from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
 
 from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
@@ -59,7 +59,7 @@ class Resource(object):
     """
 
     # subclasses must override this attribute; see Service.register
-    MAIN_RDF_TYPE = RDFS.Resource # just to please pylint really
+    RDF_MAIN_TYPE = RDFS.Resource # just to please pylint really
 
     def __init__(self, service, uri):
         assert isinstance(uri, URIRef), repr(uri)
@@ -97,6 +97,26 @@ class Resource(object):
             raise InvalidDataError(errors)
         cls.store_new_graph(service, uri, new_graph)
         return cls(service, uri)
+
+    @classmethod
+    def create_root_graph(cls, uri):
+        """Return a bootstrap graph for a service root.
+
+        :param uri:       the URI of the resource to create
+        :type  uri:       rdflib.URIRef
+
+        :rtype: rdflib.Graph
+
+        This method is used by :class:`~rdfrest.service.Service` on the class
+        registered as the root class, in order to populate an empty store. The
+        return value will then be passed to :meth:`create`.
+
+        The default behaviour is to return a graph with a single triple,
+        stating that this resource has ``rdf:type`` ``RDF_MAIN_TYPE``.
+        """
+        ret = Graph()
+        ret.add((uri, _RDF_TYPE, cls.RDF_MAIN_TYPE))
+        return ret
 
     @classmethod
     def check_new_graph(cls, uri, new_graph,
@@ -149,7 +169,7 @@ class Resource(object):
             graph_add(triple)
 
         private_add = Graph(service.store, URIRef(uri+"#private")).add
-        private_add((uri, _HAS_IMPL, cls.MAIN_RDF_TYPE))
+        private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
 
     @classmethod
     def mint_uri(cls, target, new_graph, created):
@@ -237,3 +257,4 @@ class Resource(object):
         raise MethodNotAllowedError("DELETE on %s" % self.uri)
 
 _HAS_IMPL = RDFREST.hasImplementation
+_RDF_TYPE = RDF.type

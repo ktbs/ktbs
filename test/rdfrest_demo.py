@@ -41,6 +41,7 @@ from rdfrest.mixins import (WithCardinalityMixin, BookkeepingMixin,
                             RdfPutMixin, RdfPostMixin,
                             )
 from rdfrest.resource import Resource
+from rdfrest.serializer import bind_prefix
 from rdfrest.service import Service
 
 
@@ -54,7 +55,7 @@ class Foo(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
           RdfPutMixin, Resource):
     """An example resource."""
 
-    MAIN_RDF_TYPE = NS.Foo
+    RDF_MAIN_TYPE = NS.Foo
 
     RDF_RESERVED_NS   = [NS,]
     RDF_PUTABLE_IN    = [NS.rw_in,]
@@ -71,10 +72,18 @@ class Foo(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
 class Bar(Foo, RdfPostMixin):
     """An extension of Foo, which allows to be posted new resources."""
 
-    MAIN_RDF_TYPE = NS.Bar
+    RDF_MAIN_TYPE = NS.Bar
 
     def ack_created(self, created):
         self._graph.add((self.uri, NS.has_child, created.uri))
+
+    @classmethod
+    def create_root_graph(cls, uri):
+        graph = super(Bar, cls).create_root_graph(uri)
+        graph.add((NS.something, NS.rw_in, uri))
+        graph.add((uri, NS.rw_out,
+                   Literal("rw_in and rw_out are required properties")))
+        return graph
 
 class FooBarService(Service):
     "A demo service"
@@ -89,19 +98,21 @@ class FooBarService(Service):
         return Bar.create(self, uri, graph)
 
 FooBarService.register(Foo)
-FooBarService.register(Bar)
+FooBarService.register_root(Bar)
 
 
 def main():
     "The main function of this test"
+    HOST = "localhost"
+    PORT = 8001
+    bind_prefix("", NS)
     store = plugin.get("IOMemory", Store)()
-    service = FooBarService(store)
-    base = URIRef("http://localhost:8001/")
-    _root = service.bootstrap(base)
+    root_uri = URIRef("http://%s:%s/" % (HOST, PORT))
+    service = FooBarService(store, root_uri)
     http = HttpFrontend(service)
-    print >> stderr, "===", "Starting server on", base
-    make_server("localhost", 8001, http).serve_forever()
-    make_server("localhost", 8001, http).handle_request()
+    print >> stderr, "===", "Starting server on ", root_uri
+    make_server(HOST, PORT, http).serve_forever()
+    #make_server(HOST, PORT, http).handle_request()
 
 if __name__ == "__main__":
     main()

@@ -23,6 +23,11 @@ class RdfRestException(Exception):
     """
     pass
 
+class CorruptedStore(RdfRestException):
+    """An error raised when the RDF store is in an unexpected state.
+    """
+    pass
+
 class CanNotProceedError(RdfRestException):
     """An error raised when the state of the RDF-REST service prevents from
     completing a request.

@@ -20,46 +20,90 @@ I provide the class `Service`, the entry point to an RDF-Rest service.
 """
 from rdflib import Graph, URIRef
 
+from rdfrest.exceptions import CorruptedStore
 from rdfrest.namespaces import RDFREST
 
 class Service(object):
     """
-    An RDF-rest service is a set of `rdfrest.resource.Resource resources`.
+    An RDF-REST service is a set of `rdfrest.resource.Resource resources`.
 
-    I dispatch HTTP requests to the appropriate resource. The python class
-    implementing a resource is determined by its RDF type. A python class is
-    attached to an RDF type for a given subclass of `Service` by decorating
-    that python class with the `Service.register` class method.
+    One particular resource, called the *root* of the service, is the entry
+    point to the service.
+
+    Actual implementations should subclass this class, then use class methods
+    :meth:`register` and :meth:`register_root` to customize their behaviour.
     """
 
-    def __init__(self, store):
+    _class_map = None
+    _root_cls = None
+
+    def __init__(self, store, root_uri, create=True):
         """
         Initializes this RdfRest service with the given store.
-        
-        :type store: rdflib.store.Store
+
+        :param store:    the RDF store containing the data of this service
+        :type  store:    rdflib.store.Store
+        :param root_uri: the URI of the root resource of this service
+        :type  root_uri: rdflib.URIRef
+        :param create:   if `store` is empty, populate it with initial data?
         """
+        assert self._class_map, "No registered resource class"
+        assert self._root_cls, "No registered root resource class"
+
         self.store = store
-        self._resource_cache = {}
+        self.root_uri = root_uri
+        self._resource_cache = res_cache = {}
+        if len(store) == 0:
+            assert create, "Empty store; `create` should be allowed"
+            root_cls = self._root_cls
+            graph = root_cls.create_root_graph(root_uri)
+            root = root_cls.create(self, self.root_uri, graph)
+            res_cache[str(root_uri)] = root
         
     @classmethod
     def register(cls, py_class):
         """Register `py_class` as a resource implementation.
 
-        The given class `py_class` must have an attribute MAIN_RDF_TYPE, which
+        The given class `py_class` must have an attribute RDF_MAIN_TYPE, which
         is a URIRef.
 
         This method can be used as a class decorator.
         """
-        class_map = getattr(cls, "class_map", None)
+        class_map = cls._class_map
         if class_map is None:
-            class_map = cls.class_map = {}
+            class_map = cls._class_map = {}
 
-        rdf_type = py_class.MAIN_RDF_TYPE
+        rdf_type = py_class.RDF_MAIN_TYPE
         assert isinstance(rdf_type, URIRef)
         assert rdf_type not in class_map, "Conflicting implementation"
         class_map[rdf_type] = py_class
         return py_class
-            
+
+    @classmethod
+    def register_root(cls, py_class):
+        """Register `py_class` as a resource implementation *and* as the
+        class of the `root`:attr: resource.
+
+        :see-also: :meth:`register`
+
+        This method can be used as a class decorator.
+        """
+        assert cls._root_cls is None
+        cls.register(py_class)
+        cls._root_cls = py_class
+        return py_class
+
+    @property
+    def root(self):
+        """Get the root resource of this service.
+
+        :rtype: rdfrest.resource.Resource
+        """
+        ret = self.get(self.root_uri)
+        if ret is None:
+            raise CorruptedStore("root resource not found")
+        return ret
+
     def get(self, uri):
         """Get a resource from this service.
 
@@ -72,15 +116,13 @@ class Service(object):
         """
         resource = self._resource_cache.get(uri)
         if resource is None:
-            assert hasattr(self, "class_map"), "No resource class declared"
-            
             private = Graph(self.store, URIRef(uri + "#private"))
             if len(private) == 0:
                 return None
             uri = URIRef(uri)
             types = list(private.objects(uri, _HAS_IMPL))
             assert len(types) == 1, types
-            py_class = self.class_map.get(types[0])
+            py_class = self._class_map.get(types[0])
             assert py_class is not None, "corrupted store"
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
