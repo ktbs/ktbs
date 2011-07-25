@@ -94,13 +94,13 @@ class Resource(ResourceMixin):
         """
         return self._graph
 
-    def set_graph(self, new_graph):
+    def set_graph(self, other_graph):
         """TODO docstring
         """
         with self:
             self._graph.remove((None, None, None))
             add = self._graph.add
-            for triple in new_graph:
+            for triple in other_graph:
                 add(triple)
 
     @staticmethod
@@ -111,7 +111,7 @@ class Resource(ResourceMixin):
             if graph is None:
                 graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
                 graph.open(uri)
-            typ = next(graph.objects(uri, _RDF_TYPE))
+            typ = graph.value(uri, _RDF_TYPE)
         maker = RESOURCE_MAKER[typ]
         return maker(uri, graph)
 

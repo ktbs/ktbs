@@ -46,7 +46,7 @@ class TraceMixin(InBaseMixin):
         """
         I return the trace model of this trace.
         """
-        tmodel_uri = next(self.graph.objects(self.uri, _HAS_MODEL))
+        tmodel_uri = self._graph.value(self.uri, _HAS_MODEL)
         return self.make_resource(tmodel_uri)
         # TODO MAJOR make_resource return None for external models; fix this
 
@@ -58,7 +58,7 @@ class TraceMixin(InBaseMixin):
         value to datetime, or raise an exception on a failure.
 
         """
-        origin = next(self.object.objects(self.uri, _HAS_TRACE_ORIGIN))
+        origin = self._graph.value(self.uri, _HAS_TRACE_ORIGIN)
         if as_datetime:
             return parse_date(origin)
         else:
@@ -69,7 +69,7 @@ class TraceMixin(InBaseMixin):
         I iter over the sources of this computed trace.
         """
         make_resource = self.make_resource
-        for src in self.graph.objects(self.uri, _HAS_SOURCE_TRACE):
+        for src in self._graph.objects(self.uri, _HAS_SOURCE_TRACE):
             yield make_resource(src)
 
     def iter_transformed_traces(self):
@@ -77,7 +77,7 @@ class TraceMixin(InBaseMixin):
         Iter over the traces having this trace as a source.
         """
         make_resource = self.make_resource
-        for trc in self.graph.subjects(self.uri, _HAS_SOURCE_TRACE):
+        for trc in self._graph.subjects(self.uri, _HAS_SOURCE_TRACE):
             yield make_resource(trc)
 
 
@@ -93,8 +93,7 @@ class StoredTraceMixin(TraceMixin):
         """
         model_uri = coerce_to_uri(model, self.uri)
         with self:
-            self.graph.remove((self.uri, _HAS_MODEL, None))
-            self.graph.add((self.uri, _HAS_MODEL, model_uri))
+            self._graph.set((self.uri, _HAS_MODEL, model_uri))
 
     def set_origin(self, origin):
         """I set the origin of this trace.
@@ -105,23 +104,20 @@ class StoredTraceMixin(TraceMixin):
             origin = isoformat()
         origin = Literal(origin)
         with self:
-            self.graph.remove((self.uri, _HAS_TRACE_ORIGIN, None))
-            self.graph.add((self.uri, _HAS_TRACE_ORIGIN, origin))
+            self._graph.set((self.uri, _HAS_TRACE_ORIGIN, origin))
 
     def get_default_subject(self):
         """
         I return the default subject of this trace.
         """
-        return next(self.graph.objects(self.uri, _HAS_DEFAULT_SUBJECT),
-                    None)
+        return self._graph.value(self.uri, _HAS_DEFAULT_SUBJECT)
 
     def set_default_subject(self, subject):
         """I set the default subject of this trace.
         """
         subject = Literal(subject)
         with self:
-            self.graph.remove((self.uri, _HAS_DEFAULT_SUBJECT, None))
-            self.graph.add((self.uri, _HAS_DEFAULT_SUBJECT, subject))
+            self._graph.set((self.uri, _HAS_DEFAULT_SUBJECT, subject))
 
 
     # TODO MAJOR implement part of the abstract API

@@ -41,7 +41,7 @@ class BaseMixin(ResourceMixin):
             SELECT DISTINCT ?s ?t
             WHERE { <%s> k:contains ?s . ?s a ?t . }
         """
-        return iter(self.graph.query(query_template % self.uri))
+        return iter(self._graph.query(query_template % self.uri))
             
     def iter_traces(self):
         """
@@ -77,7 +77,7 @@ class BaseMixin(ResourceMixin):
         #pylint: disable-msg=W0622
         #  Redefining built-in id
         elt_uri = coerce_to_uri(id, self.uri)
-        typ = next(self.graph.objects(elt_uri, _RDF_TYPE), None)
+        typ = self._graph.value(elt_uri, _RDF_TYPE)
         if typ not in (_STORED_TRACE, _COMPUTED_TRACE, _MODEL, _METHOD):
             return None
         else:

@@ -35,16 +35,14 @@ class ModelMixin(InBaseMixin):
     def get_unit(self):
         """Return the temporal unit used by this model.
         """
-        unit = next(self.graph.objects(self.uri, _HAS_UNIT), "ms")
-        return unit
+        return self._graph.value(self.uri, _HAS_UNIT, default="ms")
 
     def set_unit(self, unit):
         """Return the temporal unit used by this model.
         """
         unit = Literal(str(unit))
         with self:
-            self.graph.remove((self.uri, _HAS_UNIT, None))
-            self.graph.add((self.uri, _HAS_UNIT, unit))
+            self._graph.add((self.uri, _HAS_UNIT, unit))
 
     def get(self, id):
         """
@@ -58,7 +56,7 @@ class ModelMixin(InBaseMixin):
         #pylint: disable-msg=W0622
         #  Redefining built-in id
         uri = coerce_to_uri(id, self.uri)
-        for rdf_type in self.graph.objects(uri, _RDF_TYPE):
+        for rdf_type in self._graph.objects(uri, _RDF_TYPE):
             if rdf_type in (_ATTR_TYPE, _OBSEL_TYPE, _REL_TYPE):
                 return self.make_resource(uri, rdf_type)
         return None
@@ -69,7 +67,7 @@ class ModelMixin(InBaseMixin):
         """
         make_resource = self.make_resource
         cache = set()
-        for uri in self.graph.objects(self.uri, _HAS_PARENT_MODEL):
+        for uri in self._graph.objects(self.uri, _HAS_PARENT_MODEL):
             model = make_resource(uri) or uri
             if include_indirect:
                 cache.add(model)
@@ -86,7 +84,7 @@ class ModelMixin(InBaseMixin):
         I iter over the attribute types used in this trace model.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_RDF_TYPE, _ATTR_TYPE):
+        for uri in self._graph.subjects(_RDF_TYPE, _ATTR_TYPE):
             yield make_resource(uri)
         if include_inherited:
             for inherited in self.iter_inherited(True):
@@ -98,7 +96,7 @@ class ModelMixin(InBaseMixin):
         I iter over the obsel types used in this trace model.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_RDF_TYPE, _OBSEL_TYPE):
+        for uri in self._graph.subjects(_RDF_TYPE, _OBSEL_TYPE):
             yield make_resource(uri)
         if include_inherited:
             for inherited in self.iter_inherited(True):
@@ -110,7 +108,7 @@ class ModelMixin(InBaseMixin):
         I iter over the relation types used in this trace model.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_RDF_TYPE, _REL_TYPE):
+        for uri in self._graph.subjects(_RDF_TYPE, _REL_TYPE):
             yield make_resource(uri)
         if include_inherited:
             for inherited in self.iter_inherited(True):
@@ -122,23 +120,23 @@ class ModelMixin(InBaseMixin):
         I add model as a parent model to this model.
         """
         with self:
-            self.graph.add((self.uri, _HAS_PARENT_MODEL,
-                            coerce_to_uri(model, self.uri)))
+            self._graph.add((self.uri, _HAS_PARENT_MODEL,
+                             coerce_to_uri(model, self.uri)))
 
     def remove_parent(self, model):
         """
         I remove model as a parent model to this model.
         """
         with self:
-            self.graph.remove((self.uri, _HAS_PARENT_MODEL,
-                               coerce_to_uri(model, self.uri)))
+            self._graph.remove((self.uri, _HAS_PARENT_MODEL,
+                                coerce_to_uri(model, self.uri)))
 
     def create_obsel_type(self, label, supertypes=(), id=None):
         """
         I create a new obsel type in this model.
         """
         # redefining built-in 'id' #pylint: disable=W0622
-        graph = self.graph
+        graph = self._graph
         base_uri = self.uri
         with self:
             uri = mint_uri(label, self, id)
@@ -158,7 +156,7 @@ class _ModelElementMixin(ResourceMixin):
     """
     I provide the common pythonic interface to any element of trace models.
 
-    I make the assumption that self.graph is in fact containing the *whole*
+    I make the assumption that self._graph is in fact containing the *whole*
     trace model, not just the description of this element, and that its
     identifier is the URI of the trace model. This is consistent with common
     modelling practices, where elements of a model/ontology will usually have
@@ -190,7 +188,7 @@ class _ModelElementMixin(ResourceMixin):
         """
         Return the trace model of this element.
         """
-        tmodel_uri = self.graph.identifier
+        tmodel_uri = self._graph.identifier
         ret = self.make_resource(tmodel_uri)
         return ret
     #
@@ -215,7 +213,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         else:
             make_resource = self.make_resource
             return ( make_resource(uri) 
-                     for uri in self.graph.subjects(self._SUPER_TYPE_PROP) )
+                     for uri in self._graph.subjects(self._SUPER_TYPE_PROP) )
 
     def iter_supertypes(self, include_indirect=False):
         """
@@ -228,7 +226,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         else:
             make_resource = self.make_resource
             return ( make_resource(uri)
-                     for uri in self.graph.objects(self._SUPER_TYPE_PROP) )
+                     for uri in self._graph.objects(self._SUPER_TYPE_PROP) )
 
     def matches(self, *others):
         """
@@ -257,7 +255,7 @@ class AttributeTypeMixin(_ModelElementMixin):
         """
         I hold the obsel type containing this attribute, or None.
         """
-        uri = next(self.graph.objects(self.uri, _HAS_AOBSELTYPE), None)
+        uri = self._graph.value(self.uri, _HAS_AOBSELTYPE)
         if uri is None:
             return None
         else:
@@ -269,7 +267,7 @@ class AttributeTypeMixin(_ModelElementMixin):
 
         Returns the type as a URIRef
         """
-        return next(self.graph.objects(self.uri, _HAS_ADATATYPE), None)
+        return self._graph.value(self.uri, _HAS_ADATATYPE)
 
     # TODO implement set_obsel_type, set_data_type
 
@@ -287,7 +285,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the attribute types allowed for this type.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_AOBSELTYPE, self.uri):
+        for uri in self._graph.subjects(_HAS_AOBSELTYPE, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -299,7 +297,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the relation types having this obsel type as origin.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_RORIGIN, self.uri):
+        for uri in self._graph.subjects(_HAS_RORIGIN, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -311,7 +309,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the relation types having this obsel type as destination.
         """
         make_resource = self.make_resource
-        for uri in self.graph.subjects(_HAS_RDESTINATION, self.uri):
+        for uri in self._graph.subjects(_HAS_RDESTINATION, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -331,7 +329,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the origin obsel type this relation, or None.
         """
-        uri = next(self.graph.objects(self.uri, _HAS_RORIGIN), None)
+        uri = self._graph.value(self.uri, _HAS_RORIGIN)
         if uri is None:
             return None
         else:
@@ -341,7 +339,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the destination obsel type this relation, or None.
         """
-        uri = next(self.graph.objects(self.uri, _HAS_RDESTINATION), None)
+        uri = self._graph.objects(self.uri, _HAS_RDESTINATION)
         if uri is None:
             return None
         else:

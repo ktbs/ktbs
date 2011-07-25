@@ -35,7 +35,7 @@ class KtbsRootMixin(object):
         I iter over all elements owned by this base.
         """
         make_resource = self.make_resource
-        for obs in self.graph.objects(self.uri, _HAS_BASE):
+        for obs in self._graph.objects(self.uri, _HAS_BASE):
             yield make_resource(obs, _BASE)
 
     def get_base(self, id):
@@ -52,7 +52,7 @@ class KtbsRootMixin(object):
         I list all the builtin methods implemented by this kTBS.
         """
         make_resource = self.make_resource
-        for obs in self.graph.objects(self.uri, _HAS_BUILTIN_METHOD):
+        for obs in self._graph.objects(self.uri, _HAS_BUILTIN_METHOD):
             yield make_resource(obs, _METHOD)
         
 

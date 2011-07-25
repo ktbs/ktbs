@@ -33,7 +33,8 @@ class ComputedTraceMixin(TraceMixin, WithParametersMixin):
         """
         I return the method of this trace.
         """
-        method_uri = next(self.graph.objects(self.uri, _HAS_METHOD))
+        method_uri = self._graph.value(self.uri, _HAS_METHOD)
+        assert method_uri is not None
         return self.make_resource(method_uri)
 
     def set_method(self, method):
@@ -43,8 +44,7 @@ class ComputedTraceMixin(TraceMixin, WithParametersMixin):
         """
         method_uri = coerce_to_uri(method, self.uri)
         with self:
-            self.graph.remove((self.uri, _HAS_METHOD, None))
-            self.graph.add((self.uri, _HAS_METHOD, method_uri))
+            self._graph.set((self.uri, _HAS_METHOD, method_uri))
 
     def _get_inherited_parameters(self):
         """

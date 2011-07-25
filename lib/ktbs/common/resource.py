@@ -36,11 +36,11 @@ class ResourceMixin(object):
         """
         Return a user-friendly label for this resource.
         """
-        pref_label = next(self.graph.objects(self.uri, SKOS.prefLabel), None)
+        pref_label = self._graph.value(self.uri, SKOS.prefLabel)
         if pref_label is not None:
             return str(pref_label)
 
-        label = next(self.graph.objects(self.uri, RDFS.label), None)
+        label = self._graph.objects(self.uri, RDFS.label)
         if label is not None:
             return str(label)
 
@@ -54,12 +54,11 @@ class ResourceMixin(object):
         Set the skos:prefLabel of this resource.
         """
         with self:
-            self.del_label()
-            self.graph.add((self.uri, SKOS.prefLabel, Literal(value)))
+            self._graph.set((self.uri, SKOS.prefLabel, Literal(value)))
 
     def del_label(self):
         """
         Remove the skos:prefLabel of this resource.
         """
         with self:
-            self.graph.remove((self.uri, SKOS.prefLabel, None))
+            self._graph.remove((self.uri, SKOS.prefLabel, None))

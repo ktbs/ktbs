@@ -36,15 +36,14 @@ class ObselMixin(ResourceMixin):
         """
         I return the trace containing this obsel.
         """
-        return self.make_resource(next(self.graph.objects(self.uri,
-                                                          _HAS_TRACE)))
+        return self.make_resource(self._graph.value(self.uri, _HAS_TRACE))
 
     def get_obsel_type(self):
         """
         I return the obsel type of this obsel.
         """
         tmodel = self.trace.trace_model
-        for typ in self.graph.objects(self.uri, _RDF_TYPE):
+        for typ in self._graph.objects(self.uri, _RDF_TYPE):
             ret = tmodel.get(typ)
             if ret is not None:
                 return ret
@@ -53,7 +52,7 @@ class ObselMixin(ResourceMixin):
         """
         I return the begin timestamp of the obsel.
         """
-        return int(next(self.graph.objects(self.uri, _HAS_BEGIN)))
+        return int(self._graph.value(self.uri, _HAS_BEGIN))
 
     def get_begin_dt(self):
         """
@@ -61,32 +60,32 @@ class ObselMixin(ResourceMixin):
 
         We use a better implementation than the standard one.
         """
-        return parse_date(next(self.graph.objects(self.uri, _HAS_BEGIN_DT)))
+        return parse_date(self._graph.value(self.uri, _HAS_BEGIN_DT))
 
     def get_end(self):
         """
         I return the end timestamp of the obsel.
         """
-        return int(next(self.graph.objects(self.uri, _HAS_END)))
+        return int(self._graph.value(self.uri, _HAS_END))
 
     def get_end_dt(self):
         """
         I return the end timestamp of the obsel.
         """
-        return parse_date(next(self.graph.objects(self.uri, _HAS_END_DT)))
+        return parse_date(self._graph.value(self.uri, _HAS_END_DT))
 
     def get_subject(self):
         """
         I return the subject of the obsel.
         """
-        return next(self.graph.objects(self.uri, _HAS_SUBJECT))
+        return self._graph.value(self.uri, _HAS_SUBJECT)
 
     def iter_source_obsels(self):
         """
         I iter over the source obsels of the obsel.
         """
         make_resource = self.make_resource
-        for i in self.graph.objects(self.uri, _HAS_SOURCE_OBSEL):
+        for i in self._graph.objects(self.uri, _HAS_SOURCE_OBSEL):
             yield make_resource(i, _OBSEL)
 
     def iter_attribute_types(self):
@@ -104,7 +103,7 @@ class ObselMixin(ResourceMixin):
             }
         """ % self.uri
         make_resource = self.make_resource
-        for atype in self.graph.query(query_str):
+        for atype in self._graph.query(query_str):
             if not atype.startswith(KTBS) and atype != _RDF_TYPE:
                 yield make_resource(atype, _ATTRIBUTE_TYPE)
 
@@ -120,7 +119,7 @@ class ObselMixin(ResourceMixin):
             }
         """ % self.uri
         make_resource = self.make_resource
-        for rtype in self.graph.query(query_str):
+        for rtype in self._graph.query(query_str):
             yield make_resource(rtype, _RELATION_TYPE)
 
     def iter_related_obsels(self, rtype):
@@ -136,7 +135,7 @@ class ObselMixin(ResourceMixin):
             }
         """ % (self.uri, rtype)
         make_resource = self.make_resource
-        for rtype in self.graph.query(query_str):
+        for rtype in self._graph.query(query_str):
             yield make_resource(rtype, _OBSEL)
 
     def iter_inverse_relation_types(self):
@@ -151,7 +150,7 @@ class ObselMixin(ResourceMixin):
             }
         """ % self.uri
         make_resource = self.make_resource
-        for rtype in self.graph.query(query_str):
+        for rtype in self._graph.query(query_str):
             yield make_resource(rtype, _RELATION_TYPE)
 
     def iter_relating_obsels(self, rtype):
@@ -167,7 +166,7 @@ class ObselMixin(ResourceMixin):
             }
         """ % (rtype, self.uri)
         make_resource = self.make_resource
-        for binding in self.graph.query(query_str):
+        for binding in self._graph.query(query_str):
             yield make_resource(binding[0], _OBSEL)
 
     def get_attribute_value(self, atype):
@@ -175,7 +174,7 @@ class ObselMixin(ResourceMixin):
         I return the value of the given attribut type for this obsel, or None.
         """
         atype = coerce_to_uri(atype, self.uri)
-        ret = next(self.graph.objects(self.uri, atype), None)
+        ret = self._graph.value(self.uri, atype)
         if isinstance(ret, Literal):
             ret = ret.toPython()
         return ret

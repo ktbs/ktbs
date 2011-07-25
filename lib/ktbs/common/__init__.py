@@ -24,8 +24,8 @@ All those mixin require
 * `__eq__` and `__hash__` methods
 * `__enter__` and `__exit__` methods for managing transactions
 * a property `uri`: a `~rdflib.URIRef`:class: identifying this resource
-* a property `graph`: a `~rdflib.Graph`:class: containing the description of
-  this resource
+* a property `_graph`: a `~rdflib.Graph`:class: containing the description of
+  this resource, that will be modified *only* inside a transaction-context
 * a method `make_resource(node, node_type=None)` used to build another
   resource as the value of a property.
 

@@ -48,7 +48,7 @@ class WithParametersMixin(object):
         not duplicated.
         """
         parameters = self._get_inherited_parameters()
-        for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
+        for parameter in self._graph.objects(self.uri, _HAS_PARAMETER):
             key, value = parameter.split("=", 1)
             parameters[key] = value
         return parameters
@@ -60,7 +60,7 @@ class WithParametersMixin(object):
             for i in self.parameters_as_dict:
                 yield i
         else:
-            for parameter in self.graph.objects(self.uri, _HAS_PARAMETER):
+            for parameter in self._graph.objects(self.uri, _HAS_PARAMETER):
                 key, _ = parameter.split("=", 1)
                 yield key
 
@@ -78,7 +78,7 @@ class WithParametersMixin(object):
             raise ValueError("Can not %s inherited parameter '%s'"
                              % ((value is None) and "delete" or "set", key))
         parameter = None
-        for i in self.graph.objects(self.uri, _HAS_PARAMETER):
+        for i in self._graph.objects(self.uri, _HAS_PARAMETER):
             akey, _ = i.split("=", 1)
             if akey == key:
                 parameter = i
@@ -86,9 +86,9 @@ class WithParametersMixin(object):
 
         with self:
             if parameter is not None:
-                self.graph.remove((self.uri, _HAS_PARAMETER, parameter))
+                self._graph.remove((self.uri, _HAS_PARAMETER, parameter))
             if value is not None:
-                self.graph.add((self.uri, _HAS_PARAMETER,
+                self._graph.add((self.uri, _HAS_PARAMETER,
                                 Literal("%s=%s" % (key, value))))
         
     def del_parameter(self, key):
@@ -108,8 +108,7 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         """
         I return the inherited method.
         """
-        method_uri = next(self.graph.objects(self.uri, _HAS_PARENT_METHOD),
-                          None)
+        method_uri = self._graph.value(self.uri, _HAS_PARENT_METHOD)
         if method_uri is None:
             return None
         else:
@@ -122,8 +121,7 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         # TODO include transaction management here?
         method = coerce_to_uri(method, self.uri)
         with self:
-            self.graph.remove((self.uri, _HAS_PARENT_METHOD, None))
-            self.graph.add((self.uri, _HAS_PARENT_METHOD, method))
+            self._graph.set((self.uri, _HAS_PARENT_METHOD, method))
 
     def _get_inherited_parameters(self):
         """
