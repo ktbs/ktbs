@@ -241,7 +241,7 @@ class BookkeepingMixin(Resource):
     def etag(self):
         """I return the etag of this resource.
         """
-        return str(next(self._private.objects(self.uri, _ETAG)))
+        return str(self._private.value(self.uri, _ETAG))
 
     @property
     def last_modified(self):
@@ -249,7 +249,7 @@ class BookkeepingMixin(Resource):
 
         :return: number of seconds since EPOCH, as returned by `time.time()`
         """
-        return next(self._private.objects(self.uri, _LAST_MODIFIED)).toPython()
+        return self._private.value(self.uri, _LAST_MODIFIED).toPython()
 
     @classmethod
     def store_new_graph(cls, service, uri, new_graph):
