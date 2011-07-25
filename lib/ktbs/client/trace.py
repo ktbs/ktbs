@@ -39,7 +39,6 @@ class Trace(Resource):
         Resource.__init__(self, uri, graph)
         obsels_uri = self._graph.objects(self.uri, _HAS_OBSEL_COLLECTION)
         assert obsels_uri is not None
-        import pdb; pdb.set_trace()
         obsels_uri = next(obsels_uri)
         self._obsels = Graph(ProxyStore({"uri":obsels_uri}),
                             identifier=obsels_uri)
