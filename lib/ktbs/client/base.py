@@ -102,7 +102,7 @@ class Base(BaseMixin, Resource):
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
         # TODO MAJOR parse content and feed the graph to make_resource ???
-        return self.make_resource(created_uri, _COMPUTED_TRACE)
+        return self.make_resource(created_uri, _STORED_TRACE)
 
     # TODO implement other create_X
 
