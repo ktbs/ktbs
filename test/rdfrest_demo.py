@@ -74,8 +74,12 @@ class Bar(Foo, RdfPostMixin):
 
     RDF_MAIN_TYPE = NS.Bar
 
-    def ack_created(self, created):
-        self._graph.add((self.uri, NS.has_child, created.uri))
+    def rdf_post(self, graph):
+        created = super(Bar, self).rdf_post(graph)
+        with self:
+            for i in created:
+                self._graph.add((self.uri, NS.has_child, created[0]))
+        return created
 
     @classmethod
     def create_root_graph(cls, uri):

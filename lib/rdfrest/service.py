@@ -53,6 +53,7 @@ class Service(object):
         self.store = store
         self.root_uri = root_uri
         self._resource_cache = res_cache = {}
+        self._context_level = 0
         if len(store) == 0:
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
@@ -128,18 +129,22 @@ class Service(object):
             self._resource_cache[uri] = resource
         return resource
 
-    # TODO MAJOR ensures underlying store supports transactions; if not, they
-    # should perhaps be emulated
-
-    def commit(self):
-        """Commit pending modifications.
+    def __enter__(self):
+        """Start to modifiy this service.
         """
-        self.store.commit()
+        self._context_level += 1
 
-    def rollback(self):
-        """Rollback pending modifications.
+    def __exit__(self, typ, value, traceback):
+        """Ends modifications to this service.
         """
-        self.store.rollback()
+        level = self._context_level - 1
+        self._context_level = level
+        if level == 0:
+            if typ is None:
+                self.store.commit()
+            else:
+                self.store.rollback()
+        # TODO: decide what to do if self.store does *not* support rollback
         
 
 _HAS_IMPL = RDFREST.hasImplementation

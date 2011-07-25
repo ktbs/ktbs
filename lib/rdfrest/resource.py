@@ -68,6 +68,7 @@ class Resource(object):
         store = service.store
         self._graph = Graph(store, uri)
         self._private = Graph(store, URIRef(uri+"#private"))
+        self._context_level = 0
 
     @classmethod
     def create(cls, service, uri, new_graph):
@@ -270,6 +271,22 @@ class Resource(object):
         """
         # unused argument #pylint: disable=W0613
         raise MethodNotAllowedError("DELETE on %s" % self.uri)
+
+    def __enter__(self):
+        """Start to modifiy this resource.
+        """
+        level = self._context_level
+        self._context_level = level + 1
+        if level == 0:
+            self.service.__enter__()
+
+    def __exit__(self, typ, value, traceback):
+        """Ends modifications to this resource.
+        """
+        level = self._context_level - 1
+        self._context_level = level
+        if level == 0:
+            self.service.__exit__(typ, value, traceback)
 
 _HAS_IMPL = RDFREST.hasImplementation
 _RDF_TYPE = RDF.type

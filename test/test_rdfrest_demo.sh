@@ -24,6 +24,8 @@
 # an existing one if any. This is useful if you want to inspect the standard
 # error of the server while some tests are failing.
 #
+# ADDED: this script used to serve as a test for rdfrest.mixins, but they now
+# have their own unit-test
 
 cd `dirname $0`
 SERVER=./rdfrest_demo.py

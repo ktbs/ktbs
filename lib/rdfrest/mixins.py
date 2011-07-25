@@ -60,10 +60,11 @@ class RdfPutMixin(Resource):
         errors = self.check_new_graph(self.uri, new_graph, self)
         if errors:
             raise InvalidDataError(errors)
-        self._graph.remove((None, None, None))
-        add = self._graph.add
-        for triple in new_graph:
-            add(triple)
+        with self:
+            self._graph.remove((None, None, None))
+            add = self._graph.add
+            for triple in new_graph:
+                add(triple)
 
 
 class RdfPostMixin(Resource):
@@ -78,7 +79,6 @@ class RdfPostMixin(Resource):
 
     * :meth:`find_created`
     * :meth:`check_posted_graph`
-    * :meth:`ack_created`
     """
 
     def rdf_post(self, new_graph, parameters=None):
@@ -118,8 +118,7 @@ class RdfPostMixin(Resource):
                 add_triple([ subst(i) for i in triple ])
             created = new_uri
 
-        posted = resource_class.create(self.service, created, new_graph)
-        self.ack_created(posted)
+        resource_class.create(self.service, created, new_graph)
         return [created]
  
     def find_created(self, new_graph):
@@ -194,14 +193,6 @@ class RdfPostMixin(Resource):
             if not check_new(self._graph, created):
                 return "URI already in use <%s>"
 
-    def ack_created(self, created_resource):
-        """Performs 
-
-        :param created_resource: the just-created resource
-
-        This implementation does nothing.
-        """
-
     @classmethod
     def check_new_graph(cls, uri, new_graph,
                         resource=None, added=None, removed=None):
@@ -246,21 +237,6 @@ class BookkeepingMixin(Resource):
         abstract graph, not to a given serialization.
     """
 
-    def update_bk_metadata(self):
-        """Update the metadata (etag and last-modified) after a change.
-
-        This method is automatically called by :meth:`rdf_put` and
-        :meth:`rdf_post`.
-        """
-        now = time()
-        token = "%s%s" % (now, self.etag)
-        # NB: using time() only does not always work: time() can
-        # return the same value twice; so we salt it with the previous etag,
-        # which should do the trick
-        new_etag = md5(token).hexdigest()
-        self._private.set((self.uri, _ETAG, Literal(new_etag)))
-        self._private.set((self.uri, _LAST_MODIFIED, Literal(now)))
-
     @property
     def etag(self):
         """I return the etag of this resource.
@@ -281,26 +257,27 @@ class BookkeepingMixin(Resource):
         generate bookkeeping metadata.
         """
         super(BookkeepingMixin, cls).store_new_graph(service, uri, new_graph)
+        private = Graph(service.store, URIRef(uri+"#private"))
+        cls._update_bk_metadata_in(uri, private)
+    
+    def __exit__(self, typ, value, traceback):
+        if typ is None:
+            self._update_bk_metadata_in(self.uri, self._private)
+        super(BookkeepingMixin, self).__exit__(typ, value, traceback)
+
+    @classmethod
+    def _update_bk_metadata_in(cls, uri, graph):
+        """Update the metadata in the given graph.
+        """
         now = time()
-        new_etag = md5(str(now)).hexdigest()
-        private_add = Graph(service.store, URIRef(uri+"#private")).add
-        private_add((uri, _ETAG, Literal(new_etag)))
-        private_add((uri, _LAST_MODIFIED, Literal(now)))
-
-    def rdf_put(self, new_graph, parameters=None):
-        """I override :meth:`rdfrest.resource.Resource.rdf_put` to
-        automatically invoke :meth:`update_bk_metadata`.
-        """
-        super(BookkeepingMixin, self).rdf_put(new_graph, parameters)
-        self.update_bk_metadata()
-
-    def rdf_post(self, new_graph, parameters=None):
-        """I override :meth:`rdfrest.resource.Resource.rdf_post` to
-        automatically invoke :meth:`update_bk_metadata`.
-        """
-        ret = super(BookkeepingMixin, self).rdf_post(new_graph, parameters)
-        self.update_bk_metadata()
-        return ret
+        etag = graph.value(uri, _ETAG)
+        token = "%s%s" % (now, etag)
+        # NB: using time() only does not always work: time() can return the
+        # same value twice; so we salt it with the previous etag (if any),
+        # which which should do the trick
+        new_etag = md5(token).hexdigest()
+        graph.set((uri, _ETAG, Literal(new_etag)))
+        graph.set((uri, _LAST_MODIFIED, Literal(now)))
 
 
 class WithReservedNamespacesMixin(Resource):
@@ -311,8 +288,8 @@ class WithReservedNamespacesMixin(Resource):
     can not be freely used in PUT or POST requests, as they have a specific
     meaning for the application.
 
-    Reserved namespaces are listed in the `RDF_RESERVED_NS` class variable (in addition
-    to those inherited from superclasses).
+    Reserved namespaces are listed in the `RDF_RESERVED_NS` class variable (in
+    addition to those inherited from superclasses).
 
     The reserved namespace applies to URIs used as predicates and78 types.
     The default rule is that they can not be added at POST time (except for

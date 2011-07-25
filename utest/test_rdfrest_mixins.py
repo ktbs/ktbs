@@ -90,8 +90,12 @@ class Folder(Item, RdfPostMixin):
     RDF_CARDINALITY_IN  = [(RNS.rw_in,  1, 1)]
     RDF_CARDINALITY_OUT = [(RNS.rw_out, 1, 1)]
 
-    def ack_created(self, created):
-        self._graph.add((self.uri, RNS.hasChild, created.uri))
+    def rdf_post(self, graph):
+        created = super(Folder, self).rdf_post(graph)
+        with self:
+            for i in created:
+                self._graph.add((self.uri, RNS.hasChild, created[0]))
+        return created
 
     @classmethod
     def create_root_graph(cls, uri):

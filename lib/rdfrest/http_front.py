@@ -115,10 +115,14 @@ class HttpFrontend(object):
         except RdfRestException, ex:
             response = MyResponse(ex.message, status=400, request=request)
 
+        except Exception, ex:
+            self._service.store.rollback()
+            raise
+
         if response.status[0] == "2":
-            self._service.commit()
+            self._service.store.commit()
         else:
-            self._service.rollback()
+            self._service.store.rollback()
         return response
 
     def http_delete(self, request, resource):
