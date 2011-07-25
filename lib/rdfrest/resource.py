@@ -199,7 +199,7 @@ class Resource(object):
             )
 
     def rdf_get(self, parameters=None):
-        """Return the graph describing this resource.
+        """Return a read-only graph describing this resource.
 
         More precisely, the returned graph describes the resource
         identified by the URI `<self.uri>?<parameters>` .
@@ -207,11 +207,26 @@ class Resource(object):
         :param parameters: the query string parameters
         :type  parameters: dict
 
+        :return: a graph representing the resource, dynamically reflecting
+                 the changes in the resource
         :rtype: rdflib.Graph
         :raise: :class:`~rdfrest.exceptions.InvalidParametersError`
 
+
         The default behaviour is to accept no `parameters`.
+
+        .. warning::
+            As stated above, the returned graph is dynamic and will reflect the
+            changes made to the resource after it has been returned.
+
+            If one wants a static snapshot of the state of the resoutce, one
+            has to build it immediately after calling rdf_get.
         """
+        # about the warning above:
+        # this design decision comes from the fact that it is more efficient
+        # to build a ReadOnlyGraphAggregate than to copy every triple of
+        # self._graph into another graph.
+
         if not parameters:
             return ReadOnlyGraphAggregate([self._graph])
         else:

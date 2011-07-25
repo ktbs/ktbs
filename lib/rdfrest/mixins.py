@@ -28,7 +28,7 @@ from rdfrest.exceptions import InvalidDataError, MethodNotAllowedError, \
     RdfRestException
 from rdfrest.namespaces import RDFREST
 from rdfrest.resource import Resource
-from rdfrest.utils import cache_result
+from rdfrest.utils import cache_result, check_new
 
 class RdfPutMixin(Resource):
     """I make the mixed-in class PUTable.
@@ -41,7 +41,18 @@ class RdfPutMixin(Resource):
 
     def rdf_put(self, new_graph, parameters=None):
         """I override :meth:`rdfrest.resource.Resource.rdf_put`
+
+        Known bug: if `new_graph` is the `rdflib.Graph`:class: (not an
+        identical graph, but the *very instance*) returned by `rdf_get`,
+        `rdf_put` will make this resource's graph completely empty. As this
+        is a very pathological situation and the fix is not trivial, this bug
+        will not be fixed (at least, not soon).
         """
+        # the reason of this bug is that the graph returned by rdf_get
+        # (a ReadOnlyGraphAggregate) ultimately uses the same backend as
+        # self._graph, so when we empty self._graph below, we also empty
+        # new_graph is that case.
+
         if parameters is not None:
             # an empty dict means that a '?' has been added to the URI
             # so it counts as having parameters
@@ -175,8 +186,13 @@ class RdfPostMixin(Resource):
 
         :return: `None` on success, else an error message
 
-        This implementation does nothing.
+        This implementation only checks that the 'created' node is already in
+        use.
         """
+        # unused argument 'new_graph' #pylint: disable=W0613
+        if isinstance(created, URIRef):
+            if not check_new(self._graph, created):
+                return "URI already in use <%s>"
 
     def ack_created(self, created_resource):
         """Performs 
@@ -237,7 +253,11 @@ class BookkeepingMixin(Resource):
         :meth:`rdf_post`.
         """
         now = time()
-        new_etag = md5(str(now)).hexdigest()
+        token = "%s%s" % (now, self.etag)
+        # NB: using time() only does not always work: time() can
+        # return the same value twice; so we salt it with the previous etag,
+        # which should do the trick
+        new_etag = md5(token).hexdigest()
         self._private.set((self.uri, _ETAG, Literal(new_etag)))
         self._private.set((self.uri, _LAST_MODIFIED, Literal(now)))
 
@@ -481,21 +501,21 @@ class WithReservedNamespacesMixin(Resource):
                     return True
             return False
 
-        errors = []
+        errors = set()
 
         for s, p, o in triples:
             if s == uri:
                 if p == _RDF_TYPE:
                     if is_reserved(o) and o not in types:
-                        errors.append("Can not %s type <%s> for <%s>"
-                                      % (operation, o, uri))
+                        errors.add("Can not %s type <%s> for <%s>"
+                                   % (operation, o, uri))
                 elif is_reserved(p) and p not in out:
-                    errors.append( "Can not %s property <%s> of <%s>"
-                                   % (operation, p, uri))
+                    errors.add( "Can not %s property <%s> of <%s>"
+                                % (operation, p, uri))
             elif o == uri:
                 if is_reserved(p) and p not in in_:
-                    errors.append("Can not %s property <%s> to <%s>"
-                                  % (operation, p, uri))
+                    errors.add("Can not %s property <%s> to <%s>"
+                               % (operation, p, uri))
 
         if errors:
             return "\n".join(errors)
