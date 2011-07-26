@@ -19,7 +19,7 @@
 I contain useful namespace objects.
 """
 
-from rdfrest.namespaces import Namespace
+from rdflib import Namespace
 
 KTBS = Namespace("http://liris.cnrs.fr/silex/2009/ktbs#")
 SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")

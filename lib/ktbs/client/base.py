@@ -39,17 +39,18 @@ class Base(BaseMixin, Resource):
                         model inherits
         :param id: see :ref:`ktbs-resource-creation`
         :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.model.Model`
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
-        self_uri = self.uri
-        node = coerce_to_node(id, self_uri)
+        node = coerce_to_node(id, self.uri)
         if graph is None:
             graph = Graph()
         graph.add((node, _RDF_TYPE, _TRACE_MODEL))
         graph.add((self.uri, _CONTAINS, node))
 
-        uri = self_uri
+        uri = self.uri
         add = graph.add
         for parent in parents or ():
             parent = coerce_to_uri(parent, uri)
@@ -75,8 +76,7 @@ class Base(BaseMixin, Resource):
         :param graph: see :ref:`ktbs-resource-creation`
         """
         # redefining built-in 'id' #pylint: disable=W0622
-        self_uri = self.uri
-        node = coerce_to_node(id, self_uri)
+        node = coerce_to_node(id, self.uri)
 
         if model is None:
             raise ValueError("You must supply a model for the %s trace."
@@ -87,7 +87,7 @@ class Base(BaseMixin, Resource):
         graph.add((node, _RDF_TYPE, _STORED_TRACE))
         graph.add((self.uri, _CONTAINS, node))
 
-        model_uri = coerce_to_uri(model, self_uri)
+        model_uri = coerce_to_uri(model, self.uri)
         graph.add((node, _HAS_MODEL, model_uri))
 
         if origin is None:

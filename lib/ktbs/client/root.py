@@ -35,6 +35,8 @@ class KtbsRoot(KtbsRootMixin, Resource):
 
         :param id: see :ref:`ktbs-resource-creation`
         :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.model.Base`
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
