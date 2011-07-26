@@ -145,7 +145,7 @@ class ModelMixin(InBaseMixin):
             add((uri, _PREF_LABEL, Literal(label)))
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
-        return self.make_resource(id, _OBSEL_TYPE, graph) 
+        return self.make_resource(uri, _OBSEL_TYPE, graph) 
 
 
     # TODO implement add_parent, remove_parent, create_*
