@@ -384,8 +384,12 @@ class ProxyStore(Store):
 
         if rheader.status in (httplib.OK,):
             self._parse_header(rheader)
-        else:
+        elif rheader.status in (httplib.PRECONDITION_FAILED,):
             raise GraphChangedError(url=self._identifier, msg=rheader.status)
+        elif str(rheader.status)[0] == "5":
+            raise ServerError(url=self._identifier, msg=rheader.status)
+        else:
+            raise RuntimeError("%s: %s" % (self._identifier, msg))
 
         LOG.debug("-- _push() ... stop ... --")
 
@@ -542,6 +546,14 @@ class GraphChangedError(Exception):
         self.url = url
         message = ("The graph has already changed on the server at %s,"
                    " the cache is not up to date. HTTP error %s") % (url, msg)
+        Exception.__init__(self, message)
+
+class ServerError(Exception):
+    """ Exception to be raised when the server issues a 5xx error.
+    """
+    def __init__(self, url=None, msg=None):
+        self.url = url
+        message = "Server error at <%s>: %s" % (url, msg)
         Exception.__init__(self, message)
 
 class StoreIdentifierError(Exception):
