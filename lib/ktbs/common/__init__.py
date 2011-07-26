@@ -21,15 +21,19 @@ in server, client and script.
 
 All those mixin require
 
-* `__eq__` and `__hash__` methods
-* `__enter__` and `__exit__` methods for managing transactions
 * a property `uri`: a `~rdflib.URIRef`:class: identifying this resource
-* a property `_graph`: a `~rdflib.Graph`:class: containing the description of
-  this resource, that will be modified *only* inside a transaction-context
+
+* a property `_graph`: a `~rdflib.Graph`:class: containing a readt
+  description of this resource, that will only be used for reading
+
+* a property `_edit`: a python-context returning a mutable
+  `~rdflib.Graph`:class: and commiting the modifications to the
+  resource on exit
+
 * a method `make_resource(node, node_type=None)` used to build another
   resource as the value of a property.
 
-Note that not all classes in `ktbs.server` inherit the corresponding mixin
+Note that not all classes in `ktbs.local` inherit the corresponding mixin
 class from `ktbs.common`, and when they do, they sometimes use low-level code
 when the mixin class provides a high-level interface, mostly for performance
 considerations.

@@ -389,7 +389,7 @@ class ProxyStore(Store):
         elif str(rheader.status)[0] == "5":
             raise ServerError(url=self._identifier, msg=rheader.status)
         else:
-            raise RuntimeError("%s: %s" % (self._identifier, msg))
+            raise RuntimeError("%s: %s" % (self._identifier, rheader.status))
 
         LOG.debug("-- _push() ... stop ... --")
 

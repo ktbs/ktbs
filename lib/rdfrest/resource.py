@@ -37,6 +37,7 @@ I provide :class:`Resource`, the atomic component of an RDF-Rest service.
   managing a family or related resources.
 
 """
+from contextlib import contextmanager
 from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
 
@@ -56,6 +57,31 @@ class Resource(object):
                     (`without query-string <query-strings-in-rdfrest>`:ref:)
     :type  uri:     rdflib.URIRef
 
+
+    .. note:: Subclassing Resource
+
+        This class only provides an implementation for :meth:`rdf_get`. For
+        implementing other REST operations, subclasses should first consider
+        using the mixin classes provided by :mod:`rdfrest.mixins`.
+
+        For other functionalities, subclasses can access the underlying graph
+        with the two following members:
+
+        * `_graph` is a read-only view on this resource's graph,
+
+        * `_edit` provides a python-context (to be used with the ``with``
+          statement) returning the underlying mutable graph.
+          
+        Modifications can only be done through the `_edit` context::
+
+            with self._edit as graph:
+                graph.add((self.uri, a_property, a_value))
+
+        **Important**: unlike `rdf_post`, the `_edit` context does *not* do
+        any integrity checking (e.g. it does not call
+        :meth:`check_new_graph`); it is intended for internal use (in
+        subclasses), and assumes that the implementers know what they are
+        doing.
     """
 
     # subclasses must override this attribute; see Service.register
@@ -65,10 +91,25 @@ class Resource(object):
         assert isinstance(uri, URIRef), repr(uri)
         self.service = service
         self.uri = uri
-        store = service.store
-        self._graph = Graph(store, uri)
-        self._private = Graph(store, URIRef(uri+"#private"))
-        self._context_level = 0
+        self.__graph = mutable_graph = Graph(service.store, uri)
+        self._graph = ReadOnlyGraphAggregate([mutable_graph])
+        self._private = Graph(service.store, URIRef(uri+"#private"))
+        self._edit_level = 0
+
+
+    @property
+    @contextmanager
+    def _edit(self):
+        """I implement the _edit context. See `Resource`"""
+        with self.service:
+            level = self._edit_level
+            self._edit_level += 1
+            yield self.__graph
+            if level == 0:
+                self.ack_edit()
+            self._edit_level = level
+
+    ## public methods ##
 
     @classmethod
     def create(cls, service, uri, new_graph):
@@ -119,86 +160,6 @@ class Resource(object):
         ret.add((uri, _RDF_TYPE, cls.RDF_MAIN_TYPE))
         return ret
 
-    @classmethod
-    def check_new_graph(cls, uri, new_graph,
-                        resource=None, added=None, removed=None):
-        """Check that a graph is a valid representation of this resource class.
-
-        :param uri:       the URI of the resource described by `new_graph`
-        :type  uri:       rdflib.URIRef
-        :param new_graph: graph to check
-        :type  new_graph: rdflib.Graph
-
-        The following parameters are used when `check_new_graph` is used to
-        update and *existing* resource; for creating a new resource, they will
-        always be `None`.
-
-        :param resource:  the resource to be updated
-        :param added:     if not None, an RDF graph containg triples to be
-                          added
-        :param removed:   if not None, an RDF graph containg triples to be
-                          removed
-
-        :return: `None` on success, else an error message
-
-        This class method can be overridden by subclasses that have constraints
-        on the representation of their instances.
-        """
-
-    @classmethod
-    def store_new_graph(cls, service, uri, new_graph):
-        """Store data in order to create a new resource in the service.
-
-        This method *should not* be used directly; it is invoked by
-        :meth:`create`, and can be overloaded by subclasses.
-
-        :param service:   the service in which to create the resource
-        :type  service:   rdfrest.service.Service
-        :param uri:       the URI of the resource to create
-        :type  uri:       rdflib.URIRef
-        :param new_graph: RDF data describing the resource to create
-        :type  new_graph: rdflib.Graph
-
-        Subclasses can overload this method in order to store more metadata;
-        they may also *alter* the resource's graph, but they should ensure that
-        the altered graph is still acceptable according to
-        :meth:`check_new_graph`.
-        """
-        assert isinstance(uri, URIRef)
-        graph_add = Graph(service.store, uri).add
-        for triple in new_graph:
-            graph_add(triple)
-
-        private_add = Graph(service.store, URIRef(uri+"#private")).add
-        private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
-
-    @classmethod
-    def mint_uri(cls, target, new_graph, created):
-        """Mint a URI for a resource of that class.
-
-        :param target:    the resource to which `new_graph` has been posted
-        :type  target:    rdfrest.resource.Resource
-        :param new_graph: a description of the resource for which to mint a URI
-        :type  new_graph: rdflib.Graph
-        :param created:   the non-URIRef node representing the resource in
-                          $`new_graph`
-        :type  created:   rdflib.Node
-
-        :rtype: rdflib.URIRef
-
-        The default behaviour is to generate a child URI of `target`'s uri,
-        with a name derived from the class name.
-        """
-        # unsused argument #pylint: disable=W0613
-        target_uri = target.uri
-        if target_uri[-1] != "/":
-            target_uri += "/"
-        prefix = "%s%s-" % (target_uri, cls.__name__.lower())
-        return make_fresh_resource(
-            target._graph, # access to protected member #pylint: disable=W0212
-            prefix,
-            )
-
     def rdf_get(self, parameters=None):
         """Return a read-only graph describing this resource.
 
@@ -229,7 +190,7 @@ class Resource(object):
         # self._graph into another graph.
 
         if not parameters:
-            return ReadOnlyGraphAggregate([self._graph])
+            return self._graph
         else:
             raise InvalidParametersError()
 
@@ -272,21 +233,115 @@ class Resource(object):
         # unused argument #pylint: disable=W0613
         raise MethodNotAllowedError("DELETE on %s" % self.uri)
 
-    def __enter__(self):
-        """Start to modifiy this resource.
-        """
-        level = self._context_level
-        self._context_level = level + 1
-        if level == 0:
-            self.service.__enter__()
 
-    def __exit__(self, typ, value, traceback):
-        """Ends modifications to this resource.
+    ## hook methods ##
+
+    @classmethod
+    def check_new_graph(cls, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """**Hook**: check that a graph is a valid representation of this
+        resource class.
+
+        This hook method is called by :meth:`create` and :meth:`rdf_put`;
+        calling it directly is usually not required.
+
+        :param uri:       the URI of the resource described by `new_graph`
+        :type  uri:       rdflib.URIRef
+        :param new_graph: graph to check
+        :type  new_graph: rdflib.Graph
+
+        The following parameters are used when `check_new_graph` is used to
+        update and *existing* resource; for creating a new resource, they will
+        always be `None`.
+
+        :param resource:  the resource to be updated
+        :param added:     if not None, an RDF graph containg triples to be
+                          added
+        :param removed:   if not None, an RDF graph containg triples to be
+                          removed
+
+        :return: `None` on success, else an error message
+
+        This class method can be overridden by subclasses that have constraints
+        on the representation of their instances.
+        
+        The default implementation accepts any graph.
         """
-        level = self._context_level - 1
-        self._context_level = level
-        if level == 0:
-            self.service.__exit__(typ, value, traceback)
+
+    @classmethod
+    def mint_uri(cls, target, new_graph, created):
+        """**Hook**: Mint a URI for a resource of that class.
+
+        This hook method is called by :class:`rdflib.mixins.WithPostMixin`;
+        calling it directly is usually not required.
+
+        :param target:    the resource to which `new_graph` has been posted
+        :type  target:    rdfrest.resource.Resource
+        :param new_graph: a description of the resource for which to mint a URI
+        :type  new_graph: rdflib.Graph
+        :param created:   the non-URIRef node representing the resource in
+                          $`new_graph`
+        :type  created:   rdflib.Node
+
+        :rtype: rdflib.URIRef
+
+        The default behaviour is to generate a child URI of `target`'s uri,
+        with a name derived from the class name.
+        """
+        # unsused argument #pylint: disable=W0613
+        target_uri = target.uri
+        if target_uri[-1] != "/":
+            target_uri += "/"
+        prefix = "%s%s-" % (target_uri, cls.__name__.lower())
+        return make_fresh_resource(
+            target._graph, # access to protected member #pylint: disable=W0212
+            prefix,
+            )
+
+    def ack_edit(self):
+        """**Hook**: performs some post processing editing this resource.
+
+        This hook method is called when exiting the context `self._edit` (see
+        `Resource above`:class:); calling it directly may *corrupt the
+        service*.
+
+        Note that it is safe for this method to raise an exception; it will be
+        handled as if it had been raised *just before* exiting the context.
+
+        The default implementation does nothing.
+        """
+
+    @classmethod
+    def store_new_graph(cls, service, uri, new_graph):
+        """**Hook**: store data in order to create a new resource in the
+        service.
+
+        This hook method is called by :meth:`create` and :meth:`rdf_put`;
+        calling it directly may *corrupt the service*.
+
+        :param service:   the service in which to create the resource
+        :type  service:   rdfrest.service.Service
+        :param uri:       the URI of the resource to create
+        :type  uri:       rdflib.URIRef
+        :param new_graph: RDF data describing the resource to create
+        :type  new_graph: rdflib.Graph
+
+        Subclasses can overload this method in order to store more metadata;
+        they may also *alter* the resource's graph, but they should ensure that
+        the altered graph is still acceptable according to
+        :meth:`check_new_graph`.
+
+        The default implementation simply store `new_graph` as is in the store,
+        and adds a hint to this class in the private graph.
+        """
+        assert isinstance(uri, URIRef)
+        graph_add = Graph(service.store, uri).add
+        for triple in new_graph:
+            graph_add(triple)
+
+        private_add = Graph(service.store, URIRef(uri+"#private")).add
+        private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
+
 
 _HAS_IMPL = RDFREST.hasImplementation
 _RDF_TYPE = RDF.type

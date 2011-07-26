@@ -1,4 +1,4 @@
-from ktbs.common.utils import extend_api
+from ktbs.common.utils import extend_api, extend_api_ignore
 
 def test_extend_api():
 
@@ -24,6 +24,12 @@ def test_extend_api():
             pass # just to test that no 'item' property is generated
         def iter_items(self, ids):
             pass # just to test that no 'items' property is generated
+        @extend_api_ignore
+        def get_not_extended(self):
+            pass # just to test that no 'not_extended' property is generated
+        @extend_api_ignore
+        def iter_not_extendeds(self):
+            pass # just to test that no 'not_extendeds' property is generated
     
     assert hasattr(Foo, "iter_foos")
     assert hasattr(Foo, "list_foos")
@@ -39,6 +45,8 @@ def test_extend_api():
     assert hasattr(Foo, "iter_items")
     assert hasattr(Foo, "list_items")
     assert not hasattr(Foo, "items")
+    assert not hasattr(Foo, "not_extended")
+    assert not hasattr(Foo, "not_extendeds")
 
     foo = Foo()
 

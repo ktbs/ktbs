@@ -16,7 +16,38 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide the class `Service`, the entry point to an RDF-Rest service.
+I provide the class `Service`:class:, which provides a set of related
+`rdfrest.resource.Resource resources`. One particular resource, called
+the `~Service.root`:attr: of the service, is its entry point.
+
+A `Service service` provides the python-context interface (*a.k.a.*
+``with`` statement). Its direct use will rarely (if ever) be required
+(see below), but it deserves some explaination, at least for
+implementers of :class:`~rdfrest.resource.Resource` and subclasses.
+
+The role of using a service as a context is to ensure that data is
+correctly handled by the underlying RDF store:
+
+    * on normal exit, the changes will be commited to store;
+
+    * if an exception is raised, the changes will be rolled-back from
+      the store;
+
+    * if several contexts are embeded (e.g. by calling a function that
+      itself uses the service context), the commit/rollback will only
+      occur when exiting the *outermost* context;
+
+All methods of :class:`~rdfrest.resource.Resource` modifying the data
+will normally takes care of this, and the "outermost context" rule
+above ensures that they will not prematurely commit incomplete data.
+
+.. warning::
+
+    For the moment (2011-07), rdfrest uses implementation of RDF store
+    that do *not* support rollback. This means that the store may end up
+    in an inconsistent state whenever an exception occurs while editing a
+    resource.
+
 """
 from rdflib import Graph, URIRef
 
@@ -25,13 +56,20 @@ from rdfrest.namespaces import RDFREST
 
 class Service(object):
     """
-    An RDF-REST service is a set of `rdfrest.resource.Resource resources`.
 
-    One particular resource, called the *root* of the service, is the entry
-    point to the service.
+        :param store:    the RDF store containing the data of this service
+        :type  store:    rdflib.store.Store
+        :param root_uri: the URI of the root resource of this service
+        :type  root_uri: rdflib.URIRef
+        :param create:   if `store` is empty, populate it with initial data?
 
-    Actual implementations should subclass this class, then use class methods
-    :meth:`register` and :meth:`register_root` to customize their behaviour.
+    This class should never be used directly, but is meant to be subclassed:
+
+    **To subclass implementers:** Your only job in subclassing
+    :class:`Service` will generally be to use class methods
+    :meth:`register` and :meth:`register_root` to customize their
+    behaviour.
+
     """
 
     _class_map = None
@@ -40,12 +78,6 @@ class Service(object):
     def __init__(self, store, root_uri, create=True):
         """
         Initializes this RdfRest service with the given store.
-
-        :param store:    the RDF store containing the data of this service
-        :type  store:    rdflib.store.Store
-        :param root_uri: the URI of the root resource of this service
-        :type  root_uri: rdflib.URIRef
-        :param create:   if `store` is empty, populate it with initial data?
         """
         assert self._class_map, "No registered resource class"
         assert self._root_cls, "No registered root resource class"
@@ -96,7 +128,7 @@ class Service(object):
 
     @property
     def root(self):
-        """Get the root resource of this service.
+        """The root resource of this service.
 
         :rtype: rdfrest.resource.Resource
         """

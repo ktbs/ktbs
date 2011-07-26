@@ -84,11 +84,11 @@ class WithParametersMixin(object):
                 parameter = i
                 break
 
-        with self:
+        with self._edit as graph:
             if parameter is not None:
-                self._graph.remove((self.uri, _HAS_PARAMETER, parameter))
+                graph.remove((self.uri, _HAS_PARAMETER, parameter))
             if value is not None:
-                self._graph.add((self.uri, _HAS_PARAMETER,
+                graph.add((self.uri, _HAS_PARAMETER,
                                 Literal("%s=%s" % (key, value))))
         
     def del_parameter(self, key):
@@ -120,8 +120,8 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         """
         # TODO include transaction management here?
         method = coerce_to_uri(method, self.uri)
-        with self:
-            self._graph.set((self.uri, _HAS_PARENT_METHOD, method))
+        with self._edit as graph:
+            graph.set((self.uri, _HAS_PARENT_METHOD, method))
 
     def _get_inherited_parameters(self):
         """

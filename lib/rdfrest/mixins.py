@@ -60,9 +60,9 @@ class RdfPutMixin(Resource):
         errors = self.check_new_graph(self.uri, new_graph, self)
         if errors:
             raise InvalidDataError(errors)
-        with self:
-            self._graph.remove((None, None, None))
-            add = self._graph.add
+        with self._edit as graph:
+            graph.remove((None, None, None))
+            add = graph.add
             for triple in new_graph:
                 add(triple)
 
@@ -260,10 +260,12 @@ class BookkeepingMixin(Resource):
         private = Graph(service.store, URIRef(uri+"#private"))
         cls._update_bk_metadata_in(uri, private)
     
-    def __exit__(self, typ, value, traceback):
-        if typ is None:
-            self._update_bk_metadata_in(self.uri, self._private)
-        super(BookkeepingMixin, self).__exit__(typ, value, traceback)
+    def ack_edit(self):
+        """I override :meth:`rdfrest.resource.Resource.ack_edit` to
+        update bookkeeping metadata.
+        """
+        super(BookkeepingMixin, self).ack_edit()
+        self._update_bk_metadata_in(self.uri, self._private)
 
     @classmethod
     def _update_bk_metadata_in(cls, uri, graph):

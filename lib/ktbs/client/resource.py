@@ -18,12 +18,13 @@
 I provide the common subclass for all client resources.
 
 I also provide the RESOURCE_MAKER dict where subclasses can register themselves
-with a given RDF type; `Resource.make_resource` relies on it.
+with a given RDF type; :meth:`Resource.make_resource` relies on it.
 """
+from contextlib import contextmanager
 from httplib2 import Http
 from rdflib import Graph, RDF
+from rdflib.graph import ReadOnlyGraphAggregate
 from rdfrest.client import ProxyStore
-from threading import RLock
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
@@ -34,6 +35,19 @@ RESOURCE_MAKER = {}
 @extend_api
 class Resource(ResourceMixin):
     """I am the common subclass for all client resources.
+
+    I honnor all requirements of the the mixin classes provided by
+    :mod:`ktbs.common`.
+
+    Resources can also be used as python-contexts (i.e. with the ``with``
+    statement) when one wants to perform several modifications before
+    actually sending (PUT) data to the distant resource. For example::
+
+        with trace:
+            trace.model = other_model
+            trace.origin = other_origin
+            trace.label = trace.label + " (updated)"
+
     """
     # just to please pylint, who does not recognize @extend_api ;)
     uri = None
@@ -48,13 +62,15 @@ class Resource(ResourceMixin):
         """
         #pylint: disable-msg=W0231
         # (not calling __init__ for mixin)
-        self._uri = uri = coerce_to_uri(uri)
+        self.uri = coerce_to_uri(uri)
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
             graph.open(uri)
-        self._graph = graph
-        self._transaction_level = 0
-        self._transaction_lock = RLock()
+        self.__graph = graph
+        self._graph = ReadOnlyGraphAggregate([graph])
+        # NB: self._graph is made read-only in order to catch implementation
+        # errors that would forget to make use of the _edit context
+        self._edit_level = 0
 
     def __eq__(self, other):
         """I am equal to any other `Resource` with the same URI.
@@ -67,41 +83,23 @@ class Resource(ResourceMixin):
         return hash(Resource) ^ hash(self.uri)
 
     def __enter__(self):
-        """Start a transaction with this resource.
-        NB: This also locks the resource for the current thread.
-        """
-        self._transaction_lock.acquire()
-        self._transaction_level += 1
+        level = self._edit_level
+        self._edit_level = level + 1            
 
     def __exit__(self, typ, value, traceback):
-        """Exit a transaction with this resource.
-        """
-        self._transaction_level -= 1
-        if self._transaction_level == 0:
+        self._edit_level = level = self._edit_level - 1
+        if level == 0:
             if typ is None:
-                self._graph.commit()
+                self.__graph.commit()
             else:
-                self._graph.rollback()
-        self._transaction_lock.release()
+                self.__graph.rollback()
 
-    def get_uri(self):
-        """TODO docstring
-        """
-        return self._uri
-
-    def get_graph(self):
-        """TODO docstring
-        """
-        return self._graph
-
-    def set_graph(self, other_graph):
-        """TODO docstring
-        """
+    @property
+    @contextmanager
+    def _edit(self):
+        """I implement the _edit context."""
         with self:
-            self._graph.remove((None, None, None))
-            add = self._graph.add
-            for triple in other_graph:
-                add(triple)
+            yield self.__graph
 
     @staticmethod
     def make_resource(uri, typ=None, graph=None):

@@ -21,7 +21,7 @@ I provide the pythonic interface common to all kTBS resources.
 from rdflib import Literal, RDFS
 
 from ktbs.namespaces import SKOS
-from ktbs.common.utils import extend_api, short_name
+from ktbs.common.utils import extend_api_ignore, extend_api, short_name
 
 @extend_api
 class ResourceMixin(object):
@@ -29,8 +29,14 @@ class ResourceMixin(object):
     I provide the pythonic interface common to all kTBS resources.
     """
 
-    # NB: do not implement get_uri and get_graph, as @extend_api may override
-    # the underlying attributes uri and graph
+    @extend_api_ignore
+    def get_uri(self):
+        """
+        Return the URI of this resource.
+        """
+        return self.uri
+        # the decorator extend_api_ignore above prevents extend_api to create
+        # a recursive loop by making a 'uri' prop using this method...
 
     def get_label(self):
         """
@@ -53,12 +59,12 @@ class ResourceMixin(object):
         """
         Set the skos:prefLabel of this resource.
         """
-        with self:
-            self._graph.set((self.uri, SKOS.prefLabel, Literal(value)))
+        with self._edit as graph:
+            graph.set((self.uri, SKOS.prefLabel, Literal(value)))
 
     def del_label(self):
         """
         Remove the skos:prefLabel of this resource.
         """
-        with self:
-            self._graph.remove((self.uri, SKOS.prefLabel, None))
+        with self._edit as graph:
+            graph.remove((self.uri, SKOS.prefLabel, None))

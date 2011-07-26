@@ -41,8 +41,8 @@ class ModelMixin(InBaseMixin):
         """Return the temporal unit used by this model.
         """
         unit = Literal(str(unit))
-        with self:
-            self._graph.add((self.uri, _HAS_UNIT, unit))
+        with self._edit as graph:
+            graph.add((self.uri, _HAS_UNIT, unit))
 
     def get(self, id):
         """
@@ -119,33 +119,32 @@ class ModelMixin(InBaseMixin):
         """
         I add model as a parent model to this model.
         """
-        with self:
-            self._graph.add((self.uri, _HAS_PARENT_MODEL,
-                             coerce_to_uri(model, self.uri)))
+        with self._edit as graph:
+            graph.add((self.uri, _HAS_PARENT_MODEL,
+                       coerce_to_uri(model, self.uri)))
 
     def remove_parent(self, model):
         """
         I remove model as a parent model to this model.
         """
-        with self:
-            self._graph.remove((self.uri, _HAS_PARENT_MODEL,
-                                coerce_to_uri(model, self.uri)))
+        with self._edit as graph:
+            graph.remove((self.uri, _HAS_PARENT_MODEL,
+                          coerce_to_uri(model, self.uri)))
 
     def create_obsel_type(self, label, supertypes=(), id=None):
         """
         I create a new obsel type in this model.
         """
         # redefining built-in 'id' #pylint: disable=W0622
-        graph = self._graph
         base_uri = self.uri
-        with self:
+        with self._edit as graph:
             uri = mint_uri(label, self, id)
             add = graph.add
             add((uri, _RDF_TYPE, _OBSEL_TYPE))
             add((uri, _PREF_LABEL, Literal(label)))
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
-        return self.make_resource(id, _OBSEL_TYPE, graph) 
+        return self.make_resource(uri, _OBSEL_TYPE, graph) 
 
 
     # TODO implement add_parent, remove_parent, create_*

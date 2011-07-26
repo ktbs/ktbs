@@ -92,8 +92,8 @@ class StoredTraceMixin(TraceMixin):
         trace's URI.
         """
         model_uri = coerce_to_uri(model, self.uri)
-        with self:
-            self._graph.set((self.uri, _HAS_MODEL, model_uri))
+        with self._edit as graph:
+            graph.set((self.uri, _HAS_MODEL, model_uri))
 
     def set_origin(self, origin):
         """I set the origin of this trace.
@@ -103,8 +103,8 @@ class StoredTraceMixin(TraceMixin):
         if isoformat is not None:
             origin = isoformat()
         origin = Literal(origin)
-        with self:
-            self._graph.set((self.uri, _HAS_TRACE_ORIGIN, origin))
+        with self._edit as graph:
+            graph.set((self.uri, _HAS_TRACE_ORIGIN, origin))
 
     def get_default_subject(self):
         """
@@ -116,8 +116,8 @@ class StoredTraceMixin(TraceMixin):
         """I set the default subject of this trace.
         """
         subject = Literal(subject)
-        with self:
-            self._graph.set((self.uri, _HAS_DEFAULT_SUBJECT, subject))
+        with self._edit as graph:
+            graph.set((self.uri, _HAS_DEFAULT_SUBJECT, subject))
 
 
     # TODO MAJOR implement part of the abstract API

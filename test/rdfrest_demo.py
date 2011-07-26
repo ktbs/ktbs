@@ -76,9 +76,9 @@ class Bar(Foo, RdfPostMixin):
 
     def rdf_post(self, graph):
         created = super(Bar, self).rdf_post(graph)
-        with self:
+        with self._edit as graph:
             for i in created:
-                self._graph.add((self.uri, NS.has_child, created[0]))
+                graph.add((self.uri, NS.has_child, created[0]))
         return created
 
     @classmethod

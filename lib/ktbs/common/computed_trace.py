@@ -43,8 +43,8 @@ class ComputedTraceMixin(TraceMixin, WithParametersMixin):
         this trace's URI.
         """
         method_uri = coerce_to_uri(method, self.uri)
-        with self:
-            self._graph.set((self.uri, _HAS_METHOD, method_uri))
+        with self._edit as graph:
+            graph.set((self.uri, _HAS_METHOD, method_uri))
 
     def _get_inherited_parameters(self):
         """

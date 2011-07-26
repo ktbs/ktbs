@@ -38,6 +38,8 @@ def extend_api(cls):
                 if _INTERESTING_METHOD.match(pair[0]) ]
     methods.sort()  # put all the get_ before the set_
     for methodname, raw_function in methods:
+        if hasattr(raw_function, "_extend_api_ignore"):
+            continue
         nrequired = (raw_function.func_code.co_argcount
                      - len(raw_function.func_defaults or ()))
         if methodname.startswith("get_"):
@@ -70,6 +72,12 @@ def extend_api(cls):
 
     return cls
 
+def extend_api_ignore(func):
+    """I decorate functions that must be ignored by :func:`extend_api`.
+    """
+    func._extend_api_ignore = True
+    return func
+
 def mint_uri(label, target, uri=None):
     """
     Mint a URI for a resource posted to `target` based on `label`.
@@ -82,19 +90,19 @@ def mint_uri(label, target, uri=None):
     :rtype: rdflib.URIRef
     :raise: ValueError if `uri` is provided and is already in use
     """
+    target_graph = target._graph # protected member #pylint: disable=W0212
     if uri is not None:
         uri = coerce_to_uri(uri, target.uri)
-        if not check_new(target.graph, uri):
+        if not check_new(target_graph, uri):
             raise ValueError("URI already in use <%s>" % uri)
     else:
-        graph = target.graph
         prefix = target.uri
         if prefix[-1] != "/":
             prefix = "%s#" % prefix
         uri = URIRef("%s%s" % (prefix, _NON_ALPHA.sub(label, "-")))
-        if not check_new(graph, uri):
+        if not check_new(target_graph, uri):
             prefix = "%s-" % uri
-            uri = make_fresh_resource(graph, prefix)
+            uri = make_fresh_resource(target_graph, prefix)
     return uri
         
 
