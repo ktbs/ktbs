@@ -45,6 +45,7 @@ def cache_result(callabl):
 def check_new(graph, node):
     """Check that node is absent from graph.
     """
+    # TODO MINOR this method seems to be inefficient; investigate
     res = graph.query("ASK { <%s> ?p ?o }" % node)
     if res.askAnswer[0]:
         return False
@@ -63,6 +64,7 @@ def coerce_to_uri(obj, base=None):
 
     :rtype: rdflib.URIRef
     """
+    assert obj is not None
     ret = obj
     if not isinstance(ret, URIRef):
         ret = getattr(ret, "uri", None) or str(ret)
