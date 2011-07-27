@@ -54,6 +54,15 @@ class HttpFrontend(object):
     :type  options: dict
 
     NB: for the moment, no option is recognized.
+
+    .. warning::
+    
+        RDF-REST is meant to differenciate an empty query-string from no
+        query-string at all (see `parameters definition
+        <rdfrest-parameters>`:ref:). However, WSGI does not allow such a
+        distinction. This implementation therefore assumes that an empty
+        query-string is no query-string at all.
+
     """
 
     def __init__(self, service, serializers=None, parsers=None, options=None):
@@ -78,7 +87,6 @@ class HttpFrontend(object):
 
         :param request: a webob Request
         """
-        # TODO parse content
         resource_uri, request.uri_extension = extsplit(request.path_url)
         resource = self._service.get(resource_uri)
         if resource is None:
@@ -130,13 +138,12 @@ class HttpFrontend(object):
         """
         # method could be a function #pylint: disable=R0201
         # TODO how can we transmit context (authorization? anything else?)
-        resource.rdf_delete()
+        resource.rdf_delete(request.queryvars.mixed() or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
         """Process a GET request on the given resource.
         """
-
         ext = request.uri_extension
         if ext:
             serializer, ctype = self.serializers.get_by_extension(ext)
@@ -169,8 +176,9 @@ class HttpFrontend(object):
             last_modified = datetime.fromtimestamp(last_modified).isoformat()
             headerlist.append(("last-modified", last_modified))
         try:
+            graph = resource.rdf_get(request.queryvars.mixed() or None)
             app_iter = serializer(
-                resource._graph, # protected member #pylint: disable=W0212
+                graph,
                 self.serializers,
                 resource.uri)
         except SerializeError, ex:
@@ -196,7 +204,7 @@ class HttpFrontend(object):
         if parser is None:
             return self.issue_error(415, request, resource)
         graph = parser(request.body, resource.uri, request.charset)
-        results = resource.rdf_post(graph)
+        results = resource.rdf_post(graph, request.queryvars.mixed() or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
@@ -235,7 +243,7 @@ class HttpFrontend(object):
         if parser is None:
             return self.issue_error(415, request, resource)
         graph = parser(request.body, resource.uri, request.charset)
-        resource.rdf_put(graph)
+        resource.rdf_put(graph, request.queryvars.mixed() or None)
         return self.http_get(request, resource)
 
     def issue_error(self, status, request, resource):

@@ -24,13 +24,17 @@ def test_bad_method():
     header, content = SERVER.request(URL, "XXX")
     eq_(header.status, 405)
 
-def test_not_found():
+def test_get_not_found():
     header, content = SERVER.request(URL+"not_there")
     eq_(header.status, 404)
 
 def test_get():
     header, content = SERVER.request(URL)
     eq_(header.status, 200)
+
+def test_get_query_string_not_found():
+    header, content = SERVER.request(URL+"?a=b")
+    eq_(header.status, 404)
 
 def test_delete_not_implemented():
     header, content = SERVER.request(URL, "DELETE")
@@ -139,6 +143,9 @@ def test_post_illegal_rdf():
 
 
 # TODO
+#
+# * test a 200 on a GET with parameters (implies that rdfrest_demo.py
+#   implements it)
 #
 # * test a 409 error (implies that rdfrest_demo.py raise CanNotProceedError
 #   in some situtation, e.g. when deleting a non-empty folder)

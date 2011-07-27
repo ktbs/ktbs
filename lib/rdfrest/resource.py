@@ -185,7 +185,8 @@ class Resource(object):
         More precisely, the returned graph describes the resource
         identified by the URI `<self.uri>?<parameters>` .
 
-        :param parameters: the query string parameters
+        :param parameters: the query string parameters (see
+                           `below <rdfrest-paramaters>`:ref:)
         :type  parameters: dict
 
         :return: a graph representing the resource, dynamically reflecting
@@ -193,6 +194,13 @@ class Resource(object):
         :rtype: rdflib.Graph
         :raise: :class:`~rdfrest.exceptions.InvalidParametersError`
 
+        .. _rdfrest-paramaters:
+
+        If not None, `parameters` is expected to be a dict with ASCII strings
+        as their keys and either unicode strings or lists of unicode strings
+        as their value. Note that the empty dict is semantically different
+        from None, as ``http://example.org/?`` is semantically different from
+        ``http://example.org/``.
 
         The default behaviour is to accept no `parameters`.
 
@@ -207,18 +215,17 @@ class Resource(object):
         # this design decision comes from the fact that it is more efficient
         # to build a ReadOnlyGraphAggregate than to copy every triple of
         # self._graph into another graph.
-
-        if not parameters:
-            return self._graph
-        else:
+        if parameters is not None:
             raise InvalidParametersError()
+        return self._graph
 
     def rdf_put(self, new_graph, parameters=None):
         """Update this resource with RDF data.
 
         :param new_graph:  an RDF graph
         :type  new_graph:  rdflib.Graph
-        :param parameters: the query string parameters
+        :param parameters: the query string parameters (see
+                           `above <rdfrest-paramaters>`:ref:)
         :type  parameters: dict
 
         :raise: :class:`~rdfrest.exceptions.RdfRestException`
@@ -232,7 +239,8 @@ class Resource(object):
 
         :param new_graph:  an RDF graph
         :type  new_graph:  rdflib.Graph
-        :param parameters: the query string parameters
+        :param parameters: the query string parameters (see
+                           `above <rdfrest-paramaters>`:ref:)
         :type  parameters: dict
 
         :return: the list of created URIs, possibly empty
@@ -244,7 +252,8 @@ class Resource(object):
     def rdf_delete(self, parameters=None):
         """Delete this resource from the corresponding service.
 
-        :param parameters: the query string parameters
+        :param parameters: the query string parameters (see
+                           `above <rdfrest-paramaters>`:ref:)
         :type  parameters: dict
 
         :raise: :class:`~rdfrest.exceptions.RdfRestException`
