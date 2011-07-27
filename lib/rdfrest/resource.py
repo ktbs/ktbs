@@ -44,7 +44,7 @@ from rdflib.graph import ReadOnlyGraphAggregate
 from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.namespaces import RDFREST
-from rdfrest.utils import make_fresh_resource
+from rdfrest.utils import make_fresh_uri
 
 class Resource(object):
     """
@@ -293,7 +293,7 @@ class Resource(object):
         if target_uri[-1] != "/":
             target_uri += "/"
         prefix = "%s%s-" % (target_uri, cls.__name__.lower())
-        return make_fresh_resource(
+        return make_fresh_uri(
             target._graph, # access to protected member #pylint: disable=W0212
             prefix,
             )

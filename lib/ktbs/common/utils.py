@@ -22,7 +22,7 @@ from httplib2 import Http
 from rdflib import URIRef
 import re
 
-from rdfrest.utils import coerce_to_uri, check_new, make_fresh_resource
+from rdfrest.utils import coerce_to_uri, check_new, make_fresh_uri
 
 def extend_api(cls):
     """
@@ -102,7 +102,7 @@ def mint_uri(label, target, uri=None):
         uri = URIRef("%s%s" % (prefix, _NON_ALPHA.sub(label, "-")))
         if not check_new(target_graph, uri):
             prefix = "%s-" % uri
-            uri = make_fresh_resource(target_graph, prefix)
+            uri = make_fresh_uri(target_graph, prefix)
     return uri
         
 

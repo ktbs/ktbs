@@ -45,12 +45,9 @@ def cache_result(callabl):
 def check_new(graph, node):
     """Check that node is absent from graph.
     """
-    # TODO MINOR this method seems to be inefficient; investigate
-    res = graph.query("ASK { <%s> ?p ?o }" % node)
-    if res.askAnswer[0]:
+    if next(graph.predicate_objects(node), None) is not None:
         return False
-    res = graph.query("ASK { ?s ?p <%s> }" % node)
-    if res.askAnswer[0]:
+    if next(graph.subject_predicates(node), None) is not None:
         return False
     return True
 
@@ -96,8 +93,8 @@ def extsplit(path_info):
         return path_info[:dot], path_info[dot+1:]
     #
 
-def make_fresh_resource(graph, prefix, suffix=""):
-    """Creates a URI Node which is not in graph, with given prefix and suffix.
+def make_fresh_uri(graph, prefix, suffix=""):
+    """Creates a URIRef which is not in graph, with given prefix and suffix.
     """
     length = 2
     while True:
