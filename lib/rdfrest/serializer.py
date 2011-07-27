@@ -204,29 +204,11 @@ def serialize_ntriples(graph,  _sregister, _base_uri=None):
 
 
 @register("text/html", "html", 60)
-def serialized_htmlized_turtle(graph, sregister, base_uri):
+def serialize_htmlized_turtle(graph, sregister, base_uri):
     """I serialize graph in a HTMLized simple turtle form.
     """
     #pylint: disable=R0914
     #    too many local variables
-
-    # the following variables are only used by the template below,
-    # that is why pylint consider them as unused (W0612)
-    script = _HTML_SCRIPT #pylint: disable=W0612
-    style  = _HTML_STYLE  #pylint: disable=W0612
-    footer = _HTML_FOOTER #pylint: disable=W0612
-    body   = "%s"         #pylint: disable=W0612
-    
-    template = u"""<html>
-    <head>
-    <title>%(base_uri)s</title>
-    <style text="text/css">%(style)s</style>
-    <script text="text/javascript">%(script)s</script>
-    </head>
-    <body onload="init_page()">
-    %(body)s
-    %(footer)s
-    </body>\n</html>""" % locals()
 
     namespaces = sregister.namespaces
 
@@ -272,9 +254,26 @@ def serialized_htmlized_turtle(graph, sregister, base_uri):
         ret += u'\t\t<div class="obj">%s\n' \
                % _htmlize_node(namespaces, obj, base_uri)
     ret += ".</div></div></div>\n"
-    ret += "</body>\n</html>\n"
 
-    yield (template % ret).encode("utf-8")
+    page = u"""<html>
+    <head>
+    <title>%(base_uri)s</title>
+    <style text="text/css">%(style)s</style>
+    <script text="text/javascript">%(script)s</script>
+    </head>
+    <body onload="init_page()">
+    %(body)s
+    %(footer)s
+    </body>\n</html>""" % {
+        "base_uri": base_uri,
+        "style": _HTML_STYLE,
+        "script": _HTML_SCRIPT,
+        "body": ret,
+        "footer": _HTML_FOOTER,
+    }
+
+    yield page.encode("utf-8")
+
 
 def _htmlize_node(namespaces, node, base):
     """
