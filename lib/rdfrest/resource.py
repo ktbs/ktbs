@@ -16,33 +16,47 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide :class:`Resource`, the atomic component of an RDF-Rest service.
+I provide :class:`Resource`, which defines the *common interface* to all
+components of an an RDF-Rest `.service.Service`:class:.
+
+Instances of this class are typically retrieved from a
+`~.service.Service`:class:, either by its property
+`~.service.Service.root`:attr: property or by its method
+`~.service.Service.get`:meth:.
+
+Note that every resource is identified by a URI. Howevever, only URI without
+any query-string (the part of the URI after the '?') or fragment-identifier
+(the part of the URI after the '#') are allowed.
 
 .. _query-strings-in-rdfrest:
 
-.. note:: Query-strings in RDF-REST
+Note that from the perspective of both REST and RDF, every URI identifies a
+different resource, and query-string and fragment-identifiers are no
+exception: ``http://a.b/c/d``, ``http://a.b/c/d?e=f`` and ``http://a.b/c/d#e"
+are *three* different resources. In practice, however, URIs that differ only
+by their query-string and/or fragment-identifier usually identify resources
+that are closely related (if not "variants" of the same resource).  RDF-REST
+endorses this practice by allowing `parameters` in all REST operations
+(:meth:`~Resource.rdf_get`, :meth:`~Resource.rdf_put`,
+:meth:`~Resource.rdf_post` and :meth:`~Resource.rdf_delete`). The REST way to
+look at it is to consider that an instance of :class:`Resource` is in fact
+handling a *family* of related resources.
 
-  Note that in strict REST, every URI identifies a different
-  resource. Query-strings (the part of the URI after the '?') are not an
-  exception: ``http://a.b/c/d`` and ``http://a.b/c/d?e=f`` are two different
-  resources. In practice however, URIs that differ only by their query-string
-  usually identify resources that are closely related (if not "variants" of
-  the same resource).  RDF-REST endorses this practice by requiring that the
-  `uri` passed to :class:`Resource` is stripped from the query-string; the
-  query-string has to be parsed and passed as `parameters` to the methods
-  :meth:`~Resource.rdf_get`, :meth:`~Resource.rdf_put`,
-  :meth:`~Resource.rdf_post` and :meth:`~Resource.rdf_delete`.
+.. _frag-ids-in-rdfrest:
 
-  Hence, an instance of :class:`Resource` handling parameters is really
-  managing a family or related resources.
-
+As for fragment-identifiers, the underlying graph of a resource may contain
+URIs with fragment-identifiers in addition to the URI of the resource
+itself. Again, those additional resources are not handled independantly by
+RDF-REST; however, subclasses of :class:`Resource` may constrain their
+appearance and their properties.
 """
 from contextlib import contextmanager
 from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
+from urlparse import urlsplit
 
 from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
-    MethodNotAllowedError
+    InvalidUriError, MethodNotAllowedError
 from rdfrest.namespaces import RDFREST
 from rdfrest.utils import make_fresh_uri
 
@@ -89,6 +103,10 @@ class Resource(object):
 
     def __init__(self, service, uri):
         assert isinstance(uri, URIRef), repr(uri)
+
+        if urlsplit(uri)[3:] != ('', ''):
+            raise InvalidUriError("URI has query-string and/or "
+                                  "fragment-identifier <%s>" % uri)
         self.service = service
         self.uri = uri
         self.__graph = mutable_graph = Graph(service.store, uri)
@@ -128,7 +146,8 @@ class Resource(object):
         :type  new_graph: rdflib.Graph
 
         :return: an instance of `cls`
-        :raise: :class:`InvalidDataError` if `new_graph` is not acceptable
+        :raise: :class:`.exceptions.InvalidDataError` if `new_graph` is not
+                acceptable
 
         This method should *not* be overridden; instead, subclasses may
         overload :meth:`check_new_graph` and :meth:`store_new_graph` on which

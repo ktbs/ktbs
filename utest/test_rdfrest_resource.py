@@ -1,8 +1,9 @@
-from nose.tools import assert_raises, eq_
+from nose.tools import assert_raises, eq_, raises
 
 from rdflib.store import Store
 from rdflib import Graph, URIRef, Literal, plugin as rdflib_plugin
 
+from rdfrest.exceptions import *
 from rdfrest.resource import Resource
 from rdfrest.service import Service
 
@@ -32,16 +33,23 @@ def test_exception_in_ackedit():
     # next touch should set self.edited to 5, which raises an exception
     assert_raises(Exception, res.touch)
     assert res.service.rolledback
-    
-    
 
+@raises(InvalidUriError)
+def test_no_querystring_as_root():
+    res = MinimalService("http://localhost:1234/?a=b")
+
+@raises(InvalidUriError)
+def test_no_fragid_as_root():
+    res = MinimalService("http://localhost:1234/#a")
 
 class MinimalService(Service):
-    def __init__(self):
+    def __init__(self, uri=None):
+        if uri is None:
+            uri = "http://localhost:1234/"
         Service.__init__(
             self,
             rdflib_plugin.get("IOMemory", Store)(),
-            URIRef("http://localhost:1234/"),
+            URIRef(uri),
             )
         self.store.rollback = self.rollback
         self.rolledback = False

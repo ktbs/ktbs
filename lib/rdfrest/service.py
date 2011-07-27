@@ -17,10 +17,16 @@
 
 """
 I provide the class `Service`:class:, which provides a set of related
-`rdfrest.resource.Resource resources`. One particular resource, called
-the `~Service.root`:attr: of the service, is its entry point.
+`resources <rdfrest.resource.Resource>`:class:. One particular resource,
+called the `~Service.root`:attr: of the service, is its entry point.
 
-A `Service service` provides the python-context interface (*a.k.a.*
+Every resource is identified by a URI and backed by an RDF graph (though
+subclasses of `~rdfrest.resource.Resource`:class: may completely hide
+this). Any resource from the service can be retrieved by passing the resource
+URI to the `Service.get`:meth:.
+
+**Modifying the underlying data.**
+A `Service`:class provides the python-context interface (*a.k.a.*
 ``with`` statement). Its direct use will rarely (if ever) be required
 (see below), but it deserves some explaination, at least for
 implementers of :class:`~rdfrest.resource.Resource` and subclasses.
@@ -37,9 +43,9 @@ correctly handled by the underlying RDF store:
       itself uses the service context), the commit/rollback will only
       occur when exiting the *outermost* context;
 
-All methods of :class:`~rdfrest.resource.Resource` modifying the data
-will normally takes care of this, and the "outermost context" rule
-above ensures that they will not prematurely commit incomplete data.
+All methods of :class:`~rdfrest.resource.Resource` modifying the data will
+normally takes care of this, and the "outermost context" rule above ensures
+that data will only be commited when a *globally* consistent state is reached.
 
 .. warning::
 
@@ -84,14 +90,14 @@ class Service(object):
 
         self.store = store
         self.root_uri = root_uri
-        self._resource_cache = res_cache = {}
+        self._resource_cache = {}
         self._context_level = 0
         if len(store) == 0:
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
             graph = root_cls.create_root_graph(root_uri)
             root = root_cls.create(self, self.root_uri, graph)
-            res_cache[str(root_uri)] = root
+            self._resource_cache[root_uri.defrag()] = root
         
     @classmethod
     def register(cls, py_class):
@@ -118,6 +124,10 @@ class Service(object):
         class of the `root`:attr: resource.
 
         :see-also: :meth:`register`
+
+        The class method `rdfrest.resource.Resource.create_root_graph`:meth:
+        of `py_class` will be used at the service creation to populate the
+        store.
 
         This method can be used as a class decorator.
         """
@@ -147,7 +157,7 @@ class Service(object):
        
         :see-also: :meth:`register`
         """
-        resource = self._resource_cache.get(uri)
+        resource = self._resource_cache.get(str(uri))
         if resource is None:
             private = Graph(self.store, URIRef(uri + "#private"))
             if len(private) == 0:
@@ -158,7 +168,7 @@ class Service(object):
             py_class = self._class_map.get(types[0])
             assert py_class is not None, "corrupted store"
             resource = py_class(self, uri)
-            self._resource_cache[uri] = resource
+            self._resource_cache[str(uri)] = resource
         return resource
 
     def __enter__(self):

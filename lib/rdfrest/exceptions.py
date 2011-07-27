@@ -52,6 +52,12 @@ class InvalidParametersError(RdfRestException):
     """
     pass
 
+class InvalidUriError(InvalidDataError):
+    """An error raised the URI used to create a resoutce is not acceptable.
+    """
+    pass
+
+
 class MethodNotAllowedError(NotImplementedError, RdfRestException):
     """An error raised when an RDF-REST method is not supported.
 

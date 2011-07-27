@@ -1,5 +1,5 @@
 from functools import wraps
-from nose.tools import assert_raises, with_setup
+from nose.tools import assert_raises, raises, with_setup
 from time import sleep
 
 from rdfrest.mixins import *
@@ -25,7 +25,7 @@ class TestRootOnly(object):
         """Abstract test. Called below with Item and Folder."""
         root = self.service.root
         graph = cls.populate(uri, root.uri)
-        created = root.rdf_post(graph)
+        created = root.rdf_post(graph) # may raise InvalidUriError
         assert isinstance(created, list)
         assert len(created) == 1
         got_uri = created[0]
@@ -44,6 +44,26 @@ class TestRootOnly(object):
 
     def test_post_folder_uri(self):
         self._test_post_uri(Folder, ROOT["f1/"])
+    
+    @raises(InvalidUriError)
+    def test_post_item_uri_with_qs(self):
+        self._test_post_uri(Item, ROOT["i1?a=b"])
+
+    @raises(InvalidUriError)
+    def test_post_folder_uri_with_qs(self):
+        self._test_post_uri(Folder, ROOT["f1/?a=b/"])
+    
+    @raises(RdfRestException)
+    def test_post_item_uri_with_fragid(self):
+        # raises RdfRestException instead of InvalidUriException,
+        # because the URI with a frag-id is not even recognized as the created
+        # uri by Folder.find_created
+        self._test_post_uri(Item, ROOT["i1#a"])
+
+    @raises(RdfRestException)
+    def test_post_folder_uri_with_fragid(self):
+        # raises RdfRestException instead of InvalidUriException, cf. above
+        self._test_post_uri(Folder, ROOT["f1/#a/"])
     
     def test_post_folder_bad_uri(self):
         # posting a URI without a trailing slash
