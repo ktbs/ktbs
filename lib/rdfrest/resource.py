@@ -24,7 +24,7 @@ Instances of this class are typically retrieved from a
 `~.service.Service.root`:attr: property or by its method
 `~.service.Service.get`:meth:.
 
-Note that every resource is identified by a URI. Howevever, only URI without
+Note that every resource is identified by a URI. Howevever, only URIs without
 any query-string (the part of the URI after the '?') or fragment-identifier
 (the part of the URI after the '#') are allowed.
 
@@ -32,7 +32,7 @@ any query-string (the part of the URI after the '?') or fragment-identifier
 
 Note that from the perspective of both REST and RDF, every URI identifies a
 different resource, and query-string and fragment-identifiers are no
-exception: ``http://a.b/c/d``, ``http://a.b/c/d?e=f`` and ``http://a.b/c/d#e"
+exception: ``http://a.b/c/d``, ``http://a.b/c/d?e=f`` and ``http://a.b/c/d#e``
 are *three* different resources. In practice, however, URIs that differ only
 by their query-string and/or fragment-identifier usually identify resources
 that are closely related (if not "variants" of the same resource).  RDF-REST
