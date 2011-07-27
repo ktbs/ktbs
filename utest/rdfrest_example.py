@@ -12,12 +12,12 @@ ONS = Namespace("http://example.org/other-ns/")
 class MyService(Service):
     "A test service"
 
-    def __init__(self):
-        Service.__init__(
-            self,
-            plugin.get("IOMemory", Store)(),
-            ROOT[""],
-            )
+    def __init__(self, uri=None):
+        if uri is None:
+            uri = ROOT[""]
+        else:
+            uri = URIRef(uri)
+        Service.__init__( self, plugin.get("IOMemory", Store)(), uri)
             
 
 @MyService.register

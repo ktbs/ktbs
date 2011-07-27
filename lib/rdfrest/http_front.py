@@ -62,8 +62,8 @@ class HttpFrontend(object):
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
-        self._serializers = serializers or SerializerRegister.get_default()
-        self._parsers = parsers or ParserRegister.get_default()
+        self.serializers = serializers or SerializerRegister.get_default()
+        self.parsers = parsers or ParserRegister.get_default()
         self._options = options or {}
 
     def __call__(self, environ, start_response):
@@ -139,22 +139,22 @@ class HttpFrontend(object):
 
         ext = request.uri_extension
         if ext:
-            serializer, ctype = self._serializers.get_by_extension(ext)
+            serializer, ctype = self.serializers.get_by_extension(ext)
             if serializer is None:
                 return self.issue_error(404, request, resource)
         else:
             serializer = None
             ctype = request.accept.best_match( ser[1]
-                                               for ser in self._serializers )
+                                               for ser in self.serializers )
             if ctype is None:
                 # 406 Not Acceptable
                 version_list = [ "<%s.%s>  (%s)" % (resource.uri, i[2], i[1])
-                                 for i in self._serializers if i[2] ]
+                                 for i in self.serializers if i[2] ]
                 return MyResponse("\n".join(version_list),
                                   status="406 Not Acceptable",
                                   request=request)
             # else we can be certain that the serializer exists, so:
-            serializer, ext = self._serializers.get_by_content_type(ctype)
+            serializer, ext = self.serializers.get_by_content_type(ctype)
 
         headerlist = []
         headerlist.append(("content-type", ctype))
@@ -171,7 +171,7 @@ class HttpFrontend(object):
         try:
             app_iter = serializer(
                 resource._graph, # protected member #pylint: disable=W0212
-                self._serializers,
+                self.serializers,
                 resource.uri)
         except SerializeError, ex:
             return MyResponse(ex.message, status="550 Serialize error")
@@ -191,7 +191,7 @@ class HttpFrontend(object):
     def http_post(self, request, resource):
         """Process a GET request on the given resource.
         """
-        parser = self._parsers.get_by_content_type(request.content_type
+        parser = self.parsers.get_by_content_type(request.content_type
                                                    or "text/turtle")
         if parser is None:
             return self.issue_error(415, request, resource)
@@ -224,13 +224,13 @@ class HttpFrontend(object):
         if etag is not None:
             if request.headers.get("if-match", "*") == "*":
                 return MyResponse(
-                    status="403 Unauthorized: 'if-match' is required",
+                    status="403 Forbidden: 'if-match' is required",
                     request=request,
                     )
             if not etag in request.if_match:
                 return self.issue_error(412, request, resource)
 
-        parser = self._parsers.get_by_content_type(request.content_type
+        parser = self.parsers.get_by_content_type(request.content_type
                                                    or "text/turtle")
         if parser is None:
             return self.issue_error(415, request, resource)

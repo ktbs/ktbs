@@ -23,6 +23,8 @@ from sys import path, stderr
 SOURCE_DIR = dirname(dirname(abspath(__file__)))
 LIB_DIR = join(SOURCE_DIR, "lib")
 path.insert(0, LIB_DIR)
+UTEST_DIR = join(SOURCE_DIR, "utest")
+path.insert(0, UTEST_DIR)
 
 from warnings import filterwarnings
 #filterwarnings("ignore", category=DeprecationWarning, module="rdflib")
@@ -31,89 +33,21 @@ filterwarnings("ignore", category=UserWarning, module="rdflib")
 import rdflib
 assert rdflib.__version__.startswith("3.")
 
-from rdflib import (Graph, Literal, Namespace, plugin, RDF, RDFS, URIRef)
-from rdflib.store import Store
 from wsgiref.simple_server import make_server
 
 from rdfrest.http_front import HttpFrontend
-from rdfrest.mixins import (WithCardinalityMixin, BookkeepingMixin,
-                            WithReservedNamespacesMixin,
-                            RdfPutMixin, RdfPostMixin,
-                            )
-from rdfrest.resource import Resource
-from rdfrest.serializer import bind_prefix
-from rdfrest.service import Service
+from rdfrest_example import MyService, ONS, RNS
 
-
-NS = Namespace("http://example.org/")
-PREFIXES = """
-@prefix : <%(NS)s> .
-@prefix rdfs: <%(RDFS)s> .
-""" % globals()
-
-class Foo(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
-          RdfPutMixin, Resource):
-    """An example resource."""
-
-    RDF_MAIN_TYPE = NS.Foo
-
-    RDF_RESERVED_NS   = [NS,]
-    RDF_PUTABLE_IN    = [NS.rw_in,]
-    RDF_PUTABLE_OUT   = [NS.rw_out,]
-    RDF_PUTABLE_TYPE  = [NS.rw_type,]
-    RDF_POSTABLE_IN   = [NS.ro_in,]
-    RDF_POSTABLE_OUT  = [NS.ro_out,]
-    RDF_POSTABLE_TYPE = [NS.ro_type,]
-
-    RDF_CARDINALITY_IN  = [(NS.rw_in,  1, 1)]
-    RDF_CARDINALITY_OUT = [(NS.rw_out, 1, 1)]
-
-
-class Bar(Foo, RdfPostMixin):
-    """An extension of Foo, which allows to be posted new resources."""
-
-    RDF_MAIN_TYPE = NS.Bar
-
-    def rdf_post(self, graph):
-        created = super(Bar, self).rdf_post(graph)
-        with self._edit as graph:
-            for i in created:
-                graph.add((self.uri, NS.has_child, created[0]))
-        return created
-
-    @classmethod
-    def create_root_graph(cls, uri):
-        graph = super(Bar, cls).create_root_graph(uri)
-        graph.add((NS.something, NS.rw_in, uri))
-        graph.add((uri, NS.rw_out,
-                   Literal("rw_in and rw_out are required properties")))
-        return graph
-
-class FooBarService(Service):
-    "A demo service"
-
-    def bootstrap(self, uri):
-        "A method for initializing the root resource in the service"
-        graph = Graph()
-        graph.add((uri, RDF.type, NS.Bar))
-        graph.add((uri, RDFS.label, Literal("A test service")))
-        graph.add((uri, NS.rw_out, Literal("rw_in and rw_out are required")))
-        graph.add((NS.something, NS.rw_in, uri))
-        return Bar.create(self, uri, graph)
-
-FooBarService.register(Foo)
-FooBarService.register_root(Bar)
-
+HOST = "localhost"
+PORT = 8001
 
 def main():
     "The main function of this test"
-    HOST = "localhost"
-    PORT = 8001
-    bind_prefix("", NS)
-    store = plugin.get("IOMemory", Store)()
-    root_uri = URIRef("http://%s:%s/" % (HOST, PORT))
-    service = FooBarService(store, root_uri)
+    root_uri = "http://%s:%s/" % (HOST, PORT)
+    service = MyService(root_uri)
     http = HttpFrontend(service)
+    http.serializers.bind_prefix("", RNS)
+    http.serializers.bind_prefix("o", ONS)
     print >> stderr, "===", "Starting server on ", root_uri
     make_server(HOST, PORT, http).serve_forever()
     #make_server(HOST, PORT, http).handle_request()
