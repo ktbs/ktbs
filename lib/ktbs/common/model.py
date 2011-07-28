@@ -42,7 +42,7 @@ class ModelMixin(InBaseMixin):
         """
         unit = Literal(str(unit))
         with self._edit as graph:
-            graph.add((self.uri, _HAS_UNIT, unit))
+            graph.set((self.uri, _HAS_UNIT, unit))
 
     def get(self, id):
         """
