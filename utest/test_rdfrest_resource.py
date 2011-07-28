@@ -79,8 +79,8 @@ class MinimalResource(Resource):
             graph.set((self.uri, TOUCHED, Literal(touched + 1)))
 
     @classmethod
-    def create_root_graph(cls, uri):
-        graph = super(MinimalResource, cls).create_root_graph(uri)
+    def create_root_graph(cls, uri, service):
+        graph = super(MinimalResource, cls).create_root_graph(uri, service)
         graph.set((uri, TOUCHED, Literal(0)))
         return graph
 

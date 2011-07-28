@@ -10,7 +10,7 @@
 #    KTBS is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU Lesser General Public License for more details.
+#    GNU Lesser General Public License fo more details.
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
@@ -19,7 +19,51 @@
 I contain useful namespace objects.
 """
 
-from rdflib import Namespace
+from rdflib.namespace import Namespace, ClosedNamespace
 
-KTBS = Namespace("http://liris.cnrs.fr/silex/2009/ktbs#")
 SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
+
+KTBS = ClosedNamespace(
+    "http://liris.cnrs.fr/silex/2009/ktbs#", [
+        "AttributeType",
+        "Base",
+        "ComputedTrace",
+        "KtbsRoot",
+        "Method",
+        "Obsel",
+        "ObselType",
+        "RelationType",
+        "StoredTrace",
+        "TraceModel",
+        "contains",
+        "filter",
+        "fusion",
+        "hasAttributeDomain",
+        "hasAttributeRange",
+        "hasBase",
+        "hasBegin",
+        "hasBeginDT",
+        "hasBuiltinMethod",
+        "hasDefaultSubject",
+        "hasEnd",
+        "hasEndDT",
+        "hasMethod",
+        "hasModel",
+        "hasObselCollection",
+        "hasOrigin",
+        "hasParameter",
+        "hasParentMethod",
+        "hasParentModel",
+        "hasRelationDomain",
+        "hasRelationRange",
+        "hasSource",
+        "hasSourceObsel",
+        "hasSubject",
+        "hasSuperObselType",
+        "hasSuperRelationType",
+        "hasTrace",
+        "hasUnit",
+        "sparql",
+        "supermethod",
+        ]
+    )

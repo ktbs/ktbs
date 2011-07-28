@@ -5,6 +5,7 @@ Abstract client API for kTBS
 :version: work in progress
 :date: 2010-11-18
 :changelog:
+    2011-07-28  pchampin  added label to all create_X methods
     2011-06-29  pchampin  applied feedback from the actionscript implementation
     2011-06-26  pchampin  moved id to the end for several create_X methods
     2011-06-21  pchampin  simplified API for list of inherited things
@@ -36,7 +37,7 @@ Ktbs (Resource)
   list_bases() → [Base]
   get_base(id:uri) → Base
       return the trace base identified by the given URI, or null
-  create_base(id:uri?) → Base
+  create_base(label:str?, id:uri?) → Base
   list_builtin_methods() → [Method]
       list the builtin methods supported by the kTBS
    
@@ -49,15 +50,17 @@ Base (Base)
       list the models stored in that base
   list_methods() → [Method]
       list the methods stored in that base
-  create_stored_trace(model:Model, origin:str?, default_subject:str?, id:uri?)
+  create_stored_trace(model:Model, origin:str?, default_subject:str?,
+                      label:str?, id:uri?)
                      → StoredTrace
       list the stored traces stored in that base
       if origin is not specified, a fresh opaque string is generated
-  create_computed_trace(method:Method, sources:[Trace]?, id:uri?)
+  create_computed_trace(method:Method, sources:[Trace]?, label:str?, id:uri?)
                        → ComputedTrace
       list the computed traces stored in that base
-  create_model(parents:[Model]?, id:uri?) → Model
-  create_method(parent:Method, parameters:[str=>any]?, id:uri) → Method
+  create_model(parents:[Model]?, label:str?, id:uri?) → Model
+  create_method(parent:Method, parameters:[str=>any]?, label:str?,
+                id:uri) → Method
 
 Trace (Resource)
   get_base() → Base
@@ -84,7 +87,7 @@ StoredTrace (Trace)
                attributes:[AttributeType=>any]?,
                relations:[RelationType=>Obsel]?,
                inverse_relations:[RelationType=>Obsel]?,
-               source_obsels:[Obsel]?, id:uri?) → Obsel
+               source_obsels:[Obsel]?, label:str?, id:uri?) → Obsel
 
 ComputedTrace(Trace)
   get_method() → Method
@@ -186,11 +189,12 @@ ObselType (Resource)
       list the inverse relation types of this obsel type (direct or inherited)
       include_inherited defaults to true and means that inverse relation types
       inherited from supertypes should be included
-  create_attribute_type(id:uri?, range:uri?, range_is_list:book?)
+  create_attribute_type(label:str, range:uri?, range_is_list:book?, id:uri?)
                        → AttributeType
       shortcut to get_model().create_attribute_type where this ObselType is the
       domain
-  create_relation_type(id:uri?, range:ObselType?, supertypes:[RelationType]?)
+  create_relation_type(label:str, range:ObselType?,
+                       supertypes:[RelationType]?, id:uri?)
                       → RelationType
       shortcut to get_model().create_relation_type where this ObselType is the
       domain

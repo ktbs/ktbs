@@ -17,9 +17,6 @@
 """
 I provide the client implementation of trace models and their elements.
 """
-#pylint: disable-msg=R0904
-#    too many public methods
-
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.model import (ModelMixin, AttributeTypeMixin, ObselTypeMixin,
                                RelationTypeMixin)

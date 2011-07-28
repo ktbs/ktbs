@@ -130,6 +130,6 @@ class Folder(Item, RdfPostMixin):
             super(Folder, self).rdf_delete(parameters)
 
     @classmethod
-    def create_root_graph(cls, uri):
-        graph = super(Folder, cls).create_root_graph(uri)
+    def create_root_graph(cls, uri, service):
+        graph = super(Folder, cls).create_root_graph(uri, service)
         return cls.populate(uri, ONS.foo, graph)

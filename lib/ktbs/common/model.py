@@ -22,7 +22,7 @@ from rdflib import Literal, RDF
 
 from ktbs.common.base import InBaseMixin
 from ktbs.common.resource import ResourceMixin
-from ktbs.common.utils import extend_api, mint_uri
+from ktbs.common.utils import extend_api, mint_uri_from_label
 from ktbs.namespaces import KTBS, SKOS
 from rdfrest.utils import coerce_to_uri
 
@@ -138,13 +138,13 @@ class ModelMixin(InBaseMixin):
         # redefining built-in 'id' #pylint: disable=W0622
         base_uri = self.uri
         with self._edit as graph:
-            uri = mint_uri(label, self, id)
+            uri = mint_uri_from_label(label, self, id)
             add = graph.add
             add((uri, _RDF_TYPE, _OBSEL_TYPE))
             add((uri, _PREF_LABEL, Literal(label)))
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
-        return self.make_resource(uri, _OBSEL_TYPE, graph) 
+        return self.make_resource(uri, _OBSEL_TYPE, graph)
 
 
     # TODO implement add_parent, remove_parent, create_*
@@ -275,7 +275,6 @@ class ObselTypeMixin(_ModelTypeMixin):
     """
     I provide the pythonic interface to an obsel type.
     """
-    #pylint: disable-msg=R0904
 
     _SUPER_TYPE_PROP = KTBS.hasSuperObselType
 

@@ -54,7 +54,6 @@ from webob.response import converter, header_getter, Response
 
 class WeakEtag(str):
     "A class for distinguisging weak etags from other etags."
-    # too many pulic methods (inherited from str! ;) #pylint: disable=R0904
     def __repr__(self):
         return "WeakEtag(%r)" % str(self)
 

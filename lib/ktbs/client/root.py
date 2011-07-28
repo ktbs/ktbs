@@ -17,20 +17,20 @@
 """
 I provide the client implementation of KtbsRoot.
 """
-from rdflib import Graph, RDF
+from rdflib import Graph, Literal, RDF
 #from rdfrest.client import ProxyStore
 
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import post_graph
-from ktbs.namespaces import KTBS
+from ktbs.namespaces import KTBS, SKOS
 from rdfrest.utils import coerce_to_node
 
 class KtbsRoot(KtbsRootMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
     """
 
-    def create_base(self, id=None, graph=None):
+    def create_base(self, label=None, id=None, graph=None):
         """Create a new base in this kTBS.
 
         :param id: see :ref:`ktbs-resource-creation`
@@ -43,8 +43,10 @@ class KtbsRoot(KtbsRootMixin, Resource):
         node = coerce_to_node(id, self.uri)
         if graph is None:
             graph = Graph()
-        graph.add((node, _RDF_TYPE, _BASE))
         graph.add((self.uri, _HAS_BASE, node))
+        graph.add((node, _RDF_TYPE, _BASE))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
         # TODO MAJOR parse content and feed the graph to make_resource

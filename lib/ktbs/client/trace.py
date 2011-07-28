@@ -17,8 +17,6 @@
 """
 I provide the client implementation of StoredTrace and ComputedTrace.
 """
-#pylint: disable-msg=R0904
-#    too many public methods
 from ktbs.client.resource import Resource, RESOURCE_MAKER
 from ktbs.common.computed_trace import ComputedTraceMixin
 from ktbs.common.trace import StoredTraceMixin

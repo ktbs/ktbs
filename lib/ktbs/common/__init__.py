@@ -30,8 +30,9 @@ All those mixin require
   `~rdflib.Graph`:class: and commiting the modifications to the
   resource on exit
 
-* a method `make_resource(node, node_type=None)` used to build another
-  resource as the value of a property.
+* a method `make_resource(node, node_type=None, graph=None)` used to build
+  another resource as the value of a property. node_type (a URI) and graph
+  can be provided as a hint to accelerate the process.
 
 Note that not all classes in `ktbs.local` inherit the corresponding mixin
 class from `ktbs.common`, and when they do, they sometimes use low-level code

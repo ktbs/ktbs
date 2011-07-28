@@ -61,21 +61,18 @@ from rdfrest.exceptions import CorruptedStore
 from rdfrest.namespaces import RDFREST
 
 class Service(object):
-    """
-
-        :param store:    the RDF store containing the data of this service
-        :type  store:    rdflib.store.Store
-        :param root_uri: the URI of the root resource of this service
-        :type  root_uri: rdflib.URIRef
-        :param create:   if `store` is empty, populate it with initial data?
-
-    This class should never be used directly, but is meant to be subclassed:
+    """This class should never be used directly, but is meant to be subclassed:
 
     **To subclass implementers:** Your only job in subclassing
     :class:`Service` will generally be to use class methods
     :meth:`register` and :meth:`register_root` to customize their
     behaviour.
 
+    :param store:    the RDF store containing the data of this service
+    :type  store:    rdflib.store.Store                         
+    :param root_uri: the URI of the root resource of this service
+    :type  root_uri: str
+    :param create:   if `store` is empty, populate it with initial data?
     """
 
     _class_map = None
@@ -87,6 +84,7 @@ class Service(object):
         """
         assert self._class_map, "No registered resource class"
         assert self._root_cls, "No registered root resource class"
+        root_uri = URIRef(root_uri)
 
         self.store = store
         self.root_uri = root_uri
@@ -95,7 +93,7 @@ class Service(object):
         if len(store) == 0:
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
-            graph = root_cls.create_root_graph(root_uri)
+            graph = root_cls.create_root_graph(root_uri, self)
             root = root_cls.create(self, self.root_uri, graph)
             self._resource_cache[root_uri.defrag()] = root
         

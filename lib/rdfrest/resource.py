@@ -160,11 +160,13 @@ class Resource(object):
         return cls(service, uri)
 
     @classmethod
-    def create_root_graph(cls, uri):
+    def create_root_graph(cls, uri, service):
         """Return a bootstrap graph for a service root.
 
         :param uri:       the URI of the resource to create
         :type  uri:       rdflib.URIRef
+        :param uri:       the service of which we are creating the root
+        :type  uri:       rdfrest.service.Service
 
         :rtype: rdflib.Graph
 
@@ -175,6 +177,7 @@ class Resource(object):
         The default behaviour is to return a graph with a single triple,
         stating that this resource has ``rdf:type`` ``RDF_MAIN_TYPE``.
         """
+        # unused argument service #pylint: disable=W0613
         ret = Graph()
         ret.add((uri, _RDF_TYPE, cls.RDF_MAIN_TYPE))
         return ret

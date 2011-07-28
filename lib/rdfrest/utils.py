@@ -110,3 +110,22 @@ def random_token(length, characters="abcdefghijklmnopqrstuvwxyz0123456789"):
     :param characters: the range of characters to use
     """
     return "".join( choice(characters) for i in range(length) )
+
+def replace_node(graph, old_node, new_node):
+    """Replace a node by another in `graph`.
+
+    :type graph:    rdflib.Graph
+    :type old_node: rdflib.Node
+    :type new_node: rdflib.Node
+    """
+    add_triple = graph.add
+    rem_triple = graph.remove
+    subst = lambda x: (x == old_node) and new_node or x
+    for triple in graph:
+        # heuristics: most triple will involve old_node,
+        # (this method is used with posted graphs to name the created resource)
+        # so we transform all triples,
+        # without even checking if they contain old_node
+        rem_triple(triple)
+        add_triple([ subst(i) for i in triple ])
+    old_node = new_node

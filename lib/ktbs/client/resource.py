@@ -102,15 +102,15 @@ class Resource(ResourceMixin):
             yield self.__graph
 
     @staticmethod
-    def make_resource(uri, typ=None, graph=None):
+    def make_resource(uri, node_type=None, graph=None):
         """TODO docstring
         """
-        if typ is None:
+        if node_type is None:
             if graph is None:
                 graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
                 graph.open(uri)
-            typ = graph.value(uri, _RDF_TYPE)
-        maker = RESOURCE_MAKER[typ]
+            node_type = graph.value(uri, _RDF_TYPE)
+        maker = RESOURCE_MAKER[node_type]
         return maker(uri, graph)
 
     def remove(self):

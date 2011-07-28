@@ -15,20 +15,34 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 """
-I provide the client implementation of Obsel
+I implement KTBS as an `rdfrest.service.Service`:class.
 """
-from ktbs.client.resource import Resource, RESOURCE_MAKER
-from ktbs.common.obsel import ObselMixin
+
+from rdfrest.service import Service
+
 from ktbs.namespaces import KTBS
 
+class KtbsService(Service):
+    """The KTBS service.
+    """
+    
+    @classmethod
+    def builtin_methods(cls):
+        """I return an iterable of all supported built-in methods.
+        """
+        # TODO MAJOR make it dynamic
+        yield KTBS.filter
+        yield KTBS.fusion
+        yield KTBS.sparql
+        yield KTBS.supermethod
 
-class Obsel(ObselMixin, Resource):
-    """TODO docstring"""
-    # TODO implement client-specifid methods
+# registering all resources classes
+from ktbs.local.root import KtbsRoot
+from ktbs.local.base import Base
+from ktbs.local.model import Model
+from ktbs.local.method import Method
 
-RESOURCE_MAKER[KTBS.Obsel] = Obsel
-
-# the following import ensures that required classes are registered in
-# RESOURCE_MAKER (AttributeType, RelationType)
-import ktbs.client.model #pylint: disable-msg=W0611
-# NB: we have to disable pylint W0611 (Unused import)
+KtbsService.register_root(KtbsRoot)
+KtbsService.register(Base)
+KtbsService.register(Model)
+KtbsService.register(Method)

@@ -15,20 +15,8 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 """
-I provide the client implementation of Obsel
+Local version of KTBS.
+
+This implementation provides a local implementation of KTBS. This can be used
+either as a standalone KTBS or as a server, using `rdfrest.http_front`:mod:.
 """
-from ktbs.client.resource import Resource, RESOURCE_MAKER
-from ktbs.common.obsel import ObselMixin
-from ktbs.namespaces import KTBS
-
-
-class Obsel(ObselMixin, Resource):
-    """TODO docstring"""
-    # TODO implement client-specifid methods
-
-RESOURCE_MAKER[KTBS.Obsel] = Obsel
-
-# the following import ensures that required classes are registered in
-# RESOURCE_MAKER (AttributeType, RelationType)
-import ktbs.client.model #pylint: disable-msg=W0611
-# NB: we have to disable pylint W0611 (Unused import)

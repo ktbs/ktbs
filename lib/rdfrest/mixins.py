@@ -28,7 +28,7 @@ from rdfrest.exceptions import InvalidDataError, MethodNotAllowedError, \
     RdfRestException
 from rdfrest.namespaces import RDFREST
 from rdfrest.resource import Resource
-from rdfrest.utils import cache_result, check_new
+from rdfrest.utils import cache_result, check_new, replace_node
 
 class RdfPutMixin(Resource):
     """I make the mixed-in class PUTable.
@@ -92,7 +92,7 @@ class RdfPostMixin(Resource):
         created = self.find_created(new_graph)
         if created is None:
             raise RdfRestException("Can not find created node")
-        errors = self.check_posted_graph(new_graph, created)
+        errors = self.check_posted_graph(created, new_graph)
         if errors:
             raise InvalidDataError(errors)
 
@@ -108,14 +108,7 @@ class RdfPostMixin(Resource):
 
         if not isinstance(created, URIRef):
             new_uri = resource_class.mint_uri(self, new_graph, created)
-            add_triple = new_graph.add
-            rem_triple = new_graph.remove
-            subst = lambda x: (x == created) and new_uri or x
-            for triple in new_graph:
-                # heuristics: most triple will involve created, so we replace
-                # all of them, even those that will not be changed by subst
-                rem_triple(triple)
-                add_triple([ subst(i) for i in triple ])
+            replace_node(new_graph, created, new_uri)
             created = new_uri
 
         resource_class.create(self.service, created, new_graph)
@@ -175,13 +168,13 @@ class RdfPostMixin(Resource):
                 return None
         return base # all other candidates are 'fragments' of the base
 
-    def check_posted_graph(self, new_graph, created):
+    def check_posted_graph(self, created, new_graph):
         """Check whether `new_graph` is acceptable for a POST on this resource.
 
-        :param new_graph: the posted RDF graph
-        :type  new_graph: rflib.Graph
         :param created:   the node representing the resource to create
         :type  created:   rdflib.Node
+        :param new_graph: the posted RDF graph
+        :type  new_graph: rflib.Graph
 
         :return: `None` on success, else an error message
 
@@ -350,7 +343,7 @@ class WithReservedNamespacesMixin(Resource):
         Cache the set of all reserved namespaces.
         """
         return frozenset(
-            rns
+            str(rns)
             for superclass in cls.mro()
             for rns in getattr(superclass, "RDF_RESERVED_NS", ())
             )

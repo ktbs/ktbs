@@ -75,12 +75,12 @@ class HttpFrontend(object):
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
-        self.serializers = options.pop("serializers",
-                                       SerializerRegister.get_default())
-        self.parsers = options.pop("parsers", 
-                                   ParserRegister.get_default())
-        self.cache_control = options.pop("cache_control",
-                                         lambda *a: None)
+        self.serializers = options.pop("serializers", None) \
+                           or SerializerRegister.get_default()
+        self.parsers = options.pop("parsers", None) \
+                       or ParserRegister.get_default()
+        self.cache_control = options.pop("cache_control", None) \
+                             or (lambda *a: None)
         self._options = options or {}
 
     def __call__(self, environ, start_response):
