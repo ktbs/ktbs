@@ -216,21 +216,22 @@ def test_delete_invalid_params():
     url2 = header["location"]
     header, content = SERVER.request(url2+"?invalid=a", "DELETE")
     eq_(header.status, 404)
-    
 
 
-# TODO
-#
-# * test a 200 on a GET with parameters (implies that rdfrest_demo.py
-#   implements it)
-#
-# * test a 409 error (implies that rdfrest_demo.py raise CanNotProceedError
-#   in some situtation, e.g. when deleting a non-empty folder)
-#
-# * test a 550 error (implies that we are able to make a serializer fail in
-#  rdfrest_demo.py)
-#
-# * test a working DELETE (implies that rdfrest_demo.py implements it)
+def test_cache_control():
+    header, _ = SERVER.request(URL)
+    assert "cache-control" not in header, header["cache-control"]
+    reqhead = { "content-type": "text/turtle" }
+    header, _ = SERVER.request(URL, "POST", POSTABLE_TURTLE, reqhead)
+    url2 = header["location"]
+    header, _ = SERVER.request(url2)
+    assert "cache-control" in header
+
+
+def test_serialize_error():
+    # we use the fact that rdfrest_demo can "simulate" a serialize error
+    header, content = SERVER.request(URL+"?serialize_error=yes")
+    eq_(header.status, 550)
 
 
 def test_ctype():

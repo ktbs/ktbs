@@ -69,12 +69,16 @@ class Item(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
         return graph
 
     def check_parameters(self, params):
+        # some parameters are accepted in order to generate exceptions;
+        # this is useful for some tests
         if params is None or params.keys() == ["valid"]:
             return
-        elif params.keys() == ["notallowed"]:
-            raise MethodNotAllowedError("parameters prevent this method")
+        elif params.keys() == ["serialize_error"]:
+            raise SerializeError("just faking")
         elif params.keys() == ["goto"]:
             raise Redirect(URIRef(params["goto"], self.uri))
+        elif params.keys() == ["notallowed"]:
+            raise MethodNotAllowedError("parameters prevent this method")
         else:
             raise InvalidParametersError("Invalid parameters: "
                                          + " ".join(params))

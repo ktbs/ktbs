@@ -40,17 +40,23 @@ from rdfrest_example import MyService, ONS, RNS
 
 HOST = "localhost"
 PORT = 8001
+ROOT_URI = "http://%s:%s/" % (HOST, PORT)
 
 def main():
     "The main function of this test"
-    root_uri = "http://%s:%s/" % (HOST, PORT)
-    service = MyService(root_uri)
-    http = HttpFrontend(service)
+    service = MyService(ROOT_URI)
+    http = HttpFrontend(service, cache_control=cache_control)
     http.serializers.bind_prefix("", RNS)
     http.serializers.bind_prefix("o", ONS)
-    print >> stderr, "===", "Starting server on ", root_uri
+    print >> stderr, "===", "Starting server on ", ROOT_URI
     make_server(HOST, PORT, http).serve_forever()
     #make_server(HOST, PORT, http).handle_request()
+
+def cache_control(resource):
+    if str(resource.uri) == ROOT_URI:
+        return None
+    else:
+        return "max-age=5"
 
 if __name__ == "__main__":
     main()

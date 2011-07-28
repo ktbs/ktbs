@@ -45,15 +45,19 @@ class HttpFrontend(object):
     HttpFrontend.
 
     :param service: the service to expose over HTTP
-    :param serializers: a serializer register (if None, the default one will be
-                        used)
-    :param serializers: serializer.SerializerRegister
-    :param parsers: a parser register (if None, the default one will be used)
-    :param parsers: parser.ParserRegister
-    :param options: additional informations
-    :type  options: dict
 
-    NB: for the moment, no option is recognized.
+    Additionally, the following keyword arguments are recognized:
+
+    :param serializers:   a serializer register (if None, the default one will
+                          be used)
+    :type  serializers:   serializer.SerializerRegister
+    :param parsers:       a parser register (if None, the default one will be
+                          used)
+    :type  parsers:       parser.ParserRegister
+    :param) options:      additional informations
+    :type  options: dict
+    :param cache_control: a callable accepting a Resource and returning either
+                          None or the value of the cache-control header field.
 
     .. warning::
     
@@ -65,14 +69,18 @@ class HttpFrontend(object):
 
     """
 
-    def __init__(self, service, serializers=None, parsers=None, options=None):
+    def __init__(self, service, **options):
         """See class docstring.
         """
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
-        self.serializers = serializers or SerializerRegister.get_default()
-        self.parsers = parsers or ParserRegister.get_default()
+        self.serializers = options.pop("serializers",
+                                       SerializerRegister.get_default())
+        self.parsers = options.pop("parsers", 
+                                   ParserRegister.get_default())
+        self.cache_control = options.pop("cache_control",
+                                         lambda *a: None)
         self._options = options or {}
 
     def __call__(self, environ, start_response):
@@ -132,9 +140,16 @@ class HttpFrontend(object):
             raise
 
         if response.status[0] == "2":
+            # NB: we commit even if the request was a GET, because it may
+            # have modified the '#private' graphs
             self._service.store.commit()
         else:
             self._service.store.rollback()
+
+        cache_control = self.cache_control(resource)
+        if cache_control is not None:
+            response.cache_control = cache_control
+            
         return response
 
     def http_delete(self, request, resource):
