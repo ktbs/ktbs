@@ -1,6 +1,7 @@
 from rdflib import Graph, Namespace, RDF, plugin
 from rdflib.store import Store
 
+from rdfrest.exceptions import *
 from rdfrest.mixins import *
 from rdfrest.resource import Resource
 from rdfrest.service import Service
@@ -67,6 +68,35 @@ class Item(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
         graph.add((node, RNS.rw_out,    ONS.bar))
         return graph
 
+    def check_parameters(self, params):
+        if params is None or params.keys() == ["valid"]:
+            return
+        elif params.keys() == ["notallowed"]:
+            raise MethodNotAllowedError("parameters prevent this method")
+        elif params.keys() == ["goto"]:
+            raise Redirect(URIRef(params["goto"], self.uri))
+        else:
+            raise InvalidParametersError("Invalid parameters: "
+                                         + " ".join(params))
+        
+    def rdf_get(self, params=None):
+        self.check_parameters(params)
+        return super(Item, self).rdf_get()
+
+    def rdf_put(self, graph, params=None):
+        self.check_parameters(params)
+        return super(Item, self).rdf_put(graph)
+
+    def rdf_post(self, graph, params=None):
+        self.check_parameters(params)
+        return super(Item, self).rdf_post(graph)
+
+    def rdf_delete(self, params=None):
+        self.check_parameters(params)
+        with self._edit as graph:
+            graph.remove((None, None, None))
+            self._private.remove((None, None, None))
+
 
 
 @MyService.register_root
@@ -88,6 +118,12 @@ class Folder(Item, RdfPostMixin):
             for i in created:
                 graph.add((self.uri, RNS.hasChild, i))
         return created
+
+    def rdf_delete(self, parameters=None):
+        if list(self._graph.triples((self.uri, RNS.hasChild, None))):
+            raise CanNotProceedError("Folder is not empty")
+        else:
+            super(Folder, self).rdf_delete(parameters)
 
     @classmethod
     def create_root_graph(cls, uri):

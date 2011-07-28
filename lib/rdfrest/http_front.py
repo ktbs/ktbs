@@ -20,7 +20,7 @@
 """
 from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, ParseError, \
-    RdfRestException, SerializeError
+    RdfRestException, Redirect, SerializeError
 from rdfrest.parser import ParserRegister
 from rdfrest.response import MyResponse
 from rdfrest.serializer import SerializerRegister
@@ -109,14 +109,18 @@ class HttpFrontend(object):
                                   status="404 Not Found",
                                   request=request)
         except MethodNotAllowedError, ex:
-            headerlist = [("allow", ", ".join(ex.allowed))]
             response = MyResponse(ex.message,
                                   status="405 Method Not Allowed",
-                                  headerlist=headerlist, request=request)
+                                  request=request)
+            response.allow = " ".join(ex.allowed)
         except ParseError, ex:
             response = MyResponse(ex.message,
                                   status="400 Bad Request: Parse error",
                                   request=request)
+        except Redirect, ex:
+            response = MyResponse(ex.message, status="303 See Other",
+                                  request=request)
+            response.location = str(ex.uri)
         except SerializeError, ex:
             response = MyResponse(ex.message, status="550 Serialize Error",
                                    request=request)

@@ -79,6 +79,18 @@ class ParseError(RdfRestException):
         RdfRestException.__init__(self, message)
         self.original = original
 
+class Redirect(RdfRestException):
+    """Causes a redirection to another resource.
+    
+    .. note:
+    
+        This is used to force http_front to issue a 303 redirect, but note that
+        it makes the resource hardly usable outside the HTTP protocol.
+    """
+    def __init__(self, uri):
+        RdfRestException.__init__(self, uri)
+        self.uri = uri
+
 class SerializeError(RdfRestException):
     """An error during serializing a graph.
 
