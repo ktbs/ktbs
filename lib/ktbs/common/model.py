@@ -87,7 +87,7 @@ class ModelMixin(InBaseMixin):
         for uri in self._graph.subjects(_RDF_TYPE, _ATTR_TYPE):
             yield make_resource(uri)
         if include_inherited:
-            for inherited in self.iter_inherited(True):
+            for inherited in self.iter_parents(True):
                 for atype in inherited.iter_attribute_types(False):
                     yield atype
 
@@ -99,7 +99,7 @@ class ModelMixin(InBaseMixin):
         for uri in self._graph.subjects(_RDF_TYPE, _OBSEL_TYPE):
             yield make_resource(uri)
         if include_inherited:
-            for inherited in self.iter_inherited(True):
+            for inherited in self.iter_parents(True):
                 for otype in inherited.iter_obsel_types(False):
                     yield otype
 
@@ -111,7 +111,7 @@ class ModelMixin(InBaseMixin):
         for uri in self._graph.subjects(_RDF_TYPE, _REL_TYPE):
             yield make_resource(uri)
         if include_inherited:
-            for inherited in self.iter_inherited(True):
+            for inherited in self.iter_parents(True):
                 for rtype in inherited.iter_relation_types(False):
                     yield rtype
 
@@ -146,7 +146,7 @@ class ModelMixin(InBaseMixin):
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
         return self.make_resource(uri, _OBSEL_TYPE, graph)
 
-    def create_relation_type(self, label, domain=None, range=None,
+    def create_relation_type(self, label, origin=None, destination=None,
                                 supertypes=(), id=None):
         """
         I create a new obsel type in this model.
@@ -158,18 +158,18 @@ class ModelMixin(InBaseMixin):
             add = graph.add
             add((uri, _RDF_TYPE, _REL_TYPE))
             add((uri, _PREF_LABEL, Literal(label)))
-            if domain is not None:
-				domain_uri = coerce_to_uri(domain, self.uri)
-				add((uri, _HAS_RORIGIN, domain_uri))
-            if range is not None:
-				range_uri = coerce_to_uri(range, self.uri)
-				add((uri, _HAS_RDESTINATION, range_uri))
+            if origin is not None:
+                origin_uri = coerce_to_uri(origin, self.uri)
+                add((uri, _HAS_RORIGIN, otype_uri))
+            if destination is not None:
+                destination_uri = coerce_to_uri(destination, self.uri)
+                add((uri, _HAS_RDESTINATION, destination_uri))
             for i in supertypes:
                 add((uri, _HAS_SUPERRTYPE, coerce_to_uri(i, base_uri)))
         return self.make_resource(uri, _REL_TYPE, graph)
 
 
-    # TODO implement add_parent, remove_parent, create_*
+    # TODO implement add_parent, remove_parent, create_attribute_type
 
 
 @extend_api
@@ -212,6 +212,13 @@ class _ModelElementMixin(ResourceMixin):
         tmodel_uri = self._graph.identifier
         ret = self.make_resource(tmodel_uri)
         return ret
+
+    def remove(self):
+        """
+        Override whatever behaviour is inherited, as this actually requires
+        to modify the containing model.
+        """
+        raise NotImplementedError() # TODO MAJOT implement it
     #
 
 @extend_api
@@ -234,7 +241,8 @@ class _ModelTypeMixin(_ModelElementMixin):
         else:
             make_resource = self.make_resource
             return ( make_resource(uri) 
-                     for uri in self._graph.subjects(self._SUPER_TYPE_PROP) )
+                     for uri in self._graph.subjects(self._SUPER_TYPE_PROP,
+                                                     self.uri) )
 
     def iter_supertypes(self, include_indirect=False):
         """
@@ -247,7 +255,8 @@ class _ModelTypeMixin(_ModelElementMixin):
         else:
             make_resource = self.make_resource
             return ( make_resource(uri)
-                     for uri in self._graph.objects(self._SUPER_TYPE_PROP) )
+                     for uri in self._graph.objects(self.uri, 
+                                                    self._SUPER_TYPE_PROP) )
 
     def matches(self, *others):
         """
@@ -365,27 +374,28 @@ class RelationTypeMixin(_ModelTypeMixin):
         else:
             return self.make_resource(uri)
 
-    def iter_all_domains(self):
+    def iter_all_origins(self):
         """
-        I iter over all the domains (direct or inherited) of this relation.
+        I iter over all the origins (direct or inherited) of this relation.
         """
         seen = set()
         for rtype in self.iter_supertypes(True):
-            rdomain = rtype.domain
-            if rdomain is not None and rdomain not in seen:
-                yield rdomain
-                seen.add(rdomain)
+            rorigin = rtype.origin
+            if rorigin is not None and rorigin not in seen:
+                yield rorigin
+                seen.add(rorigin)
 
-    def iter_all_ranges(self):
+    def iter_all_destinations(self):
         """
-        I iter over all the ranges (direct or inherited) of this relation.
+        I iter over all the destinations (direct or inherited) of this
+        relation.
         """
         seen = set()
         for rtype in self.iter_supertypes(True):
-            rrange = rtype.range
-            if rrange is not None and rrange not in seen:
-                yield rrange
-                seen.add(rrange)
+            rdestination = rtype.destination
+            if rdestination is not None and rdestination not in seen:
+                yield rdestination
+                seen.add(rdestination)
 
     # TODO implement add_supertype, remove_supertype, set_*, create_*
 

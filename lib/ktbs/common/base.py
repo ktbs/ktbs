@@ -96,7 +96,8 @@ class InBaseMixin(ResourceMixin):
         """
         Return the trace base this element belongs to.
         """
-        base_uri = urldefrag(self.uri)[0].rfind("/", 0, -1)
+        cut = urldefrag(self.uri)[0].rfind("/", 0, -1)
+        base_uri = self.uri[:cut+1]
         return self.make_resource(base_uri, _BASE)
 
         

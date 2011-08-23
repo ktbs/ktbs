@@ -65,16 +65,19 @@ class Trace(Resource):
             raise NotImplementedError(
                 "iter_obsels parameters not implemented yet")
             # TODO MAJOR implement parameters of iter_obsels
+        # TODO MAJOR when rdflib supports ORDER BY, make SPARQL do the sorting
         query_str = """
-            SELECT ?obs WHERE {
+            SELECT ?b ?e ?obs WHERE {
                 ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?t
+                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
+                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e
             }
-            ORDER BY ?t
-        """ % self.uri
-        make_resource = self.make_resource
+        """ % self.uri # TODO simplify once 
         obsels_graph = self._obsels
-        for obs in obsels_graph.query(query_str):
+        tuples = list(obsels_graph.query(query_str))
+        tuples.sort() # TODO remove this hack once rdflib supports 'ORDER BY'
+        make_resource = self.make_resource
+        for _, _, obs in tuples:
             yield make_resource(obs, _OBSEL, obsels_graph)
 
     
