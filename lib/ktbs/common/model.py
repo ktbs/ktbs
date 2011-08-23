@@ -146,6 +146,28 @@ class ModelMixin(InBaseMixin):
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
         return self.make_resource(uri, _OBSEL_TYPE, graph)
 
+    def create_relation_type(self, label, domain=None, range=None,
+                                supertypes=(), id=None):
+        """
+        I create a new obsel type in this model.
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        base_uri = self.uri
+        with self._edit as graph:
+            uri = mint_uri_from_label(label, self, id)
+            add = graph.add
+            add((uri, _RDF_TYPE, _REL_TYPE))
+            add((uri, _PREF_LABEL, Literal(label)))
+            if domain is not None:
+				domain_uri = coerce_to_uri(domain, self.uri)
+				add((uri, _HAS_RORIGIN, domain_uri))
+            if range is not None:
+				range_uri = coerce_to_uri(range, self.uri)
+				add((uri, _HAS_RDESTINATION, range_uri))
+            for i in supertypes:
+                add((uri, _HAS_SUPERRTYPE, coerce_to_uri(i, base_uri)))
+        return self.make_resource(uri, _REL_TYPE, graph)
+
 
     # TODO implement add_parent, remove_parent, create_*
 
@@ -337,7 +359,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the destination obsel type this relation, or None.
         """
-        uri = self._graph.objects(self.uri, _HAS_RDESTINATION)
+        uri = self._graph.value(self.uri, _HAS_RDESTINATION)
         if uri is None:
             return None
         else:
