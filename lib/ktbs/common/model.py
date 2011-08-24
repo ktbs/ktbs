@@ -149,7 +149,7 @@ class ModelMixin(InBaseMixin):
     def create_relation_type(self, label, origin=None, destination=None,
                                 supertypes=(), id=None):
         """
-        I create a new obsel type in this model.
+        I create a new relation type in this model.
         """
         # redefining built-in 'id' #pylint: disable=W0622
         base_uri = self.uri
@@ -160,7 +160,7 @@ class ModelMixin(InBaseMixin):
             add((uri, _PREF_LABEL, Literal(label)))
             if origin is not None:
                 origin_uri = coerce_to_uri(origin, self.uri)
-                add((uri, _HAS_RORIGIN, otype_uri))
+                add((uri, _HAS_RORIGIN, origin_uri))
             if destination is not None:
                 destination_uri = coerce_to_uri(destination, self.uri)
                 add((uri, _HAS_RDESTINATION, destination_uri))
