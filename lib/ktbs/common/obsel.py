@@ -42,7 +42,7 @@ class ObselMixin(ResourceMixin):
         """
         I return the obsel type of this obsel.
         """
-        tmodel = self.trace.trace_model
+        tmodel = self.trace.model
         for typ in self._graph.objects(self.uri, _RDF_TYPE):
             ret = tmodel.get(typ)
             if ret is not None:
