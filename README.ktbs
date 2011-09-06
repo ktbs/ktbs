@@ -4,6 +4,14 @@ Python kTBS
 
 A kernel for trace-based systems (python implementation).
 
+.. WARNING::
+
+  Only the client side API is (partly) functionnal.
+
+  For the server part of the kTBS, please still use the old SVN for the moment:
+
+  https://svn.liris.cnrs.fr/sbt-dev/ktbs-rest-impl
+
 Dependancies
 ============
 
