@@ -104,7 +104,7 @@ class ObselMixin(ResourceMixin):
         """ % self.uri
         make_resource = self.make_resource
         for atype in self._graph.query(query_str):
-            if not atype.startswith(KTBS) and atype != _RDF_TYPE:
+            if not atype.startswith(KTBS.uri) and atype != _RDF_TYPE:
                 yield make_resource(atype, _ATTRIBUTE_TYPE)
 
     def iter_relation_types(self):
@@ -167,7 +167,7 @@ class ObselMixin(ResourceMixin):
         """ % (rtype, self.uri)
         make_resource = self.make_resource
         for binding in self._graph.query(query_str):
-            yield make_resource(binding[0], _OBSEL)
+            yield make_resource(binding, _OBSEL)
 
     def get_attribute_value(self, atype):
         """

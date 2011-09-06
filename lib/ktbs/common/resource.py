@@ -46,7 +46,7 @@ class ResourceMixin(object):
         if pref_label is not None:
             return str(pref_label)
 
-        label = self._graph.objects(self.uri, RDFS.label)
+        label = self._graph.value(self.uri, RDFS.label)
         if label is not None:
             return str(label)
 
