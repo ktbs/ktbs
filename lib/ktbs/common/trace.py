@@ -40,7 +40,7 @@ class TraceMixin(InBaseMixin):
         #pylint: disable-msg=W0622
         #  Redefining built-in id
         uri = coerce_to_uri(id, self.uri)
-        return self.make_resource(uri)
+        return self.make_resource(uri, KTBS.Obsel)
 
     def get_model(self):
         """

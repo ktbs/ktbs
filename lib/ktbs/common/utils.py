@@ -78,13 +78,14 @@ def extend_api_ignore(func):
     func._extend_api_ignore = True
     return func
 
-def mint_uri_from_label(label, target, uri=None):
+def mint_uri_from_label(label, target, uri=None, suffix=""):
     """
     Mint a URI for a resource posted to `target` based on `label`.
 
     :param label:  the label for the resource to create
     :param target: the resource "containing" the resource to create
     :param uri:    if provided, wil be used instead (must be fresh)
+    :param suffix: if provided, wil be added to the end of the URI
 
     :return: a URI not present in `target._graph`
     :rtype: rdflib.URIRef
@@ -99,10 +100,11 @@ def mint_uri_from_label(label, target, uri=None):
         prefix = target.uri
         if prefix[-1] != "/":
             prefix = "%s#" % prefix
-        uri = URIRef("%s%s" % (prefix, _NON_ALPHA.sub("-", label)))
+        prefix = "%s%s" % (prefix, _NON_ALPHA.sub("-", label))
+        uri = URIRef("%s%s" % (prefix, suffix))
         if not check_new(target_graph, uri):
-            prefix = "%s-" % uri
-            uri = make_fresh_uri(target_graph, prefix)
+            prefix = "%s-" % prefix
+            uri = make_fresh_uri(target_graph, prefix, suffix)
     return uri
         
 

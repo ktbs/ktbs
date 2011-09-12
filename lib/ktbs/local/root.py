@@ -50,11 +50,14 @@ class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
         node = coerce_to_node(id, self.uri)
         if graph is None:
             graph = Graph()
-        graph.add((self.uri, KTBS.hasBase, node))
-        graph.add((node, RDF.type, KTBS.Base))
+        graph.add((self.uri, _HAS_BASE, node))
+        graph.add((node, RDF.type, _BASE))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
-        return self._post_or_trust(trust, Base, node, graph)
+        ret = self._post_or_trust(trust, Base, node, graph)
+        with self._edit as g:
+            g.add((self.uri, _HAS_BASE, ret.uri))
+        return ret
             
     # RDF-REST API #
 
@@ -83,3 +86,6 @@ class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
             return "Posted resource is not a ktbs:Base."
         return super(KtbsRoot, self).check_posted_graph(created, new_graph)
 
+
+_BASE = KTBS.Base
+_HAS_BASE = KTBS.hasBase

@@ -45,7 +45,7 @@ class Trace(Resource):
         """
         Iter over the obsels of this trace.
 
-        The obsel are sorted by their end timestamp, then their begin
+        The obsels are sorted by their end timestamp, then their begin
         timestamp, then their identifier. If reverse is true, the order is
         inversed.
 

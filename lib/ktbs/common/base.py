@@ -18,7 +18,7 @@
 """
 I provide the pythonic interface to bases.
 """
-from rdflib import RDF
+from rdflib import RDF, URIRef
 from urlparse import urldefrag
 
 from ktbs.common.resource import ResourceMixin
@@ -83,6 +83,13 @@ class BaseMixin(ResourceMixin):
         else:
             return self.make_resource(elt_uri, typ)
 
+    def get_root(self):
+        """
+        Return the root of the KTBS containing this base.
+        """
+        root_uri = URIRef("..", self.uri)
+        return self.make_resource(root_uri, _ROOT)
+
 
 @extend_api
 class InBaseMixin(ResourceMixin):
@@ -108,3 +115,4 @@ _COMPUTED_TRACE = KTBS.ComputedTrace
 _MODEL = KTBS.TraceModel
 _METHOD = KTBS.Method
 _RDF_TYPE = RDF.type
+_ROOT = KTBS.KtbsRoot

@@ -19,6 +19,7 @@
 I provide the local implementation of ktbs:Base .
 """
 from rdflib import Graph, Literal, RDF
+from rdfrest.exceptions import RdfRestException
 from rdfrest.mixins import RdfPostMixin
 from rdfrest.utils import coerce_to_node, coerce_to_uri
 
@@ -76,6 +77,10 @@ class Base(BaseMixin, RdfPostMixin, Resource):
             graph = Graph()
         graph.add((self.uri, KTBS.contains, node))
         graph.add((node, RDF.type, KTBS.Method))
+        parent_uri = coerce_to_uri(parent)
+        if not self._check_parent_method(parent_uri):
+            raise RdfRestException("Parent method should be built-in or "
+                                   "in the same base")
         graph.add((node, KTBS.hasParentMethod, coerce_to_uri(parent)))
         for key, value in parameters.iteritems():
             if "=" in key:
@@ -85,6 +90,7 @@ class Base(BaseMixin, RdfPostMixin, Resource):
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
         return self._post_or_trust(trust, Method, node, graph)
+
             
     # RDF-REST API #
 
@@ -106,6 +112,16 @@ class Base(BaseMixin, RdfPostMixin, Resource):
             return "Posted resource is not supported by ktbs:Base"
         return super(Base, self).check_posted_graph(created, new_graph)
 
+    # protected methods #
+
+    def _check_parent_method(self, parent_uri):
+        """I return True if `parent_uri` is an acceptable parent method."""
+        if parent_uri.startswith(self.uri):
+            return True
+        root = self.get_root()
+        g = root._graph # friend with root: #pylint: disable=W0212
+        return (root.uri, KTBS.hasBuiltinMethod, parent_uri) in g
+        
 
 class BaseResource(Resource):
     """Common properties for all resources contained in Base.

@@ -49,7 +49,6 @@ class KtbsRoot(KtbsRootMixin, Resource):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
-        # TODO MAJOR parse content and feed the graph to make_resource
         return self.make_resource(created_uri, _BASE)
 
 RESOURCE_MAKER[KTBS.KtbsRoot] = KtbsRoot

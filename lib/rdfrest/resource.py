@@ -300,7 +300,7 @@ class Resource(object):
         """
 
     @classmethod
-    def mint_uri(cls, target, new_graph, created):
+    def mint_uri(cls, target, new_graph, created, suffix=""):
         """**Hook**: Mint a URI for a resource of that class.
 
         This hook method is called by :class:`rdflib.mixins.WithPostMixin`;
@@ -313,6 +313,8 @@ class Resource(object):
         :param created:   the non-URIRef node representing the resource in
                           $`new_graph`
         :type  created:   rdflib.Node
+        :param suffix:    a string that will be added at the end of the URI
+        :type  suffix:    str
 
         :rtype: rdflib.URIRef
 
@@ -327,6 +329,7 @@ class Resource(object):
         return make_fresh_uri(
             target._graph, # access to protected member #pylint: disable=W0212
             prefix,
+            suffix,
             )
 
     def ack_edit(self):

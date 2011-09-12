@@ -41,11 +41,11 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
         """
         # unused argument 'graph' #pylint: disable=W0613
         ret = self.service.get(uri)
-        assert isinstance(ret.RDF_MAIN_TYPE ==  node_type)
+        assert ret.RDF_MAIN_TYPE ==  node_type
         return ret
 
     @classmethod
-    def mint_uri(cls, target, new_graph, created):
+    def mint_uri(cls, target, new_graph, created, suffix=""):
         """I override :meth:`rdfrest.resource.Resource.mint_uri`.
 
         I use the skos:prefLabel of the resource to mint a URI, else the class
@@ -53,7 +53,7 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
         """
         label = new_graph.value(created, SKOS.prefLabel) \
             or cls.__name__.lower()
-        return mint_uri_from_label(label, target)
+        return mint_uri_from_label(label, target, suffix=suffix)
 
     def _post_or_trust(self, trust, py_class, node, graph):
         """Depending on the value of `trust`, I use rdf_post or I efficiently

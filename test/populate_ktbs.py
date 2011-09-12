@@ -27,7 +27,7 @@ def main():
     model1 = base1.create_model(parents=None, id="model1/")
 
     trc_01 = base1.create_stored_trace(model="model1/", origin=None, 
-             default_subject=None, id="t01/")
+                                       default_subject=None, id="t01/")
 
     try:
         print "----- base1.label: ", base1.label

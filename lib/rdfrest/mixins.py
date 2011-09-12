@@ -184,7 +184,7 @@ class RdfPostMixin(Resource):
         # unused argument 'new_graph' #pylint: disable=W0613
         if isinstance(created, URIRef):
             if not check_new(self._graph, created):
-                return "URI already in use <%s>"
+                return "URI already in use <%s>" % created
 
     @classmethod
     def check_new_graph(cls, uri, new_graph,
@@ -197,13 +197,13 @@ class RdfPostMixin(Resource):
         return ret
 
     @classmethod
-    def mint_uri(cls, target, new_graph, created):
+    def mint_uri(cls, target, new_graph, created, suffix=""):
         """I overrides :meth:`rdfrest.resource.Resource.mint_uri`
         """
-        uri = super(RdfPostMixin, cls).mint_uri(target, new_graph, created)
-        if uri[-1] != "/":
-            uri = URIRef(uri+"/")
-        return uri
+        if suffix[-1:] != "/":
+            suffix += "/"
+        return super(RdfPostMixin, cls).mint_uri(target, new_graph, created,
+                                                 suffix)
 
 
 class BookkeepingMixin(Resource):

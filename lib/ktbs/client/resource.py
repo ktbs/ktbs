@@ -105,10 +105,10 @@ class Resource(ResourceMixin):
     def make_resource(uri, node_type=None, graph=None):
         """TODO docstring
         """
+        if graph is None:
+            graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
+            graph.open(uri)
         if node_type is None:
-            if graph is None:
-                graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
-                graph.open(uri)
             node_type = graph.value(uri, _RDF_TYPE)
         maker = RESOURCE_MAKER[node_type]
         return maker(uri, graph)

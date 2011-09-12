@@ -14,6 +14,10 @@ class TestKtbsLocal():
     def tearDown(self):
         self.ktbs = None
 
+    def test_create_two_bases(self):
+        base1 = self.ktbs.create_base()
+        base2 = self.ktbs.create_base()
+        assert base1.uri != base2.uri
 
     def test_populate(self):
         base1 = self.ktbs.create_base("my 1st base")
@@ -33,7 +37,7 @@ class TestKtbsLocal():
         method1 = base1.create_method(KTBS.filter, {"after":1000})
         method2 = base1.create_method(method1, {"before":5000})
 
-        assert 0 # put 0 to check output
+        assert 1 # put 0 to check output, 1 to pass unit-test
 
     def test_post_bad_graph_to_ktbs(self):
         graph = Graph()
@@ -74,6 +78,7 @@ class TestKtbsLocal():
         # bad parent method (in other base)
         other_base = self.ktbs.create_base()
         method = other_base.create_method(KTBS.filter, {"begin": "1000"})
+        print "===", "===", base.uri, other_base.uri, method.uri
         assert_raises(RdfRestException, base.create_method,
                       method, {"end": "5000"})
 

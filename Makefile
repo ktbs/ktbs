@@ -4,8 +4,8 @@ all:
 
 
 PYLINT_FORMAT=$(shell [ "${INSIDE_EMACS}" = "t" ] && echo parseable || echo colorized )
-PYLINT_OPT=--good-names=i,j,k,s,p,o,ex,Run,_,kw,id --output-format=${PYLINT_FORMAT} --ignore=iso8601.py --ignore-docstrings=no
-PYLINT_DISABLED=--disable="I0011,W0142,W0511,R0901,R0904,R0912,R0913,R0914,R0915,R0921"
+PYLINT_OPT=--good-names=g,i,j,k,s,p,o,ex,Run,_,kw,id --output-format=${PYLINT_FORMAT} --ignore=iso8601.py --ignore-docstrings=no
+PYLINT_DISABLED=--disable="I0011,W0142,W0223,W0511,R0901,R0904,R0912,R0913,R0914,R0915,R0921"
 PYLINT_FILES=lib/rdfrest lib/ktbs
 
 lint-full:
