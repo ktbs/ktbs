@@ -61,8 +61,8 @@ class Base(BaseMixin, Resource):
         return self.make_resource(created_uri, _TRACE_MODEL)
 
 
-    def create_stored_trace(self, model=None, origin=None, 
-                            default_subject=None, id=None, graph=None):
+    def create_stored_trace(self, model, origin=None, default_subject=None,
+                            id=None, graph=None):
         """Create a new store trace in this trace base.
 
         :param model: Trace associated model
@@ -76,10 +76,6 @@ class Base(BaseMixin, Resource):
         """
         # redefining built-in 'id' #pylint: disable=W0622
         node = coerce_to_node(id, self.uri)
-
-        if model is None:
-            raise ValueError("You must supply a model for the %s trace."
-                             % id) 
 
         if graph is None:
             graph = Graph()

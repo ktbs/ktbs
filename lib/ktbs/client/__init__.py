@@ -28,9 +28,10 @@ I implement the following adaptations to the abstract client API:
 
 * specific adaptation:
 
-  * Any object with a ``uri`` property is acceptable wherever a URI is
-    expected; this include any instance of `ktbs.client.resource.Resource` or
-    its subclasses.
+  * Anytime an object with a ``uri`` property is expected, passing a URI should
+    also work (including a URI relative to the target object).
+    For example, the 'model' agrgument of Base.create_stored_trace can be a URI
+    (as a unicode or an rdflib.URIRef) rather than an instance of Model.
 
   * Datetimes can be used instead of integers for representing timecodes in
     traces when the trace model and origin allow the conversion.
