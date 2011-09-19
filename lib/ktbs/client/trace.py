@@ -138,6 +138,12 @@ class StoredTrace(StoredTraceMixin, Trace):
         if subject is not None:
             graph.add((obs, _HAS_SUBJECT, Literal(subject)))
 
+        if attributes is not None:
+            assert isinstance(attributes, dict)
+            for k, v in attributes.items():
+                k_uri = coerce_to_uri(k)
+                graph.add((obs, k_uri, Literal(v)))
+
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
         return self.make_resource(created_uri, _OBSEL)
