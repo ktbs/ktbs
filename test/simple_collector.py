@@ -27,11 +27,12 @@ from ktbs.common.utils import post_graph
 from rdfrest.utils import coerce_to_uri
 
 
-MODEL_URI = "http://localhost:8001/base1/model1"
-#MODEL_URI = "http://liris.cnrs.fr/silex/2011/simple-trace-model"
+#MODEL_URI = "http://localhost:8001/base1/model1"
+MODEL_URI = "http://liris.cnrs.fr/silex/2011/simple-trace-model"
 TRACE_ORIGIN = "1970-01-01T00:00:00Z"
-MODEL_PREFIX = "@prefix m: <http://localhost:8001/base1/model1#"
-#MODEL_PREFIX = "@prefix m: <http://liris.cnrs.fr/silex/2011/simple-trace-model#>"
+#MODEL_PREFIX = "@prefix m: <http://localhost:8001/base1/model1#"
+MODEL_PREFIX = "@prefix m: <http://liris.cnrs.fr/silex/2011/simple-trace-model#>"
+OBSEL_TYPE = "SimpleObsel"
 
 class ObselCollector(object):
     """
@@ -71,7 +72,7 @@ class ObselCollector(object):
 
         tbase = None
 
-        for b in root.list_bases():
+        for b in root.bases:
             base_uri = b.uri
 
             if trace_uri.find(base_uri) != -1:
@@ -91,6 +92,9 @@ class ObselCollector(object):
                     base_name = wrkuri.split('/')[0]
                     tbase = root.create_base(label="%s" % base_name, id="%s/" % base_name)
 
+                    # Add a default model
+                    #tbase.create_model(id=MODEL_URI)
+
         if tbase is not None:
             print "----- base.label: ", tbase.label
 
@@ -104,17 +108,20 @@ class ObselCollector(object):
         """
         ttrace = None
 
-        for t in base.list_traces():
+        for t in base.traces:
             if trace_uri.find(t.uri) != -1:
                 print "----- The trace %s already exists" % trace_uri
                 ttrace = t
 
                 # TODO Check trace model and origin
-                tmodel = ttrace.get_model()
+                tmodel = ttrace.model
                 if tmodel is not None:
                     print "----- %s model uri: %s" % (ttrace.label, tmodel.uri)
+                    print "-----", [ot.uri for ot in tmodel.obsel_types]
+                else:
+                    print "----- %s model is None" % ttrace.label 
 
-                print "----- %s origin: %s" % (ttrace.label, ttrace.get_origin())
+                print "----- %s origin: %s" % (ttrace.label, ttrace.origin)
 
         if ttrace is None:
             # TODO create trace
@@ -126,13 +133,23 @@ class ObselCollector(object):
                 if wrkuri.find('/') != -1:
                     trace_name = wrkuri.split('/')[0]
 
+                    """
+                    model_uri = None
+
                     bmodels = base.list_models()
                     if len(bmodels) > 0:
-                        # TODO If there are several models, select the ones
+
+                        # If there are several models, select the one
                         # that matches MODEL_URI
-                        model_uri = bmodels[0].uri
-                        if model_uri.find(MODEL_URI) == -1:
-                            print "----- %s does not match %s" % (model_uri, MODEL_URI)
+                        for m in bmodels:
+                            if m.uri.find(MODEL_URI) != -1:
+                                model_uri = m.uri
+
+                        if model_uri is None:
+                            # Take the first model by default
+                            model_uri = bmodels[0].uri
+                            print "----- No model matches %s, %s selected" % \
+                                                         (MODEL_URI, model_uri)
 
                         ttrace = base.create_stored_trace(model=model_uri,
                                                           origin=TRACE_ORIGIN,
@@ -140,6 +157,19 @@ class ObselCollector(object):
                                                           #     trace_name,
                                                           id="%s/" % 
                                                           trace_name)
+
+                    if model_uri is None:
+                        # TODO Create an empty one ?
+                        print "----- No model associated to %s," % base_uri, \
+                              "trace not created" 
+                    """
+
+                    ttrace = base.create_stored_trace(model=MODEL_URI,
+                                                      origin=TRACE_ORIGIN,
+                                                      #label="%s" % 
+                                                      #     trace_name,
+                                                      id="%s/" % 
+                                                      trace_name)
 
         if ttrace is not None:
             print "----- trace.label: ", ttrace.label
@@ -171,14 +201,16 @@ class ObselCollector(object):
         en supposant:
             @prefix m: <http://liris.cnrs.fr/silex/2011/simple-trace-model#>
         """
+        """
         tmodel = trace.get_model()
         print "dbg-- add_obsel, model = %s" % tmodel.label
         otypes = tmodel.list_obsel_types()
         print "dbg-- add_obsel, list_obsel_types: %s" % otypes
         if len(otypes) > 0:
             simpleotype = otypes[0]
-        
-        obsel = trace.create_obsel(type=simpleotype,
+        """
+
+        obsel = trace.create_obsel(type=OBSEL_TYPE,
                                    begin=Literal(str(datetime.now())),
                                    end=Literal(str(datetime.now())),
                                    subject="me",
@@ -199,10 +231,13 @@ if __name__ == "__main__":
     if tbase is None:
         sys.exit("No valid base in URI, programm stopped.")
 
-    if len(tbase.list_models()) == 0:
-        ocollector.add_model(tbase)
+    #if len(tbase.models) == 0:
+    #    ocollector.add_model(tbase)
 
     ttrace = ocollector.get_trace(tbase, turi)
+
+    if ttrace is None:
+        sys.exit("Trace not created, programm stopped.")
 
     while(True):
         value = raw_input("====> ")

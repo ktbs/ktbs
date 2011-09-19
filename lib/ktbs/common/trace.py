@@ -48,7 +48,8 @@ class TraceMixin(InBaseMixin):
         """
         tmodel_uri = self._graph.value(self.uri, _HAS_MODEL)
         return self.make_resource(tmodel_uri)
-        # TODO MAJOR make_resource return None for external models; fix this
+        # TODO MAJOR override this in ktbs.local,
+        # so that it works for external models as well
 
     def get_origin(self, as_datetime=False):
         """
