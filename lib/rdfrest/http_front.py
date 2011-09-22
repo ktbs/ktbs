@@ -189,7 +189,7 @@ class HttpFrontend(object):
                                str("%s.%s" % (resource.uri, ext))))
         etag = getattr(resource, "etag", None)
         if etag is not None:
-            headerlist.append(("etag", 'W/"%s"' % etag))
+            headerlist.append(("etag", 'W/"%s"' % taint_etag(etag, ctype)))
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
             last_modified = datetime.fromtimestamp(last_modified).isoformat()
@@ -254,11 +254,12 @@ class HttpFrontend(object):
                     status="403 Forbidden: 'if-match' is required",
                     request=request,
                     )
-            if not etag in request.if_match:
+            ctype = request.content_type or "text/turtle"
+            tainted_etag = taint_etag(etag, ctype)
+            if not tainted_etag in request.if_match:
                 return self.issue_error(412, request, resource)
 
-        parser = self.parsers.get_by_content_type(request.content_type
-                                                   or "text/turtle")
+        parser = self.parsers.get_by_content_type(ctype)
         if parser is None:
             return self.issue_error(415, request, resource)
         graph = parser(request.body, resource.uri, request.charset)
@@ -287,3 +288,12 @@ class HttpFrontend(object):
         if status[:3] == "405":
             res.allow = "HEAD, GET, PUT, POST, DELETE"
         return res
+
+def taint_etag(etag, ctype):
+    """I taint etag with the given content-type.
+
+    This is required because caches may be smart with different entities of the
+    same resources, as described in RFC 2616, sec 13.6.
+    """
+    return "%s/%s" % (ctype, etag)
+    # TODO MINOR: make a more opaque (unreversible?) tainting operation?
