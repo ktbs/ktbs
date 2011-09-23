@@ -53,12 +53,11 @@ appearance and their properties.
 from contextlib import contextmanager
 from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
-from urlparse import urlsplit
 
 from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
     InvalidUriError, MethodNotAllowedError
 from rdfrest.namespaces import RDFREST
-from rdfrest.utils import make_fresh_uri
+from rdfrest.utils import make_fresh_uri, urisplit
 
 class Resource(object):
     """
@@ -104,7 +103,7 @@ class Resource(object):
     def __init__(self, service, uri):
         assert isinstance(uri, URIRef), repr(uri)
 
-        if urlsplit(uri)[3:] != ('', ''):
+        if urisplit(uri)[3:] != (None, None):
             raise InvalidUriError("URI has query-string and/or "
                                   "fragment-identifier <%s>" % uri)
         self.service = service

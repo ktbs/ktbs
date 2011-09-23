@@ -21,6 +21,7 @@ I define useful functions and classes for RDF RESTful services.
 from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
+import urlparse
 
 def cache_result(callabl):
     """Decorator for caching the result of a callable.
@@ -129,3 +130,29 @@ def replace_node(graph, old_node, new_node):
         rem_triple(triple)
         add_triple([ subst(i) for i in triple ])
     old_node = new_node
+
+def urisplit(url):
+    """A better urlsplit.
+
+    It differentiates empty querystring/fragment from none.
+    e.g.:
+      urisplit('http://a.b/c/d') -> ('http', 'a.b', '/c/d', None, None)
+      urisplit('http://a.b/c/d?') -> ('http', 'a.b', '/c/d', '', None)
+      urisplit('http://a.b/c/d#') -> ('http', 'a.b', '/c/d', None, '')
+      urisplit('http://a.b/c/d?#') -> ('http', 'a.b', '/c/d', '', '')
+    """
+    ret = list(urlparse.urlsplit(url))
+
+    if ret[4] == '' and url[-1] != '#':
+        ret[4] = None
+        before_fragment = -1
+    else:
+        # there is a (possibly empty) fragment
+        # -> remove it and the '#', to test query-string below
+        before_fragment = - (len(ret[4]) + 2)
+
+    if ret[3] == '' and url[before_fragment] != '?':
+        ret[3] = None
+
+    return tuple(ret)
+    
