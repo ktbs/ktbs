@@ -13,6 +13,7 @@ lib_dir = join(source_dir, "lib")
 sys.path.insert(0, lib_dir)
 
 from optparse import OptionParser
+from argparse import ArgumentParser
 
 from datetime import datetime
 
@@ -40,27 +41,60 @@ class ObselCollector(object):
         Define simple collector parser and its command line options.
         To begin, we just ask for a Trace URI which is mandatory.
         """
-        self._parser = OptionParser()
+        self._parser = ArgumentParser(description="Fill a stored trace with obsels.")
+        self._parser.add_argument("trace", 
+                                  nargs=1, 
+                                  help="Enter the uri of the trace that will \
+                                        contain the collected obsels")
+        self._parser.add_argument("-m", "--model",
+                                  nargs="?",
+                                  help="Enter the model uri if different from \
+                                        the default (%s), it can be a relative \
+                                        URI." % MODEL_URI)
+        self._parser.add_argument("-t", "--type",
+                                  nargs="?",
+                                  help="Enter the obsel type uri if different \
+                                        from the default (%s), it can be a \
+                                        relative URI." % OBSEL_TYPE)
+        self._parser.add_argument("-a", "--attribute",
+                                  nargs="?",
+                                  help="Enter the attribute uri it can be a \
+                                        relative")
+        self._parser.add_argument("-e", "--empty",
+                                  action="store_true",
+                                  help="Allow empty value for obsels")
+        self._parser.add_argument("-v", "--verbose",
+                                  action="store_true",
+                                  help="Display print messages")
 
-        (self._options, self._args) = self._parser.parse_args()
+        self._args = self._parser.parse_args()
+        print "Parsed with argparse,", self._args
+        print "How to access positional arguments", self._args.trace
 
     def validate_entries(self):
         """
         Check user entries, the trace URI in fact.
         """
-        if len(self._args) > 0:
-            print "----- %s" % self._args[0]
+        # Why the positional argument is a list ?
+        print "----- %s" % self._args.trace[0]
 
-            # TODO Use rdfrest.utils.urisplit() to analyze and check Trace URI
-            # Then check the path component
-            # .rsplit("/",2) to get the last two items
-            sr = urisplit(self._args[0])
-            print "-----", sr
+        # TODO Use rdfrest.utils.urisplit() to analyze and check Trace URI
+        # Then check the path component
+        # .rsplit("/",2) to get the last two items
+        sr = urisplit(self._args.trace[0])
+        print "-----", sr
 
-            # Transform URI string to an rdflib URIRef
-            return (coerce_to_uri(self._args[0]))
+        # Transform URI string to an rdflib URIRef
+        return (coerce_to_uri(self._args.trace[0]))
 
         return None
+
+    def display(self, msg):
+        """
+        Display the messages only in verbose mode.
+        """
+        if self._args.verbose:
+            print msg
 
     def get_base(self, trace_uri):
         """
@@ -171,6 +205,9 @@ class ObselCollector(object):
         en supposant:
             @prefix m: <http://liris.cnrs.fr/silex/2011/simple-trace-model#>
         """
+        # TODO Accept empty value if -e or --empty option is set
+        if not self._args.empty and len(value) == 0:
+            return None
 
         tmodel = trace.model
         attributes = {}
@@ -214,12 +251,11 @@ if __name__ == "__main__":
         sys.exit("Trace not created, programm stopped.")
 
     while(True):
-        value = raw_input("====> ")
-
-        # stop on EOF
-        if (value == "q") or (value.find("exit",0,5) != -1) or (value.find("quit",0,5) != -1):
+        try:
+            value = raw_input("====> ")
+            ocollector.add_obsel(ttrace, value)
+        except EOFError, ex:
             print "Sortie du programme"
             break
-        ocollector.add_obsel(ttrace, value)
 
     sys.exit(0)
