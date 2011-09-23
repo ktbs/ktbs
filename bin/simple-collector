@@ -68,26 +68,20 @@ class ObselCollector(object):
                                   help="Display print messages")
 
         self._args = self._parser.parse_args()
-        print "Parsed with argparse,", self._args
-        print "How to access positional arguments", self._args.trace
+        #self.display("Parsed with argparse: %s" % str(self._args))
 
     def validate_entries(self):
         """
         Check user entries, the trace URI in fact.
         """
-        # Why the positional argument is a list ?
-        print "----- %s" % self._args.trace[0]
-
         # TODO Use rdfrest.utils.urisplit() to analyze and check Trace URI
         # Then check the path component
         # .rsplit("/",2) to get the last two items
         sr = urisplit(self._args.trace[0])
-        print "-----", sr
+        #self.display("----- %s " % str(sr))
 
         # Transform URI string to an rdflib URIRef
         return (coerce_to_uri(self._args.trace[0]))
-
-        return None
 
     def display(self, msg):
         """
@@ -104,7 +98,7 @@ class ObselCollector(object):
 
         # Get a KTBS access 
         root = KtbsRoot("http://localhost:8001/")
-        print "----- root.label: ", root.label
+        self.display("----- root.label: %s" % root.label)
 
         tbase = None
 
@@ -112,13 +106,13 @@ class ObselCollector(object):
             base_uri = b.uri
 
             if trace_uri.find(base_uri) != -1:
-                print "----- %s is the base of %s" % (base_uri, trace_uri)
+                self.display("----- %s is the base of %s" % (base_uri, trace_uri))
                 tbase = b
             else:
-                print "----- %s base does not match" % base_uri
+                self.display("----- %s base does not match" % base_uri)
 
         if tbase is None:
-            print "----- No matching base found, creating ..."
+            self.display("----- No matching base found, creating ...")
 
             root_uri = root.uri
             if (trace_uri.find(root_uri) == 0) and (len(trace_uri) > len(root_uri)):
@@ -132,7 +126,7 @@ class ObselCollector(object):
                     #tbase.create_model(id=MODEL_URI)
 
         if tbase is not None:
-            print "----- base.label: ", tbase.label
+            self.display("----- base.label: %s" % tbase.label)
 
         return tbase
 
@@ -146,20 +140,20 @@ class ObselCollector(object):
 
         for t in base.traces:
             if trace_uri.find(t.uri) != -1:
-                print "----- The trace %s already exists" % trace_uri
+                self.display("----- The trace %s already exists" % trace_uri)
                 ttrace = t
 
                 tmodel = ttrace.model
                 if tmodel is not None:
-                    print "----- %s model uri: %s" % (ttrace.label, tmodel.uri)
+                    self.display("----- %s model uri: %s" % (ttrace.label, tmodel.uri))
                 else:
-                    print "----- No model found for %s" % ttrace.label 
+                    self.display("----- No model found for %s" % ttrace.label)
 
                 # TODO Check trace origin
-                print "----- %s origin: %s" % (ttrace.label, ttrace.origin)
+                self.display("----- %s origin: %s" % (ttrace.label, ttrace.origin))
 
         if ttrace is None:
-            print "----- No matching trace found, creating ..."
+            self.display("----- No matching trace found, creating ...")
 
             # TODO Trace URI is already checked do the job
             base_uri = base.uri
@@ -176,7 +170,7 @@ class ObselCollector(object):
                                                       trace_name)
 
         if ttrace is not None:
-            print "----- trace.label: ", ttrace.label
+            self.display("----- trace.label: %s" % ttrace.label)
 
         return ttrace
 
@@ -185,7 +179,7 @@ class ObselCollector(object):
         Temporary method, waiting the definitive model to be ready ?
         """
         assert isinstance(base, KtbsBase)
-        print "----- No model found for %s, creating ..." % base.label
+        self.display("----- No model found for %s, creating ..." % base.label)
 
         tmodel = base.create_model(id="model1")
         if tmodel is not None:
@@ -212,7 +206,7 @@ class ObselCollector(object):
         tmodel = trace.model
         attributes = {}
         if tmodel is not None:
-            print "----- %s model uri: %s" % (ttrace.label, tmodel.uri)
+            self.display("----- %s model uri: %s" % (ttrace.label, tmodel.uri))
             atypes = tmodel.attribute_types
             if len(atypes) > 0:
                 attributes[atypes[0]] = value
@@ -255,7 +249,7 @@ if __name__ == "__main__":
             value = raw_input("====> ")
             ocollector.add_obsel(ttrace, value)
         except EOFError, ex:
-            print "Sortie du programme"
+            ocollector.display("Sortie du programme")
             break
 
     sys.exit(0)
