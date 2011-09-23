@@ -21,7 +21,7 @@ I define useful functions and classes for RDF RESTful services.
 from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
-import urlparse
+from urlparse import SplitResult, urlsplit
 
 def cache_result(callabl):
     """Decorator for caching the result of a callable.
@@ -141,7 +141,7 @@ def urisplit(url):
       urisplit('http://a.b/c/d#') -> ('http', 'a.b', '/c/d', None, '')
       urisplit('http://a.b/c/d?#') -> ('http', 'a.b', '/c/d', '', '')
     """
-    ret = list(urlparse.urlsplit(url))
+    ret = list(urlsplit(url))
 
     if ret[4] == '' and url[-1] != '#':
         ret[4] = None
@@ -154,5 +154,5 @@ def urisplit(url):
     if ret[3] == '' and url[before_fragment] != '?':
         ret[3] = None
 
-    return tuple(ret)
+    return SplitResult(*ret)
     
