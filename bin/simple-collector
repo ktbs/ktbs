@@ -168,6 +168,9 @@ class ObselCollector(object):
                                                       #     trace_name,
                                                       id="%s/" % 
                                                       trace_name)
+                else:
+                    sys.exit("Invalid trace uri '%s': check this uri ends with"
+                             " a '/' character." % trace_uri)
 
         if ttrace is not None:
             self.display("----- trace.label: %s" % ttrace.label)
