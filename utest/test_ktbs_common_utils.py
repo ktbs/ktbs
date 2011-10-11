@@ -1,4 +1,9 @@
-from ktbs.common.utils import extend_api, extend_api_ignore
+from os.path import abspath, dirname, join
+from rdflib import Graph, Literal, RDF, RDFS, URIRef
+from subprocess import Popen, PIPE, STDOUT
+
+from ktbs.common.utils import extend_api, extend_api_ignore, post_graph
+from ktbs.namespaces import KTBS
 
 def test_extend_api():
 
@@ -72,3 +77,30 @@ def test_extend_api():
     except AttributeError:
         pass
 
+class TestPostGraph(object):
+
+    def setUp(self):
+        self.process = Popen([join(dirname(dirname(abspath(__file__))),
+                                   "bin", "ktbs")], stdout=PIPE, stderr=STDOUT)
+        # TODO: the following hands indefinitely for no apparent reason
+        ## # then wait for the server to actually start:
+        ## # we know that it will write on its stdout when ready
+        ## self.process.stdout.read(1)
+        # SO instead I use a sleep -- but this may fail :-( 
+        from time import sleep; sleep(1)
+
+    def tearDown(self):
+        self.process.terminate()
+
+    def test_post_unicode(self):
+        ROOT = URIRef("http://localhost:8001/")
+        BASE = URIRef(ROOT + "base1/")
+        g = Graph()
+        g.add((ROOT, KTBS.hasBase, BASE))
+        g.add((BASE, RDF.type, KTBS.Base))
+        # add accented characters
+        g.add((BASE, RDFS.label, Literal(u'\xe0\xe7\xe9\xe8\xea')))
+
+        rheaders, content =  post_graph(g, ROOT)
+        assert rheaders.status == 201, rheaders.status
+        self.process.stdout.read(1) # flush log
