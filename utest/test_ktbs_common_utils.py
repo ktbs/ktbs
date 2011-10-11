@@ -1,6 +1,6 @@
 from os.path import abspath, dirname, join
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, PIPE
 
 from ktbs.common.utils import extend_api, extend_api_ignore, post_graph
 from ktbs.namespaces import KTBS
@@ -81,13 +81,8 @@ class TestPostGraph(object):
 
     def setUp(self):
         self.process = Popen([join(dirname(dirname(abspath(__file__))),
-                                   "bin", "ktbs")], stdout=PIPE, stderr=STDOUT)
-        # TODO: the following hands indefinitely for no apparent reason
-        ## # then wait for the server to actually start:
-        ## # we know that it will write on its stdout when ready
-        ## self.process.stdout.read(1)
-        # SO instead I use a sleep -- but this may fail :-( 
-        from time import sleep; sleep(1)
+                                   "bin", "ktbs")], stderr=PIPE)
+        self.process.stderr.read(1)
 
     def tearDown(self):
         self.process.terminate()
@@ -103,4 +98,3 @@ class TestPostGraph(object):
 
         rheaders, content =  post_graph(g, ROOT)
         assert rheaders.status == 201, rheaders.status
-        self.process.stdout.read(1) # flush log
