@@ -48,17 +48,17 @@ class ObselCollector(object):
                                         contain the collected obsels")
         self._parser.add_argument("-m", "--model",
                                   nargs="?",
-                                  help="Enter the model uri if different from \
+                                  help="NOT IMPLEMENTED YET - Enter the model uri if different from \
                                         the default (%s), it can be a relative \
                                         URI." % MODEL_URI)
         self._parser.add_argument("-t", "--type",
                                   nargs="?",
-                                  help="Enter the obsel type uri if different \
+                                  help="NOT IMPLEMENTED YET - Enter the obsel type uri if different \
                                         from the default (%s), it can be a \
                                         relative URI." % OBSEL_TYPE)
         self._parser.add_argument("-a", "--attribute",
                                   nargs="?",
-                                  help="Enter the attribute uri it can be a \
+                                  help="NOT IMPLEMENTED YET - Enter the attribute uri it can be a \
                                         relative")
         self._parser.add_argument("-e", "--empty",
                                   action="store_true",

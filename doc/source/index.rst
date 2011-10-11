@@ -3,19 +3,16 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to KTBS's documentation!
-=================================
+kTBS: a kernel for Trace-Based Systems
+======================================
 
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
-   abstract_api
-   ktbs
-   ktbs_client
-   ktbs_common
-   rdfrest
+   user
+   devel
 
 .. todo::
 
