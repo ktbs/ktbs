@@ -23,6 +23,7 @@ from optparse import OptionParser, OptionGroup
 from rdflib import plugin as rdflib_plugin
 from rdflib.store import Store
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
+from sys import stderr
 from wsgiref.simple_server import WSGIServer, make_server
 
 from rdfrest.http_front import HttpFrontend
@@ -65,7 +66,7 @@ def main():
 
     httpd = make_server(OPTIONS.host_name, OPTIONS.port, application,
                         MyWSGIServer)
-    print "KTBS server at %s" % uri
+    print >>stderr, "KTBS server at %s" % uri
     requests = OPTIONS.requests
     if requests == -1:
         httpd.serve_forever()
@@ -135,8 +136,8 @@ class MyWSGIServer(WSGIServer):
             info = getaddrinfo(host, port, 0, SOCK_STREAM)
             # when IPV6 is available, prefer it to IPV4
             if [ i for i in info if i[0] == AF_INET6 ]:
-                family = self.address_family =  AF_INET6
-        print "===", "Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[family]
+                ipv = self.address_family =  AF_INET6
+        print >>stderr, "===", "Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv]
         WSGIServer.__init__(self, (host, port), handler_class)
 
 class NoCache(object):
