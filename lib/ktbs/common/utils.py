@@ -125,7 +125,8 @@ def post_graph(graph, uri, rdflib_format="n3"):
         'content-type': 'text/turtle',
         }
 
-    uri = str(uri) # in case it is a unicode
+    if isinstance(uri, unicode):
+        uri = uri.encode('ascii', 'ignore')
 
     rheaders, rcontent = Http().request(uri, 'POST', data, headers=headers)
     if rheaders.status / 100 != 2:
