@@ -27,6 +27,7 @@ KTBS = ClosedNamespace(
     "http://liris.cnrs.fr/silex/2009/ktbs#", [
         "AttributeType",
         "Base",
+        "BuiltinMethod",
         "ComputedTrace",
         "KtbsRoot",
         "Method",
@@ -36,6 +37,7 @@ KTBS = ClosedNamespace(
         "StoredTrace",
         "TraceModel",
         "contains",
+        "external",
         "filter",
         "fusion",
         "hasAttributeDomain",
@@ -63,7 +65,7 @@ KTBS = ClosedNamespace(
         "hasSuperRelationType",
         "hasTrace",
         "hasUnit",
+        "parallel",
         "sparql",
-        "supermethod",
         ]
     )

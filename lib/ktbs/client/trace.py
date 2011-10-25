@@ -26,10 +26,10 @@ from ktbs.common.utils import extend_api, post_graph
 from ktbs.namespaces import KTBS
 from ktbs.iso8601 import parse_date
 
-from rdfrest.utils import coerce_to_node, coerce_to_uri, random_token
+from rdfrest.utils import coerce_to_node, coerce_to_uri
 from rdfrest.client import ProxyStore
 
-from rdflib import Graph, BNode, Literal, RDF
+from rdflib import Graph, Literal, RDF, RDFS
 
 @extend_api
 class Trace(Resource):
@@ -110,13 +110,13 @@ class StoredTrace(StoredTraceMixin, Trace):
 
         :rtype: `ktbs.client.obsel.Obsel`
         """
-        # redefining built-in 'id' #pylint: disable=W0622                                        
+        # redefining built-in 'id' #pylint: disable=W0622                 
 
         # TODO Which tests for type, begin and end parameters ?
         graph = Graph()
         obs = coerce_to_node(id, self.uri) # return BNode if id is None
         type_uri = coerce_to_uri(type, self.uri)
-        graph.add((obs, _RDF_TYPE, type_uri))
+        graph.add((obs, RDF.type, type_uri))
         graph.add((obs, _HAS_TRACE, self.uri))
 
         if isinstance(begin, int):
@@ -140,9 +140,36 @@ class StoredTrace(StoredTraceMixin, Trace):
 
         if attributes is not None:
             assert isinstance(attributes, dict)
-            for k, v in attributes.items():
-                k_uri = coerce_to_uri(k)
-                graph.add((obs, k_uri, Literal(v)))
+            for key, val in attributes.items():
+                k_uri = coerce_to_uri(key)
+                # TODO do something if val is a list
+                graph.add((obs, k_uri, Literal(val)))
+
+        if relations is not None:
+            assert isinstance(relations, dict)
+            for key, val in relations.items():
+                # TODO MAJOR replace with list of pairs, to allow multiple
+                # values for the same relation type?
+                k_uri = coerce_to_uri(key)
+                v_uri = coerce_to_uri(val)
+                graph.add((obs, k_uri, v_uri))
+
+        if inverse_relations is not None:
+            assert isinstance(inverse_relations, dict)
+            for key, val in relations.items():
+                # TODO MAJOR replace with list of pairs, to allow multiple
+                # values for the same relation type?
+                k_uri = coerce_to_uri(key)
+                v_uri = coerce_to_uri(val)
+                graph.add((v_uri, k_uri, obs))
+
+        if source_obsels is not None:
+            for src in source_obsels:
+                s_uri = coerce_to_uri(src)
+                graph.add((obs, _HAS_SOURCE_OBSEL, s_uri))
+
+        if label is not None:
+            graph.add((obs, RDFS.label, Literal(label)))
 
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
@@ -156,6 +183,7 @@ RESOURCE_MAKER[KTBS.StoredTrace] = StoredTrace
 RESOURCE_MAKER[KTBS.ComputedTrace] = ComputedTrace
 
 _HAS_OBSEL_COLLECTION = KTBS.hasObselCollection
+_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
 _HAS_TRACE = KTBS.hasTrace
 _HAS_BEGIN = KTBS.hasBegin
 _HAS_BEGIN_DT = KTBS.hasBeginDT
@@ -163,7 +191,6 @@ _HAS_END = KTBS.hasEnd
 _HAS_END_DT = KTBS.hasEndDT
 _HAS_SUBJECT = KTBS.hasSubject
 _OBSEL = KTBS.Obsel
-_RDF_TYPE = RDF.type
 
 # the following import ensures that Obsel are registered in RESOURCE_MAKER
 import ktbs.client.obsel #pylint: disable-msg=W0611

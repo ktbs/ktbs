@@ -53,10 +53,10 @@ class KtbsRootMixin(object):
         """
         make_resource = self.make_resource
         for obs in self._graph.objects(self.uri, _HAS_BUILTIN_METHOD):
-            yield make_resource(obs, _METHOD)
+            yield make_resource(obs, _BUILTIN_METHOD)
         
 
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase    
 _HAS_BUILTIN_METHOD = KTBS.hasBuiltinMethod    
-_METHOD = KTBS.Method
+_BUILTIN_METHOD = KTBS.BuiltinMethod

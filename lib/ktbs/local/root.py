@@ -64,17 +64,6 @@ class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
     RDF_MAIN_TYPE = KTBS.KtbsRoot
     RDF_POSTABLE_OUT = [KTBS.hasBuiltinMethod,]
 
-    @classmethod
-    def create_root_graph(cls, uri, service):
-        """I override `rdfrest.resource.Resource.create_root_graph`.
-
-        I populate the graph with KtbsRoot specific data.
-        """
-        graph = super(KtbsRoot, cls).create_root_graph(uri, service)
-        for method_uri in service.builtin_methods():
-            graph.add((uri, KTBS.hasBuiltinMethod, method_uri))
-        return graph
-
     def check_posted_graph(self, created, new_graph):
         """I override `rdfrest.mixins.RdfPostMixin.check_posted_graph`.
 

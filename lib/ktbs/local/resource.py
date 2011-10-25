@@ -41,7 +41,7 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
         """
         # unused argument 'graph' #pylint: disable=W0613
         ret = self.service.get(uri)
-        assert ret.RDF_MAIN_TYPE ==  node_type
+        assert ret.RDF_MAIN_TYPE == node_type
         return ret
 
     @classmethod

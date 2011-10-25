@@ -58,7 +58,7 @@ class Method(MethodMixin, BaseResource):
         parent = new_graph.value(uri, KTBS.hasParentMethod)
         base = new_graph.value(None, KTBS.contains, uri)
         if not parent.startswith(base) \
-        and not parent in KtbsService.builtin_methods():
+        and not KtbsService.has_builtin_method(parent):
             errors.append("Parent method not supported: <%s>" % parent) 
 
         for param in new_graph.objects(uri, KTBS.hasParameter):

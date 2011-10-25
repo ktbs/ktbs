@@ -66,7 +66,7 @@ def main():
 
     httpd = make_server(OPTIONS.host_name, OPTIONS.port, application,
                         MyWSGIServer)
-    print >>stderr, "KTBS server at %s" % uri
+    print >> stderr, "KTBS server at %s" % uri
     requests = OPTIONS.requests
     if requests == -1:
         httpd.serve_forever()
@@ -129,7 +129,7 @@ class MyWSGIServer(WSGIServer):
     I override WSGIServer to make it possibly IPV6-able.
     """
     def __init__(self, (host, port), handler_class):
-        family = AF_INET
+        ipv = self.address_family = AF_INET
         if OPTIONS.ipv4:
             info = getaddrinfo(host, port, AF_INET, SOCK_STREAM)
         else:
@@ -137,7 +137,7 @@ class MyWSGIServer(WSGIServer):
             # when IPV6 is available, prefer it to IPV4
             if [ i for i in info if i[0] == AF_INET6 ]:
                 ipv = self.address_family =  AF_INET6
-        print >>stderr, "===", "Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv]
+        print >> stderr, "===", "Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv]
         WSGIServer.__init__(self, (host, port), handler_class)
 
 class NoCache(object):

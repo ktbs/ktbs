@@ -15,11 +15,15 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 """
-Local version of KTBS.
-
-This implementation provides a local implementation of KTBS. This can be used
-either as a standalone KTBS or as a server, using `rdfrest.http_front`:mod:.
+Implementation of the filter builtin methods.
 """
+from ktbs.namespaces import KTBS
 
-# ensures that cyclic imports are performed in the right order
-import ktbs.local.service
+class _FilterMethod(object):
+    """I impplement the filter builtin method.
+    """
+    # TODO implement it! #pylint: disable=R0903
+    uri = KTBS.filter
+    label = "Filter built-in method"
+
+FILTER = _FilterMethod()
