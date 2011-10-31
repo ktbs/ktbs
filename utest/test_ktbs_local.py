@@ -59,9 +59,10 @@ class TestKtbsLocal():
         graph = Graph()
         created = BNode()
         graph.add((self.ktbs.uri, RDFS.seeAlso, created))
-        graph.add((created, RDF.type, KTBS.hasModel))
+        graph.add((created, RDF.type, KTBS.hasModel)) # in correct NS
+        assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
 
-    def test_create_bad_model(self):
+    def test_create_bad_models(self):
         # checking cardinality constraint on ktbs:contains
         base = self.ktbs.create_base()
         graph = Graph()
@@ -70,7 +71,7 @@ class TestKtbsLocal():
         assert_raises(RdfRestException, base.create_model,
                       id=created, graph=graph)
 
-    def test_create_bad_method(self):
+    def test_create_bad_methods(self):
         # bad parameter name
         base = self.ktbs.create_base()
         assert_raises(ValueError, base.create_method, KTBS.filter,
@@ -78,7 +79,6 @@ class TestKtbsLocal():
         # bad parent method (in other base)
         other_base = self.ktbs.create_base()
         method = other_base.create_method(KTBS.filter, {"begin": "1000"})
-        print "===", "===", base.uri, other_base.uri, method.uri
-        assert_raises(RdfRestException, base.create_method,
+        assert_raises(ValueError, base.create_method,
                       method, {"end": "5000"})
 

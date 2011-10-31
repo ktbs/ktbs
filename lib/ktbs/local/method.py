@@ -46,22 +46,24 @@ class Method(MethodMixin, BaseResource):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the check that parent and parameters are acceptable
         """
-        # just checking their syntax for the moment
-        errors = []
         errors = super(Method, cls).check_new_graph(uri, new_graph, resource,
-                                                    added, removed)
-        if errors is None:
-            errors = []
+                                                    added, removed) or []
+
+        if added:
+            # we only check values that were added/changed
+            the_graph = added
         else:
-            errors = [errors]
+            the_graph = new_graph
 
-        parent = new_graph.value(uri, KTBS.hasParentMethod)
-        base = new_graph.value(None, KTBS.contains, uri)
-        if not parent.startswith(base) \
-        and not KtbsService.has_builtin_method(parent):
-            errors.append("Parent method not supported: <%s>" % parent) 
+        parent_uri = the_graph.value(uri, KTBS.hasParentMethod)
+        if parent_uri is not None:
+            base_uri = new_graph.value(None, KTBS.contains, uri)
+            acceptable = parent_uri.startswith(base_uri) \
+                or KtbsService.has_builtin_method(parent_uri)
+            if not acceptable:
+                errors.append("Invalid parent method: <%s>" % parent_uri)
 
-        for param in new_graph.objects(uri, KTBS.hasParameter):
+        for param in the_graph.objects(uri, KTBS.hasParameter):
             if not isinstance(param, Literal):
                 errors.append("Parameters should be literals; "
                               "got <%s>" % param)
@@ -72,5 +74,4 @@ class Method(MethodMixin, BaseResource):
             return "\n".join(errors)
         else:
             return None
-
 

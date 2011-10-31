@@ -25,11 +25,11 @@ from rdfrest.utils import coerce_to_node
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import extend_api
 from ktbs.local.base import Base
-from ktbs.local.resource import Resource
+from ktbs.local.resource import PostableResource
 from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
-class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
+class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
     """
     I provide the pythonic interface common to ktbs root.
     """
@@ -46,15 +46,15 @@ class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'
-        trust = id is None and graph is None
         node = coerce_to_node(id, self.uri)
+        trust_graph = graph is None
         if graph is None:
             graph = Graph()
         graph.add((self.uri, _HAS_BASE, node))
         graph.add((node, RDF.type, _BASE))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
-        ret = self._post_or_trust(trust, Base, node, graph)
+        ret = self._post_or_trust(Base, node, graph, trust_graph)
         with self._edit as g:
             g.add((self.uri, _HAS_BASE, ret.uri))
         return ret
@@ -64,17 +64,16 @@ class KtbsRoot(KtbsRootMixin, RdfPostMixin, Resource):
     RDF_MAIN_TYPE = KTBS.KtbsRoot
     RDF_POSTABLE_OUT = [KTBS.hasBuiltinMethod,]
 
-    def check_posted_graph(self, created, new_graph):
-        """I override `rdfrest.mixins.RdfPostMixin.check_posted_graph`.
+    def find_created(self, new_graph, query=None):
+        """I override `rdfrest.mixins.RdfPostMixin.find_created`.
 
-        I check that only instances of ktbs:Base are posted.
+        I only search for nodes with outgoing ktbs:hasBase .
         """
-        if (self.uri, KTBS.hasBase, created) not in new_graph:
-            return "No ktbs:hasBase between KtbsRoot and created Base."
-        if (created, RDF.type, KTBS.Base) not in new_graph:
-            return "Posted resource is not a ktbs:Base."
-        return super(KtbsRoot, self).check_posted_graph(created, new_graph)
-
+        if query is None:
+            query = "SELECT ?c WHERE { <%%(uri)s> <%s> ?c }" % _HAS_BASE
+        return super(KtbsRoot, self).find_created(new_graph, query)
+        
+    KTBS_CHILDREN_TYPES = [KTBS.Base,] # used by check_posted_graph
 
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase

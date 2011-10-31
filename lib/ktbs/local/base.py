@@ -19,19 +19,18 @@
 I provide the local implementation of ktbs:Base .
 """
 from rdflib import Graph, Literal, RDF
-from rdfrest.exceptions import RdfRestException
-from rdfrest.mixins import RdfPostMixin
 from rdfrest.utils import coerce_to_node, coerce_to_uri
 
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.resource import Resource
+from ktbs.local.resource import PostableResource, Resource
+from ktbs.local.service import KtbsService
 from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
-class Base(BaseMixin, RdfPostMixin, Resource):
+class Base(BaseMixin, PostableResource):
     """
-    I provide the pythonic interface common to ktbs root.
+    I provide the pythonic interface common to ktbs base.
     """
 
     # KTBS API #
@@ -47,8 +46,8 @@ class Base(BaseMixin, RdfPostMixin, Resource):
         # redefining built-in 'id' #pylint: disable-msg=W0622
         if parents is None:
             parents = () # abstract API allows None
-        trust = id is None and graph is None
         node = coerce_to_node(id, self.uri)
+        trust_graph = graph is None
         if graph is None:
             graph = Graph()
         graph.add((self.uri, KTBS.contains, node))
@@ -57,7 +56,7 @@ class Base(BaseMixin, RdfPostMixin, Resource):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         for parent in parents:
             graph.add((node, KTBS.hasParentModel, coerce_to_uri(parent)))
-        return self._post_or_trust(trust, Model, node, graph)
+        return self._post_or_trust(Model, node, graph, trust_graph)
 
     def create_method(self, parent, parameters=None, label=None,
                       id=None, graph=None):
@@ -71,25 +70,37 @@ class Base(BaseMixin, RdfPostMixin, Resource):
         # redefining built-in 'id' #pylint: disable-msg=W0622
         if parameters is None:
             parameters = {}
-        trust = id is None and graph is None
         node = coerce_to_node(id, self.uri)
-        if graph is None:
+        parent_uri = coerce_to_uri(parent)
+
+        trust_graph = graph is None
+        if trust_graph:
+            # we need to check some integrity constrains,
+            # because the graph may be blindly trusted
+            #
+            # NB: the following code is *different* from the code that does
+            # those checks in check_new_graph, so it can not be factorized
+
+            acceptable = parent_uri.startswith(self.uri) \
+                or KtbsService.has_builtin_method(parent_uri)
+            if not acceptable:
+                raise ValueError("Invalid parent method: <%s>"
+                                       % parent_uri)
+            for key in parameters:
+                if "=" in key:
+                    raise ValueError("Invalid parameter name '%s'" % key)
+
             graph = Graph()
+
         graph.add((self.uri, KTBS.contains, node))
         graph.add((node, RDF.type, KTBS.Method))
-        parent_uri = coerce_to_uri(parent)
-        if not self._check_parent_method(parent_uri):
-            raise RdfRestException("Parent method should be built-in or "
-                                   "in the same base")
         graph.add((node, KTBS.hasParentMethod, coerce_to_uri(parent)))
         for key, value in parameters.iteritems():
-            if "=" in key:
-                raise ValueError("Invalid parameter name '%s'" % key)
             graph.add((node, KTBS.hasParameter,
                        Literal("%s=%s" % (key, value))))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
-        return self._post_or_trust(trust, Method, node, graph)
+        return self._post_or_trust(Method, node, graph, trust_graph)
 
             
     # RDF-REST API #
@@ -98,30 +109,23 @@ class Base(BaseMixin, RdfPostMixin, Resource):
 
     RDF_POSTABLE_IN = [ KTBS.hasBase, ]
 
-    def check_posted_graph(self, created, new_graph):
-        """I override `rdfrest.mixins.RdfPostMixin.check_posted_graph`.
+    def find_created(self, new_graph, query=None):
+        """I override `rdfrest.mixins.RdfPostMixin.find_created`.
 
-        I check that only instances of ktbs:Base are posted.
+        I only search for nodes that this base ktbs:contains .
         """
-        if (self.uri, KTBS.contains, created) not in new_graph:
-            return "No ktbs:contains between Base and created resource."
-        for rdf_type in new_graph.objects(created, RDF.type):
-            if rdf_type in _ALLOWED_TYPES:
-                break
-        else:
-            return "Posted resource is not supported by ktbs:Base"
-        return super(Base, self).check_posted_graph(created, new_graph)
+        if query is None:
+            query = "SELECT ?c WHERE { <%%(uri)s> <%s> ?c }" % _CONTAINS
+        return super(Base, self).find_created(new_graph, query)
 
-    # protected methods #
+    KTBS_CHILDREN_TYPES = [ # used by check_posted_graph
+            KTBS.ComputedTrace,
+            KTBS.Method,
+            KTBS.StoredTrace,
+            KTBS.TraceModel,
+            ]
 
-    def _check_parent_method(self, parent_uri):
-        """I return True if `parent_uri` is an acceptable parent method."""
-        if parent_uri.startswith(self.uri):
-            return True
-        root = self.get_root()
-        g = root._graph # friend with root: #pylint: disable=W0212
-        return (root.uri, KTBS.hasBuiltinMethod, parent_uri) in g
-        
+
 
 class BaseResource(Resource):
     """Common properties for all resources contained in Base.
@@ -135,9 +139,4 @@ class BaseResource(Resource):
 from ktbs.local.model import Model
 from ktbs.local.method import Method
 
-_ALLOWED_TYPES = frozenset([
-                        KTBS.ComputedTrace,
-                        KTBS.Method,
-                        KTBS.StoredTrace,
-                        KTBS.TraceModel,
-                        ])
+_CONTAINS = KTBS.contains

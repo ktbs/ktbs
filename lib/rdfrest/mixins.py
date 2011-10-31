@@ -21,7 +21,6 @@ I provide useful mixin classes to enhance `rdflib.resource.Resource`.
 from itertools import chain
 from md5 import md5
 from rdflib import BNode, Literal, Graph, RDF, URIRef
-from rdflib.compare import graph_diff
 from time import time
 
 from rdfrest.exceptions import InvalidDataError, MethodNotAllowedError, \
@@ -92,11 +91,12 @@ class RdfPostMixin(Resource):
         created = self.find_created(new_graph)
         if created is None:
             raise RdfRestException("Can not find created node")
+        # TODO MAJOR check that created is fresh
         errors = self.check_posted_graph(created, new_graph)
         if errors:
             raise InvalidDataError(errors)
 
-        get_class = self.service._class_map.get #pylint: disable=W0212
+        get_class = self.get_created_class
         resource_class = None
         for typ in new_graph.objects(created, RDF.type):
             candidate = get_class(typ)
@@ -111,32 +111,42 @@ class RdfPostMixin(Resource):
             replace_node(new_graph, created, new_uri)
             created = new_uri
 
-        resource_class.create(self.service, created, new_graph)
+        errors = resource_class.check_new_graph(created, new_graph)
+        if errors is not None:
+            raise InvalidDataError(errors)
+        resource_class.store_new_graph(self.service, created, new_graph)
+
         return [created]
  
-    def find_created(self, new_graph):
+    def find_created(self, new_graph, query = None):
         """Find the node represented the resource to create in `new_graph`.
 
         :param new_graph: the posted RDF graph
         :type  new_graph: rflib.Graph
+        :param query: the query to apply to search for candidates (optional)
+        :type  query: str in SPARQL syntax, using <%(uri)s> for the target URI
 
         :return: the node representing the resource to create, or None if it
                  can not be found.
         :rtype: rdflib.Node
 
         This implementation uses the following heuristics to guess the
-        created node, but you may wish to override it:
+        created node (but you may wish to override it):
 
-        * if the target URI is linked to a single node, that node is returned
-          (unless it is a litteral or a URI with a fragment)
-        * if the targer URI is linked to several node, one of them being a URI
-          without fragment, and all the others being URIRef of that URI,
-          then the URI without fragment is returned
+        * 'query' is used to find the candidates (by default, all nodes
+          connected to the target URI are candidates);
+        * all literal candidates are discarded;
+        * if only one candidate is left, it must be either a bnode or a URI
+          without any fragment in it;
+        * if several candidate are left,  exactly one must be a URI without any
+          fragment (that one will be chosen), and all the others must be
+          URI-references of the former, with a fragment.
         """
-        query_objects = "SELECT ?o WHERE { <%s> ?p ?o }" % self.uri
-        query_subjects = "SELECT ?s WHERE { ?s ?p <%s> }" % self.uri
-        candidates = set(chain(new_graph.query(query_objects),
-                               new_graph.query(query_subjects)))
+        if query is None:
+            query = "SELECT ?c " \
+                    "WHERE {{ <%(uri)s> ?p ?c } UNION { ?c ?p <%(uri)s> }}"
+        query %= { "uri": self.uri }
+        candidates = set(new_graph.query(query))
         candidates = [ cand for cand in candidates
                        if not isinstance(cand, Literal) ]
 
@@ -171,6 +181,9 @@ class RdfPostMixin(Resource):
     def check_posted_graph(self, created, new_graph):
         """Check whether `new_graph` is acceptable for a POST on this resource.
 
+        Among other things, I check whether 'created' is an acceptable node
+        for the to-be-created resource.
+
         :param created:   the node representing the resource to create
         :type  created:   rdflib.Node
         :param new_graph: the posted RDF graph
@@ -178,13 +191,22 @@ class RdfPostMixin(Resource):
 
         :return: `None` on success, else an error message
 
-        This implementation only checks that the 'created' node is already in
-        use.
+        This implementation only checks that the 'created' node is not already
+        in use.
         """
         # unused argument 'new_graph' #pylint: disable=W0613
         if isinstance(created, URIRef):
             if not check_new(self._graph, created):
                 return "URI already in use <%s>" % created
+
+    def get_created_class(self, rdf_type):
+        """Get the python class to use, given an RDF type.
+
+        The default beheviour is to use ``self._service._class_map`` but some
+        classes may override it.
+        """
+        # using a protected attribute of self.service  #pylint: disable=W0212
+        return self.service._class_map.get(rdf_type) 
 
     @classmethod
     def check_new_graph(cls, uri, new_graph,
@@ -314,12 +336,10 @@ class WithReservedNamespacesMixin(Resource):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the reserved namespace constraints.
         """
-        if resource is not None:
-            if added is None or removed is None:
-                _, added, removed = graph_diff(
-                    new_graph,
-                    resource._graph # protected member #pylint: disable=W0212
-                    )
+        if resource is not None and added is None:
+            # protected member
+            compute = resource._compute_added_and_removed #pylint: disable=W0212
+            added, removed = compute(new_graph)
 
         errors = super(WithReservedNamespacesMixin, cls) \
             .check_new_graph(uri, new_graph, resource, added, removed)

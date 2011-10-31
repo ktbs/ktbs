@@ -18,9 +18,9 @@
 """
 I provide the common implementation of all local KTBS resources.
 """
-from rdflib import URIRef
+from rdflib import RDF, URIRef
 from rdfrest.resource import Resource as RdfRestResource
-from rdfrest.mixins import RdfPutMixin, BookkeepingMixin, \
+from rdfrest.mixins import RdfPostMixin, RdfPutMixin, BookkeepingMixin, \
     WithReservedNamespacesMixin, WithCardinalityMixin
 from rdfrest.utils import replace_node
 
@@ -33,6 +33,8 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
     """
 
     RDF_RESERVED_NS = [KTBS]
+
+    KTBS_CHILDREN_TYPES = []
 
     def make_resource(self, uri, node_type=None, graph=None):
         """I make a resource with the given URI.
@@ -55,24 +57,64 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
             or cls.__name__.lower()
         return mint_uri_from_label(label, target, suffix=suffix)
 
-    def _post_or_trust(self, trust, py_class, node, graph):
-        """Depending on the value of `trust`, I use rdf_post or I efficiently
+
+class PostableResource(RdfPostMixin, Resource):
+    """A KTBS Resource supporting the POST operation.
+    """
+
+    def check_posted_graph(self, created, new_graph):
+        """I override `rdfrest.mixins.RdfPostMixin.check_posted_graph`.
+
+        If the class provides a ``KTBS_CHILDREN_TYPES`` attribute as a list
+        of URIRef, I check that the posted resource is of one of these types.
+        Note that, unlike other class constants used in
+        :module:`rdfrest.mixins`, KTBS_CHILDREN_TYPES is not inherited.
+        """
+        # TODO MAJOR also check that created, if URIRef, is a direct child URI
+        # of self.uri
+        allowed_types = getattr(self, "KTBS_CHILDREN_TYPES", None)
+        if allowed_types is not None:
+            for rdf_type in new_graph.objects(created, RDF.type):
+                if rdf_type in allowed_types:
+                    break
+                else:
+                    return "Posted resource not supported by %s" \
+                        % self.RDF_MAIN_TYPE
+        return super(PostableResource, self)\
+            .check_posted_graph(created, new_graph)
+
+    def _post_or_trust(self, py_class, node, graph, trust_graph):
+        """Depending on the parameters, I use rdf_post or I efficiently
         create a resource with `py_class`.
 
         Note that I nevertheless do ``assert``'s to check the validity of the
         graph, so the efficiency gain may happen only in optimize model.
         """
-        if trust:
-            if not isinstance(node, URIRef):
+        if isinstance(node, URIRef):
+            # we need to call check_posted_graph, at least for checking the
+            # validity of provided 'node'
+            errs = self.check_posted_graph(node, graph)
+            if errs:
+                raise ValueError(errs)
+            uri = node
+        else:
+            uri = None
+
+        if trust_graph:
+            if uri is None:
                 uri = py_class.mint_uri(self, graph, node)
                 replace_node(graph, node, uri)
-            else:
-                uri = node
-            assert self.check_posted_graph( #pylint: disable=E1101
-                uri, graph) is None         # not a method of every Resource
-            # but _post_or_trust will only be used on postable resources...
+                assert self.check_posted_graph(uri, graph) is None
+                #assert self.check_posted_graph( #pylint: disable=E1101
+                #    uri, graph) is None # not a method of every Resource
+                #    # but _post_or_trust will only be used on postable
+                #    # resources, o it is ok
+
             assert py_class.check_new_graph(uri, graph) is None
-            return py_class.create(self.service, uri, graph)
+            with self.service:
+                py_class.store_new_graph(self.service, uri, graph)
+                return py_class(self.service, uri)
         else:
             base_uri = self.rdf_post(graph)[0]
             return self.service.get(base_uri)
+

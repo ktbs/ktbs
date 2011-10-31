@@ -47,6 +47,10 @@ All methods of :class:`~rdfrest.resource.Resource` modifying the data will
 normally takes care of this, and the "outermost context" rule above ensures
 that data will only be commited when a *globally* consistent state is reached.
 
+The only case where an end-user would have to use the service as a context is
+to make a set of resource modifications/creations atomic (so that either all
+or none of the modifications/creations are commited).
+
 .. warning::
 
     For the moment (2011-07), rdfrest uses implementation of RDF store
@@ -94,7 +98,8 @@ class Service(object):
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
             graph = root_cls.create_root_graph(root_uri, self)
-            root = root_cls.create(self, self.root_uri, graph)
+            root_cls.store_new_graph(self, root_uri, graph)
+            root = root_cls(self, root_uri)
             self._resource_cache[root_uri.defrag()] = root
         
     @classmethod

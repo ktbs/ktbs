@@ -52,6 +52,7 @@ appearance and their properties.
 """
 from contextlib import contextmanager
 from rdflib import Graph, RDF, RDFS, URIRef
+from rdflib.compare import graph_diff
 from rdflib.graph import ReadOnlyGraphAggregate
 
 from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
@@ -127,36 +128,6 @@ class Resource(object):
             self._edit_level = level
 
     ## public methods ##
-
-    @classmethod
-    def create(cls, service, uri, new_graph):
-        """Create a new resource in the service.
-
-        While ``__init__`` assumes that the `service` already contains the
-        resource and only provides a python instance representing it, this
-        method assumes that the resource does not exists yet, and does whatever
-        is needed to create it.
-
-        :param service:   the service in which to create the resource
-        :type  service:   rdfrest.service.Service
-        :param uri:       the URI of the resource to create
-        :type  uri:       rdflib.URIRef
-        :param new_graph: RDF data describing the resource to create
-        :type  new_graph: rdflib.Graph
-
-        :return: an instance of `cls`
-        :raise: :class:`.exceptions.InvalidDataError` if `new_graph` is not
-                acceptable
-
-        This method should *not* be overridden; instead, subclasses may
-        overload :meth:`check_new_graph` and :meth:`store_new_graph` on which
-        this method relies.
-        """
-        errors = cls.check_new_graph(uri, new_graph)
-        if errors is not None:
-            raise InvalidDataError(errors)
-        cls.store_new_graph(service, uri, new_graph)
-        return cls(service, uri)
 
     @classmethod
     def create_root_graph(cls, uri, service):
@@ -280,11 +251,17 @@ class Resource(object):
         :param new_graph: graph to check
         :type  new_graph: rdflib.Graph
 
-        The following parameters are used when `check_new_graph` is used to
-        update and *existing* resource; for creating a new resource, they will
-        always be `None`.
+        The following parameter will always be set  when `check_new_graph` is
+        used to update and *existing* resource; for creating a new resource, it
+        will always be `None`.
 
         :param resource:  the resource to be updated
+
+        The following parameters only make sense when updating an existing
+        resource. They are *not* automatically set by `rdf_put`, as they may
+        not be used. However, any implementation may set them by using
+        `_compute_added_and_removed` and should therefore pass them along.
+
         :param added:     if not None, an RDF graph containg triples to be
                           added
         :param removed:   if not None, an RDF graph containg triples to be
@@ -349,8 +326,8 @@ class Resource(object):
         """**Hook**: store data in order to create a new resource in the
         service.
 
-        This hook method is called by :meth:`create` and :meth:`rdf_put`;
-        calling it directly may *corrupt the service*.
+        This hook method is called by :meth:`create` (and hence indirectly
+        by :meth:`rdf_post`); calling it directly may *corrupt the service*.
 
         :param service:   the service in which to create the resource
         :type  service:   rdfrest.service.Service
@@ -374,6 +351,50 @@ class Resource(object):
 
         private_add = Graph(service.store, URIRef(uri+"#private")).add
         private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
+
+    # protected methods #
+
+    def _compute_added_and_removed(self, new_graph):
+        """I compute the graphs of added triples and of removed triples.
+
+        :see-also: `check_new_graph`
+        """
+        _, added, removed = graph_diff(
+            new_graph,
+            self._graph
+            )
+        return added, removed
+
+    @classmethod
+    def _create(cls, service, uri, new_graph):
+        """Create a new resource in the service.
+
+        While ``__init__`` assumes that the `service` already contains the
+        resource and only provides a python instance representing it, this
+        method assumes that the resource does not exists yet, and does whatever
+        is needed to create it.
+
+        :param service:   the service in which to create the resource
+        :type  service:   rdfrest.service.Service
+        :param uri:       the URI of the resource to create
+        :type  uri:       rdflib.URIRef
+        :param new_graph: RDF data describing the resource to create
+        :type  new_graph: rdflib.Graph
+
+        :return: an instance of `cls`
+        :raise: :class:`.exceptions.InvalidDataError` if `new_graph` is not
+                acceptable
+
+        This method is protected and *must not* be overridden; instead,
+        subclasses may overload :meth:`check_new_graph` and
+        :meth:`store_new_graph` on which this method relies.
+        """
+        errors = cls.check_new_graph(uri, new_graph)
+        if errors is not None:
+            raise InvalidDataError(errors)
+        cls.store_new_graph(service, uri, new_graph)
+        return cls(service, uri)
+
 
 
 _HAS_IMPL = RDFREST.hasImplementation

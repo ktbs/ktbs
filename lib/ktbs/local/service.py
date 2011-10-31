@@ -96,12 +96,14 @@ from ktbs.local.root import KtbsRoot
 from ktbs.local.base import Base
 from ktbs.local.model import Model
 from ktbs.local.method import Method
+from ktbs.local.trace import StoredTrace
 
 KtbsService.register_root(KtbsRoot)
 KtbsService.register(Base)
 KtbsService.register(Model)
 KtbsService.register(Method)
 KtbsService.register(BuiltinMethod)
+KtbsService.register(StoredTrace)
 
 # registering default builtin methods
 from ktbs.methods.filter import FILTER
