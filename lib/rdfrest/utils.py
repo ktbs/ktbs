@@ -104,6 +104,13 @@ def make_fresh_uri(graph, prefix, suffix=""):
             return node
         length += 1
 
+def parent_uri(uri):
+    """Retun the parent URI of 'uri'.
+
+    :type uri: basestring
+    """
+    return uri[:uri[:-1].rfind("/")+1]
+
 def random_token(length, characters="abcdefghijklmnopqrstuvwxyz0123456789"):
     """Create a random opaque string.
 
@@ -156,3 +163,50 @@ def urisplit(url):
 
     return SplitResult(*ret)
     
+class Diagnosis(object):
+    """I contain a list of problems and eval to True if there is no problem.
+    """
+    # too few public methods #pylint: disable=R0903
+    def __init__(self, title="diagnosis", errors=None):
+        self.title = title
+        if errors is None:
+            errors = []
+        else:
+            errors = list(errors)
+        self.errors = errors
+
+    def __nonzero__(self):
+        return len(self.errors) == 0
+
+    def __iter__(self):
+        return iter(self.errors)
+
+    def __str__(self):
+        if self.errors:
+            return "%s: ko\n* %s" % (self.title, "\n* ".join(self.errors))
+        else:
+            return "%s: ok" % self.title
+
+    def __repr__(self):
+        return "Diagnosis(%r, %r)" % (self.title, self.errors)
+
+    def __and__(self, rho):
+        if isinstance(rho, Diagnosis):
+            return Diagnosis(self.title, self.errors + rho.errors)
+        elif self:
+            return rho
+        else:
+            return self
+
+    def __rand__(self, lho):
+        if isinstance(lho, Diagnosis):
+            return Diagnosis(lho.title, lho + self.errors)
+        elif not lho:
+            return lho
+        else:
+            return self
+
+    def append(self, error_msg):
+        """Append a problem to this diagnosis.
+        """
+        self.errors.append(error_msg)

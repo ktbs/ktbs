@@ -26,8 +26,8 @@ from time import time
 from rdfrest.exceptions import InvalidDataError, MethodNotAllowedError, \
     RdfRestException
 from rdfrest.namespaces import RDFREST
-from rdfrest.resource import Resource
-from rdfrest.utils import cache_result, check_new, replace_node
+from rdfrest.resource import Resource, compute_added_and_removed
+from rdfrest.utils import cache_result, check_new, Diagnosis, replace_node
 
 class RdfPutMixin(Resource):
     """I make the mixed-in class PUTable.
@@ -56,14 +56,11 @@ class RdfPutMixin(Resource):
             # an empty dict means that a '?' has been added to the URI
             # so it counts as having parameters
             raise MethodNotAllowedError("PUT on %s with parameters" % self.uri)
-        errors = self.check_new_graph(self.uri, new_graph, self)
-        if errors:
-            raise InvalidDataError(errors)
-        with self._edit as graph:
-            graph.remove((None, None, None))
-            add = graph.add
-            for triple in new_graph:
-                add(triple)
+        diag = self.check_new_graph(self.uri, new_graph, self)
+        if not diag:
+            raise InvalidDataError(str(diag))
+        with self.service:
+            self.store_graph(self.service, self.uri, new_graph, self)
 
 
 class RdfPostMixin(Resource):
@@ -91,10 +88,9 @@ class RdfPostMixin(Resource):
         created = self.find_created(new_graph)
         if created is None:
             raise RdfRestException("Can not find created node")
-        # TODO MAJOR check that created is fresh
-        errors = self.check_posted_graph(created, new_graph)
-        if errors:
-            raise InvalidDataError(errors)
+        diag = self.check_posted_graph(created, new_graph)
+        if not diag:
+            raise InvalidDataError(str(diag))
 
         get_class = self.get_created_class
         resource_class = None
@@ -111,10 +107,10 @@ class RdfPostMixin(Resource):
             replace_node(new_graph, created, new_uri)
             created = new_uri
 
-        errors = resource_class.check_new_graph(created, new_graph)
-        if errors is not None:
-            raise InvalidDataError(errors)
-        resource_class.store_new_graph(self.service, created, new_graph)
+        diag = resource_class.check_new_graph(created, new_graph)
+        if not diag:
+            raise InvalidDataError(str(diag))
+        resource_class.store_graph(self.service, created, new_graph)
 
         return [created]
  
@@ -189,15 +185,17 @@ class RdfPostMixin(Resource):
         :param new_graph: the posted RDF graph
         :type  new_graph: rflib.Graph
 
-        :return: `None` on success, else an error message
+        :rtype: a `rdfrest.utils.Diagnosis`:class:
 
         This implementation only checks that the 'created' node is not already
         in use.
         """
         # unused argument 'new_graph' #pylint: disable=W0613
+        diag = Diagnosis("check_posted_graph")
         if isinstance(created, URIRef):
             if not check_new(self._graph, created):
-                return "URI already in use <%s>" % created
+                diag.append("URI already in use <%s>" % created)
+        return diag
 
     def get_created_class(self, rdf_type):
         """Get the python class to use, given an RDF type.
@@ -213,10 +211,10 @@ class RdfPostMixin(Resource):
                         resource=None, added=None, removed=None):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph`
         """
-        ret = super(RdfPostMixin, cls).check_new_graph(uri, new_graph)
+        diag = super(RdfPostMixin, cls).check_new_graph(uri, new_graph)
         if uri[-1] != "/":
-            ret = _join_errors(ret, "URI must end with '/'")
-        return ret
+            diag.append("URI must end with '/'")
+        return diag
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, suffix=""):
@@ -267,11 +265,12 @@ class BookkeepingMixin(Resource):
         return self._private.value(self.uri, _LAST_MODIFIED).toPython()
 
     @classmethod
-    def store_new_graph(cls, service, uri, new_graph):
-        """I override :meth:`rdfrest.resource.Resource.store_new_graph` to
+    def store_graph(cls, service, uri, new_graph, resource=None):
+        """I override :meth:`rdfrest.resource.Resource.store_graph` to
         generate bookkeeping metadata.
         """
-        super(BookkeepingMixin, cls).store_new_graph(service, uri, new_graph)
+        super(BookkeepingMixin, cls).store_graph(service, uri, new_graph,
+                                                 resource)
         private = Graph(service.store, URIRef(uri+"#private"))
         cls._update_bk_metadata_in(uri, private)
     
@@ -291,7 +290,7 @@ class BookkeepingMixin(Resource):
         token = "%s%s" % (now, etag)
         # NB: using time() only does not always work: time() can return the
         # same value twice; so we salt it with the previous etag (if any),
-        # which which should do the trick
+        # which should do the trick
         new_etag = md5(token).hexdigest()
         graph.set((uri, _ETAG, Literal(new_etag)))
         graph.set((uri, _LAST_MODIFIED, Literal(now)))
@@ -336,21 +335,19 @@ class WithReservedNamespacesMixin(Resource):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the reserved namespace constraints.
         """
-        if resource is not None and added is None:
-            # protected member
-            compute = resource._compute_added_and_removed #pylint: disable=W0212
-            added, removed = compute(new_graph)
+        added, removed = compute_added_and_removed(new_graph, resource, added,
+                                                   removed)
 
-        errors = super(WithReservedNamespacesMixin, cls) \
+        diag = super(WithReservedNamespacesMixin, cls) \
             .check_new_graph(uri, new_graph, resource, added, removed)
 
         if resource is None:
-            new_errors = cls.__check_triples(new_graph, "POST", uri)
+            diag2 = cls.__check_triples(new_graph, "POST", uri)
         else:
             triples = chain(removed, added)
-            new_errors = cls.__check_triples(triples, "PUT", uri)
+            diag2 = cls.__check_triples(triples, "PUT", uri)
 
-        return _join_errors(errors, new_errors)
+        return diag & diag2
 
     #
     # private method
@@ -472,9 +469,8 @@ class WithReservedNamespacesMixin(Resource):
         :param uri:        the URI of the resource being created (POST) or
                            updated (PUT)
 
-        :return: None if the triples are OK, or an error message.
+        :rtype: a `rdfrest.utils.Diagnosis`:class:
         """
-
         if operation == "POST":
             types = cls.__get_postable_types()
             in_ = cls.__get_postable_in()
@@ -493,26 +489,21 @@ class WithReservedNamespacesMixin(Resource):
                     return True
             return False
 
-        errors = set()
-
+        diag = Diagnosis("__check_triples")
         for s, p, o in triples:
             if s == uri:
                 if p == _RDF_TYPE:
                     if is_reserved(o) and o not in types:
-                        errors.add("Can not %s type <%s> for <%s>"
+                        diag.append("Can not %s type <%s> for <%s>"
                                    % (operation, o, uri))
                 elif is_reserved(p) and p not in out:
-                    errors.add( "Can not %s property <%s> of <%s>"
+                    diag.append( "Can not %s property <%s> of <%s>"
                                 % (operation, p, uri))
             elif o == uri:
                 if is_reserved(p) and p not in in_:
-                    errors.add("Can not %s property <%s> to <%s>"
+                    diag.append("Can not %s property <%s> to <%s>"
                                % (operation, p, uri))
-
-        if errors:
-            return "\n".join(errors)
-        else:
-            return None
+        return diag
 
 
 class WithCardinalityMixin(Resource):
@@ -542,22 +533,18 @@ class WithCardinalityMixin(Resource):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the cardinality constraints.
         """
-        errors = []
-
-        other_errors = super(WithCardinalityMixin, cls).check_new_graph(
+        diag = super(WithCardinalityMixin, cls).check_new_graph(
             uri, new_graph, resource, added, removed)
-        if other_errors is not None:
-            errors.append(other_errors)
 
         new_graph_subjects = new_graph.subjects
         for p, minc, maxc in cls.__get_cardinality_in():
             nbp = len(list(new_graph_subjects(p, uri)))
             if minc is not None and nbp < minc:
-                errors.append("Property <%s> to <%s> should have at least %s "
+                diag.append("Property <%s> to <%s> should have at least %s "
                               "subjects; it only has %s"
                               % (p, uri, minc, nbp))
             if maxc is not None and nbp > maxc:
-                errors.append("Property <%s> to <%s> should have at most "
+                diag.append("Property <%s> to <%s> should have at most "
                               "%s subjects; it has %s"
                               % (p, uri, minc, nbp))
 
@@ -565,17 +552,15 @@ class WithCardinalityMixin(Resource):
         for p, minc, maxc in cls.__get_cardinality_out():
             nbp = len(list(new_graph_objects(uri, p)))
             if minc is not None and nbp < minc:
-                errors.append("Property <%s> of <%s> should have at least "
+                diag.append("Property <%s> of <%s> should have at least "
                               "%s objects; it only has %s"
                               % (p, uri, minc, nbp))
             if maxc is not None and nbp > maxc:
-                errors.append("Property <%s> of <%s> should have at most "
+                diag.append("Property <%s> of <%s> should have at most "
                               "%s objects; it has %s"
                               % (p, uri, minc, nbp))
-        if errors:
-            return "\n".join(errors)
-        else:
-            return None
+
+        return diag
 
     #
     # private method
@@ -604,21 +589,6 @@ class WithCardinalityMixin(Resource):
             for constraint in getattr(superclass, "RDF_CARDINALITY_OUT", ())
             )
 
-
-def _join_errors(errors, new_error):
-    """I return the joint error message.
-
-    :param errors:    error message, can be None
-    :param new_error: error message, can be None
-
-    :retun: None if no error, else a message
-    """
-    if errors is None:
-        return new_error
-    elif new_error is None:
-        return errors
-    else:
-        return "%s\n%s" % (errors, new_error)
 
 _ETAG = RDFREST.etag
 _LAST_MODIFIED = RDFREST.lastModified

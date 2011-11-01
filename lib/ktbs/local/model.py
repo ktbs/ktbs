@@ -23,13 +23,13 @@ from rdflib import RDF
 from ktbs.common.model import ModelMixin, ObselTypeMixin, AttributeTypeMixin, \
     RelationTypeMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.base import BaseResource
+from ktbs.local.base import InBaseMixin
+from ktbs.local.resource import Resource
 from ktbs.namespaces import KTBS
 
 @extend_api
-class Model(ModelMixin, BaseResource):
-    """
-    I provide the pythonic interface common to ktbs trace models.
+class Model(ModelMixin, InBaseMixin, Resource):
+    """I implement a local KTBS trace model.
     """
 
     # KTBS API #

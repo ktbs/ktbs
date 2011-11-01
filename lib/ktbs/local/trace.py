@@ -19,25 +19,24 @@
 I provide the local implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from datetime import datetime, timedelta
-
-from rdflib import Literal
-from rdfrest.mixins import RdfPostMixin
+from rdflib import Graph, Literal, URIRef
+from rdfrest.resource import compute_added_and_removed
 
 from ktbs.common.trace import StoredTraceMixin
 from ktbs.common.utils import extend_api
-from ktbs.iso8601 import parse_date
-from ktbs.local.base import BaseResource
+from ktbs.iso8601 import parse_date, ParseError
+from ktbs.local.base import InBaseMixin
+from ktbs.local.resource import PostableResource, Resource
 from ktbs.namespaces import KTBS
 
 @extend_api
-class StoredTrace(StoredTraceMixin, RdfPostMixin, BaseResource):
-    """
-    I provide the pythonic interface common to ktbs stored trace.
+class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
+    """I implement a local KTBS stored trace.
     """
 
     # KTBS API #
 
-    # TODO
+    # TODO create_obsel
 
     # RDF-REST API #
 
@@ -45,7 +44,7 @@ class StoredTrace(StoredTraceMixin, RdfPostMixin, BaseResource):
 
     RDF_PUTABLE_OUT = [ KTBS.hasModel, KTBS.hasOrigin, KTBS.hasTraceBegin,
                         KTBS.hasTraceEnd, KTBS.hasTraceBeginDT,
-                        KTBS.hasTraceEndDT, ]
+                        KTBS.hasTraceEndDT, KTBS.hasDefaultSubject, ]
     RDF_CARDINALITY_OUT = [
         (KTBS.hasModel, 1, 1),
         (KTBS.hasOrigin, 1, 1),
@@ -53,6 +52,7 @@ class StoredTrace(StoredTraceMixin, RdfPostMixin, BaseResource):
         (KTBS.hasTraceBeginDT, None, 1),
         (KTBS.hasTraceEnd, None, 1),
         (KTBS.hasTraceEndDT, None, 1),
+        (KTBS.hasDefaultSubject, None, 1),
         ]
     
     @classmethod
@@ -61,29 +61,69 @@ class StoredTrace(StoredTraceMixin, RdfPostMixin, BaseResource):
         """I override `rdfrest.mixins.RdfPostMixin.check_new_graph`.
         """
 
-        # TODO check that method is from the same base
-        #  generalize _check_parent_method in base, and make it public
         # TODO check trace time bounds, if any
         #  pb: the function below assumes they are both present, fix this
 
-        # just checking their syntax for the moment
-        errors = super(StoredTrace, cls).check_new_graph(
-            uri, new_graph, resource, added, removed) or []
+        added, removed = compute_added_and_removed(new_graph, resource, added,
+                                                   removed)
 
-        if added:
-            # we only check values that were added/changed
-            the_graph = added
+        diag = super(StoredTrace, cls).check_new_graph(
+            uri, new_graph, resource, added, removed)
+
+        if resource:
+            res = added.query("PREFIX k: <%s>"
+                              "SELECT * WHERE {"
+                              "  { <%s> k:hasOrigin ?t } UNION "
+                              "  { <%s> k:hasTraceBegin ?t } UNION "
+                              "  { <%s> k:hasTraceBeginDT ?t } UNION "
+                              "  { <%s> k:hasTraceEnd ?t } UNION "
+                              "  { <%s> k:hasTraceEndDT ?t } } "
+                              % (KTBS, uri, uri, uri, uri, uri)
+                              )
+            check_timestamps = bool(res)
         else:
-            the_graph = new_graph
+            check_timestamps = True
 
-        # TODO check things
-        uri_base = uri[:uri[:-1].rfind("/")+1]
-        print the_graph, uri_base
+        if check_timestamps:
+            origin = new_graph.value(uri, _HAS_ORIGIN)
+            try:
+                origin = parse_date(origin)
+            except ParseError:
+                pass
+            begin_i = new_graph.value(_HAS_TRACE_BEGIN)
+            begin_d = new_graph.value(_HAS_TRACE_BEGIN_DT)
+            end_i = new_graph.value(_HAS_TRACE_END)
+            end_d = new_graph.value(_HAS_TRACE_END_DT)
+            if not check_timestamp(begin_i, begin_d, origin):
+                diag.append("Inconsistent traceBegin timestamps")
+            if not check_timestamp(end_i, end_d, origin):
+                diag.append("Inconsistent traceEnd timestamps")
+            if cmp_timestamps(begin_i, begin_d, end_i, end_d, origin) > 0:
+                diag.append("traceBegin > traceEnd")
 
-        if errors:
-            return "\n".join(errors)
-        else:
-            return None
+        return diag
+
+    @classmethod
+    def store_graph(cls, service, uri, new_graph, resource=None):
+        """I override `rdfrest.mixins.RdfPostMixin.store_graph`.
+        """
+        origin = new_graph.value(uri, _HAS_ORIGIN)
+        try:
+            origin = parse_date(origin)
+            complete_timestamp(new_graph, uri, _HAS_TRACE_BEGIN,
+                               _HAS_TRACE_BEGIN_DT, origin)
+            complete_timestamp(new_graph, uri, _HAS_TRACE_END,
+                               _HAS_TRACE_END_DT, origin)
+        except ParseError:
+            pass
+
+        super(StoredTrace, cls).store_graph(service, uri, new_graph, resource)
+
+        if resource is None:
+            obsels_uri = URIRef("@obsels", uri)
+            Graph(service.store, uri).add((uri, _HAS_OBSEL_SET, obsels_uri))
+            empty = Graph()
+            StoredTraceObsels.store_graph(service, obsels_uri, empty)
         
 
     def find_created(self, new_graph, query=None):
@@ -103,6 +143,13 @@ class StoredTrace(StoredTraceMixin, RdfPostMixin, BaseResource):
         """
         return Obsel
 
+class StoredTraceObsels(Resource):
+    """I implement the aspect resource of a stored trace containing the obsels.
+    """
+
+    RDF_MAIN_TYPE = KTBS._StoredTraceObsels #pylint: disable=W0212
+
+# time management functions #
 
 def timedelta_in_ms(delta):
     """Compute the number of milliseconds in a timedelta.
@@ -110,92 +157,115 @@ def timedelta_in_ms(delta):
     return (delta.microseconds / 1000 +
             (delta.seconds + delta.days * 24 * 3600) * 1000)
 
-def sanitize_temporal_boundaries(begin_il, end_il, begin_dl, end_dl, origin):
-    """Check that arguments are consistent, and fill in missing values.
+def check_timestamp(time_il, time_dl, origin):
+    """Check that timespamp arguments are consistent.
 
     Consistent means:
-    * if origin is opaque, begin_d and end_d are None
-    * else, begin_i and begin_d (resp. end_i and end_d), if they are both
-      provided,  must represent the same point in time.
+    * if time_il is not None, it is coercible to an integer;
+    * if time_dl is not None, it is coercible to a datetime;
+    * if origin is a str, time_dl is None;
+    * if both time_il and time_dl are not None, they represent the same point
+      in time;
 
-    :param begin_i: the begin timestamp in ms since origin, or None
-    :type  begin_i: Literal with datatype xsd:integer
-    :param end_i: the end timestamp in ms since origin, or None
-    :type  end_i: Literal with datatype xsd:integer
-    :param begin_d: the begin timestamp in calendar time, or None
-    :type  begin_d: Literal with datatype xsd:datetime
-    :param end_d: the end timestamp in calendar time, or None
-    :type  end_d: Literal with datatype xsd:datetime
+    :param time_il: the timestamp in ms since origin, or None
+    :type  time_il: Literal with datatype xsd:integer
+    :param time_dl: the timestamp in calendar time, or None
+    :type  time_dl: Literal with datatype xsd:datetime
     :param origin: the origin of the trace
     :type  origin: datetime or str
 
-    :return: new values, as literal, a list of tuples (predicate, value) to add to the model.
-
-    Pre-condition: begin_i and begin_d (resp. end_i and end_d) can not be both
-    None.
-
-    NB: if origin is opaque, None is returned for begin_d and end_d
     """
     if not isinstance(origin, datetime):
-        if begin_dl or end_dl:
-            raise ValueError("Can not use absolute timestamp with opaque "
-                             "origin")
-        else:
-            return begin_il, end_il, None, None
+        return (time_dl is None)                                          
 
-    if begin_il is not None:
-        begin_i = begin_il.toPython()
-        assert isinstance(begin_i, int), repr(begin_i)
-    else:
-        begin_i = None
-    if end_il is not None:
-        end_i = end_il.toPython()
-        assert isinstance(end_i, int), repr(end_i)
-    else:
-        end_i = None
-    if begin_dl is not None:
-        begin_d = parse_date(begin_dl)
-        assert isinstance(begin_d, datetime), repr(begin_d)
-    else:
-        begin_d = None
-    if end_dl is not None:
-        end_d = parse_date(end_dl)
-        assert isinstance(end_d, datetime), repr(end_d)
-    else:
-        end_d = None
+    if time_il is None or time_dl is None:
+        return True
 
-    if begin_i is None: # then begin_d is not None
-        # TODO MINOR below, should rather use the unit of the *model*
-        begin_i = timedelta_in_ms(begin_d - origin)
-        begin_il = Literal(begin_i)
-    elif begin_d is None: # then begin_i is not None
-        # TODO MINOR below, should rather use the unit of the *model*
-        begin_dl = Literal(origin + timedelta(milliseconds=begin_i))
-    else: # both are not None, so check consistency
-        # TODO MINOR below, should rather use the unit of the *model*
-        begin_di = timedelta_in_ms(begin_d - origin)
-        if begin_i != begin_di:
-            raise ValueError("Inconsistent begin timestamps")
+    if time_il is not None:
+        time_i = time_il.toPython()
+        if not isinstance(time_i, int):
+            return False
+    if time_dl is not None:
+        time_d = parse_date(time_dl)
+        if not isinstance(time_d, datetime):
+            return False
+    if time_il is not None and time_dl is not None:
+        time_di = timedelta_in_ms(time_d - origin)
+        return (time_i == time_di)
 
-    if end_i is None:
-        # TODO MINOR below, should rather use the unit of the *model*
-        end_i = timedelta_in_ms(end_d - origin)
-        end_il = Literal(end_i)
-    elif end_d is None:
-        # TODO MINOR below, should rather use the unit of the *model*
-        end_dl = Literal(origin + timedelta(milliseconds=end_i))
-    else: # both can not be None, so check consistency
-        # TODO MINOR below, should rather use the unit of the *model*
-        end_di = timedelta_in_ms(end_d - origin)
-        if end_i != end_di:
-            raise ValueError("Inconsistent end timestamps")
+def cmp_timestamps(t1i, t1d, t2i, t2d, origin):
+    """Compare two timestamps provided as integer and/or datetime.
 
-    if begin_i > end_i:
-        raise ValueError("begin (%s) is after end (%s)" % (begin_i, end_i))
+    Assume that t1i and t1d (resp. t2i and t2d) are consistent w.r.t.
+    origin. Try to compare compatible representations, or do the conversion
+    if needed.
 
-    return begin_il, end_il, begin_dl, end_dl
+    If both values for one (or the two) timestamp(s) are None, I will return
+    None.
+
+    :param t1i: the first timestamp in ms since origin, or None
+    :type  t1i: Literal with datatype xsd:integer
+    :param t1d: the first timestamp in calendar time, or None
+    :type  t1d: Literal with datatype xsd:datetime
+    :param t2i: the second timestamp in ms since origin, or None
+    :type  t2i: Literal with datatype xsd:integer
+    :param t2d: the second timestamp in calendar time, or None
+    :type  t2d: Literal with datatype xsd:datetime
+    :param origin: the origin of the trace
+    :type  origin: datetime or str
+
+    """
+    if (t1i is None and t1d is None) or (t2i is None and t2d is None):
+        return None
+
+    if t1i is not None and t2i is not None:
+        return cmp(t1i, t2i)
+    elif t1d is not None and t2d is not None:
+        return cmp(t1d, t2d)
+
+    # no compatible representations; convert to int
+    assert isinstance(origin, datetime) # or we would not have datetimes...
+    if t1i is None:
+        t1i = timedelta_in_ms(t1d - origin)
+    if t2i is None:
+        t2i = timedelta_in_ms(t2d - origin)
+    return cmp(t1i, t2i)
+
+def complete_timestamp(graph, subject, pred_i, pred_d, origin):
+    """Complete missing values in `graph` for a timestamp.
+
+    :param graph: the graph to complete
+    :type  graph: rdflib.Graph
+    :param subject: the resource holding the timestamp
+    :type  subject: rdflib.Node
+    :param pred_i: the predicate for the integer timestamp
+    :type  pred_i: rdflib.URIRef
+    :param pred_d: the predicate for the datetime timestamp
+    :type  pred_d: rdflib.URIRef
+    :param origin: the origin of the trace
+    :type  origin: datetime
+    """
+    time_i = graph.value(subject, pred_i)
+    time_d = graph.value(subject, pred_d)
+    if time_i is None and time_d is None:
+        return
+    if time_i is not None and time_d is not None:
+        return
+    if time_i is None:
+        time_i = timedelta_in_ms(time_d - origin)
+        graph.add(subject, pred_i, Literal(time_i))
+    if time_d is None:
+        time_d = origin + timedelta(milliseconds=time_i)
+        graph.add(subject, pred_d, Literal(time_d))
+        
     
 # import Obsel in the end, as it is logically "below" trace
 from ktbs.local.obsel import Obsel
 
+_HAS_OBSEL_SET = KTBS.hasObselCollection
+_HAS_ORIGIN = KTBS.hasOrigin
 _HAS_TRACE = KTBS.hasTrace
+_HAS_TRACE_BEGIN = KTBS.hasTraceBegin
+_HAS_TRACE_BEGIN_DT = KTBS.hasTraceBeginDT
+_HAS_TRACE_END = KTBS.hasTraceEnd
+_HAS_TRACE_END_DT = KTBS.hasTraceEndDT

@@ -55,10 +55,10 @@ from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.compare import graph_diff
 from rdflib.graph import ReadOnlyGraphAggregate
 
-from rdfrest.exceptions import InvalidDataError, InvalidParametersError, \
-    InvalidUriError, MethodNotAllowedError
+from rdfrest.exceptions import InvalidParametersError, InvalidUriError, \
+    MethodNotAllowedError
 from rdfrest.namespaces import RDFREST
-from rdfrest.utils import make_fresh_uri, urisplit
+from rdfrest.utils import Diagnosis, make_fresh_uri, urisplit
 
 class Resource(object):
     """
@@ -260,20 +260,22 @@ class Resource(object):
         The following parameters only make sense when updating an existing
         resource. They are *not* automatically set by `rdf_put`, as they may
         not be used. However, any implementation may set them by using
-        `_compute_added_and_removed` and should therefore pass them along.
+        `compute_added_and_removed` and should therefore pass them along.
 
         :param added:     if not None, an RDF graph containg triples to be
                           added
         :param removed:   if not None, an RDF graph containg triples to be
                           removed
 
-        :return: `None` on success, else an error message
+        :rtype: a `rdfrest.utils.Diagnosis`:class:
 
         This class method can be overridden by subclasses that have constraints
         on the representation of their instances.
         
         The default implementation accepts any graph.
         """
+        # unused arguments "pylint: disable=W0613
+        return Diagnosis("check_new_graph")
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, suffix=""):
@@ -309,7 +311,7 @@ class Resource(object):
             )
 
     def ack_edit(self):
-        """**Hook**: performs some post processing editing this resource.
+        """**Hook**: performs some post processing after editing this resource.
 
         This hook method is called when exiting the context `self._edit` (see
         `Resource above`:class:); calling it directly may *corrupt the
@@ -322,12 +324,13 @@ class Resource(object):
         """
 
     @classmethod
-    def store_new_graph(cls, service, uri, new_graph):
+    def store_graph(cls, service, uri, new_graph, resource=None):
         """**Hook**: store data in order to create a new resource in the
         service.
 
-        This hook method is called by :meth:`create` (and hence indirectly
-        by :meth:`rdf_post`); calling it directly may *corrupt the service*.
+        This hook method is called by :meth:`rdf_put` and :meth:`_create`
+        (hence indirectly by :meth:`rdf_post`); calling it directly may
+        *corrupt the service*.
 
         :param service:   the service in which to create the resource
         :type  service:   rdfrest.service.Service
@@ -335,6 +338,11 @@ class Resource(object):
         :type  uri:       rdflib.URIRef
         :param new_graph: RDF data describing the resource to create
         :type  new_graph: rdflib.Graph
+        :param resource: the resource being updated, if any
+        :type  resource: :class:`Resource`
+
+        If `resource` is None, this is a resource creation (though `rdf_post`)
+        else, this is an update of that resource (through `rdf_put`).
 
         Subclasses can overload this method in order to store more metadata;
         they may also *alter* the resource's graph, but they should ensure that
@@ -345,56 +353,46 @@ class Resource(object):
         and adds a hint to this class in the private graph.
         """
         assert isinstance(uri, URIRef)
+        if resource:
+            Graph(service.store, uri).remove((None, None, None))
+        else:
+            private_add = Graph(service.store, URIRef(uri+"#private")).add
+            private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
+            
         graph_add = Graph(service.store, uri).add
         for triple in new_graph:
             graph_add(triple)
 
-        private_add = Graph(service.store, URIRef(uri+"#private")).add
-        private_add((uri, _HAS_IMPL, cls.RDF_MAIN_TYPE))
 
-    # protected methods #
+def compute_added_and_removed(new_graph, resource, added, removed):
+    """I compute the graphs of added triples and of removed triples.
 
-    def _compute_added_and_removed(self, new_graph):
-        """I compute the graphs of added triples and of removed triples.
+    For  overridden versions of `check_new_graph` that require `added` and
+    `removed` to be set, I should be called as::
 
-        :see-also: `check_new_graph`
-        """
+        added, removed = self._compute_added_and_removed(new_graph,
+            resource, added, removed)
+
+    before the call to ``super(...).check_new_graph``.
+
+    NB: if added and removed are not None, I will simply return them, so
+    there is no significant overhead.
+
+    NB: if resource is None, this method will return ``(None, None)``, as
+    `added` and `removed` do not mean anything.
+    """
+    if resource is None:
+        return None, None
+    if added is None:
+        assert removed is None
         _, added, removed = graph_diff(
             new_graph,
-            self._graph
+            resource._graph # _graph is protected #pylint: disable=W0212
             )
-        return added, removed
+    else:
+        assert removed is not None
 
-    @classmethod
-    def _create(cls, service, uri, new_graph):
-        """Create a new resource in the service.
-
-        While ``__init__`` assumes that the `service` already contains the
-        resource and only provides a python instance representing it, this
-        method assumes that the resource does not exists yet, and does whatever
-        is needed to create it.
-
-        :param service:   the service in which to create the resource
-        :type  service:   rdfrest.service.Service
-        :param uri:       the URI of the resource to create
-        :type  uri:       rdflib.URIRef
-        :param new_graph: RDF data describing the resource to create
-        :type  new_graph: rdflib.Graph
-
-        :return: an instance of `cls`
-        :raise: :class:`.exceptions.InvalidDataError` if `new_graph` is not
-                acceptable
-
-        This method is protected and *must not* be overridden; instead,
-        subclasses may overload :meth:`check_new_graph` and
-        :meth:`store_new_graph` on which this method relies.
-        """
-        errors = cls.check_new_graph(uri, new_graph)
-        if errors is not None:
-            raise InvalidDataError(errors)
-        cls.store_new_graph(service, uri, new_graph)
-        return cls(service, uri)
-
+    return added, removed
 
 
 _HAS_IMPL = RDFREST.hasImplementation

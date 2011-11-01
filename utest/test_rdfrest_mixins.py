@@ -45,6 +45,15 @@ class TestRootOnly(object):
     def test_post_folder_uri(self):
         self._test_post_uri(Folder, ROOT["f1/"])
     
+    def test_post_item_duplicate_uri(self):
+        self._test_post_uri(Item, ROOT.i1)
+        assert_raises(RdfRestException, self._test_post_uri, Item, ROOT.i1)
+
+    def test_post_folder_duplicate_uri(self):
+        self._test_post_uri(Folder, ROOT["i1/"])
+        assert_raises(RdfRestException, self._test_post_uri, Folder,
+                      ROOT["i1/"])
+
     @raises(InvalidUriError)
     def test_post_item_uri_with_qs(self):
         self._test_post_uri(Item, ROOT["i1?a=b"])
@@ -426,6 +435,7 @@ def test_bk_changed_on_post():
     root = service.root
     old_etag = root.etag
     old_lm = root.last_modified
+    sleep(0.05) # ensures last_modified will actually change
     root.rdf_post(Item.populate(BNode(), root.uri))
     assert root.etag != old_etag
     assert root.last_modified > old_lm

@@ -40,8 +40,8 @@ KTBS = ClosedNamespace(
         "external",
         "filter",
         "fusion",
-        "hasAttributeDomain",
-        "hasAttributeRange",
+        "hasAttributeDomain", # TODO rename
+        "hasAttributeRange",  # TODO rename
         "hasBase",
         "hasBegin",
         "hasBeginDT",
@@ -51,13 +51,13 @@ KTBS = ClosedNamespace(
         "hasEndDT",
         "hasMethod",
         "hasModel",
-        "hasObselCollection",
+        "hasObselCollection", # TODO rename to hasObselSet
         "hasOrigin",
         "hasParameter",
         "hasParentMethod",
         "hasParentModel",
-        "hasRelationDomain",
-        "hasRelationRange",
+        "hasRelationDomain", # TODO rename
+        "hasRelationRange",  # TODO rename
         "hasSource",
         "hasSourceObsel",
         "hasSubject",
@@ -71,5 +71,7 @@ KTBS = ClosedNamespace(
         "hasUnit",
         "parallel",
         "sparql",
+        # not really part of the NS, but used internally
+        "_StoredTraceObsels",
         ]
     )

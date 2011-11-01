@@ -24,14 +24,12 @@ from rdfrest.utils import coerce_to_node
 
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.base import Base
 from ktbs.local.resource import PostableResource
 from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
 class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
-    """
-    I provide the pythonic interface common to ktbs root.
+    """I implement a local KTBS root.
     """
 
     # KTBS API #
@@ -54,11 +52,16 @@ class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
         graph.add((node, RDF.type, _BASE))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
-        ret = self._post_or_trust(Base, node, graph, trust_graph)
+        return self._post_or_trust(Base, node, graph, trust_graph)
+
+    def ack_new_child(self, child_uri):
+        """I override
+        :method:`ktbs.local.resource.PostableResource.ack_new_child`
+        """
+        super(KtbsRoot, self).ack_new_child(child_uri)
         with self._edit as g:
-            g.add((self.uri, _HAS_BASE, ret.uri))
-        return ret
-            
+            g.add((self.uri, _HAS_BASE, child_uri))
+                    
     # RDF-REST API #
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
@@ -77,3 +80,6 @@ class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
 
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase
+
+# these imports must be in the end to ensure a consistent import order
+from ktbs.local.base import Base

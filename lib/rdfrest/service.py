@@ -98,7 +98,7 @@ class Service(object):
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
             graph = root_cls.create_root_graph(root_uri, self)
-            root_cls.store_new_graph(self, root_uri, graph)
+            root_cls.store_graph(self, root_uri, graph)
             root = root_cls(self, root_uri)
             self._resource_cache[root_uri.defrag()] = root
         

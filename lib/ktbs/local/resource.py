@@ -22,7 +22,7 @@ from rdflib import RDF, URIRef
 from rdfrest.resource import Resource as RdfRestResource
 from rdfrest.mixins import RdfPostMixin, RdfPutMixin, BookkeepingMixin, \
     WithReservedNamespacesMixin, WithCardinalityMixin
-from rdfrest.utils import replace_node
+from rdfrest.utils import parent_uri, replace_node
 
 from ktbs.common.utils import mint_uri_from_label
 from ktbs.namespaces import KTBS, SKOS
@@ -62,6 +62,20 @@ class PostableResource(RdfPostMixin, Resource):
     """A KTBS Resource supporting the POST operation.
     """
 
+    def ack_new_child(self, child_uri):
+        """**Hook**: called after the creation of a new child resource.
+
+        :param child_uri: the URI of the newly created child resource
+        """
+        pass
+
+    def rdf_post(self, graph, parameters=None):
+        created = super(PostableResource, self).rdf_post(graph, parameters)
+        with self._edit as graph:
+            for i in created:
+                self.ack_new_child(i)
+        return created
+
     def check_posted_graph(self, created, new_graph):
         """I override `rdfrest.mixins.RdfPostMixin.check_posted_graph`.
 
@@ -70,18 +84,25 @@ class PostableResource(RdfPostMixin, Resource):
         Note that, unlike other class constants used in
         :module:`rdfrest.mixins`, KTBS_CHILDREN_TYPES is not inherited.
         """
-        # TODO MAJOR also check that created, if URIRef, is a direct child URI
-        # of self.uri
+        diag = super(PostableResource, self)\
+            .check_posted_graph(created, new_graph)
+
         allowed_types = getattr(self, "KTBS_CHILDREN_TYPES", None)
         if allowed_types is not None:
             for rdf_type in new_graph.objects(created, RDF.type):
                 if rdf_type in allowed_types:
                     break
-                else:
-                    return "Posted resource not supported by %s" \
-                        % self.RDF_MAIN_TYPE
-        return super(PostableResource, self)\
-            .check_posted_graph(created, new_graph)
+            else:
+                diag.append("Posted resource not supported by %s" \
+                                  % self.RDF_MAIN_TYPE)
+
+        if isinstance(created, URIRef):
+            parent = parent_uri(created)
+            if parent != str(self.uri):
+                diag.append("Posted resource's URI %s not child of target" \
+                                  % created)
+
+        return diag
 
     def _post_or_trust(self, py_class, node, graph, trust_graph):
         """Depending on the parameters, I use rdf_post or I efficiently
@@ -93,9 +114,9 @@ class PostableResource(RdfPostMixin, Resource):
         if isinstance(node, URIRef):
             # we need to call check_posted_graph, at least for checking the
             # validity of provided 'node'
-            errs = self.check_posted_graph(node, graph)
-            if errs:
-                raise ValueError(errs)
+            diag = self.check_posted_graph(node, graph)
+            if not diag:
+                raise ValueError(diag)
             uri = node
         else:
             uri = None
@@ -104,15 +125,12 @@ class PostableResource(RdfPostMixin, Resource):
             if uri is None:
                 uri = py_class.mint_uri(self, graph, node)
                 replace_node(graph, node, uri)
-                assert self.check_posted_graph(uri, graph) is None
-                #assert self.check_posted_graph( #pylint: disable=E1101
-                #    uri, graph) is None # not a method of every Resource
-                #    # but _post_or_trust will only be used on postable
-                #    # resources, o it is ok
+                assert self.check_posted_graph(uri, graph)
 
-            assert py_class.check_new_graph(uri, graph) is None
+            assert py_class.check_new_graph(uri, graph)
             with self.service:
-                py_class.store_new_graph(self.service, uri, graph)
+                py_class.store_graph(self.service, uri, graph)
+                self.ack_new_child(uri)
                 return py_class(self.service, uri)
         else:
             base_uri = self.rdf_post(graph)[0]

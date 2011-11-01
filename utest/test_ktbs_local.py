@@ -3,7 +3,7 @@ from ktbs.namespaces import KTBS, SKOS
 
 from nose.tools import assert_raises
 from rdflib.store import Store
-from rdflib import BNode, plugin, Graph, RDF, RDFS
+from rdflib import BNode, plugin, Graph, RDF, RDFS, URIRef
 from rdfrest.exceptions import *
 
 class TestKtbsLocal():
@@ -39,30 +39,50 @@ class TestKtbsLocal():
 
         assert 1 # put 0 to check output, 1 to pass unit-test
 
-    def test_post_bad_graph_to_ktbs(self):
+    def test_post_bad_type_to_root(self):
         graph = Graph()
         created = BNode()
         graph.add((self.ktbs.uri, KTBS.hasBase, created))
         graph.add((created, RDF.type, RDFS.Resource))
         assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
+
+    def test_post_no_type_to_root(self):
         graph = Graph()
         created = BNode()
         graph.add((self.ktbs.uri, RDFS.seeAlso, created))
         graph.add((created, RDF.type, KTBS.Base))
+        assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
 
-    def test_post_bad_graph_to_base(self):
+    def test_post_duplicate_uri_to_root(self):
+        graph = Graph()
+        created = URIRef(self.ktbs.uri + "b1/")
+        graph.add((self.ktbs.uri, KTBS.hasBase, created))
+        graph.add((created, RDF.type, KTBS.Base))
+        self.ktbs.rdf_post(graph)
+        assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
+
+    def test_post_wrong_uri_to_root(self):
+        graph = Graph()
+        created = URIRef("http://example.org/b1/")
+        graph.add((self.ktbs.uri, KTBS.hasBase, created))
+        graph.add((created, RDF.type, KTBS.Base))
+        assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
+
+    def test_post_bad_type_to_base(self):
         graph = Graph()
         created = BNode()
-        graph.add((self.ktbs.uri, KTBS.hasModel, created))
+        graph.add((self.ktbs.uri, KTBS.contains, created))
         graph.add((created, RDF.type, RDFS.Resource))
         assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
+
+    def test_no_type_to_base(self):
         graph = Graph()
         created = BNode()
         graph.add((self.ktbs.uri, RDFS.seeAlso, created))
         graph.add((created, RDF.type, KTBS.hasModel)) # in correct NS
         assert_raises(RdfRestException, self.ktbs.rdf_post, graph)
 
-    def test_create_bad_models(self):
+    def test_create_bad_model(self):
         # checking cardinality constraint on ktbs:contains
         base = self.ktbs.create_base()
         graph = Graph()

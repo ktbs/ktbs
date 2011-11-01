@@ -18,8 +18,10 @@
 """
 I provide the local implementation of ktbs:Base .
 """
+from md5 import md5
 from rdflib import Graph, Literal, RDF
 from rdfrest.utils import coerce_to_node, coerce_to_uri
+from time import time
 
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import extend_api
@@ -29,8 +31,7 @@ from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
 class Base(BaseMixin, PostableResource):
-    """
-    I provide the pythonic interface common to ktbs base.
+    """I implement a local KTBS Base.
     """
 
     # KTBS API #
@@ -68,10 +69,10 @@ class Base(BaseMixin, PostableResource):
         :rtype: `ktbs.local.method.Method`
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
+        parent_uri = coerce_to_uri(parent)
         if parameters is None:
             parameters = {}
         node = coerce_to_node(id, self.uri)
-        parent_uri = coerce_to_uri(parent)
 
         trust_graph = graph is None
         if trust_graph:
@@ -94,7 +95,7 @@ class Base(BaseMixin, PostableResource):
 
         graph.add((self.uri, KTBS.contains, node))
         graph.add((node, RDF.type, KTBS.Method))
-        graph.add((node, KTBS.hasParentMethod, coerce_to_uri(parent)))
+        graph.add((node, KTBS.hasParentMethod, parent_uri))
         for key, value in parameters.iteritems():
             graph.add((node, KTBS.hasParameter,
                        Literal("%s=%s" % (key, value))))
@@ -102,6 +103,51 @@ class Base(BaseMixin, PostableResource):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         return self._post_or_trust(Method, node, graph, trust_graph)
 
+    def create_stored_trace(self, model, origin=None, default_subject=None,
+                            label=None, id=None, graph=None):
+        """Create a new stored trace in this base.
+        
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.local.method.StoredTrace`
+        """
+        # redefining built-in 'id' #pylint: disable-msg=W0622
+        node = coerce_to_node(id, self.uri)
+        if origin is None:
+            token = "%s%s" % (time(), node)
+            origin = md5(token).hexdigest()
+
+        trust_graph = graph is None
+        if trust_graph:
+            # we need to check some integrity constrains,
+            # because the graph may be blindly trusted
+            #
+            # NB: the following code is *different* from the code that does
+            # those checks in check_new_graph, so it can not be factorized
+
+            # TODO MINOR check trace timestamps if provided
+
+            graph = Graph()
+
+        graph.add((self.uri, KTBS.contains, node))
+        graph.add((node, RDF.type, KTBS.StoredTrace))
+        graph.add((node, KTBS.hasModel, coerce_to_uri(model)))
+        graph.add((node, KTBS.hasOrigin, Literal(origin)))
+        if default_subject:
+            graph.add((node, KTBS.hasDefaultSubject, Literal(default_subject)))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+        return self._post_or_trust(StoredTrace, node, graph, trust_graph)
+        
+
+    def ack_new_child(self, child_uri):
+        """I override
+        :method:`ktbs.local.resource.PostableResource.ack_new_child`
+        """
+        super(Base, self).ack_new_child(child_uri)
+        with self._edit as g:
+            g.add((self.uri, _CONTAINS, child_uri))
             
     # RDF-REST API #
 
@@ -126,8 +172,7 @@ class Base(BaseMixin, PostableResource):
             ]
 
 
-
-class BaseResource(Resource):
+class InBaseMixin(Resource):
     """Common properties for all resources contained in Base.
     """
 
@@ -135,8 +180,9 @@ class BaseResource(Resource):
     RDF_CARDINALITY_IN = [ (KTBS.contains, 1, 1), ]
 
 
-# these imports must be in the end, because import BaseResource
+# these imports must be in the end to ensure a consistent import order
 from ktbs.local.model import Model
 from ktbs.local.method import Method
+from ktbs.local.trace import StoredTrace
 
 _CONTAINS = KTBS.contains

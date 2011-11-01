@@ -19,17 +19,18 @@
 I provide the local implementation of ktbs:Method .
 """
 from rdflib import Literal
+from rdfrest.resource import compute_added_and_removed
 
 from ktbs.common.method import MethodMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.base import BaseResource
+from ktbs.local.base import InBaseMixin
+from ktbs.local.resource import Resource
 from ktbs.local.service import KtbsService
 from ktbs.namespaces import KTBS
 
 @extend_api
-class Method(MethodMixin, BaseResource):
-    """
-    I provide the pythonic interface common to ktbs root.
+class Method(MethodMixin, InBaseMixin, Resource):
+    """I implement a local KTBS method.
     """
 
     RDF_MAIN_TYPE = KTBS.Method
@@ -46,32 +47,30 @@ class Method(MethodMixin, BaseResource):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the check that parent and parameters are acceptable
         """
-        errors = super(Method, cls).check_new_graph(uri, new_graph, resource,
-                                                    added, removed) or []
+        added, removed = compute_added_and_removed(new_graph, resource, added,
+                                                   removed)
 
-        if added:
-            # we only check values that were added/changed
+        diag = super(Method, cls).check_new_graph(uri, new_graph, resource,
+                                                  added, removed)
+
+        if resource: # we only check values that were added/changed
             the_graph = added
         else:
             the_graph = new_graph
-
         parent_uri = the_graph.value(uri, KTBS.hasParentMethod)
-        if parent_uri is not None:
+        if parent_uri:
             base_uri = new_graph.value(None, KTBS.contains, uri)
             acceptable = parent_uri.startswith(base_uri) \
                 or KtbsService.has_builtin_method(parent_uri)
             if not acceptable:
-                errors.append("Invalid parent method: <%s>" % parent_uri)
+                diag.append("Invalid parent method: <%s>" % parent_uri)
 
         for param in the_graph.objects(uri, KTBS.hasParameter):
             if not isinstance(param, Literal):
-                errors.append("Parameters should be literals; "
+                diag.append("Parameters should be literals; "
                               "got <%s>" % param)
             if "=" not in param:
-                errors.append("Parameter is ill-formatted: %r" % str(Literal))
+                diag.append("Parameter is ill-formatted: %r" % str(Literal))
 
-        if errors:
-            return "\n".join(errors)
-        else:
-            return None
+        return diag
 

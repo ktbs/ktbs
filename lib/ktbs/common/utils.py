@@ -91,6 +91,7 @@ def mint_uri_from_label(label, target, uri=None, suffix=""):
     :rtype: rdflib.URIRef
     :raise: ValueError if `uri` is provided and is already in use
     """
+    label = label.lower()
     target_graph = target._graph # protected member #pylint: disable=W0212
     if uri is not None:
         uri = coerce_to_uri(uri, target.uri)
