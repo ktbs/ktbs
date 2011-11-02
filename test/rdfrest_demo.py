@@ -19,6 +19,8 @@ I demonstrate the rdfrest framework with an example server.
 """
 from os.path import abspath, dirname, join
 from sys import path, stderr
+from time import sleep
+import socket
 
 SOURCE_DIR = dirname(dirname(abspath(__file__)))
 LIB_DIR = join(SOURCE_DIR, "lib")
@@ -41,6 +43,7 @@ from rdfrest_example import MyService, ONS, RNS
 HOST = "localhost"
 PORT = 8001
 ROOT_URI = "http://%s:%s/" % (HOST, PORT)
+RETRY = 3
 
 def main():
     "The main function of this test"
@@ -48,9 +51,24 @@ def main():
     http = HttpFrontend(service, cache_control=cache_control)
     http.serializers.bind_prefix("", RNS)
     http.serializers.bind_prefix("o", ONS)
-    print >> stderr, "===", "Starting server on ", ROOT_URI
-    make_server(HOST, PORT, http).serve_forever()
-    #make_server(HOST, PORT, http).handle_request()
+    for i in range(RETRY):
+        try:
+            server = make_server(HOST, PORT, http)
+            break
+        except socket.error, ex:
+            if ex.errno != 98:
+                raise
+            print >> stderr, "Port in use, retrying in 1s (%s/%s)" % (
+                i+1, RETRY)
+            sleep(1)
+    else:
+        print >> stderr, "Could not bind port"
+        return -1
+
+    print >> stderr, "Starting server on", ROOT_URI
+    stderr.flush()
+    server.serve_forever()
+    #server.handle_request()
 
 def cache_control(resource):
     if str(resource.uri) == ROOT_URI:

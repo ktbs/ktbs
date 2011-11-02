@@ -4,7 +4,7 @@ from rdflib.store import Store
 from rdflib import Graph, URIRef, Literal, plugin as rdflib_plugin
 
 from rdfrest.exceptions import *
-from rdfrest.resource import Resource
+from rdfrest.resource import Resource, ProxyResource
 from rdfrest.service import Service
 
 
@@ -41,6 +41,17 @@ def test_no_querystring_as_root():
 @raises(InvalidUriError)
 def test_no_fragid_as_root():
     res = MinimalService("http://localhost:1234/#a")
+
+def test_proxy_resource_graph():
+    srv = MinimalService()
+    prx = MyProxyResource(srv, URIRef("http://example.org/foo"))
+    assert len(prx._graph) > 0
+
+@raises(Redirect)
+def test_proxy_resource_rdfget():
+    srv = MinimalService()
+    prx = MyProxyResource(srv, URIRef("http://example.org/foo"))
+    prx.rdf_get()
 
 class MinimalService(Service):
     def __init__(self, uri=None):
@@ -89,3 +100,10 @@ class MinimalResource(Resource):
         if self.edited == 5:
             raise Exception("testing exceptions in ack_edit")
 
+class MyProxyResource(ProxyResource):
+    """I implement a proxy resource.
+    """
+
+    @classmethod
+    def get_proxied_uri(cls, service, uri):
+        return "http://localhost:1234/"

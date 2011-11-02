@@ -20,17 +20,19 @@ I provide the local implementation of ktbs:Base .
 """
 from md5 import md5
 from rdflib import Graph, Literal, RDF
+from rdfrest.mixins import RdfPutMixin
+from rdfrest.resource import Resource
 from rdfrest.utils import coerce_to_node, coerce_to_uri
 from time import time
 
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.resource import PostableResource, Resource
+from ktbs.local.resource import KtbsPostMixin, KtbsResourceMixin
 from ktbs.local.service import KtbsService
 from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
-class Base(BaseMixin, PostableResource):
+class Base(BaseMixin, KtbsPostMixin, RdfPutMixin, Resource):
     """I implement a local KTBS Base.
     """
 
@@ -142,8 +144,7 @@ class Base(BaseMixin, PostableResource):
         
 
     def ack_new_child(self, child_uri):
-        """I override
-        :method:`ktbs.local.resource.PostableResource.ack_new_child`
+        """Override :meth:`ktbs.local.resource.PostableResource.ack_new_child`
         """
         super(Base, self).ack_new_child(child_uri)
         with self._edit as g:
@@ -172,7 +173,7 @@ class Base(BaseMixin, PostableResource):
             ]
 
 
-class InBaseMixin(Resource):
+class InBaseMixin(KtbsResourceMixin):
     """Common properties for all resources contained in Base.
     """
 

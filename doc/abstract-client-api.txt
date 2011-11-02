@@ -15,6 +15,9 @@ Abstract client API for kTBS
     2011-04-29  pchampin  applied changes to the kTBS ontology
     2010-12-01  pchampin  applied changes to the kTBS ontology
 
+TODO:
+* traceBegin and traceEnd on storedTraces
+* multiple values for a relation on an obsel
 
 Resource
   get_uri() → uri

@@ -20,6 +20,7 @@ I implement KTBS as an `rdfrest.service.Service`:class.
 from rdflib import Graph, URIRef
 from rdfrest.namespaces import RDFREST
 from rdfrest.service import Service
+from rdfrest.utils import parent_uri
 
 from ktbs.namespaces import KTBS
 
@@ -75,10 +76,15 @@ class KtbsService(Service):
         (as built-in methods may appear or disappear between executions).
         """
         ret = super(KtbsService, self).get(uri)
-        if ret is None:
-            if uri in self._BUILTIN_METHODS:
-                ret = uri
-        return ret
+        if ret is not None:
+            return ret
+
+        if uri in self._BUILTIN_METHODS:
+            return uri
+
+        parent = super(KtbsService, self).get(parent_uri(uri))
+        if parent is not None and hasattr(parent, "get_child"):
+            return parent.get_child(uri)
 
     _BUILTIN_METHODS = {}
 

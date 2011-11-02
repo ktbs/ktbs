@@ -18,22 +18,129 @@
 """
 I provide the local implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
+from datetime import datetime
+from rdflib import Literal, URIRef
+from rdfrest.resource import ProxyResource
+from rdfrest.utils import Diagnosis, parent_uri
+
 from ktbs.common.obsel import ObselMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.resource import Resource
+from ktbs.local.resource import KtbsResourceMixin
+from ktbs.local.trace import check_timestamp, cmp_timestamps, \
+    complete_timestamp
 from ktbs.namespaces import KTBS
 
 @extend_api
-class Obsel(ObselMixin, Resource):
+class Obsel(ObselMixin, KtbsResourceMixin, ProxyResource):
     """
     I provide the pythonic interface common to ktbs root.
     """
     # KTBS API #
 
-    # TODO
+    @classmethod
+    def check_new_graph(cls, service, uri, new_graph,
+                        resource=None, added=None, removed=None):
+        """I override :meth:`rdfrest.resource.Resource.check_new_graph`.
+        """
+        assert (added is None) # obsels can not be PUT
+
+        diag = Diagnosis("check_new_graph")
+
+        trace = service.get(parent_uri(uri))
+        subject = new_graph.value(uri, _HAS_SUBJECT)
+        if subject is None:
+            default = trace.get_default_subject()
+            if default is None:
+                diag.append("Can not determine obsel's subject")
+            else:
+                new_graph.add((uri, _HAS_SUBJECT, Literal(default)))
+
+        origin = trace.get_origin(True)
+        begin_i, begin_d, end_i, end_d = cls.get_timestamps(uri, new_graph)
+        if begin_i is None and begin_d is None:
+            diag.append("Unspecified or inconsistent begin timestamp")
+        if end_i is None and end_d is None:
+            diag.append("Unspecified or inconsistent end timestamp")
+        if not check_timestamp(begin_i, begin_d, origin):
+            diag.append("Inconsistent begin timestamps")
+        if not check_timestamp(end_i, end_d, origin):
+            diag.append("Inconsistent end timestamps")
+        if cmp_timestamps(begin_i, begin_d, end_i, end_d, origin) > 0:
+            diag.append("begin > end")
+        if isinstance(origin, datetime):
+            complete_timestamp(uri, begin_i, begin_d, origin,
+                               new_graph.add, _HAS_BEGIN, _HAS_BEGIN_DT)
+            complete_timestamp(uri, end_i, end_d, origin,
+                               new_graph.add, _HAS_END, _HAS_END_DT)
+
+        diag &= super(Obsel, cls).check_new_graph(service, uri, new_graph,
+                                                 resource, added, removed)
+
+        return diag
+
 
     # RDF-REST API #
 
-    # TODO anything here?
+    RDF_MAIN_TYPE = KTBS.Obsel
+
+    RDF_POSTABLE_OUT = [ KTBS.hasTrace, ]
+
+    RDF_PUTABLE_OUT = [ KTBS.hasBegin, KTBS.hasBeginDT, KTBS.hasEnd,
+                        KTBS.hasEndDT, KTBS.hasSubject, KTBS.hasSourceObsel, ]
+    RDF_CARDINALITY_OUT = [
+        (KTBS.hasBegin, 1, 1),
+        (KTBS.hasBeginDT, 0, 1),
+        (KTBS.hasEnd, 1, 1),
+        (KTBS.hasEndDT, 0, 1),
+        (KTBS.hasSubject, 1, 1),
+        ]
+    # NB about cardinality: hasBegin, hasEnd and hasSubject are tagged as
+    # mandatory, even if they may be ommited from the PUT/POSTed graph.
+    # This is because check_new_graph will generate values for those
+    # properties before CardinalityMixin gets to check them.
+    # On the other hand, if check_new_graph has not enough information to
+    # generate the values, CardinalityMixin will complain about missing
+    # values.
+
+    @classmethod
+    def get_proxied_uri(cls, service, uri):
+        """I override :meth:`rdfrest.resource.ProxyResource.get_proxied_uri`.
+
+        I return the URI of my trace's obsel set, with appropriate params.
+        """
+        trace_uri, obsel_id = uri.rsplit("/", 1)
+        return URIRef("%s/@obsels?id=%s" % (trace_uri, obsel_id))
+
+    # other #
+
+    @classmethod
+    def get_timestamps(cls, uri, new_graph):
+        """I retrieve obsel timestamps from new_graph.
+
+        :rtype: a tuple of 4 Literals
+        
+        I provide hooks to allow plugins to define more ways to specify
+        timestamps.
+
+        If inconsistents timestamps are found, None should be returned for
+        the corresponding bounds.
+        """
+        begin_i = new_graph.value(uri, _HAS_BEGIN)
+        begin_d = new_graph.value(uri, _HAS_BEGIN_DT)
+        end_i = new_graph.value(uri, _HAS_END)
+        end_d = new_graph.value(uri, _HAS_END_DT)
+
+        # TODO provide hook for plugins
+
+        if end_i is None and end_d is None:
+            end_i = begin_i
+            end_d = begin_d
+        return begin_i, begin_d, end_i, end_d
+
+# TODO MINOR write unit tests to test all cases of obsel creation
 
 _HAS_BEGIN = KTBS.hasBegin
+_HAS_BEGIN_DT = KTBS.hasBeginDT
+_HAS_END = KTBS.hasEnd
+_HAS_END_DT = KTBS.hasEndDT
+_HAS_SUBJECT = KTBS.hasSubject

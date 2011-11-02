@@ -3,7 +3,7 @@ from rdflib.store import Store
 
 from rdfrest.exceptions import *
 from rdfrest.mixins import *
-from rdfrest.resource import Resource
+from rdfrest.resource import Resource, ProxyResource
 from rdfrest.service import Service
 
 ROOT = Namespace("http://localhost:12345/")
@@ -19,7 +19,18 @@ class MyService(Service):
         else:
             uri = URIRef(uri)
         Service.__init__( self, plugin.get("IOMemory", Store)(), uri)
-            
+
+    def get(self, uri):
+        """I override :meth:`rdfrest.service.Service.get`.
+
+        I serve a proxy resource on "/@proxy".
+        """
+        ret = super(MyService, self).get(uri)
+        if ret is None:
+            if uri == self.root_uri+"@proxy":
+                ret = Proxy(self, URIRef(uri)) 
+        return ret
+
 
 @MyService.register
 class Item(WithCardinalityMixin, BookkeepingMixin, WithReservedNamespacesMixin,
@@ -133,3 +144,8 @@ class Folder(Item, RdfPostMixin):
     def create_root_graph(cls, uri, service):
         graph = super(Folder, cls).create_root_graph(uri, service)
         return cls.populate(uri, ONS.foo, graph)
+
+class Proxy(ProxyResource):
+    @classmethod
+    def get_proxied_uri(self, service, uri):
+        return service.root_uri

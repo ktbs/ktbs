@@ -19,24 +19,105 @@
 I provide the local implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from datetime import datetime, timedelta
-from rdflib import Graph, Literal, URIRef
-from rdfrest.resource import compute_added_and_removed
+from rdflib import Graph, Literal, RDF, URIRef
+from rdfrest.mixins import RdfPutMixin
+from rdfrest.resource import compute_added_and_removed, Resource
+from rdfrest.utils import coerce_to_node, coerce_to_uri, Diagnosis
 
 from ktbs.common.trace import StoredTraceMixin
 from ktbs.common.utils import extend_api
 from ktbs.iso8601 import parse_date, ParseError
 from ktbs.local.base import InBaseMixin
-from ktbs.local.resource import PostableResource, Resource
-from ktbs.namespaces import KTBS
+from ktbs.local.resource import KtbsPostMixin, KtbsResourceMixin
+from ktbs.namespaces import KTBS, SKOS
+
+# monkeypatching rdflib to use timezone-aware datetime
+from rdflib.namespace import XSD
+import rdflib.term
+rdflib.term._toPythonMapping[XSD.dateTime] = parse_date #pylint: disable=W0212
 
 @extend_api
-class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
+class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
+                  Resource):
     """I implement a local KTBS stored trace.
     """
 
     # KTBS API #
 
-    # TODO create_obsel
+    def create_obsel(self, type, begin, end=None, subject=None,
+                     attributes=None, relations=None, inverse_relations=None, 
+                     source_obsels=None, label=None, id=None, graph=None):
+        """Create a new obsel in this trace.
+        
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.local.method.Method`
+        """
+        # redefining built-in 'type' and 'id' #pylint: disable-msg=W0622
+        if end is None:
+            end = begin
+        if subject is None:
+            subject = self.get_default_subject()
+            if subject is None:
+                raise ValueError("Could not determine subject")
+
+        if isinstance(begin, int):
+            begin_i = Literal(begin)
+            begin_d = None
+        else:
+            begin_i = None
+            begin_d = Literal(begin)
+        if isinstance(end, int):
+            end_i = Literal(end)
+            end_d = None
+        else:
+            end_i = None
+            end_d = Literal(begin)
+
+        node = coerce_to_node(id, self.uri)
+        trust_graph = graph is None
+        if trust_graph:
+            # we need to check some integrity constrains,
+            # because the graph may be blindly trusted
+            #
+            # NB: the following code is *different* from the code that does
+            # those checks in check_new_graph, so it can not be factorized
+            origin = self.get_origin(True)
+            if not check_timestamp(begin_i, begin_d, origin):
+                raise ValueError("Inconsistent begin timestamps")
+            if not check_timestamp(end_i, end_d, origin):
+                raise ValueError("Inconsistent end timestamps")
+            if cmp_timestamps(begin_i, begin_d, end_i, end_d, origin) > 0:
+                raise ValueError("begin > end")
+
+            graph = Graph()
+
+        graph.add((node, _HAS_TRACE, self.uri))
+        graph.add((node, RDF.type, coerce_to_uri(type)))
+        graph.add((node, _HAS_SUBJECT, Literal(subject)))
+        if begin_i:
+            graph.add((node, _HAS_BEGIN, begin_i))
+        if begin_d:
+            graph.add((node, _HAS_BEGIN_DT, begin_d))
+        if end_i:
+            graph.add((node, _HAS_END, end_i))
+        if end_d:
+            graph.add((node, _HAS_END_DT, end_d))
+        if label:
+            graph.add((node, _PREF_LABEL, Literal(label)))
+        for key, val in (attributes or {}).items():
+            graph.add((node, coerce_to_uri(key), Literal(val)))
+            # TODO manage the case where val is a list
+        for key, val in (relations or {}).items():
+            graph.add((node, coerce_to_uri(key), coerce_to_uri(val)))
+        for key, val in (inverse_relations or {}).items():
+            graph.add((coerce_to_uri(val), coerce_to_uri(key), node))
+        for val in (source_obsels or ()):
+            graph.add((node, _HAS_SOURCE_OBSEL, coerce_to_uri(val)))
+        return self._post_or_trust(Obsel, node, graph, trust_graph)
+        
+        
 
     # RDF-REST API #
 
@@ -54,10 +135,11 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
         (KTBS.hasTraceEndDT, None, 1),
         (KTBS.hasDefaultSubject, None, 1),
         ]
-    
+
+
     @classmethod
-    def check_new_graph(cls, uri, new_graph, resource=None, added=None,
-                        removed=None):
+    def check_new_graph(cls, service, uri, new_graph,
+                        resource=None, added=None, removed=None):
         """I override `rdfrest.mixins.RdfPostMixin.check_new_graph`.
         """
 
@@ -67,8 +149,7 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
         added, removed = compute_added_and_removed(new_graph, resource, added,
                                                    removed)
 
-        diag = super(StoredTrace, cls).check_new_graph(
-            uri, new_graph, resource, added, removed)
+        diag = Diagnosis("check_new_graph")
 
         if resource:
             res = added.query("PREFIX k: <%s>"
@@ -90,10 +171,10 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
                 origin = parse_date(origin)
             except ParseError:
                 pass
-            begin_i = new_graph.value(_HAS_TRACE_BEGIN)
-            begin_d = new_graph.value(_HAS_TRACE_BEGIN_DT)
-            end_i = new_graph.value(_HAS_TRACE_END)
-            end_d = new_graph.value(_HAS_TRACE_END_DT)
+            begin_i = new_graph.value(uri, _HAS_TRACE_BEGIN)
+            begin_d = new_graph.value(uri, _HAS_TRACE_BEGIN_DT)
+            end_i = new_graph.value(uri, _HAS_TRACE_END)
+            end_d = new_graph.value(uri, _HAS_TRACE_END_DT)
             if not check_timestamp(begin_i, begin_d, origin):
                 diag.append("Inconsistent traceBegin timestamps")
             if not check_timestamp(end_i, end_d, origin):
@@ -101,22 +182,27 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
             if cmp_timestamps(begin_i, begin_d, end_i, end_d, origin) > 0:
                 diag.append("traceBegin > traceEnd")
 
+            if isinstance(origin, datetime):
+                def add(triple):
+                    "callback for complete_timestamp"
+                    new_graph.add(triple)
+                    added.add(triple)
+
+                    complete_timestamp(uri, begin_i, begin_d, origin, add,
+                                       _HAS_TRACE_BEGIN,_HAS_TRACE_BEGIN_DT)
+
+                    complete_timestamp(uri, end_i, end_d, origin, add,
+                                       _HAS_TRACE_END,_HAS_TRACE_END_DT)
+
+        diag &= super(StoredTrace, cls).check_new_graph(
+            service, uri, new_graph, resource, added, removed)
+
         return diag
 
     @classmethod
     def store_graph(cls, service, uri, new_graph, resource=None):
         """I override `rdfrest.mixins.RdfPostMixin.store_graph`.
         """
-        origin = new_graph.value(uri, _HAS_ORIGIN)
-        try:
-            origin = parse_date(origin)
-            complete_timestamp(new_graph, uri, _HAS_TRACE_BEGIN,
-                               _HAS_TRACE_BEGIN_DT, origin)
-            complete_timestamp(new_graph, uri, _HAS_TRACE_END,
-                               _HAS_TRACE_END_DT, origin)
-        except ParseError:
-            pass
-
         super(StoredTrace, cls).store_graph(service, uri, new_graph, resource)
 
         if resource is None:
@@ -125,7 +211,6 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
             empty = Graph()
             StoredTraceObsels.store_graph(service, obsels_uri, empty)
         
-
     def find_created(self, new_graph, query=None):
         """I override `rdfrest.mixins.RdfPostMixin.find_created`.
 
@@ -143,11 +228,27 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, PostableResource):
         """
         return Obsel
 
-class StoredTraceObsels(Resource):
+    def get_child(self, uri):
+        """I return the instance of obsel if it belongs to me.
+
+        :type uri: basestring
+        """
+        # TODO MAJOR check that the obsel exists in this trace
+        return Obsel(self.service, URIRef(uri))
+        
+
+class StoredTraceObsels(KtbsResourceMixin, Resource):
     """I implement the aspect resource of a stored trace containing the obsels.
     """
 
     RDF_MAIN_TYPE = KTBS._StoredTraceObsels #pylint: disable=W0212
+
+    def rdf_get(self, parameters=None):
+        """I override :meth:`rdfrest.resource.Resource.rdf_get`.
+        """
+        # TODO MAJOR handle parameters
+        # temporary hack: ignore them
+        return super(StoredTraceObsels, self).rdf_get()
 
 # time management functions #
 
@@ -223,7 +324,6 @@ def cmp_timestamps(t1i, t1d, t2i, t2d, origin):
     elif t1d is not None and t2d is not None:
         return cmp(t1d, t2d)
 
-    # no compatible representations; convert to int
     assert isinstance(origin, datetime) # or we would not have datetimes...
     if t1i is None:
         t1i = timedelta_in_ms(t1d - origin)
@@ -231,41 +331,59 @@ def cmp_timestamps(t1i, t1d, t2i, t2d, origin):
         t2i = timedelta_in_ms(t2d - origin)
     return cmp(t1i, t2i)
 
-def complete_timestamp(graph, subject, pred_i, pred_d, origin):
+def complete_timestamp(subject, val_i, val_d, origin, add, pred_i, pred_d):
     """Complete missing values in `graph` for a timestamp.
 
     :param graph: the graph to complete
     :type  graph: rdflib.Graph
     :param subject: the resource holding the timestamp
     :type  subject: rdflib.Node
+    :param origin: the origin of the trace
+    :type  origin: datetime
+    :param val_i: the integer timestamp
+    :type  val_d: None or rdflib.Literal with datatype xsd:integer
+    :param val_d: the datetime timestamp
+    :type  val_d: None or rdflib.Literal with datatype xsd:datetime
+    :param add: the function used to add triples to the graph(s)
     :param pred_i: the predicate for the integer timestamp
     :type  pred_i: rdflib.URIRef
     :param pred_d: the predicate for the datetime timestamp
     :type  pred_d: rdflib.URIRef
-    :param origin: the origin of the trace
-    :type  origin: datetime
     """
-    time_i = graph.value(subject, pred_i)
-    time_d = graph.value(subject, pred_d)
-    if time_i is None and time_d is None:
+    assert isinstance(origin, datetime)
+    if val_i is None and val_d is None:
         return
-    if time_i is not None and time_d is not None:
+    if val_i is not None and val_d is not None:
         return
-    if time_i is None:
-        time_i = timedelta_in_ms(time_d - origin)
-        graph.add(subject, pred_i, Literal(time_i))
-    if time_d is None:
-        time_d = origin + timedelta(milliseconds=time_i)
-        graph.add(subject, pred_d, Literal(time_d))
+    if val_i is None:
+        val_i = timedelta_in_ms(val_d.toPython() - origin)
+        add((subject, pred_i, Literal(val_i)))
+    if val_d is None:
+        val_d = origin + timedelta(milliseconds=val_i.toPython())
+        add((subject, pred_d, Literal(val_d)))
+
+
+# TODO MINOR write unit tests to test all cases of stored trace creation
         
     
 # import Obsel in the end, as it is logically "below" trace
 from ktbs.local.obsel import Obsel
 
+_CONTAINS = KTBS.contains
+_HAS_BEGIN = KTBS.hasBegin
+_HAS_BEGIN_DT = KTBS.hasBeginDT
+_HAS_DEFAULT_SUBJECT = KTBS.hasDefaultSubject
+_HAS_END = KTBS.hasEnd
+_HAS_END_DT = KTBS.hasEndDT
+_HAS_MODEL = KTBS.hasModel
 _HAS_OBSEL_SET = KTBS.hasObselCollection
 _HAS_ORIGIN = KTBS.hasOrigin
+_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
+_HAS_SUBJECT = KTBS.hasSubject
 _HAS_TRACE = KTBS.hasTrace
 _HAS_TRACE_BEGIN = KTBS.hasTraceBegin
 _HAS_TRACE_BEGIN_DT = KTBS.hasTraceBeginDT
 _HAS_TRACE_END = KTBS.hasTraceEnd
 _HAS_TRACE_END_DT = KTBS.hasTraceEndDT
+_PREF_LABEL = SKOS.prefLabel
+_STORED_TRACE = KTBS.StoredTrace

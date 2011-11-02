@@ -56,7 +56,7 @@ from rdflib.compare import graph_diff
 from rdflib.graph import ReadOnlyGraphAggregate
 
 from rdfrest.exceptions import InvalidParametersError, InvalidUriError, \
-    MethodNotAllowedError
+    MethodNotAllowedError, Redirect
 from rdfrest.namespaces import RDFREST
 from rdfrest.utils import Diagnosis, make_fresh_uri, urisplit
 
@@ -101,15 +101,19 @@ class Resource(object):
     # subclasses must override this attribute; see Service.register
     RDF_MAIN_TYPE = RDFS.Resource # just to please pylint really
 
-    def __init__(self, service, uri):
+    def __init__(self, service, uri, _graph_uri=None):
+        # NB: param _graph_uri is only to be used by class ProxyResiyrce
+
         assert isinstance(uri, URIRef), repr(uri)
+        if _graph_uri is None:
+            _graph_uri = uri
 
         if urisplit(uri)[3:] != (None, None):
             raise InvalidUriError("URI has query-string and/or "
                                   "fragment-identifier <%s>" % uri)
         self.service = service
         self.uri = uri
-        self.__graph = mutable_graph = Graph(service.store, uri)
+        self.__graph = mutable_graph = Graph(service.store, _graph_uri)
         self._graph = ReadOnlyGraphAggregate([mutable_graph])
         self._private = Graph(service.store, URIRef(uri+"#private"))
         self._edit_level = 0
@@ -238,14 +242,16 @@ class Resource(object):
     ## hook methods ##
 
     @classmethod
-    def check_new_graph(cls, uri, new_graph,
+    def check_new_graph(cls, service, uri, new_graph,
                         resource=None, added=None, removed=None):
         """**Hook**: check that a graph is a valid representation of this
         resource class.
 
-        This hook method is called by :meth:`create` and :meth:`rdf_put`;
+        This hook method is called by :meth:`rdf_post` and :meth:`rdf_put`;
         calling it directly is usually not required.
 
+        :param service:   the service to which `new_graph` has been posted
+        :type  service:   rdfrest.service.Service
         :param uri:       the URI of the resource described by `new_graph`
         :type  uri:       rdflib.URIRef
         :param new_graph: graph to check
@@ -271,8 +277,21 @@ class Resource(object):
 
         This class method can be overridden by subclasses that have constraints
         on the representation of their instances.
+
+        It can also alter `new_graph`, but with the following precautions:
+
+        * the modifications should be done before the call to
+          ``super(...).chekc_new_graph`` so that they go through most of the
+          checks;
+
+        * however, some checks will be missed (those performed on the "right"
+          of the MRO) so implementers should ensure that they are acceptable;
+
+        * if `added` and `removed` are set, the modifications should be
+          reflected in them as well; note that the graphs must be modified,
+          not replaced by new graphs.
         
-        The default implementation accepts any graph.
+        The default implementation accepts any graph without anty change.
         """
         # unused arguments "pylint: disable=W0613
         return Diagnosis("check_new_graph")
@@ -344,13 +363,12 @@ class Resource(object):
         If `resource` is None, this is a resource creation (though `rdf_post`)
         else, this is an update of that resource (through `rdf_put`).
 
-        Subclasses can overload this method in order to store more metadata;
-        they may also *alter* the resource's graph, but they should ensure that
-        the altered graph is still acceptable according to
+        Subclasses can overload this method in order to store more metadata.
+        They may alter the resource's graph, but this should rather be done in
         :meth:`check_new_graph`.
 
-        The default implementation simply store `new_graph` as is in the store,
-        and adds a hint to this class in the private graph.
+        The default implementation simply stores `new_graph` as is in the
+        store, and adds a hint to this class in the private graph.
         """
         assert isinstance(uri, URIRef)
         if resource:
@@ -364,10 +382,70 @@ class Resource(object):
             graph_add(triple)
 
 
+class ProxyResource(Resource):
+    """I define a "view" on (a subset of) another resource.
+    """
+    def __init__(self, service, uri):
+        _graph_uri = self._get_graph_uri(service, uri)
+        Resource.__init__(self, service, uri, _graph_uri)
+
+    @classmethod
+    def get_proxied_uri(cls, service, uri):
+        """I return the URI proxied for URI 'uri'.
+
+        :param service: the service owning the proxy resource
+        :param uri: the URI of the proxy resource
+
+        Note that that URI may contain a query-string but no frag ID.
+        If it contains a query-string, that query-string will ignored for
+        determining which graph to use in the underlying store.
+
+        :rtype: a URIRef or str
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    def store_graph(cls, service, uri, new_graph, resource=None):
+        """I override :meth:`rdfrest.resource.Resource.store_graph`.
+        
+        I store my data in the proxied graph, and nothing in my private graph.
+        """
+        graph_uri = cls._get_graph_uri(service, uri)
+        add = Graph(service.store, graph_uri).add
+        for triple in new_graph:
+            add(triple)
+
+    def rdf_get(self, parameters=None):
+        """I override :meth:`Resource.rdf_get`.
+
+        I issue a `Redirect`:class: expection to the proxied URI.
+        """
+        if parameters is not None:
+            raise InvalidParametersError()
+        raise Redirect(self.get_proxied_uri(self.service, self.uri))
+
+    # protected
+
+    @classmethod
+    def _get_graph_uri(cls, service, uri):
+        """I use :meth:`ger_proxied_uri` to build the graph URI.
+
+        By default, this is done by simply stripping the query string.
+        """
+        _graph_uri = cls.get_proxied_uri(service, uri)
+        scheme, netloc, path, querystr, fragid = urisplit(_graph_uri)
+        assert fragid is None
+        if querystr is not None:
+            _graph_uri = "%s://%s%s" % (scheme, netloc, path)
+        return URIRef(_graph_uri)
+
+
+
+
 def compute_added_and_removed(new_graph, resource, added, removed):
     """I compute the graphs of added triples and of removed triples.
 
-    For  overridden versions of `check_new_graph` that require `added` and
+    For overridden versions of `check_new_graph` that require `added` and
     `removed` to be set, I should be called as::
 
         added, removed = self._compute_added_and_removed(new_graph,

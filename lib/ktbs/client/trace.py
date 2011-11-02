@@ -182,14 +182,14 @@ class ComputedTrace(ComputedTraceMixin, Trace):
 RESOURCE_MAKER[KTBS.StoredTrace] = StoredTrace
 RESOURCE_MAKER[KTBS.ComputedTrace] = ComputedTrace
 
-_HAS_OBSEL_COLLECTION = KTBS.hasObselCollection
-_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
-_HAS_TRACE = KTBS.hasTrace
 _HAS_BEGIN = KTBS.hasBegin
 _HAS_BEGIN_DT = KTBS.hasBeginDT
 _HAS_END = KTBS.hasEnd
 _HAS_END_DT = KTBS.hasEndDT
+_HAS_OBSEL_COLLECTION = KTBS.hasObselCollection
+_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
 _HAS_SUBJECT = KTBS.hasSubject
+_HAS_TRACE = KTBS.hasTrace
 _OBSEL = KTBS.Obsel
 
 # the following import ensures that Obsel are registered in RESOURCE_MAKER

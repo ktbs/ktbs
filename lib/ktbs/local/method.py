@@ -19,17 +19,18 @@
 I provide the local implementation of ktbs:Method .
 """
 from rdflib import Literal
-from rdfrest.resource import compute_added_and_removed
+from rdfrest.mixins import BookkeepingMixin, RdfPutMixin
+from rdfrest.resource import compute_added_and_removed, Resource
 
 from ktbs.common.method import MethodMixin
 from ktbs.common.utils import extend_api
 from ktbs.local.base import InBaseMixin
-from ktbs.local.resource import Resource
 from ktbs.local.service import KtbsService
 from ktbs.namespaces import KTBS
 
 @extend_api
-class Method(MethodMixin, InBaseMixin, Resource):
+class Method(MethodMixin, InBaseMixin, BookkeepingMixin, RdfPutMixin,
+             Resource):
     """I implement a local KTBS method.
     """
 
@@ -42,7 +43,7 @@ class Method(MethodMixin, InBaseMixin, Resource):
     # RDF-REST API #
 
     @classmethod
-    def check_new_graph(cls, uri, new_graph,
+    def check_new_graph(cls, service, uri, new_graph,
                         resource=None, added=None, removed=None):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the check that parent and parameters are acceptable
@@ -50,8 +51,8 @@ class Method(MethodMixin, InBaseMixin, Resource):
         added, removed = compute_added_and_removed(new_graph, resource, added,
                                                    removed)
 
-        diag = super(Method, cls).check_new_graph(uri, new_graph, resource,
-                                                  added, removed)
+        diag = super(Method, cls).check_new_graph(service, uri, new_graph,
+                                                  resource, added, removed)
 
         if resource: # we only check values that were added/changed
             the_graph = added

@@ -40,6 +40,8 @@ def extend_api(cls):
     for methodname, raw_function in methods:
         if hasattr(raw_function, "_extend_api_ignore"):
             continue
+        if isinstance(raw_function, classmethod):
+            continue
         nrequired = (raw_function.func_code.co_argcount
                      - len(raw_function.func_defaults or ()))
         if methodname.startswith("get_"):

@@ -22,7 +22,7 @@ from rdflib import Literal
 
 from ktbs.common.base import InBaseMixin
 from ktbs.common.utils import extend_api
-from ktbs.iso8601 import parse_date
+from ktbs.iso8601 import parse_date, ParseError
 from ktbs.namespaces import KTBS
 from rdfrest.utils import coerce_to_uri
 
@@ -56,14 +56,16 @@ class TraceMixin(InBaseMixin):
         I return the origin of this trace.
 
         If `as_datetime` is true, get_origin will try to convert the return
-        value to datetime, or raise an exception on a failure.
+        value to datetime, or return it unchanged if that fails.
 
         """
         origin = self._graph.value(self.uri, _HAS_TRACE_ORIGIN)
         if as_datetime:
-            return parse_date(origin)
-        else:
-            return origin
+            try:
+                origin = parse_date(origin)
+            except ParseError:
+                pass
+        return origin
 
     def iter_source_traces(self):
         """

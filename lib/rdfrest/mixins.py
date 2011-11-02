@@ -56,7 +56,7 @@ class RdfPutMixin(Resource):
             # an empty dict means that a '?' has been added to the URI
             # so it counts as having parameters
             raise MethodNotAllowedError("PUT on %s with parameters" % self.uri)
-        diag = self.check_new_graph(self.uri, new_graph, self)
+        diag = self.check_new_graph(self.service, self.uri, new_graph, self)
         if not diag:
             raise InvalidDataError(str(diag))
         with self.service:
@@ -107,7 +107,7 @@ class RdfPostMixin(Resource):
             replace_node(new_graph, created, new_uri)
             created = new_uri
 
-        diag = resource_class.check_new_graph(created, new_graph)
+        diag = resource_class.check_new_graph(self.service, created, new_graph)
         if not diag:
             raise InvalidDataError(str(diag))
         resource_class.store_graph(self.service, created, new_graph)
@@ -207,11 +207,12 @@ class RdfPostMixin(Resource):
         return self.service._class_map.get(rdf_type) 
 
     @classmethod
-    def check_new_graph(cls, uri, new_graph,
+    def check_new_graph(cls, service, uri, new_graph,
                         resource=None, added=None, removed=None):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph`
         """
-        diag = super(RdfPostMixin, cls).check_new_graph(uri, new_graph)
+        diag = super(RdfPostMixin, cls).check_new_graph(service, uri,
+                                                        new_graph)
         if uri[-1] != "/":
             diag.append("URI must end with '/'")
         return diag
@@ -330,7 +331,7 @@ class WithReservedNamespacesMixin(Resource):
     """
 
     @classmethod
-    def check_new_graph(cls, uri, new_graph,
+    def check_new_graph(cls, service, uri, new_graph,
                         resource=None, added=None, removed=None):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the reserved namespace constraints.
@@ -339,7 +340,7 @@ class WithReservedNamespacesMixin(Resource):
                                                    removed)
 
         diag = super(WithReservedNamespacesMixin, cls) \
-            .check_new_graph(uri, new_graph, resource, added, removed)
+            .check_new_graph(service, uri, new_graph, resource, added, removed)
 
         if resource is None:
             diag2 = cls.__check_triples(new_graph, "POST", uri)
@@ -528,13 +529,13 @@ class WithCardinalityMixin(Resource):
     """
 
     @classmethod
-    def check_new_graph(cls, uri, new_graph,
+    def check_new_graph(cls, service, uri, new_graph,
                         resource=None, added=None, removed=None):
         """I overrides :meth:`rdfrest.resource.Resource.check_new_graph` to
         check the cardinality constraints.
         """
         diag = super(WithCardinalityMixin, cls).check_new_graph(
-            uri, new_graph, resource, added, removed)
+            service, uri, new_graph, resource, added, removed)
 
         new_graph_subjects = new_graph.subjects
         for p, minc, maxc in cls.__get_cardinality_in():

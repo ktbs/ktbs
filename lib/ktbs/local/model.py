@@ -19,16 +19,17 @@
 I provide the local implementation of ktbs:TraceModel .
 """
 from rdflib import RDF
+from rdfrest.mixins import BookkeepingMixin, RdfPutMixin
+from rdfrest.resource import Resource
 
 from ktbs.common.model import ModelMixin, ObselTypeMixin, AttributeTypeMixin, \
     RelationTypeMixin
 from ktbs.common.utils import extend_api
 from ktbs.local.base import InBaseMixin
-from ktbs.local.resource import Resource
 from ktbs.namespaces import KTBS
 
 @extend_api
-class Model(ModelMixin, InBaseMixin, Resource):
+class Model(ModelMixin, InBaseMixin, BookkeepingMixin, RdfPutMixin, Resource):
     """I implement a local KTBS trace model.
     """
 
@@ -54,6 +55,9 @@ class Model(ModelMixin, InBaseMixin, Resource):
     RDF_MAIN_TYPE = KTBS.TraceModel
 
     RDF_PUTABLE_OUT = [KTBS.hasParentModel]
+
+# TODO MINOR should _ModelResource be refactored as a ProxyResource??
+# NB: sometimes, they have a frag-URI rather than a child-URI
 
 class _ModelResource(object):
     """I provide the interface expected by `~lib.ktbs.common`:mod: mixins

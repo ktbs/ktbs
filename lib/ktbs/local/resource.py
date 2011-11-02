@@ -20,21 +20,21 @@ I provide the common implementation of all local KTBS resources.
 """
 from rdflib import RDF, URIRef
 from rdfrest.resource import Resource as RdfRestResource
-from rdfrest.mixins import RdfPostMixin, RdfPutMixin, BookkeepingMixin, \
+from rdfrest.mixins import RdfPostMixin, BookkeepingMixin, \
     WithReservedNamespacesMixin, WithCardinalityMixin
 from rdfrest.utils import parent_uri, replace_node
 
 from ktbs.common.utils import mint_uri_from_label
 from ktbs.namespaces import KTBS, SKOS
 
-class Resource(BookkeepingMixin, WithCardinalityMixin,
-               WithReservedNamespacesMixin, RdfPutMixin, RdfRestResource):
-    """A KTBS Resource.
+class KtbsResourceMixin(WithCardinalityMixin, WithReservedNamespacesMixin,
+                        RdfRestResource):
+    """I provide common methods and class parameters for all KTBS Resources.
+
+    Especially, I include a number of of required other mixins.
     """
 
     RDF_RESERVED_NS = [KTBS]
-
-    KTBS_CHILDREN_TYPES = []
 
     def make_resource(self, uri, node_type=None, graph=None):
         """I make a resource with the given URI.
@@ -58,8 +58,8 @@ class Resource(BookkeepingMixin, WithCardinalityMixin,
         return mint_uri_from_label(label, target, suffix=suffix)
 
 
-class PostableResource(RdfPostMixin, Resource):
-    """A KTBS Resource supporting the POST operation.
+class KtbsPostMixin(BookkeepingMixin, RdfPostMixin, KtbsResourceMixin):
+    """I provide support for POST to KtbsResourceMixin.
     """
 
     def ack_new_child(self, child_uri):
@@ -69,8 +69,10 @@ class PostableResource(RdfPostMixin, Resource):
         """
         pass
 
+    KTBS_CHILDREN_TYPES = []
+
     def rdf_post(self, graph, parameters=None):
-        created = super(PostableResource, self).rdf_post(graph, parameters)
+        created = super(KtbsPostMixin, self).rdf_post(graph, parameters)
         with self._edit as graph:
             for i in created:
                 self.ack_new_child(i)
@@ -82,17 +84,19 @@ class PostableResource(RdfPostMixin, Resource):
         If the class provides a ``KTBS_CHILDREN_TYPES`` attribute as a list
         of URIRef, I check that the posted resource is of one of these types.
         Note that, unlike other class constants used in
-        :module:`rdfrest.mixins`, KTBS_CHILDREN_TYPES is not inherited.
+        :module:`rdfrest.mixins`, overriding KTBS_CHILDREN_TYPES does not
+        magically inherit the values from the parent class.
         """
-        diag = super(PostableResource, self)\
+        diag = super(KtbsPostMixin, self)\
             .check_posted_graph(created, new_graph)
 
         allowed_types = getattr(self, "KTBS_CHILDREN_TYPES", None)
-        if allowed_types is not None:
+        if allowed_types:
             for rdf_type in new_graph.objects(created, RDF.type):
                 if rdf_type in allowed_types:
                     break
             else:
+                print "===", allowed_types
                 diag.append("Posted resource not supported by %s" \
                                   % self.RDF_MAIN_TYPE)
 
@@ -125,9 +129,11 @@ class PostableResource(RdfPostMixin, Resource):
             if uri is None:
                 uri = py_class.mint_uri(self, graph, node)
                 replace_node(graph, node, uri)
-                assert self.check_posted_graph(uri, graph)
+                assert self.check_posted_graph(uri, graph), \
+                       self.check_posted_graph(uri, graph)
 
-            assert py_class.check_new_graph(uri, graph)
+            assert py_class.check_new_graph(self.service, uri, graph), \
+                   py_class.check_new_graph(self.service, uri, graph)
             with self.service:
                 py_class.store_graph(self.service, uri, graph)
                 self.ack_new_child(uri)

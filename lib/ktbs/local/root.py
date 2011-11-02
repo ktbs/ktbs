@@ -19,16 +19,17 @@
 I provide the local implementation of ktbs:KtbsRoot .
 """
 from rdflib import Graph, Literal, RDF
-from rdfrest.mixins import RdfPostMixin
+from rdfrest.mixins import RdfPutMixin
+from rdfrest.resource import Resource
 from rdfrest.utils import coerce_to_node
 
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import extend_api
-from ktbs.local.resource import PostableResource
+from ktbs.local.resource import KtbsPostMixin
 from ktbs.namespaces import KTBS, SKOS
 
 @extend_api
-class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
+class KtbsRoot(KtbsRootMixin, KtbsPostMixin, RdfPutMixin, Resource):
     """I implement a local KTBS root.
     """
 
@@ -55,8 +56,7 @@ class KtbsRoot(KtbsRootMixin, PostableResource, RdfPostMixin):
         return self._post_or_trust(Base, node, graph, trust_graph)
 
     def ack_new_child(self, child_uri):
-        """I override
-        :method:`ktbs.local.resource.PostableResource.ack_new_child`
+        """Override :meth:`ktbs.local.resource.PostableResource.ack_new_child`
         """
         super(KtbsRoot, self).ack_new_child(child_uri)
         with self._edit as g:
