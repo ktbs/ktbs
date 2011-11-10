@@ -20,7 +20,7 @@ I provide the local implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from datetime import datetime, timedelta
 from rdflib import Graph, Literal, RDF, URIRef
-from rdfrest.mixins import RdfPutMixin
+from rdfrest.mixins import BookkeepingMixin, RdfPutMixin
 from rdfrest.resource import compute_added_and_removed, Resource
 from rdfrest.utils import coerce_to_node, coerce_to_uri, Diagnosis
 
@@ -237,7 +237,7 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
         return Obsel(self.service, URIRef(uri))
         
 
-class StoredTraceObsels(KtbsResourceMixin, Resource):
+class StoredTraceObsels(KtbsResourceMixin, BookkeepingMixin, Resource):
     """I implement the aspect resource of a stored trace containing the obsels.
     """
 

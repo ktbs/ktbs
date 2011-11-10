@@ -65,7 +65,6 @@ class Resource(ResourceMixin):
         self.uri = coerce_to_uri(uri)
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
-            graph.open(uri)
         self.__graph = graph
         self._graph = ReadOnlyGraphAggregate([graph])
         # NB: self._graph is made read-only in order to catch implementation

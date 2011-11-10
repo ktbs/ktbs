@@ -411,9 +411,11 @@ class ProxyResource(Resource):
         I store my data in the proxied graph, and nothing in my private graph.
         """
         graph_uri = cls._get_graph_uri(service, uri)
-        add = Graph(service.store, graph_uri).add
-        for triple in new_graph:
-            add(triple)
+        proxied_resource = service.get(graph_uri)
+        with proxied_resource._edit as graph: #protected #pylint: disable=W0212
+            add = graph.add
+            for triple in new_graph:
+                add(triple)
 
     def rdf_get(self, parameters=None):
         """I override :meth:`Resource.rdf_get`.
