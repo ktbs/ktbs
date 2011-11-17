@@ -23,55 +23,57 @@ from rdflib.namespace import Namespace, ClosedNamespace
 
 SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 
-KTBS = ClosedNamespace(
-    "http://liris.cnrs.fr/silex/2009/ktbs#", [
-        "AttributeType",
-        "Base",
-        "BuiltinMethod",
-        "ComputedTrace",
-        "KtbsRoot",
-        "Method",
-        "Obsel",
-        "ObselType",
-        "RelationType",
-        "StoredTrace",
-        "TraceModel",
-        "contains",
-        "external",
-        "filter",
-        "fusion",
-        "hasAttributeDomain", # TODO rename
-        "hasAttributeRange",  # TODO rename
-        "hasBase",
-        "hasBegin",
-        "hasBeginDT",
-        "hasBuiltinMethod",
-        "hasDefaultSubject",
-        "hasEnd",
-        "hasEndDT",
-        "hasMethod",
-        "hasModel",
-        "hasObselCollection", # TODO rename to hasObselSet
-        "hasOrigin",
-        "hasParameter",
-        "hasParentMethod",
-        "hasParentModel",
-        "hasRelationDomain", # TODO rename
-        "hasRelationRange",  # TODO rename
-        "hasSource",
-        "hasSourceObsel",
-        "hasSubject",
-        "hasSuperObselType",
-        "hasSuperRelationType",
-        "hasTrace",
-        "hasTraceBegin",
-        "hasTraceBeginDT",
-        "hasTraceEnd",
-        "hasTraceEndDT",
-        "hasUnit",
-        "parallel",
-        "sparql",
-        # not really part of the NS, but used internally
-        "_StoredTraceObsels",
-        ]
-    )
+KTBS_IDENTIFIERS = [
+    "AttributeType",
+    "Base",
+    "BuiltinMethod",
+    "ComputedTrace",
+    "KtbsRoot",
+    "Method",
+    "Obsel",
+    "ObselType",
+    "RelationType",
+    "StoredTrace",
+    "TraceModel",
+    "contains",
+    "external",
+    "filter",
+    "fusion",
+    "hasAttributeDomain", # TODO rename
+    "hasAttributeRange",  # TODO rename
+    "hasBase",
+    "hasBegin",
+    "hasBeginDT",
+    "hasBuiltinMethod",
+    "hasDefaultSubject",
+    "hasEnd",
+    "hasEndDT",
+    "hasMethod",
+    "hasModel",
+    "hasObselCollection", # TODO rename to hasObselSet
+    "hasOrigin",
+    "hasParameter",
+    "hasParentMethod",
+    "hasParentModel",
+    "hasRelationDomain", # TODO rename
+    "hasRelationRange",  # TODO rename
+    "hasSource",
+    "hasSourceObsel",
+    "hasSubject",
+    "hasSuperObselType",
+    "hasSuperRelationType",
+    "hasTrace",
+    "hasTraceBegin",
+    "hasTraceBeginDT",
+    "hasTraceEnd",
+    "hasTraceEndDT",
+    "hasUnit",
+    "parallel",
+    "sparql",
+    # not really part of the NS, but used internally
+    "_StoredTraceObsels",
+    ]
+
+KTBS = ClosedNamespace("http://liris.cnrs.fr/silex/2009/ktbs#", 
+                       KTBS_IDENTIFIERS,
+                       )
