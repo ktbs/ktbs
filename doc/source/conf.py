@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# KTPB documentation build configuration file, created by
+# KTBS documentation build configuration file, created by
 # sphinx-quickstart on Thu Jul 21 09:36:33 2011.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -17,6 +17,7 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('../../lib'))
+sys.path.insert(0, os.path.abspath('../ext'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -32,7 +33,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.todo', 
               'sphinx.ext.coverage', 
               'sphinx.ext.pngmath', 
-              'sphinx.ext.viewcode']
+              'sphinx.ext.viewcode',
+              'turtlelexer']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
