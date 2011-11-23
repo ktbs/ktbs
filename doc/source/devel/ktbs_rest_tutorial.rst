@@ -3,7 +3,11 @@
 kTBS REST Tutorial
 ==================
 
-This tutorial aims at showing how to create kTBS elements [1]_ directly in REST [2]_ with Turtle configuration files [3]_.
+This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly in REST_ with Turtle_ configuration files.
+
+.. _REST: http://en.wikipedia.org/wiki/Representational_state_transfer
+.. _Turtle: http://www.w3.org/2007/02/turtle/primer/
+
 
 For the purpose of this tutorial, we will use a local kTBS server. You just have to change the base URI to reach a distant kTBS server.
 
@@ -15,19 +19,21 @@ We will use **curl** command line tool to communicate with the kTBS server.
 Here are the curl options used :
 
 ``-i``
-    Include the HTTP-header in the output.
+    Include the HTTP response headers in the output.
 
 ``-X``
     Specify the HTTP request method (defaults to GET) : POST, PUT, DELETE.
 
+``-H``
+    Add an HTTP header to the request; used here to specify the content-type.
+
 ``--data-binary @filename``
-    This posts data exactly as specified with no extra processing whatsoever. The data is supposed to be contained in the file identified by ``filename``.
+    Set the payload of the HTTP request (PUT or POST) with the content of the given file.
 
 kTBS Root
 ---------
-When a kTBS server is launched, it has a default kTBS Root.
 
-The URI of our local kTBS server is ``http://localhost:8001/``.
+The kTBS root is automatically created when the kTBS is first launched. Its URI is that of the kTBS server, in our case: ``http://localhost:8001/``.
 
 kTBS Base
 ---------
@@ -35,7 +41,7 @@ kTBS Base
 Create a new base
 ^^^^^^^^^^^^^^^^^
 
-You have to POST to the **kTBS root** a simple turtle file containing **base** information. 
+You have to POST to the **kTBS root** a simple turtle file describing the **base** to create.
 
 Create a file named ``bas_base1.ttl`` containing the following data:
 
@@ -50,13 +56,22 @@ Create a file named ``bas_base1.ttl`` containing the following data:
         rdfs:label "A trace base" ;
     .
 
+.. note::
+
+  All URIs in that file are relative to the URI of the resource to which we post it; for example, in the file above:
+
+  * ``<>`` will be interpreted as ``<http://localhost:8001/>``,
+  * ``<base1/>`` will be interpreted as ``<http://localhost:8001/base1/>``;
+
+  this rule is true for all POST and PUT requests to the kTBS.
+
 Then run the following command: 
 
 .. code-block:: bash
 
     $ curl http://localhost:8001/ -XPOST -H"Content-type:text/turtle" --data-binary @bas_base1.ttl
 
-It is interesting to use ``-i`` option to get the HTTP header response. In case of success (201 Created), you get the base url in the ``Location`` header and other HTTP information.
+It is interesting to use the ``-i`` option to see the HTTP header response. In case of success (``201 Created``), you get the URI of the base in the ``Location`` header, among other HTTP information.
 
 .. code-block:: bash
 
@@ -68,17 +83,13 @@ It is interesting to use ``-i`` option to get the HTTP header response. In case 
     Content-Length: 
     Location: http://localhost:8001/base1/
 
-.. [1] :ref:`restful-api`
-.. [2] http://en.wikipedia.org/wiki/Representational_state_transfer
-.. [3] http://www.w3.org/2007/02/turtle/primer/
-
 KTBS Trace
 ----------
 
 Create a stored trace
 ^^^^^^^^^^^^^^^^^^^^^
 
-You have to POST to the **kTBS base** a simple turtle file containing **stored trace** information.
+You have to POST to the **kTBS base** a simple turtle file describing the **stored trace** to create.
 
 Create a file named ``trc_t01.ttl`` containing the following data:
 
@@ -113,7 +124,7 @@ Add obsels to trace
 A first obsel
 """""""""""""
 
-You have to POST to the **kTBS stored trace** a simple turtle file containing **obsel** information.
+You have to POST to the **kTBS stored trace** a simple turtle file containing describing the **obsel** to create.
 
 Create a file named ``obs1.ttl`` containing the following data:
 
@@ -142,10 +153,10 @@ Then run the following command:
     Content-Length: 
     Location: http://localhost:8001/base1/t01/obs1
 
-A second obsel linked to the first
-""""""""""""""""""""""""""""""""""
+A second obsel linked to the first one
+""""""""""""""""""""""""""""""""""""""
 
-You have to POST to the **kTBS stored trace** a simple turtle file containing the second **obsel** information.
+Again, you have to POST to the **kTBS stored trace** a simple turtle file describing the second **obsel**.
 
 Create a file named ``obs2.ttl`` containing the following data:
 
@@ -166,8 +177,8 @@ Create a file named ``obs2.ttl`` containing the following data:
 
 In this turtle file :
 
-1. We did not specify the URI of this second obsel so a blank node will been generated.
-2. We do not fix the uri and that will be linked to the firts obsel created.
+1. We did not specify the URI of this second obsel; instead, we used a blank node; the kTBS will generate a URI for that obsel.
+2. We reused the URI of the previous obsel (``<obs1>``) to put a relation between it and the newly created obsel.
 
 Then run the following command:
 
@@ -180,3 +191,5 @@ Then run the following command:
     Content-Type: text/plain
     Content-Length: 
     Location: http://localhost:8001/base1/t01/6e59cd1841cfba471e26933c84e31ed4
+
+We can retrieve the URI generated by the kTBS for the new obsel in the ``Location`` header of the HTTP response.
