@@ -60,6 +60,7 @@ PS_CONFIG_USER = "username"
 PS_CONFIG_PWD = "password"
 PS_CONFIG_HTTP_CACHE = "path"
 PS_CONFIG_HTTP_RESPONSE = "httpresponse"
+PS_CONFIG_DEBUG_HTTP = "debughttp"
 
 ACCEPT = ",".join( ";q=".join(pair) for pair in [
         ("text/nt",             "1"),
@@ -148,6 +149,7 @@ class ProxyStore(Store):
         self._identifier = identifier
         self._format = None
         self._etags = None
+        self._req_headers = {}
 
         self.configuration = None
         configuration = self._configuration_extraction(configuration)
@@ -161,7 +163,8 @@ class ProxyStore(Store):
                 configuration = {PS_CONFIG_URI: identifier}
 
         # Show the network activity
-        #httplib2.debuglevel = 1
+        if PS_CONFIG_DEBUG_HTTP in configuration.keys():
+            httplib2.debuglevel = 1
 
         # File path for HTTPLIB2 cache
         # As it is a file cache, it is conserved between two executions
@@ -309,7 +312,7 @@ class ProxyStore(Store):
         """Update cache before an operation.
            This method must be called before each get-type request.
         """
-        LOG.debug("-- _pull() ... start ...")
+        LOG.debug("-- _pull ... start ...")
 
         assert self._identifier is not None, "The store must be open."
 
@@ -318,6 +321,11 @@ class ProxyStore(Store):
         req_headers = {
             "accept": ACCEPT,
             }
+
+        req_headers.update(self._req_headers)
+
+        self._req_headers.clear()
+
         header, content = self.httpserver.request(self._identifier,
                                                   headers=req_headers)
         LOG.debug("[received header]\n%s", header)
@@ -344,6 +352,15 @@ class ProxyStore(Store):
             LOG.debug("Proxy graph is up to date ...")
 
         LOG.debug("-- _pull() ... stop ...")
+
+    def force_refresh(self):
+        """Forces the cache to be updated with HTTP specific headers.
+        """
+        LOG.debug("-- force_refresh called ()")
+
+        self._req_headers = {
+                "Cache-Control" : "no-cache",
+                }
 
     def _push(self):
         """ Send data to server.
