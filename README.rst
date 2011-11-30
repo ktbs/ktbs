@@ -26,7 +26,7 @@ Dependancies
 * nose (developers)
 * pylint (developers)
 
-If you are using `virtualenv`, an easy way to get up and running is to run::
+If you are using `virtualenv`_, an easy way to get up and running is to run::
 
   virtualenv --no-site-packages ./env
   source env/bin/activate
