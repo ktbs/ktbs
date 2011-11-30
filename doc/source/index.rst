@@ -6,12 +6,17 @@
 kTBS: a kernel for Trace-Based Systems
 ======================================
 
+kTBS is a specific DBMS dedicated to traces.
+
+This documentation first describes the `general concepts <concepts>`:doc: of trace-based systems, and how they are implemented in kTBS. It then describes the `RESTful API <rest>`:doc: exposed by kTBS. The last chapter is a `developer's documentation <devel>`:doc: for using kTBS directly from Python code, or for modifying it.
+
 Contents:
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
 
-   user
+   concepts
+   rest
    devel
 
 .. todo::

@@ -44,6 +44,8 @@ Although the description of the parent resource may contain references to its ch
 * altered by a PUT request to themselves;
 * deleted by a DELETE request to themselves.
 
+.. _rest-aspect-resource:
+
 Aspect resources
 ++++++++++++++++
 
@@ -62,7 +64,7 @@ Although each type defines the name of its aspect resources, it is consider a be
 Representations
 ---------------
 
-Resource representations in kTBS are typically in RDF (except for some `aspect resources`_), either using the standard `RDF/XML`_ syntax, or the alternative Turtle_ syntax. Note also that the N3_ syntax is supported, as it is a superset of Turtle. Support for additional mimetypes can be added to kTBS by using the :doc:`plugin mechanism<../admin/plugins>`.
+Resource representations in kTBS are typically in RDF (except for some `aspect resources`_), either using the standard `RDF/XML`_ syntax, or the alternative Turtle_ syntax. Note also that the N3_ syntax is supported, as it is a superset of Turtle. Support for additional mimetypes can be added to kTBS by using the :mod:`plugin mechanism <ktbs.local.plugins>`.
 
 .. _`RDF/XML`: TODO
 .. _Turtle: TODO

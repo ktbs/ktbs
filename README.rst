@@ -25,12 +25,13 @@ Dependancies
 * webob (server part only)
 * nose (developers)
 * pylint (developers)
+* sphinx (for building the documentation)
 
 If you are using `virtualenv`_, an easy way to get up and running is to run::
 
   virtualenv --no-site-packages ./env
   source env/bin/activate
-  pip install rdflib httplib2 webob nose pylint
+  pip install rdflib httplib2 webob nose pylint sphinx
 
 and check that everyrthing is ok with::
 

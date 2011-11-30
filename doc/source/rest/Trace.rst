@@ -3,7 +3,7 @@ Trace
 
 This class is the base class of `StoredTrace`:doc: and `ComputedTrace`:doc:. It has no direct instances (only the two subclasses above can be instantiated), but everything described here is valid for any indirect instance.
 
-Traces have two :ref:`aspect-resources`:
+Traces have two :ref:`aspect resources <rest-aspect-resource>`:
 
 * `@about`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#descriptionOf
 * `@obsels`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#hasObselCollection

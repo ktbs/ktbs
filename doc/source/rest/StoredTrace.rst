@@ -18,7 +18,7 @@ A stored trace is created by a POST query to a `Base`. It must have the followin
 POST
 ----
 
-Add an `obsel <Obsel>`:doc: to that trace. See the section about :doc:`Monotonicity` for a discussion the constraints.
+Add an `obsel <Obsel>`:doc: to that trace. See the section about :doc:`../concepts/monotonicity` for a discussion the constraints.
 
 
 @obsels

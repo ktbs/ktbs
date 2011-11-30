@@ -49,19 +49,15 @@ This method applies a SPARQL CONSTRUCT query to the source trace. TODO model and
 
 If the parameter ``model`` (resp. ``origin``) is omitted, the model (resp. the origin) of the source trace is used.
 
-The sparql query may contain parameters of the form ``%(param_name)s`` that will be replaced by the corresponding parameter value. 
+The SPARQL query can contain magic strings of the form ``%(param_name)s``, that will be replaced by the value of an additional parameter named ``param_name``. Note that the following special parameters are automatically provided:
+
+======================== ======================================================
+ special parameter name   replaced by
+======================== ======================================================
+ ``__destination__``      The URI of the computed trace.
+======================== ======================================================
 
 Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
-
-Script/Python
-+++++++++++++
-
-This method allows to override the code of the method with Python function provided in its parameters.
-
-:sources: 1
-:parameters:
-  :script: python functions
-:extensible: yes (additional parameters defined by the script)
 
 Super-method
 ++++++++++++
@@ -79,6 +75,45 @@ Note that intermediate traces are not completely hidden: they appear in the meta
 :extensible: no
 
 If the parameter ``model`` (resp. ``origin``) is omitted, the model (resp. the origin) of the source trace is used.
+
+External
+++++++++
+
+This method allows to invoke an external program to compute a computed trace. The external program is given as a command line, expected to produce the obsels graph of the computed trace.
+
+:sources: any number
+:parameters:
+  :command-line: the command line to execute
+  :model: the model URI of the computed trace (required)
+  :origin: the origin of the computed trace (required)
+:extensible: yes
+
+The command line query can contain magic strings of the form ``%(param_name)s``, that will be replaced by the value of an additional parameter named ``param_name``. Note that the following special parameters are automatically provided:
+
+======================== ======================================================
+ special parameter name   replaced by
+======================== ======================================================
+ ``__destination__``      The URI of the computed trace.
+ ``__sources__``          The space-separated list of the source traces' URIs.
+======================== ======================================================
+
+Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
+
+
+Script/Python
++++++++++++++
+
+.. warning::
+
+   This method is deprecated and will not be supported in the future.
+
+This method allows to override the code of the method with Python function provided in its parameters.
+
+:sources: 1
+:parameters:
+  :script: python functions
+:extensible: yes (additional parameters defined by the script)
+
 
 
 User-defined methods

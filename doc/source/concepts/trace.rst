@@ -18,7 +18,7 @@ Origin
 
 Typically, the origin of a trace is a timestamp. However, it can also be an opaque string, meaning that the precise time when the trace was collected is not known.
 
-This opaque string can nevertheless be reused across several traces (especially :doc:`computed traces <computed_trace>` deriving from another one), to indicate that those traces represent the *same* period of time.
+This opaque string can nevertheless be reused across several traces (especially `computed traces <concept-computed-trace>`:ref:) deriving from another one), to indicate that timestamps are *comparable* across those traces.
 
 Stored traces
 -------------
@@ -29,6 +29,8 @@ The obsels contained in a stored trace are updated from outside the kTBS. There 
 * amendment: this is an arbitrary modification of a trace (addition, modification or deletion of obsels, attributes or relations).
 
 While it is expected that collection is the primary mode of updating stored traces, users may sometime have full control on their traces and require to amend them. This has some technical implication, as discussed in a :doc:`further section <monotonicity>`.
+
+.. _concept-computed-trace:
 
 Computed traces
 ---------------

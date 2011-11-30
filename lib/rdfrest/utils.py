@@ -142,11 +142,13 @@ def urisplit(url):
     """A better urlsplit.
 
     It differentiates empty querystring/fragment from none.
-    e.g.:
+    e.g.::
+
       urisplit('http://a.b/c/d') -> ('http', 'a.b', '/c/d', None, None)
       urisplit('http://a.b/c/d?') -> ('http', 'a.b', '/c/d', '', None)
       urisplit('http://a.b/c/d#') -> ('http', 'a.b', '/c/d', None, '')
       urisplit('http://a.b/c/d?#') -> ('http', 'a.b', '/c/d', '', '')
+
     """
     ret = list(urlsplit(url))
 
