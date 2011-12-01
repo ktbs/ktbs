@@ -20,7 +20,9 @@ kTBS:
 Dependencies
 ============
 
-* rdflib 3.x
+* rdflib 3.x (*Warning:* the appropriate 3.x version may not be
+  available as a standard package in some linux distributions, see
+  below for instructions on how to install it in this case.)
 * httplib2
 * webob (server part only)
 * nose (developers)
