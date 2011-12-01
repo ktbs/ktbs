@@ -11,13 +11,13 @@ kTBS:
 
 .. WARNING::
 
-  Only the client side API of kTBS is (partly) functionnal.
+  Only the client side API of kTBS is (partly) operational.
 
   For the server part, please still use the old SVN for the moment:
 
   https://svn.liris.cnrs.fr/sbt-dev/ktbs-rest-impl
 
-Dependancies
+Dependencies
 ============
 
 * rdflib 3.x
