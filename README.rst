@@ -35,7 +35,7 @@ If you are using `virtualenv`_, an easy way to get up and running is to run::
   source env/bin/activate
   pip install rdflib httplib2 webob nose pylint sphinx
 
-and check that everyrthing is ok with::
+and check that everything is ok with::
 
   make unittests
 
