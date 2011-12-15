@@ -26,6 +26,7 @@ LIB_DIR = join(SOURCE_DIR, "lib")
 path.append(LIB_DIR)
 
 from ktbs.standalone import main
+import ktbs.plugins.jsonld
 
 if __name__ == "__main__":
     main()

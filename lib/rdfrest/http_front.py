@@ -157,7 +157,7 @@ class HttpFrontend(object):
         """
         # method could be a function #pylint: disable=R0201
         # TODO how can we transmit context (authorization? anything else?)
-        resource.rdf_delete(request.queryvars.mixed() or None)
+        resource.rdf_delete(request.GET.mixed() or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
@@ -195,7 +195,7 @@ class HttpFrontend(object):
             last_modified = datetime.fromtimestamp(last_modified).isoformat()
             headerlist.append(("last-modified", last_modified))
         try:
-            graph = resource.rdf_get(request.queryvars.mixed() or None)
+            graph = resource.rdf_get(request.GET.mixed() or None)
             app_iter = serializer(
                 graph,
                 self.serializers,
@@ -223,7 +223,7 @@ class HttpFrontend(object):
         if parser is None:
             return self.issue_error(415, request, resource)
         graph = parser(request.body, resource.uri, request.charset)
-        results = resource.rdf_post(graph, request.queryvars.mixed() or None)
+        results = resource.rdf_post(graph, request.GET.mixed() or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
@@ -263,7 +263,7 @@ class HttpFrontend(object):
         if parser is None:
             return self.issue_error(415, request, resource)
         graph = parser(request.body, resource.uri, request.charset)
-        resource.rdf_put(graph, request.queryvars.mixed() or None)
+        resource.rdf_put(graph, request.GET.mixed() or None)
         return self.http_get(request, resource)
 
     def issue_error(self, status, request, resource):
