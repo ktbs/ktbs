@@ -25,6 +25,9 @@ Dependencies
   below for instructions on how to install it in this case.)
 * httplib2
 * webob (server part only)
+* pyld (*Warning* pour tester le JSON-plugin copier le répertoire pyld qui se 
+  trouve https://github.com/digitalbazaar/pyld/tree/master/lib dans le répertoire
+  lib/ktbs/plugins)
 * nose (developers)
 * pylint (developers)
 * sphinx (for building the documentation)
