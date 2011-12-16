@@ -25,9 +25,7 @@ Dependencies
   below for instructions on how to install it in this case.)
 * httplib2
 * webob (server part only)
-* pyld (*Warning* pour tester le JSON-plugin copier le répertoire pyld qui se 
-  trouve https://github.com/digitalbazaar/pyld/tree/master/lib dans le répertoire
-  lib/ktbs/plugins)
+* pyld (for the jsonld plugin -- https://github.com/digitalbazaar/pyld/tree/master/lib )
 * nose (developers)
 * pylint (developers)
 * sphinx (for building the documentation)
@@ -47,4 +45,4 @@ and check that everything is ok with::
 Licence
 =======
 
-GPL v3
+LGPL v3

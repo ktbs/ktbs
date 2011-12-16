@@ -39,8 +39,8 @@ KTBS_IDENTIFIERS = [
     "external",
     "filter",
     "fusion",
-    "hasAttributeDomain", # TODO rename
-    "hasAttributeRange",  # TODO rename
+    "hasAttributeDomain", # TODO rename to hasAttributeObselType
+    "hasAttributeRange",  # TODO rename to hasAttributeDatatype
     "hasBase",
     "hasBegin",
     "hasBeginDT",
@@ -50,13 +50,13 @@ KTBS_IDENTIFIERS = [
     "hasEndDT",
     "hasMethod",
     "hasModel",
-    "hasObselCollection", # TODO rename to hasObselSet
+    "hasObselCollection", # TODO rename to hasObselList
     "hasOrigin",
     "hasParameter",
     "hasParentMethod",
     "hasParentModel",
-    "hasRelationDomain", # TODO rename
-    "hasRelationRange",  # TODO rename
+    "hasRelationDomain", # TODO rename to hasRelationOrigin
+    "hasRelationRange",  # TODO rename to hasRelationDestination
     "hasSource",
     "hasSourceObsel",
     "hasSubject",
