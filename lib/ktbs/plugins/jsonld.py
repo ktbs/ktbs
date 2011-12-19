@@ -24,7 +24,7 @@ JSON-LD parser and serializer for KTBS.
 try:
     import pyld
 except ImportError:
-    pyld = None
+    pyld = None # invalid name # pylint: disable=C0103
 
 if pyld:
     from json import loads
@@ -35,8 +35,7 @@ if pyld:
     from rdfrest.serializer import register as register_serializer
     from rdfrest.exceptions import ParseError
 
-    from rdflib import RDF, RDFS
-    from ktbs.namespaces import KTBS, KTBS_IDENTIFIERS
+    from rdflib import RDF
 
     def jsonld2graph(json, base_uri, graph, context=None):
         """
@@ -103,13 +102,8 @@ if pyld:
     def parse_jsonld(content, base_uri=None, encoding="utf-8"):
         """I parse RDF content from JSON-LD.
 
-        :param content:  a byte string
-        :param base_uri: the base URI of `content`
-        :param encoding: the character encoding of `content`
-
-        :return: an RDF graph
-        :rtype:  rdflib.Graph
-        :raise: :class:`rdfrest.exceptions.ParseError`
+        See :func:`rdfrest.parse.parse_rdf_xml` for prototype
+        documentation.
         """
         graph = Graph()
         #TODO à coder :D
@@ -117,28 +111,29 @@ if pyld:
         if encoding.lower() != "utf-8":
             content = content.decode(encoding).encode("utf-8")
         try:
-            jsonData = loads(content)
+            json_data = loads(content)
             # expand KTBS context
-            context = jsonData["@context"]
+            context = json_data["@context"]
             if isinstance(context, basestring):
                 if context != CONTEXT_URI:
                     raise Exception("invalid context URI: %s" % context)
-                jsonData["@context"] = CONTEXT
+                json_data["@context"] = CONTEXT
             else:
                 if not isinstance(context, list):
                     raise Exception("invalid context: %s" % context)
                 try:
                     i = context.index(CONTEXT_URI)
                 except ValueError:
-                    raise Exception("invalid context, does not contains ktbs-jsonld-context")
+                    raise Exception("invalid context, "
+                                    "does not contains ktbs-jsonld-context")
                 context[i] = CONTEXT
             # add implicit arc for POSTed data
-            if jsonData["@type"] == "Base":
-                jsonData.setdefault("inRoot", "")
-            elif jsonData["@type"] in ():
-                jsonData.setdefault("inBase", "")
+            if json_data["@type"] == "Base":
+                json_data.setdefault("inRoot", "")
+            elif json_data["@type"] in ():
+                json_data.setdefault("inBase", "")
             # ... then parse!
-            jsonld2graph(jsonData, base_uri, graph)
+            jsonld2graph(json_data, base_uri, graph)
         except Exception, ex:
             raise ParseError(ex.message or str(ex), ex)
         print graph.serialize(format="turtle")
@@ -149,27 +144,10 @@ if pyld:
     def serialize_json(graph, sregister, base_uri=None):
         """I serialize an RDF graph as JSON-LD.
 
-        :param graph:     an RDF graph
-        :type  graph:     rdflib.Graph
-        :param sregister: the serializer register this serializer comes from
-                          (useful for getting namespace prefixes and other info)
-        :type  sregister: SerializerRegister
-        :param base_uri:  the base URI to be used to serialize
-
-        :return: an iterable of UTF-8 encoded byte strings
-        :raise: :class:`~rdfrest.exceptions.SerializeError` if the serializer can
-                not serialize this given graph.
-
-        .. important::
-
-            Serializers that may raise a
-            :class:`~rdfrest.exceptions.SerializeError` must *not* be implemented
-            as generators, or the exception will be raised too late (i.e. when the
-            `HttpFrontend` tries to send the response.
+        See :func:`rdfrest.serializer.serialize_rdf_xml` for prototype
+        documentation.
         """
-
-        #TODO à coder :D
-        raise NotImplementedError()
+        raise NotImplementedError("%s" % ((graph, sregister, base_uri),))
 
 
 CONTEXT_URI = "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context"
@@ -233,18 +211,19 @@ CONTEXT_JSON = """{
 
 CONTEXT = loads(CONTEXT_JSON)
 
-# temporary patch to adapt new coercion style to old coercion style (until pyld is updated)
-coerce = {}
+# temporary patch to convert new coercion style to old coercion style
+# (until pyld is updated)
+COERCE = {}
 for k, v in CONTEXT.items():
     if isinstance(v, dict):
         CONTEXT[k] = v["@id"]
         coerce_val = v["@type"]
         if coerce_val == "@id":
             coerce_val = "@iri"
-        coerce_list = coerce.get(coerce_val)
+        coerce_list = COERCE.get(coerce_val)
         if coerce_list is None:
             coerce_list = []
-            coerce[coerce_val] = coerce_list
+            COERCE[coerce_val] = coerce_list
         coerce_list.append(k)
-CONTEXT["@coerce"] = coerce
+CONTEXT["@coerce"] = COERCE
 
