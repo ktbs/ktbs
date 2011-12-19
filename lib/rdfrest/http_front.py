@@ -22,13 +22,24 @@ from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, ParseError, \
     RdfRestException, Redirect, SerializeError
 from rdfrest.parser import ParserRegister
-from rdfrest.response import MyResponse
 from rdfrest.serializer import SerializerRegister
 from rdfrest.utils import extsplit
 
 from datetime import datetime
-from webob import Request
+from webob import Request, Response
+from webob.etag import AnyETag, etag_property
 from webob.response import status_reasons
+
+class MyRequest(Request):
+    """I override webob.Request by allowing weak etags.
+    """
+    if_match = etag_property('HTTP_IF_MATCH', AnyETag, '14.24', strong=False)
+
+class MyResponse(Response):
+    """I override webob.Response's default behaviour.
+    """
+    default_content_type = "text/plain"
+    default_conditional_response = True
 
 class HttpFrontend(object):
     """The role of the HTTP front-end is to relay requests to and response
@@ -86,14 +97,14 @@ class HttpFrontend(object):
     def __call__(self, environ, start_response):
         """Wrap `get_response` to honnor the WSGI protocol.
         """
-        request = Request(environ)
+        request = MyRequest(environ)
         response = self.get_response(request)
         return response(environ, start_response)
         
     def get_response(self, request):
         """Process a webob request and return a webob response.
 
-        :param request: a webob Request
+        :param request: a MyRequest
         """
         resource_uri, request.uri_extension = extsplit(request.path_url)
         resource = self._service.get(resource_uri)
@@ -272,7 +283,7 @@ class HttpFrontend(object):
         :param status:   the HTTP status
         :type  status:   int
         :param request:  the request being processed
-        :type  request:  webob.Request
+        :type  request:  MyRequest
         :param resource: the resource being addressed (can be None)
         :type  resource: rdfrest.resource.Resource
 

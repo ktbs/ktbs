@@ -24,7 +24,7 @@ Dependencies
   available as a standard package in some linux distributions, see
   below for instructions on how to install it in this case.)
 * httplib2
-* webob (server part only)
+* webob (>=1.2, server part only)
 * pyld (for the jsonld plugin -- https://github.com/digitalbazaar/pyld/tree/master/lib )
 * nose (developers)
 * pylint (developers)
