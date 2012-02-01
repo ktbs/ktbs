@@ -33,7 +33,7 @@ Parent/child resource
 +++++++++++++++++++++
 
 Resources in kTBS are organized in a hierarchy, and every resource (except for
-the :doc:`KtbsRoot`, has exactly one parent. This hierarchy is naturally
+the :doc:`KtbsRoot`), has exactly one parent. This hierarchy is naturally
 reflected by the path of the resources' URIs.
 
 .. _child-modification:
@@ -51,7 +51,7 @@ Aspect resources
 
 Some resources are too complex to be handled only through the four HTTP verbs. Those resources are therefore linked to several *aspect resources*, each of them represeting only one aspect of the original resource.
 
-As a convention, a resource with aspect resources with have a URI ended with '/', and all its aspect resources will have a suffix starting with '@'. The number, types and names of aspect resources depends only on the type of the original resource. Aspect resources are automatically created and deleted with the original resource and can not be created or deleted independandly.
+As a convention, a resource with aspect resources will have a URI ended with '/', and all its aspect resources will have a suffix starting with '@'. The number, types and names of aspect resources depends only on the type of the original resource. Aspect resources are automatically created and deleted with the original resource and can not be created or deleted independandly.
 
 .. admonition:: example
 

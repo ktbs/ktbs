@@ -19,6 +19,10 @@
 """
 JSON-LD parser and serializer for KTBS.
 
+The 2011 december version of this parser was based on :
+    https://github.com/digitalbazaar/pyld d45816708b1f8d7ec813a6d5b662b97ed9c2dda3
+This 2012 february parser is based on :
+    https://github.com/digitalbazaar/pyld a0b45ed6a90874beec12e77dc20520f066e8bc37
 """
 
 try:
@@ -57,6 +61,8 @@ if pyld:
             :param p: predicate
             :param o: object
             """
+            print "Entrant (s,p,o) : (", s, ",", p, ",", o, ")"
+
             # Subject analysis
             if s[:2] == "_:":
                 s = BNode(s[2:])
@@ -64,19 +70,20 @@ if pyld:
                 s = URIRef(s, base_uri)
 
             # Object analysis
+            # The dictionary can be much more complex
             if isinstance(o, dict):
-                if "@iri" in o:
-                    o = o["@iri"]
+                if "@id" in o:
+                    o = o["@id"]
                     if o[:2] == "_:":
                         o = BNode(o[2:])
                     else:
                         o = URIRef(o, base_uri)
                 else:
-                    assert "@literal" in o
+                    assert "@value" in o
                     o = Literal(
-                            o["@literal"],
+                            o["@value"],
                             lang = o.get("@language"),
-                            datatype = o.get("@datatype"),
+                            datatype = o.get("@type"),
                             )
             else:
                 o = Literal(o)
@@ -84,17 +91,20 @@ if pyld:
             # Predicate analysis
             if "@type" in p:
                 p = RDF.type
+                # Ensure that object is really an URIRef, JSON-LD 3.3
+                o = URIRef(o, base_uri)
             elif p.startswith("x-rev:"):
                 p = URIRef(p[6:], base_uri)
                 s, o = o, s
             else:
                 p = URIRef(p, base_uri)
 
+            print "Sortant (s,p,o) : (", s, ",", p, ",", o, ")"
             graph.add((s, p, o))
             return (s, p, o)
 
         if context is not None:
-            json = { u"@context": context, u"@subject": json }
+            json = { u"@context": context, u"@id": json }
 
         return list(triples(json, jld_callback))
 
@@ -127,10 +137,11 @@ if pyld:
                     raise Exception("invalid context, "
                                     "does not contains ktbs-jsonld-context")
                 context[i] = CONTEXT
-            # add implicit arc for POSTed data
+            # add implicit arc for POSTed data so that we don't loose
+            # the json root once converted to an RDF graph
             if json_data["@type"] == "Base":
                 json_data.setdefault("inRoot", "")
-            elif json_data["@type"] in ():
+            elif json_data["@type"] in ("StoredTrace","ComputedTrace","TraceModel","Method"): 
                 json_data.setdefault("inBase", "")
             # ... then parse!
             jsonld2graph(json_data, base_uri, graph)
@@ -173,7 +184,7 @@ CONTEXT_JSON = """{
     "fusion": "http://liris.cnrs.fr/silex/2009/ktbs#fusion",
     "hasAttributeObselType": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasAttributeDomain", "@type": "@id" },
     "hasAttributeDatatype": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasAttributeRange", "@type": "@id" },
-    "haBase": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
+    "hasBase": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
     "begin": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBegin", "@type": "xsd:integer" },
     "beginDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBeginDT", "@type": "xsd:dateTime" },
     "hasBuiltinMethod": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBuiltinMethod", "@type": "@id" },
@@ -183,7 +194,7 @@ CONTEXT_JSON = """{
     "hasMethod": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasMethod", "@type": "@id" },
     "hasModel": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasModel", "@type": "@id" },
     "hasObselList": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasObselCollection", "@type": "@id" },
-    "origin": "http://liris.cnrs.fr/silex/2009/ktbs#hasOrigin",
+    "origin": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasOrigin", "@type": "xsd:dateTime" },
     "parameter": "http://liris.cnrs.fr/silex/2009/ktbs#hasParameter",
     "hasParentMethod": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasParentMethod", "@type": "@id" },
     "hasParentModel": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasParentModel", "@type": "@id" },
@@ -191,7 +202,7 @@ CONTEXT_JSON = """{
     "hasRelationDestination": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasRelationRange", "@type": "@id" },
     "hasSource": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasSource", "@type": "@id" },
     "hasSourceObsel": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasSourceObsel", "@type": "@id" },
-    "hasSubject": "http://liris.cnrs.fr/silex/2009/ktbs#hasSubject",
+    "subject": "http://liris.cnrs.fr/silex/2009/ktbs#hasSubject",
     "hasSuperObselType": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasSuperObselType", "@type": "@id" },
     "hasSuperRelationType": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasSuperRelationType", "@type": "@id" },
     "hasTrace": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTrace", "@type": "@id" },
@@ -204,26 +215,9 @@ CONTEXT_JSON = """{
     "sparql": "http://liris.cnrs.fr/silex/2009/ktbs#sparql",
 
     "inRoot": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
-    "inBase": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
+    "inBase": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
 
     "label": "http://www.w3.org/2004/02/skos/core#prefLabel"
 }"""
 
 CONTEXT = loads(CONTEXT_JSON)
-
-# temporary patch to convert new coercion style to old coercion style
-# (until pyld is updated)
-COERCE = {}
-for k, v in CONTEXT.items():
-    if isinstance(v, dict):
-        CONTEXT[k] = v["@id"]
-        coerce_val = v["@type"]
-        if coerce_val == "@id":
-            coerce_val = "@iri"
-        coerce_list = COERCE.get(coerce_val)
-        if coerce_list is None:
-            coerce_list = []
-            COERCE[coerce_val] = coerce_list
-        coerce_list.append(k)
-CONTEXT["@coerce"] = COERCE
-
