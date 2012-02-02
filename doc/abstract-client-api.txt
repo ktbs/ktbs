@@ -2,56 +2,10 @@
 Abstract client API for kTBS
 ============================
 
-:version: FROZEN - this file now lives in the Sphinx documentation
-:date: 2011-11-30
+:version: OBSOLETE - this file now lives in the Sphinx documentation
+:date: 2012-02-02
 :changelog:
-    2011-11-30  pchampin  integrated this version in Sphinx - FREEZE THIS FILE
-    2011-08-23  pchampin  removed some remaining of deprecated terminology
-    2011-07-28  pchampin  added label to all create_X methods
-    2011-06-29  pchampin  applied feedback from the actionscript implementation
-    2011-06-26  pchampin  moved id to the end for several create_X methods
-    2011-06-21  pchampin  simplified API for list of inherited things
-    2011-06-20  pchampin  added support for "list datatypes"
-    2011-06-15  pchampin  discussion with oaubert and abelin
-    2011-04-29  pchampin  applied changes to the kTBS ontology
-    2010-12-01  pchampin  applied changes to the kTBS ontology
+    2012-02-02  oaubert   remove the obsolete content and provide a
+                          link to the new sphinx file.
 
-Design Rationale
-================
-
-* As method-controlled attributes are not possible or easy to implement in some/
-  languages, this abstract API only defines *methods*, in order to provide the
-  least common denominator.
-
-* For the same reason, whenever mutiple values are to be returned, it
-  prescribes the use of a list (or the closest match in the target language,
-  e.g. Array in javascript).
-
-* However, adaptations are also recommended, depending on the features of the
-  target language. All those adaptations should be documented with the given
-  API. Below is a list of recommended adaptations:
-
-  * for languages supporting read-only attributes, it is recommended
-    to provide a read-only attribute 'x' for every method get_x(); if get_x
-    has optional parameters, 'x' should be equivalent to calling it with 0
-    parameters.
-
-    It is also recommended to provide a read-only attribute 'xs' for every
-    method list_xs(); if list_xs has optional parameters, 'xs' should be
-    equivalent to calling it with 0 parameters.
-
-  * for languages supporting method-controlled attributes, it is recommended
-    to make attribute 'x' settable whenever there is a method set_x(val);
-    if set_x has additional optional parameters, 'x' should be equivalent to
-    calling it with only the first parameter.
-
-  * for language supporting a notion of iterator (which may be more efficient
-    than lists), it is recommended to provide a method iter_xs(...) for every
-    method list_xs(...), acceptin the same parameters.
-
-    NB: implementing list_xs(...) on top of iter_xs(...) should be trivial,
-    and would probably be the way to do. 
-
-  * for language having a tradition of using CamelCase instead of underscore,
-    all method may be renamed by replacing _[a-z] with the corresponding
-    capital letter.
+The Abstract client API can be found in doc/source/concepts/abstract_api.rst
