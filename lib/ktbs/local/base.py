@@ -118,7 +118,7 @@ class Base(BaseMixin, KtbsPostMixin, RdfPutMixin, Resource):
         node = coerce_to_node(id, self.uri)
         if origin is None:
             token = "%s%s" % (time(), node)
-            origin = md5(token).hexdigest()
+            origin = "o" + md5(token).hexdigest()
 
         trust_graph = graph is None
         if trust_graph:
