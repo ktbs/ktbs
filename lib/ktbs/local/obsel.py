@@ -21,7 +21,7 @@ I provide the local implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 from datetime import datetime
 from rdflib import Literal, URIRef
 from rdfrest.resource import ProxyResource
-from rdfrest.utils import Diagnosis, parent_uri
+from rdfrest.utils import check_new, Diagnosis, make_fresh_uri, parent_uri
 
 from ktbs.common.obsel import ObselMixin
 from ktbs.common.utils import extend_api
@@ -36,6 +36,9 @@ class Obsel(ObselMixin, KtbsResourceMixin, ProxyResource):
     I provide the pythonic interface common to ktbs root.
     """
     # KTBS API #
+
+
+    # RDF-REST API #
 
     @classmethod
     def check_new_graph(cls, service, uri, new_graph,
@@ -78,8 +81,22 @@ class Obsel(ObselMixin, KtbsResourceMixin, ProxyResource):
 
         return diag
 
-
-    # RDF-REST API #
+    @classmethod
+    def mint_uri(cls, target, new_graph, created, suffix=""):
+        """I override :meth:`rdfrest.resource.Resource.mint_uri`.
+        
+        I use check for the freshness of the URI in the trace's @obsels graph
+        instead of the trace's main graph.
+        """
+        obsels = target.service.get(target.uri + "@obsels")
+        obsels_graph = obsels._graph # protected member #pylint: disable=W0212
+        prefix = "%so" % target.uri
+        uri = URIRef("%s%s" % (prefix, suffix))
+        if not check_new(obsels_graph, uri):
+            prefix = "%s-" % prefix
+            uri = make_fresh_uri(obsels_graph, prefix, suffix)
+        print "===", uri
+        return uri
 
     RDF_MAIN_TYPE = KTBS.Obsel
 

@@ -102,3 +102,12 @@ class TestKtbsLocal():
         assert_raises(ValueError, base.create_method,
                       method, {"end": "5000"})
 
+    def test_blank_obsels(self):
+        base = self.ktbs.create_base()
+        model = base.create_model()
+        otype = model.create_obsel_type("MyObsel")
+        trace = base.create_stored_trace(model)
+        obs1 = trace.create_obsel(otype, 1000, subject="alice")
+        obs2 = trace.create_obsel(otype, 2000, subject="alice")
+        assert obs1.uri != obs2.uri
+
