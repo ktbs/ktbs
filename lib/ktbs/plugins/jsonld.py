@@ -20,9 +20,9 @@
 JSON-LD parser and serializer for KTBS.
 
 The 2011 december version of this parser was based on :
-    https://github.com/digitalbazaar/pyld d45816708b1f8d7ec813a6d5b662b97ed9c2dda3
+https://github.com/digitalbazaar/pyld d45816708b1f8d7ec813a6d5b662b97ed9c2dda3
 This 2012 february parser is based on :
-    https://github.com/digitalbazaar/pyld a0b45ed6a90874beec12e77dc20520f066e8bc37
+https://github.com/digitalbazaar/pyld a0b45ed6a90874beec12e77dc20520f066e8bc37
 """
 
 try:
@@ -31,15 +31,19 @@ except ImportError:
     pyld = None # invalid name # pylint: disable=C0103
 
 if pyld:
-    from json import loads
-    from pyld.jsonld import triples
+    from urlparse import unquote
+
+    from json import loads, dumps
+    from pyld.jsonld import triples, frame
+
     from rdflib import BNode, Graph, Literal, URIRef
+    from rdflib import RDF
 
     from rdfrest.parser import register as register_parser
     from rdfrest.serializer import register as register_serializer
     from rdfrest.exceptions import ParseError
 
-    from rdflib import RDF
+    from ktbs.namespaces import KTBS
 
     def jsonld2graph(json, base_uri, graph, context=None):
         """
@@ -61,7 +65,7 @@ if pyld:
             :param p: predicate
             :param o: object
             """
-            print "Entrant (s,p,o) : (", s, ",", p, ",", o, ")"
+            #print "Entrant (s,p,o) : (", s, ",", p, ",", o, ")"
 
             # Subject analysis
             if s[:2] == "_:":
@@ -99,7 +103,7 @@ if pyld:
             else:
                 p = URIRef(p, base_uri)
 
-            print "Sortant (s,p,o) : (", s, ",", p, ",", o, ")"
+            #print "Sortant (s,p,o) : (", s, ",", p, ",", o, ")"
             graph.add((s, p, o))
             return (s, p, o)
 
@@ -141,24 +145,116 @@ if pyld:
             # the json root once converted to an RDF graph
             if json_data["@type"] == "Base":
                 json_data.setdefault("inRoot", "")
-            elif json_data["@type"] in ("StoredTrace","ComputedTrace","TraceModel","Method"): 
+            elif json_data["@type"] in ("StoredTrace",
+                                        "ComputedTrace",
+                                        "TraceModel",
+                                        "Method"): 
                 json_data.setdefault("inBase", "")
             # ... then parse!
             jsonld2graph(json_data, base_uri, graph)
         except Exception, ex:
             raise ParseError(ex.message or str(ex), ex)
-        print graph.serialize(format="turtle")
+        #print graph.serialize(format="turtle")
         return graph
 
+    def uri2iri(uri):
+        """
+        I convert an URI to an IRI.
+        """
+        return unquote(uri).decode("utf-8")
+
+    def node2jld(node):
+        """
+        I convert an rdflib 'node' into the corresponding JSLON-LD object.
+        """
+        if isinstance(node, URIRef):
+            return { u"@id": uri2iri(node) }
+        elif isinstance(node, BNode):
+            return { u"@id": u"_:%s" % node }
+        else:
+            assert isinstance(node, Literal)
+            ret = { u"@value": unicode(node) }
+            if node.language:
+                ret[u"@language"] = unicode(node.language)
+            if node.datatype:
+                # TODO recognize and use built-in JSON datatypes
+                ret[u"@type"] = uri2iri(node.datatype)
+            if len(ret) == 1: # only @value
+                ret = ret["@value"]
+            return ret
 
     @register_serializer("application/json", "json") 
-    def serialize_json(graph, sregister, base_uri=None):
+    def serialize_json(graph, _sregister, base_uri=None):
         """I serialize an RDF graph as JSON-LD.
+           I serialize 'graph' in plain and ugly JSON-LD.
 
         See :func:`rdfrest.serializer.serialize_rdf_xml` for prototype
         documentation.
         """
-        raise NotImplementedError("%s" % ((graph, sregister, base_uri),))
+        json_obj = []
+        if base_uri is not None:
+            if not isinstance(base_uri, URIRef):
+                base_uri = URIRef(base_uri)
+
+        #print "base_uri", base_uri
+        #if base_uri.find("@obsels") != -1:
+        #    print "Obsels implied"
+
+        # Find base_uri type to known which kTBS object is asked
+        # Thus apply corresponding framing
+        #print "Determine kTBS object type"
+
+        cache = {}
+        for s, p, o in graph:
+            sdict = cache.get(s)
+            if sdict is None:
+                sdict = cache[s] = node2jld(s)
+
+            if p == RDF.type:
+                p = u"@type"
+                o = uri2iri(o)
+            else:
+                p = uri2iri(p)
+                o = node2jld(o)
+
+            oobj = sdict.get(p)
+            if oobj is None:
+                sdict[p] = o
+            else:
+                if not isinstance(oobj, list):
+                    oobj = [oobj]
+                    sdict[p] = oobj
+
+                oobj.append(o)
+            
+        json_obj = list(cache.itervalues())
+
+        object_types = cache.get(base_uri, {}).get("@type")
+        if not isinstance(object_types, list):
+            object_types = [object_types]
+
+        ktbs_frame = None
+        for o in object_types:
+            if o in [ uri2iri(x) for x in 
+                    (KTBS.KtbsRoot, KTBS.Base, KTBS.TraceModel, 
+                     KTBS.StoredTrace, KTBS.ComputedTrace, KTBS.Obsel, 
+                     KTBS.ObselType, KTBS.RelationType, KTBS.AttributeType, 
+                     KTBS.BuiltinMethod)]:
+                ktbs_frame = {
+                        u"@context": CONTEXT,
+                        u"@type": o
+                        }
+                break
+
+        if frame is not None:
+            json_obj = frame(json_obj, ktbs_frame)
+            json_obj["@context"] = CONTEXT_URI
+
+        if __debug__:
+            return dumps(json_obj, indent=4)
+        else:
+            return dumps(json_obj)
+
 
 
 CONTEXT_URI = "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context"
