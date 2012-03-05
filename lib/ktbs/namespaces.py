@@ -28,12 +28,15 @@ KTBS_IDENTIFIERS = [
     "Base",
     "BuiltinMethod",
     "ComputedTrace",
+    "ComputedTraceObsels",
     "KtbsRoot",
+    "Method",
     "Method",
     "Obsel",
     "ObselType",
     "RelationType",
     "StoredTrace",
+    "StoredTraceObsels",
     "TraceModel",
     "contains",
     "external",
@@ -70,8 +73,6 @@ KTBS_IDENTIFIERS = [
     "hasUnit",
     "parallel",
     "sparql",
-    # not really part of the NS, but used internally
-    "_StoredTraceObsels",
     ]
 
 KTBS = ClosedNamespace("http://liris.cnrs.fr/silex/2009/ktbs#", 

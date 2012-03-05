@@ -207,9 +207,13 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
 
         if resource is None:
             obsels_uri = URIRef("@obsels", uri)
-            Graph(service.store, uri).add((uri, _HAS_OBSEL_SET, obsels_uri))
-            empty = Graph()
-            StoredTraceObsels.store_graph(service, obsels_uri, empty)
+            trace_graph = Graph(service.store, uri)
+            trace_graph.add((uri, _HAS_OBSEL_SET, obsels_uri))
+
+            obsels_graph = Graph()
+            obsels_graph.add((uri, RDF.type, _STORED_TRACE))
+            obsels_graph.add((uri, _HAS_OBSEL_SET, obsels_uri))
+            StoredTraceObsels.store_graph(service, obsels_uri, obsels_graph)
         
     def find_created(self, new_graph, query=None):
         """I override `rdfrest.mixins.RdfPostMixin.find_created`.
@@ -241,7 +245,7 @@ class StoredTraceObsels(KtbsResourceMixin, BookkeepingMixin, Resource):
     """I implement the aspect resource of a stored trace containing the obsels.
     """
 
-    RDF_MAIN_TYPE = KTBS._StoredTraceObsels #pylint: disable=W0212
+    RDF_MAIN_TYPE = KTBS.StoredTraceObsels #pylint: disable=W0212
 
     def rdf_get(self, parameters=None):
         """I override :meth:`rdfrest.resource.Resource.rdf_get`.
@@ -249,6 +253,16 @@ class StoredTraceObsels(KtbsResourceMixin, BookkeepingMixin, Resource):
         # TODO MAJOR handle parameters
         # temporary hack: ignore them
         return super(StoredTraceObsels, self).rdf_get()
+
+    @classmethod
+    def store_graph(cls, service, uri, new_graph, resource=None):
+        """I override `rdfrest.mixins.RdfPostMixin.store_graph`.
+        """
+        super(StoredTraceObsels, cls).store_graph(service, uri, new_graph,
+                                                  resource)
+        if resource is None:
+            Graph(service.store, uri).add((uri, RDF.type,
+                                           _STORED_TRACE_OBSELS))
 
 # time management functions #
 
@@ -387,3 +401,4 @@ _HAS_TRACE_END = KTBS.hasTraceEnd
 _HAS_TRACE_END_DT = KTBS.hasTraceEndDT
 _PREF_LABEL = SKOS.prefLabel
 _STORED_TRACE = KTBS.StoredTrace
+_STORED_TRACE_OBSELS = KTBS.StoredTraceObsels
