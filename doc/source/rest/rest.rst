@@ -20,7 +20,7 @@ POST:
 DELETE:
     Deletes a resource.
 
-For more information on the REST architecture, refer to TODO.
+For more information on the REST architecture, refer to http://en.wikipedia.org/wiki/Representational_state_transfer.
 
 
 
@@ -66,9 +66,9 @@ Representations
 
 Resource representations in kTBS are typically in RDF (except for some `aspect resources`_), either using the standard `RDF/XML`_ syntax, or the alternative Turtle_ syntax. Note also that the N3_ syntax is supported, as it is a superset of Turtle. Support for additional mimetypes can be added to kTBS by using the :mod:`plugin mechanism <ktbs.local.plugins>`.
 
-.. _`RDF/XML`: TODO
-.. _Turtle: TODO
-.. _N3: TODO
+.. _`RDF/XML`: http://www.w3.org/TR/rdf-primer/
+.. _Turtle: http://www.w3.org/2007/02/turtle/primer/
+.. _N3: http://www.w3.org/TeamSubmission/n3/
 
 The representations in GET an PUT requests are about existing resources with a known URI. It is therefore quite straightforward to represent those resources in RDF: they appear in the graph as a URI node, and the arcs in the graph represent their relations with other resources and literals. Depending on the type of the represented resources, some `representation constraints` (see below) may apply to the structure of the graph.
 

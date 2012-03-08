@@ -69,12 +69,8 @@ rdfrest.namespaces
 .. automodule:: rdfrest.namespaces
     :members:
 
-rdfrest.respone
----------------
-.. automodule:: rdfrest.response
-    :members:
-
 rdfrest.utils
 -------------
 .. automodule:: rdfrest.utils
     :members:
+

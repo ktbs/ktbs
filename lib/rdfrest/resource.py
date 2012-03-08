@@ -68,7 +68,7 @@ class Resource(object):
     :param service: the service this resource is a part of
     :type  service: rdfrest.service.Service
     :param uri:     the resource URI
-                    (`without query-string <query-strings-in-rdfrest>`:ref:)
+                    (:ref:`without query-string <query-strings-in-rdfrest>`)
     :type  uri:     rdflib.URIRef
 
 
@@ -163,7 +163,7 @@ class Resource(object):
         identified by the URI `<self.uri>?<parameters>` .
 
         :param parameters: the query string parameters (see
-                           `below <rdfrest-paramaters>`:ref:)
+                           :ref:`below <rdfrest-parameters>`)
         :type  parameters: dict
 
         :return: a graph representing the resource, dynamically reflecting
@@ -171,7 +171,7 @@ class Resource(object):
         :rtype: rdflib.Graph
         :raise: :class:`~rdfrest.exceptions.InvalidParametersError`
 
-        .. _rdfrest-paramaters:
+        .. _rdfrest-parameters:
 
         If not None, `parameters` is expected to be a dict with ASCII strings
         as their keys and either unicode strings or lists of unicode strings
@@ -202,7 +202,7 @@ class Resource(object):
         :param new_graph:  an RDF graph
         :type  new_graph:  rdflib.Graph
         :param parameters: the query string parameters (see
-                           `above <rdfrest-paramaters>`:ref:)
+                           :ref:`above <rdfrest-parameters>`)
         :type  parameters: dict
 
         :raise: :class:`~rdfrest.exceptions.RdfRestException`
@@ -217,7 +217,7 @@ class Resource(object):
         :param new_graph:  an RDF graph
         :type  new_graph:  rdflib.Graph
         :param parameters: the query string parameters (see
-                           `above <rdfrest-paramaters>`:ref:)
+                           :ref:`above <rdfrest-parameters>`)
         :type  parameters: dict
 
         :return: the list of created URIs, possibly empty
@@ -230,7 +230,7 @@ class Resource(object):
         """Delete this resource from the corresponding service.
 
         :param parameters: the query string parameters (see
-                           `above <rdfrest-paramaters>`:ref:)
+                           :ref:`above <rdfrest-parameters>`)
         :type  parameters: dict
 
         :raise: :class:`~rdfrest.exceptions.RdfRestException`

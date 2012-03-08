@@ -73,8 +73,8 @@ class HttpFrontend(object):
     .. warning::
     
         RDF-REST is meant to differenciate an empty query-string from no
-        query-string at all (see `parameters definition
-        <rdfrest-parameters>`:ref:). However, WSGI does not allow such a
+        query-string at all (see :ref:`parameters definition
+        <rdfrest-parameters>`). However, WSGI does not allow such a
         distinction. This implementation therefore assumes that an empty
         query-string is no query-string at all.
 
