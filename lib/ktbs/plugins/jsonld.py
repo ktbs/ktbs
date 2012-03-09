@@ -191,10 +191,19 @@ if pyld:
         See :func:`rdfrest.serializer.serialize_rdf_xml` for prototype
         documentation.
         """
+        local_graph = Graph()
+        local_graph += graph
+
         json_obj = []
         if base_uri is not None:
             if not isinstance(base_uri, URIRef):
                 base_uri = URIRef(base_uri)
+
+        for p in XREVS:
+            rev_p = URIRef("x-rev:%s" % p)
+            for s, o in local_graph.subject_objects(p):
+                local_graph.remove((s, p, o))
+                local_graph.add((o, rev_p, s))
 
         #print "base_uri", base_uri
         #if base_uri.find("@obsels") != -1:
@@ -205,7 +214,7 @@ if pyld:
         #print "Determine kTBS object type"
 
         cache = {}
-        for s, p, o in graph:
+        for s, p, o in local_graph:
             sdict = cache.get(s)
             if sdict is None:
                 sdict = cache[s] = node2jld(s)
@@ -235,14 +244,11 @@ if pyld:
 
         ktbs_frame = None
         for o in object_types:
-            if o in [ uri2iri(x) for x in 
-                    (KTBS.KtbsRoot, KTBS.Base, KTBS.TraceModel, 
-                     KTBS.StoredTrace, KTBS.ComputedTrace, KTBS.Obsel, 
-                     KTBS.ObselType, KTBS.RelationType, KTBS.AttributeType, 
-                     KTBS.BuiltinMethod)]:
+            if o in KTBS_FRAME_TYPES:
                 ktbs_frame = {
                         u"@context": CONTEXT,
-                        u"@type": o
+                        u"@type": KTBS_FRAME_TYPES[o],
+                        u"obsels": []      # Only used for @obsels
                         }
                 break
 
@@ -312,8 +318,22 @@ if pyld:
 
         "inRoot": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
         "inBase": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
+        "obsels": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#hasTrace", "@type": "@id" },
 
         "label": "http://www.w3.org/2004/02/skos/core#prefLabel"
     }"""
 
     CONTEXT = loads(CONTEXT_JSON)
+
+    XREVS = [ URIRef(jso["@id"][6:]) for jso in CONTEXT.values() 
+            if isinstance(jso,dict) and jso["@id"][:6] == "x-rev:" ]
+
+    KTBS_FRAME_TYPES = dict([ (uri2iri(x), uri2iri(x)) for x in 
+                            (KTBS.KtbsRoot, KTBS.Base, KTBS.TraceModel, 
+                             KTBS.StoredTrace, KTBS.ComputedTrace, 
+                             KTBS.StoredTraceObsels, KTBS.ComputedTraceObsels,
+                             KTBS.ObselType, KTBS.RelationType, 
+                             KTBS.Obsel, KTBS.AttributeType, KTBS.BuiltinMethod)])
+
+    KTBS_FRAME_TYPES[uri2iri(KTBS.StoredTraceObsels)] = uri2iri(KTBS.StoredTrace)
+    KTBS_FRAME_TYPES[uri2iri(KTBS.ComputedTraceObsels)] = uri2iri(KTBS.ComputedTrace)
