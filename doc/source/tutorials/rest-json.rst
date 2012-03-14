@@ -1,13 +1,16 @@
 .. _ktbs-rest-jsonld-tutorial:
 
-kTBS REST JSON-LD Tutorial
-==========================
+Using kTBS with REST and JSON
+=============================
 
-This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly in REST_ with JSON-LD_ configuration files.
+This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly through the REST_ API with JSON_ descriptions.
+
+.. note:: The JSON syntax used in kTBS complies with JSON-LD_ in order to accurately represent the underlying RDF_ model.
 
 .. _REST: http://en.wikipedia.org/wiki/Representational_state_transfer
-.. _JSON-LD: http://json-ld.org/spec/latest/json-ld-syntax/ 
-
+.. _JSON: http://www.json.org/
+.. _RDF: http://www.w3.org/RDF/
+.. _JSON-LD: http://json-ld.org/
 
 For the purpose of this tutorial, we will use a local kTBS server. You just have to change the base URI to reach a distant kTBS server.
 

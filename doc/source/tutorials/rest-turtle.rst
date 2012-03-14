@@ -1,13 +1,13 @@
 .. _ktbs-rest-tutorial:
 
-kTBS REST Tutorial
-==================
+Using kTBS with REST and Turtle
+===============================
 
-This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly in REST_ with Turtle_ configuration files.
+This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly through the REST_ API with Turtle_ descriptions. If you are not familiar with Turtle or RDF_, you might prefer the :ref:`JSON <ktbs-rest-jsonld-tutorial>` version of that tutorial.
 
 .. _REST: http://en.wikipedia.org/wiki/Representational_state_transfer
 .. _Turtle: http://www.w3.org/2007/02/turtle/primer/
-
+.. _RDF: http://www.w3.org/RDF/
 
 For the purpose of this tutorial, we will use a local kTBS server. You just have to change the base URI to reach a distant kTBS server.
 
