@@ -231,7 +231,7 @@ Then, we can set the domain of ``onChannel`` to this new type.
        :hasRelationDomain <#ChannelEvent> ;
        :hasRelationRange <#OpenChannel> .
 
-This new trace model can be represented by the following UML diagramm:
+This new trace model can be represented by the following UML diagram:
 
 Here is a UML representation of the Trace Model we will create. This is a minimal trace model of a typical online chat activity.
 
@@ -242,13 +242,13 @@ Here is a UML representation of the Trace Model we will create. This is a minima
      node [ shape = "record", fontsize = 8 ]
      edge [ fontsize = 8 ]
 
-     OpenChannel [ label = "OpenChannel|channel:str" ]
-     ChannelEvent [ label = "ChannelEvent|" ]
+     OpenChannel [ label = "OpenChannel|<at>channel:str" ]
+     ChannelEvent [ label = "ChannelEvent|<at>" ]
      SendMsg [ label = "SendMsg|message:str" ]
      MsgReceived [ label = "MsgResseived|message:str\lfrom:str\l" ]
      CloseChannel [ label = "CloseChannel|" ]
     
-     ChannelEvent -> OpenChannel [ label = "onChannel" ]
+     ChannelEvent:at -> OpenChannel:at [ label = "onChannel" ]
      SendMsg -> ChannelEvent [ arrowhead = "empty" ]
      MsgReceived -> ChannelEvent [ arrowhead = "empty" ]
      CloseChannel -> ChannelEvent [ arrowhead = "empty" ]
