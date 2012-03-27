@@ -19,7 +19,7 @@ Here is a UML representation of the Trace Model we will create. This is a minima
    digraph {
      rankdir = RL
      node [ shape = "record", fontsize = 8 ]
-     edge [ fontsize = 8 ]
+     edge [ fontsize = 8, arrowhead = "open" ]
 
      OpenChannel [ label = "OpenChannel|channel:str" ]
      SendMsg [ label = "SendMsg|message:str" ]
@@ -240,7 +240,7 @@ Here is a UML representation of the Trace Model we will create. This is a minima
    digraph {
      rankdir = RL
      node [ shape = "record", fontsize = 8 ]
-     edge [ fontsize = 8 ]
+     edge [ fontsize = 8 , arrowhead = "open" ]
 
      OpenChannel [ label = "OpenChannel|<at>channel:str" ]
      ChannelEvent [ label = "ChannelEvent|<at>" ]
