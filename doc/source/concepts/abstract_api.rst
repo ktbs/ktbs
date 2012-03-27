@@ -8,7 +8,6 @@ Below is a language independant API that has been designed to document the funct
 .. warning:: TODO
 
   * traceBegin and traceEnd on storedTraces
-  * multiple values for a relation on an obsel
 
 ::
 
@@ -82,8 +81,8 @@ Below is a language independant API that has been designed to document the funct
       set_default_subject(subject:str)
       create_obsel(type:ObselType, begin:int, end:int?, subject:str?,
                    attributes:[AttributeType=>any]?,
-                   relations:[RelationType=>Obsel]?,
-                   inverse_relations:[RelationType=>Obsel]?,
+                   relations:[(RelationType, Obsel)]?,
+                   inverse_relations:[(Obsel, RelationType)]?,
                    source_obsels:[Obsel]?, label:str?, id:uri?) → Obsel
     
     ComputedTrace(Trace)

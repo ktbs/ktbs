@@ -146,22 +146,16 @@ class StoredTrace(StoredTraceMixin, Trace):
                 graph.add((obs, k_uri, Literal(val)))
 
         if relations is not None:
-            assert isinstance(relations, dict)
-            for key, val in relations.items():
-                # TODO MAJOR replace with list of pairs, to allow multiple
-                # values for the same relation type?
-                k_uri = coerce_to_uri(key)
-                v_uri = coerce_to_uri(val)
-                graph.add((obs, k_uri, v_uri))
+            for rtype, other in relations:
+                rtype_uri = coerce_to_uri(rtype)
+                other_uri = coerce_to_uri(other)
+                graph.add((obs, rtype_uri, other_uri))
 
         if inverse_relations is not None:
-            assert isinstance(inverse_relations, dict)
-            for key, val in relations.items():
-                # TODO MAJOR replace with list of pairs, to allow multiple
-                # values for the same relation type?
-                k_uri = coerce_to_uri(key)
-                v_uri = coerce_to_uri(val)
-                graph.add((v_uri, k_uri, obs))
+            for other, rtype in relations:
+                other_uri = coerce_to_uri(other)
+                rtype_uri = coerce_to_uri(rtype)
+                graph.add((other_uri, rtype_uri, obs))
 
         if source_obsels is not None:
             for src in source_obsels:

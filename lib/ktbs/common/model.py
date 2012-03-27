@@ -160,10 +160,10 @@ class ModelMixin(InBaseMixin):
             add((uri, _PREF_LABEL, Literal(label)))
             if origin is not None:
                 origin_uri = coerce_to_uri(origin, self.uri)
-                add((uri, _HAS_RORIGIN, origin_uri))
+                add((uri, _HAS_REL_ORIGIN, origin_uri))
             if destination is not None:
                 destination_uri = coerce_to_uri(destination, self.uri)
-                add((uri, _HAS_RDESTINATION, destination_uri))
+                add((uri, _HAS_REL_DESTINATION, destination_uri))
             for i in supertypes:
                 add((uri, _HAS_SUPERRTYPE, coerce_to_uri(i, base_uri)))
         return self.make_resource(uri, _REL_TYPE, graph)
@@ -285,7 +285,7 @@ class AttributeTypeMixin(_ModelElementMixin):
         """
         I hold the obsel type containing this attribute, or None.
         """
-        uri = self._graph.value(self.uri, _HAS_AOBSELTYPE)
+        uri = self._graph.value(self.uri, _HAS_ATT_OBSELTYPE)
         if uri is None:
             return None
         else:
@@ -297,7 +297,7 @@ class AttributeTypeMixin(_ModelElementMixin):
 
         Returns the type as a URIRef
         """
-        return self._graph.value(self.uri, _HAS_ADATATYPE)
+        return self._graph.value(self.uri, _HAS_ATT_DATATYPE)
 
     # TODO implement set_obsel_type, set_data_type
 
@@ -314,7 +314,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the attribute types allowed for this type.
         """
         make_resource = self.make_resource
-        for uri in self._graph.subjects(_HAS_AOBSELTYPE, self.uri):
+        for uri in self._graph.subjects(_HAS_ATT_OBSELTYPE, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -326,7 +326,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the relation types having this obsel type as origin.
         """
         make_resource = self.make_resource
-        for uri in self._graph.subjects(_HAS_RORIGIN, self.uri):
+        for uri in self._graph.subjects(_HAS_REL_ORIGIN, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -338,7 +338,7 @@ class ObselTypeMixin(_ModelTypeMixin):
         I iter over the relation types having this obsel type as destination.
         """
         make_resource = self.make_resource
-        for uri in self._graph.subjects(_HAS_RDESTINATION, self.uri):
+        for uri in self._graph.subjects(_HAS_REL_DESTINATION, self.uri):
             yield make_resource(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
@@ -358,7 +358,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the origin obsel type this relation, or None.
         """
-        uri = self._graph.value(self.uri, _HAS_RORIGIN)
+        uri = self._graph.value(self.uri, _HAS_REL_ORIGIN)
         if uri is None:
             return None
         else:
@@ -368,7 +368,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         I hold the destination obsel type this relation, or None.
         """
-        uri = self._graph.value(self.uri, _HAS_RDESTINATION)
+        uri = self._graph.value(self.uri, _HAS_REL_DESTINATION)
         if uri is None:
             return None
         else:
@@ -420,10 +420,10 @@ _ATTR_TYPE = KTBS.AttributeType
 _RDF_TYPE = RDF.type
 _OBSEL_TYPE = KTBS.ObselType
 _REL_TYPE = KTBS.RelationType
-_HAS_AOBSELTYPE = KTBS.hasAttributeDomain # should be renamed at some point?
-_HAS_ADATATYPE = KTBS.hasAttributeRange # should be renamed at some point?
-_HAS_RORIGIN = KTBS.hasRelationDomain # should be renamed at some point?
-_HAS_RDESTINATION = KTBS.hasRelationRange # should be renamed at some point?
+_HAS_ATT_OBSELTYPE = KTBS.hasAttributeDomain # should be renamed at some point?
+_HAS_ATT_DATATYPE = KTBS.hasAttributeRange # should be renamed at some point?
+_HAS_REL_ORIGIN = KTBS.hasRelationDomain # should be renamed at some point?
+_HAS_REL_DESTINATION = KTBS.hasRelationRange # should be renamed at some point?
 _HAS_SUPEROTYPE = KTBS.hasSuperObselType
 _HAS_SUPERRTYPE = KTBS.hasSuperRelationType
 _HAS_UNIT = KTBS.hasUnit
