@@ -51,6 +51,13 @@ class TraceMixin(InBaseMixin):
         # TODO MAJOR override this in ktbs.local,
         # so that it works for external models as well
 
+    def get_model_uri(self):
+        """
+        I return the URI of the trace model of this trace.
+        """
+        tmodel_uri = self._graph.value(self.uri, _HAS_MODEL)
+        return tmodel_uri
+
     def get_origin(self, as_datetime=False):
         """
         I return the origin of this trace.
