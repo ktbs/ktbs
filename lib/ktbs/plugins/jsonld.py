@@ -191,6 +191,8 @@ if pyld:
         See :func:`rdfrest.serializer.serialize_rdf_xml` for prototype
         documentation.
         """
+        is_obsels_graph = False
+
         local_graph = Graph()
         local_graph += graph
 
@@ -205,13 +207,15 @@ if pyld:
                 local_graph.remove((s, p, o))
                 local_graph.add((o, rev_p, s))
 
-        #print "base_uri", base_uri
-        #if base_uri.find("@obsels") != -1:
-        #    print "Obsels implied"
-
-        # Find base_uri type to known which kTBS object is asked
-        # Thus apply corresponding framing
-        #print "Determine kTBS object type"
+        if (graph.value(predicate=RDF.type, 
+                        object=KTBS.StoredTraceObsels) is not None) or \
+           (graph.value(predicate=RDF.type, 
+                        object=KTBS.ComputedTraceObsels) is not None):
+            is_obsels_graph = True
+            trace_uri = graph.value(object=base_uri, 
+                                    predicate=KTBS.hasObselCollection)
+            trace = service.get(trace_uri)
+            trace_model = trace.get_model_uri()
 
         cache = {}
         for s, p, o in local_graph:
@@ -242,19 +246,35 @@ if pyld:
         if not isinstance(object_types, list):
             object_types = [object_types]
 
+        context_dict = {}
+        context_dict.update(CONTEXT)
         ktbs_frame = None
         for o in object_types:
             if o in KTBS_FRAME_TYPES:
-                ktbs_frame = {
-                        u"@context": CONTEXT,
-                        u"@type": KTBS_FRAME_TYPES[o],
-                        u"obsels": []      # Only used for @obsels
-                        }
+                if is_obsels_graph:
+                    if "m" not in context_dict:
+                        context_dict["m"] = trace_model
+                    ktbs_frame = {
+                            u"@context": context_dict,
+                            u"@type": KTBS_FRAME_TYPES[o],
+                            u"obsels": []      # Only used for @obsels
+                            }
+                else:
+                    ktbs_frame = {
+                            u"@context": CONTEXT,
+                            u"@type": KTBS_FRAME_TYPES[o],
+                            }
                 break
 
         if frame is not None:
             json_obj = frame(json_obj, ktbs_frame)
-            json_obj["@context"] = CONTEXT_URI
+            if is_obsels_graph:
+                context_list = json_obj["@context"] = []
+                context_list.append(CONTEXT_URI)
+                context_list.append({"m": trace_model})
+                json_obj[u'obsels'].sort(key=lambda d: d[u'begin'])
+            else:
+                json_obj["@context"] = CONTEXT_URI
 
         if __debug__:
             return dumps(json_obj, indent=4)
@@ -333,7 +353,10 @@ if pyld:
                              KTBS.StoredTrace, KTBS.ComputedTrace, 
                              KTBS.StoredTraceObsels, KTBS.ComputedTraceObsels,
                              KTBS.ObselType, KTBS.RelationType, 
-                             KTBS.Obsel, KTBS.AttributeType, KTBS.BuiltinMethod)])
+                             KTBS.Obsel, KTBS.AttributeType, 
+                             KTBS.BuiltinMethod)])
 
-    KTBS_FRAME_TYPES[uri2iri(KTBS.StoredTraceObsels)] = uri2iri(KTBS.StoredTrace)
-    KTBS_FRAME_TYPES[uri2iri(KTBS.ComputedTraceObsels)] = uri2iri(KTBS.ComputedTrace)
+    KTBS_FRAME_TYPES[uri2iri(KTBS.StoredTraceObsels)] = \
+                                                  uri2iri(KTBS.StoredTrace)
+    KTBS_FRAME_TYPES[uri2iri(KTBS.ComputedTraceObsels)] =  \
+                                                  uri2iri(KTBS.ComputedTrace)
