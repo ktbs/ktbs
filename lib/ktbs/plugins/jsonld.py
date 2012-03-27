@@ -184,7 +184,7 @@ if pyld:
             return ret
 
     @register_serializer("application/json", "json") 
-    def serialize_json(graph, _sregister, base_uri=None):
+    def serialize_json(graph, service, _sregister, base_uri=None):
         """I serialize an RDF graph as JSON-LD.
            I serialize 'graph' in plain and ugly JSON-LD.
 

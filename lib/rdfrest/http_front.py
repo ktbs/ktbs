@@ -208,6 +208,7 @@ class HttpFrontend(object):
             graph = resource.rdf_get(request.GET.mixed() or None)
             app_iter = serializer(
                 graph,
+                self._service,
                 self.serializers,
                 resource.uri)
         except SerializeError, ex:

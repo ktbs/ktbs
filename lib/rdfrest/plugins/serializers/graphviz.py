@@ -24,7 +24,7 @@ from rdfrest.exceptions import SerializeError
 from rdfrest.serializer import register
 
 @register("text/plain", "dot", 10) 
-def serialize_dot(graph, sregister, base_uri=None):
+def serialize_dot(graph, _service, sregister, base_uri=None):
     """
     I serialize graph in the graphviz format.
     """
@@ -34,20 +34,20 @@ def serialize_dot(graph, sregister, base_uri=None):
     raise NotImplementedError("dot serialization temporarily unavailable")
 
 @register("image/png", "png", 10) 
-def serialize_png(graph, sregister, base_uri=None):
+def serialize_png(graph, _service, sregister, base_uri=None):
     """
     I serialize graph in PNG.
     """
     return _serialize_format("png", graph, sregister, base_uri)
 
 @register("image/svg+xml", "svg", 10) 
-def serialize_svg(graph, sregister, base_uri=None):
+def serialize_svg(graph, _service, sregister, base_uri=None):
     """
     I serialize graph in SVG.
     """
     return _serialize_format("svg", graph, sregister, base_uri)
 
-def _serialize_format(format_, graph, sregister, base_uri=None):
+def _serialize_format(format_, graph, _service, sregister, base_uri=None):
     """
     I serialize graph to the given format using graphviz.
     """

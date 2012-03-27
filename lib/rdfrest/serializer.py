@@ -136,11 +136,13 @@ def bind_prefix(prefix, namespace_uri):
 
 @register("application/rdf+xml", "rdf", 60)
 @register("application/xml",     "xml", 20)
-def serialize_rdf_xml(graph, sregister, base_uri=None):
+def serialize_rdf_xml(graph, service, sregister, base_uri=None):
     """I serialize an RDF graph as RDF/XML.
 
     :param graph:     an RDF graph
     :type  graph:     rdflib.Graph
+    :param service:   an rdfrest Service
+    :type  service:   rdfrest.service.Service
     :param sregister: the serializer register this serializer comes from
                       (useful for getting namespace prefixes and other info)
     :type  sregister: SerializerRegister
@@ -159,21 +161,21 @@ def serialize_rdf_xml(graph, sregister, base_uri=None):
     """
     if False: # TODO MINOR actually perform some checking
         raise SerializeError("RDF/XML can not encode this graph")
-    return _serialize_with_rdflib("xml", sregister, graph, base_uri)
+    return _serialize_with_rdflib("xml", service, sregister, graph, base_uri)
 
 @register("text/turtle",          "ttl")
 @register("text/n3",              "n3",  20)
 @register("text/x-turtle",        None,   20)
 @register("application/turtle",   None,   20)
 @register("application/x-turtle", None,   20)
-def serialize_turtle(graph, sregister, base_uri=None):
+def serialize_turtle(graph, service, sregister, base_uri=None):
     """I serialize an RDF graph as Turtle.
 
     See `serialize_rdf_xml` for prototype documentation.
     """
-    return _serialize_with_rdflib("n3", sregister, graph, base_uri)
+    return _serialize_with_rdflib("n3", service, sregister, graph, base_uri)
 
-def _serialize_with_rdflib(rdflib_format, sregister, graph, base_uri):
+def _serialize_with_rdflib(rdflib_format, _service, sregister, graph, base_uri):
     "Common implementation of all rdflib-based serialize functions."
     assert isinstance(rdflib_format, str)
     assert isinstance(sregister, SerializerRegister)
@@ -191,12 +193,12 @@ def _serialize_with_rdflib(rdflib_format, sregister, graph, base_uri):
 
 @register("text/nt",    "nt",  40)
 @register("text/plain", "txt", 20)
-def serialize_ntriples(graph,  _sregister, _base_uri=None):
+def serialize_ntriples(graph, _service, _sregister, _base_uri=None):
     """I serialize an RDF graph as N-Triples.
 
     See `serialize_rdf_xml` for prototype documentation.
     """
-    # NB: we do not use _serialize_with_rdflib here, as N-Triples needs to
+    # NB: we do not use _serialize_with_rdflib here, as N-Triples needs no
     # base_uri or namespace management.
     yield graph.serialize(format="nt")
     # TODO MAJOR this could be optimized by yielding one triple after another
@@ -204,7 +206,7 @@ def serialize_ntriples(graph,  _sregister, _base_uri=None):
 
 
 @register("text/html", "html", 60)
-def serialize_htmlized_turtle(graph, sregister, base_uri):
+def serialize_htmlized_turtle(graph, _service, sregister, base_uri):
     """I serialize graph in a HTMLized simple turtle form.
     """
     #pylint: disable=R0914
