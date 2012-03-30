@@ -106,7 +106,6 @@ class Resource(ResourceMixin):
         """
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
-            graph.open(uri)
         if node_type is None:
             node_type = graph.value(uri, _RDF_TYPE)
         maker = RESOURCE_MAKER[node_type]

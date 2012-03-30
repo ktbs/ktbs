@@ -1,0 +1,243 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+http://kb.mozillazine.org/Places.sqlite
+The file "places.sqlite" stores the annotations, bookmarks, favorite icons, 
+input history, keywords, and browsing history (a record of visited pages). 
+
+places.sqlite is a file in the profile folder.
+Unix/Linux      ~/.mozilla/
+Mac OS X        ~/Library/Mozilla/
+                ~/Library/Application Support/ 
+Windows         "%APPDATA%\Mozilla\"
+
+https://developer.mozilla.org/en/The_Places_database
+
+The places.sqlite includes a number of tables as follows:
+  moz_anno_attributes - Annotation Attributes
+  moz_annos - Annotations
+  moz_bookmarks - Bookmarks
+  moz_bookmarks_roots - Bookmark roots i.e. places, menu, toolbar, tags, unfiled
+  moz_favicons - Favourite icons - including URL of icon
+  moz_historyvisits - A history of the number of times a site has been visited
+  moz_inputhistory - A history of URLS typed by the user
+  moz_items_annos - Item annotations
+  moz_keywords - Keywords
+  moz_places - Places/Sites visited - referenced by moz_historyvisits 
+
+--------------------------------------------------------------------------------
+http://brizoma.wordpress.com/2010/12/19/firefox-sqlite-and-places-structure/
+
+https://wiki.mozilla.org/Places
+https://developer.mozilla.org/en/The_Places_frecency_algorithm
+--------------------------------------------------------------------------------
+CREATE TABLE moz_places (id INTEGER PRIMARY KEY, 
+                         url LONGVARCHAR, 
+                         title LONGVARCHAR,
+                         rev_host LONGVARCHAR,
+                         visit_count INTEGER DEFAULT 0,
+                         hidden INTEGER DEFAULT 0 NOT NULL,
+                         typed INTEGER DEFAULT 0 NOT NULL,
+                         favicon_id INTEGER,
+                         frecency INTEGER DEFAULT -1 NOT NULL,
+                         last_visit_date INTEGER,
+                         guid TEXT);
+
+last_visit_date semble être un timestamp Unix : nbre de second depuis 01/01/1970
+                http://www.unixtimestamp.com/index.php
+                sauf qu'il comporte 16 digits au lieu de 10 !
+                Il semble donc que ce soit le nombre de microsecondes depuis le
+                01/01/1970
+                http://www.developpez.net/forums/d726298/bases-donnees/autres-
+                       sgbd/sqlite/decodage-timestamp-firefox/
+
+--------------------------------------------------------------------------------
+http://docs.python.org/library/sqlite3.html
+"""
+
+import sys
+import sqlite3
+import datetime
+import math
+import time
+#import profile
+
+from argparse import ArgumentParser
+
+from ktbs.client.root import KtbsRoot
+from ktbs.client.base import Base as KtbsBase
+from ktbs.client.model import Model as KtbsModel
+from ktbs.client.trace import Trace as KtbsTrace
+
+# General
+NB_MAX_ITEMS = 10000
+
+# Firefox history file
+FIREFOX_HISTORY = "places.sqlite"
+
+# kTBS elements
+KTBS_ROOT = "http://localhost:8001/"
+TRACE_ORIGIN = "1970-01-01T00:00:00Z"
+
+BROWSER_HISTORY_OBSELS = "BHObsels"
+
+class BrowserHistoryCollector(object):
+    """
+    Creates a kTBS Base for browser history data.
+    This code is for Firefox browser.
+    """
+
+    def __init__ (self):
+        """
+        Define simple collector parser and its command line options.
+        To begin, we just ask for a kTBS root which is mandatory.
+        """
+        self._parser = ArgumentParser(description="Fill a stored trace with \
+                                                   browser history items as \
+                                                   obsels.")
+
+        self._parser.add_argument("-f", "--file", 
+                                  nargs="?", 
+                                  const=FIREFOX_HISTORY, 
+                                  default=FIREFOX_HISTORY,
+                                  help="File containings the sqlite data to \
+                                        parse. Default is %s" % FIREFOX_HISTORY)
+
+        self._parser.add_argument("-r", "--root", 
+                                  nargs="?", 
+                                  const=KTBS_ROOT, default=KTBS_ROOT,
+                                  help="Enter the uri of the kTBS root. \
+                                        Default is %s" % KTBS_ROOT)
+
+        self._parser.add_argument("-o", "--origin", 
+                                  nargs="?", 
+                                  const=TRACE_ORIGIN, default=TRACE_ORIGIN,
+                                  help="Enter the trace origin. Default is \
+                                        %s" % TRACE_ORIGIN)
+
+        self._parser.add_argument("-l", "--limit", 
+                                  nargs="?", type=int,
+                                  const=NB_MAX_ITEMS, default=NB_MAX_ITEMS,
+                                  help="Enter the maximun number of items to \
+                                        collect. Default is %s" % NB_MAX_ITEMS)
+
+        self._parser.add_argument("-v", "--verbose",
+                                  action="store_true",
+                                  help="Display print messages")
+
+        self._args = self._parser.parse_args()
+        self.display("Parsed with argparse: %s" % str(self._args))
+
+    def display(self, msg):
+        """
+        Display the messages only in verbose mode.
+        """
+        if self._args.verbose:
+            print msg
+
+    def create_ktbs_base_for_history(self):
+        """
+        Creates a kTBS Base for browser history data.
+        """
+        root = KtbsRoot(self._args.root)
+
+        base = root.create_base(id="BrowserHistory/")
+
+        return base
+
+
+    def create_ktbs_model_for_history(self, base=None):
+        """
+        Creates a kTBS Model for browser history data.
+        """
+        assert isinstance(base, KtbsBase)
+
+        model = base.create_model(None, id="BHModel")
+
+        #pylint: disable-msg=W0612
+        # Unused variable obsel_type
+        obsel_type = model.create_obsel_type(BROWSER_HISTORY_OBSELS)
+
+        return model
+
+    def create_ktbs_trace_for_history(self, base=None, model=None):
+        """
+        Creates a kTBS Trace for browser history data.
+        """
+        assert isinstance(base, KtbsBase)
+        assert isinstance(model, KtbsModel)
+
+        trace = base.create_stored_trace(model, origin=self._args.origin,
+                                         id="RawHistory/")
+        return trace
+
+    def collect_history_items(self, trace=None):
+        """
+        Open the browser history database, extract history items and
+        populates a kTBS stored trace with it.
+        """
+        assert isinstance(trace, KtbsTrace)
+
+        try:
+            start = time.clock()
+
+            # http://docs.python.org/library/sqlite3.html#accessing-columns-
+            # by-name-instead-of-by-index
+            conn = sqlite3.connect(self._args.file, 
+                                   detect_types=sqlite3.PARSE_COLNAMES)
+            conn.row_factory = sqlite3.Row
+
+            cursor = conn.cursor()
+
+            cursor.execute('SELECT * FROM moz_places')
+
+            nb_browser_items = 0 # to be replaced by select count(id) ...
+            nb_obsels = 0
+            for row in cursor:
+                nb_browser_items = nb_browser_items + 1
+
+                if nb_obsels > self._args.limit:
+                    break
+
+                last_visit = row['last_visit_date']
+                if last_visit is not None:
+                    last_visit = datetime.datetime.fromtimestamp(int( \
+                                              math.floor(last_visit/1000000)))
+                else:
+                    # We do not create obsels with no date in kTBS
+                    continue
+
+                # Insert history items  as obsels
+                trace.create_obsel(type=BROWSER_HISTORY_OBSELS,
+                                   begin=last_visit,
+                                   end=last_visit,
+                                   subject=row['url'])
+
+                self.display("id: %s, url: %s, visit_count: %s, frecency: %s, \
+                              last_visit_date: %s" % (row['id'], row['url'],
+                              row['visit_count'], row['frecency'], last_visit))
+
+                nb_obsels = nb_obsels + 1
+
+            cursor.close()
+
+            end = time.clock()
+            print "Program execution time %f seconds" % (end - start)
+            print "Created %i obsels on %i items" % (nb_obsels, \
+                                                     nb_browser_items)
+
+        except sqlite3.Error, err:
+            print "An error occurred:", err.args[0]
+
+def collect():
+    collector = BrowserHistoryCollector()
+    baseBH = collector.create_ktbs_base_for_history()
+    modelBH = collector.create_ktbs_model_for_history(baseBH)
+    traceBH = collector.create_ktbs_trace_for_history(baseBH, modelBH)
+    collector.collect_history_items(traceBH)
+
+if __name__ == "__main__":
+    #profile.run('collect()', 'profile-ktbs-3-2012-03-29.prof')
+    collect()
+    sys.exit(0)

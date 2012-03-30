@@ -223,8 +223,6 @@ class ProxyStore(Store):
                         self.configuration[PS_CONFIG_HTTP_RESPONSE][0])
                 self._parse_content(\
                         self.configuration[PS_CONFIG_HTTP_RESPONSE][1])
-        else:
-            self._pull()
 
         return VALID_STORE
 
