@@ -60,6 +60,7 @@ or none of the modifications/creations are commited).
 
 """
 from rdflib import Graph, URIRef
+from weakref import WeakValueDictionary
 
 from rdfrest.exceptions import CorruptedStore
 from rdfrest.namespaces import RDFREST
@@ -86,21 +87,22 @@ class Service(object):
         """
         Initializes this RdfRest service with the given store.
         """
+        # about _resource_cache: this is not per se a cache,
+        # but ensures that we will not generate multiple instances for the
+        # same resource.
         assert self._class_map, "No registered resource class"
         assert self._root_cls, "No registered root resource class"
         root_uri = URIRef(root_uri)
 
         self.store = store
         self.root_uri = root_uri
-        self._resource_cache = {}
+        self._resource_cache = WeakValueDictionary()
         self._context_level = 0
         if len(store) == 0:
             assert create, "Empty store; `create` should be allowed"
             root_cls = self._root_cls
             graph = root_cls.create_root_graph(root_uri, self)
             root_cls.store_graph(self, root_uri, graph)
-            root = root_cls(self, root_uri)
-            self._resource_cache[root_uri.defrag()] = root
         
     @classmethod
     def register(cls, py_class):

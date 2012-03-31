@@ -152,6 +152,9 @@ class Resource(object):
         stating that this resource has ``rdf:type`` ``RDF_MAIN_TYPE``.
         """
         # unused argument service #pylint: disable=W0613
+        if urisplit(uri)[3:] != (None, None):
+            raise InvalidUriError("URI has query-string and/or "
+                                  "fragment-identifier <%s>" % uri)
         ret = Graph()
         ret.add((uri, _RDF_TYPE, cls.RDF_MAIN_TYPE))
         return ret

@@ -50,8 +50,10 @@ def main():
     _, store_type, config_str = repository.split(":", 2)
     store = rdflib_plugin.get(store_type, Store)(config_str)
     ktbs_service = KtbsService(store, uri)
-    if OPTIONS.no_cache:
+    if OPTIONS.resource_cache == "none":
         ktbs_service._resource_cache = NoCache()
+    elif OPTIONS.resource_cache == "aggressive":
+        ktbs_service._resource_cache = {}
     application = HttpFrontend(ktbs_service, cache_control=cache_control)
     application.serializers.bind_prefix("skos", SKOS)
     for nsprefix in OPTIONS.ns_prefix or ():
@@ -101,8 +103,9 @@ def parse_options():
     opt.add_option_group(oga)
 
     ogd = OptionGroup(opt, "Debug OPTIONS")
-    ogd.add_option("-C", "--no-cache", action="store_true",
-                   help="disable the resource cache")
+    ogd.add_option("--resource-cache", action="store", default="default",
+                   choices=["none", "default", "aggressive"], 
+                   help="sets the kind of resource cache")
     ogd.add_option("-R", "--requests", type=int, default=-1,
                    help="serve only the given number of requests")
     ogd.add_option("-1", "--once", action="callback", callback=number_callback,
