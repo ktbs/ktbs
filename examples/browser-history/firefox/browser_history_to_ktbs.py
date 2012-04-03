@@ -56,16 +56,30 @@ last_visit_date semble être un timestamp Unix : nbre de second depuis 01/01/197
 http://docs.python.org/library/sqlite3.html
 """
 
+import os
 import sys
 import sqlite3
 import datetime
 import math
+
 import time
-#import profile
+from processinfo import ProcessInfo
+
+import cProfile
 
 from argparse import ArgumentParser
 
-from ktbs.client.root import KtbsRoot
+try:
+    from ktbs.client.root import KtbsRoot
+except:
+    from os.path import abspath, dirname, join
+
+    source_dir = dirname(dirname(dirname(dirname(abspath(__file__)))))
+    lib_dir = join(source_dir, "lib")
+    sys.path.insert(0, lib_dir)
+
+    from ktbs.client.root import KtbsRoot
+
 from ktbs.client.base import Base as KtbsBase
 from ktbs.client.model import Model as KtbsModel
 from ktbs.client.trace import Trace as KtbsTrace
@@ -88,7 +102,7 @@ class BrowserHistoryCollector(object):
     This code is for Firefox browser.
     """
 
-    def __init__ (self):
+    def __init__ (self, process_info=None):
         """
         Define simple collector parser and its command line options.
         To begin, we just ask for a kTBS root which is mandatory.
@@ -122,6 +136,14 @@ class BrowserHistoryCollector(object):
                                   help="Enter the maximun number of items to \
                                         collect. Default is %s" % NB_MAX_ITEMS)
 
+        self._parser.add_argument("-p", "--profile",
+                                  action="store_true",
+                                  help="Profile current code")
+
+        self._parser.add_argument("-s", "--stats",
+                                  action="store_true",
+                                  help="Mesure execution time")
+
         self._parser.add_argument("-v", "--verbose",
                                   action="store_true",
                                   help="Display print messages")
@@ -129,12 +151,22 @@ class BrowserHistoryCollector(object):
         self._args = self._parser.parse_args()
         self.display("Parsed with argparse: %s" % str(self._args))
 
+        if self._args.stats:
+            # To get process information without callback mechanism
+            my_PID = os.getpid()
+            self.process_info = ProcessInfo(my_PID)
+
     def display(self, msg):
         """
         Display the messages only in verbose mode.
         """
         if self._args.verbose:
             print msg
+
+    def profiling_asked(self):
+        """Has profiling been asked in command line ?
+        """
+        return self._args.profile
 
     def create_ktbs_base_for_history(self):
         """
@@ -178,9 +210,12 @@ class BrowserHistoryCollector(object):
         populates a kTBS stored trace with it.
         """
         assert isinstance(trace, KtbsTrace)
+        obsels_list = []
 
         try:
-            start = time.clock()
+            if self._args.stats:
+                start_time = time.time()
+                start_cpu = time.clock()
 
             # http://docs.python.org/library/sqlite3.html#accessing-columns-
             # by-name-instead-of-by-index
@@ -209,10 +244,12 @@ class BrowserHistoryCollector(object):
                     continue
 
                 # Insert history items  as obsels
-                trace.create_obsel(type=BROWSER_HISTORY_OBSELS,
-                                   begin=last_visit,
-                                   end=last_visit,
-                                   subject=row['url'])
+                o = trace.create_obsel(type=BROWSER_HISTORY_OBSELS,
+                                       begin=last_visit,
+                                       end=last_visit,
+                                       subject=row['url'])
+
+                obsels_list.append(o)
 
                 self.display("id: %s, url: %s, visit_count: %s, frecency: %s, \
                               last_visit_date: %s" % (row['id'], row['url'],
@@ -220,24 +257,105 @@ class BrowserHistoryCollector(object):
 
                 nb_obsels = nb_obsels + 1
 
+                # To display Process information
+                if self._args.stats and nb_obsels % 100 == 0:
+                    values = self.process_info.get_values()
+                    print "=====> PROCESS INFO = %s" % str(values)
+
             cursor.close()
 
-            end = time.clock()
-            print "Program execution time %f seconds" % (end - start)
-            print "Created %i obsels on %i items" % (nb_obsels, \
-                                                     nb_browser_items)
+            if self._args.stats:
+                end_cpu = time.clock()
+                end_time = time.time()
+                print "Program execution time %f seconds" % \
+                                                (end_time - start_time)
+                print "Program CPU execution time %f seconds" % \
+                                                (end_cpu - start_cpu)
+                print "Created %i obsels on %i items" % (nb_obsels, \
+                                                         nb_browser_items)
 
         except sqlite3.Error, err:
             print "An error occurred:", err.args[0]
 
-def collect():
-    collector = BrowserHistoryCollector()
-    baseBH = collector.create_ktbs_base_for_history()
-    modelBH = collector.create_ktbs_model_for_history(baseBH)
-    traceBH = collector.create_ktbs_trace_for_history(baseBH, modelBH)
-    collector.collect_history_items(traceBH)
+        return obsels_list
+
+    def list_stored_obsels(self, trace=None):
+        """
+        Open the browser history database, extract history items and
+        populates a kTBS stored trace with it.
+        """
+        assert isinstance(trace, KtbsTrace)
+
+        if self._args.stats:
+            start_time = time.time()
+            start_cpu = time.clock()
+
+        nb_obsels = 0
+        for o in trace.list_obsels():
+            self.display("Trace: %s, obsel: %s" % (trace.label, o.label))
+
+            nb_obsels = nb_obsels + 1
+
+            # To display Process information
+            if self._args.stats and nb_obsels % 100 == 0:
+                values = self.process_info.get_values()
+                print "=====> PROCESS INFO = %s" % str(values)
+
+        if self._args.stats:
+            end_cpu = time.clock()
+            end_time = time.time()
+            print "Program execution time %f seconds" % \
+                                            (end_time - start_time)
+            print "Program CPU execution time %f seconds" % \
+                                            (end_cpu - start_cpu)
+            print "To display %i obsels." % nb_obsels
+
+        return nb_obsels
+
+    def display_obsel(self, trace=None, obsel_id=None):
+        """
+        """
+        assert isinstance(trace, KtbsTrace)
+
+        if self._args.stats:
+            start_cpu = time.clock()
+            start_time = time.time()
+
+        trace.get_obsel(obsel_id)
+
+        if self._args.stats:
+            values = self.process_info.get_values()
+            print "=====> PROCESS INFO = %s" % str(values)
+
+            end_cpu = time.clock()
+            end_time = time.time()
+            print "Program execution time %f seconds" % \
+                                            (end_time - start_time)
+            print "Program CPU execution time %f seconds" % \
+                                            (end_cpu - start_cpu)
+            print "To display obsel %s." % obsel_id
+
+def collect(collectBH):
+    """
+    """
+    baseBH = collectBH.create_ktbs_base_for_history()
+    modelBH = collectBH.create_ktbs_model_for_history(baseBH)
+    traceBH = collectBH.create_ktbs_trace_for_history(baseBH, modelBH)
+    obselsBH = collectBH.collect_history_items(traceBH)
+
+    #collectBH.list_stored_obsels(traceBH)
+    #if len(obselsBH) > 0:
+    #    collectBH.display_obsel(traceBH, obselsBH[0].uri)
 
 if __name__ == "__main__":
-    #profile.run('collect()', 'profile-ktbs-3-2012-03-29.prof')
-    collect()
+    collector = BrowserHistoryCollector()
+    if collector.profiling_asked():
+        profile_dt = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
+        profile_filename = "profile-ktbs-%s.prof" % profile_dt
+        cProfile.runctx('collect(collectBH)', 
+                        globals(), 
+                        {"collectBH": collector},
+                        profile_filename)
+    else:
+        collect(collector)
     sys.exit(0)
