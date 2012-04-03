@@ -4,7 +4,7 @@ Populate the kTBS with your firefox history
 
 The following code uses the kTBS python client to populate the kTBS with your firefox navigation history.
 
-Use **-h** to view the script options :
+Use **-h** to view the script options::
 
     $ python browser_history_to_ktbs.py -h
     usage: browser_history_to_ktbs.py [-h] [-f [FILE]] [-r [ROOT]] [-o [ORIGIN]]
@@ -32,7 +32,7 @@ Use **-h** to view the script options :
 
 Copy your history database, which in a file named **places.sqlite** located in your firefox profile folder to the current folder, or specify the full path with **-f** option.
 
-Then execute the following command to extract 1000 items of your history.
+Then execute the following command to extract 1000 items of your history::
 
     $ python browser_history_to_ktbs.py -f /tmp/places.sqlite -l 1000
 
@@ -40,7 +40,7 @@ The model and obsels have to be developped.
 
 When asking the code profiling, a ``profile-ktbs-yyyy-mm-dd-hh:mm.prof`` file will be created in the current directory. You can then process the profiling data with the `pstats.Stats() class <http://docs.python.org/library/profile.html#module-pstats>`_
 
-For a good introduction to profiling, look at Doug Hellmann blog post `profile, cProfile, and pstats – Performance analysis of Python programs <http://www.doughellmann.com/PyMOTW/profile>`_
+For a good introduction to profiling, look at Doug Hellmann blog post `profile, cProfile, and pstats – Performance analysis of Python programs <http://www.doughellmann.com/PyMOTW/profile>`_::
 
     >>> import pstats
     >>> ktbs_ps=pstats.Stats("profile-ktbs-2012-04-03-15:45.prof")
@@ -102,8 +102,6 @@ For a good introduction to profiling, look at Doug Hellmann blog post `profile, 
          1008    0.037    0.000   13.873    0.014 /Users/fconil/PyEnvs27/ktbs-virtualenv/lib/python2.7/site-packages/httplib2/__init__.py:1362(request)
          1008    0.006    0.000   13.720    0.014 /Users/fconil/PyEnvs27/ktbs-virtualenv/lib/python2.7/site-packages/httplib2/__init__.py:1285(_request)
 
-Il est intéressant d'utiliser `Gprof2Dot <http://code.google.com/p/jrfonseca/wiki/Gprof2Dot>`_ pour générer un graphe d'appels à partir des données du profiling :
+Il est intéressant d'utiliser `Gprof2Dot <http://code.google.com/p/jrfonseca/wiki/Gprof2Dot>`_ pour générer un graphe d'appels à partir des données du profiling::
 
     $ gprof2dot -f pstats test.prof | dot -Tpng -o caller-graph.png
-
-.. image:: caller-graph.png
