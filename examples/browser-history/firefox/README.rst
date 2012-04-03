@@ -102,6 +102,6 @@ For a good introduction to profiling, look at Doug Hellmann blog post `profile, 
          1008    0.037    0.000   13.873    0.014 /Users/fconil/PyEnvs27/ktbs-virtualenv/lib/python2.7/site-packages/httplib2/__init__.py:1362(request)
          1008    0.006    0.000   13.720    0.014 /Users/fconil/PyEnvs27/ktbs-virtualenv/lib/python2.7/site-packages/httplib2/__init__.py:1285(_request)
 
-Il est intéressant d'utiliser `Gprof2Dot <http://code.google.com/p/jrfonseca/wiki/Gprof2Dot>`_ pour générer un graphe d'appels à partir des données du profiling::
+Use `Gprof2Dot <http://code.google.com/p/jrfonseca/wiki/Gprof2Dot>`_ to visualize the caller graph based on profiling data::
 
     $ gprof2dot -f pstats test.prof | dot -Tpng -o caller-graph.png
