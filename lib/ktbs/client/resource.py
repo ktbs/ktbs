@@ -58,13 +58,14 @@ class Resource(ResourceMixin):
 
         :param uri: Absolute or relative URI.
         :param graph: If no graph is given, it is build from the serialization 
-        retrived for this uri.
+        retrived for this uri. 
         """
         #pylint: disable-msg=W0231
         # (not calling __init__ for mixin)
         self.uri = coerce_to_uri(uri)
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
+            graph.store._pull()
         self.__graph = graph
         self._graph = ReadOnlyGraphAggregate([graph])
         # NB: self._graph is made read-only in order to catch implementation

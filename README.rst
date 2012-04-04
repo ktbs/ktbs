@@ -9,7 +9,7 @@ rdfrest:
 kTBS:
   A kernel for trace-based systems (python implementation)
 
-.. WARNING::
+WARNING::
 
   Only the client side API of kTBS is (partly) operational.
 
@@ -41,9 +41,7 @@ For developpers
 Install
 =======
 
-If you are using `virtualenv`_, an easy way to get up and running is to run:
-
-.. code-block:: bash
+If you are using `virtualenv`_, an easy way to get up and running is to run::
 
     $ virtualenv --no-site-packages ktbsenv
     $ cd ktbsenv
@@ -53,13 +51,11 @@ If you are using `virtualenv`_, an easy way to get up and running is to run:
     $ pip install -r requirements.txt
     $ python setup.py install
 
-.. note::
+Note::
 
     If you want to run the test suite, you must uncomment the "developper's part" in requirements.txt
 
-To run the test suite:
-
-.. code-block:: bash
+To run the test suite::
 
     $ make unit-tests
 
