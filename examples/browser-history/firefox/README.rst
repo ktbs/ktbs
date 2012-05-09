@@ -4,6 +4,10 @@ Populate the kTBS with your firefox history
 
 The following code uses the kTBS python client to populate the kTBS with your firefox navigation history.
 
+It was used to make some stats and profiling so you must install `psutil <http://pypi.python.org/pypi/psutil>`_ in your virtualenv::
+
+    $ pip install psutil
+
 Use **-h** to view the script options::
 
     $ python browser_history_to_ktbs.py -h
