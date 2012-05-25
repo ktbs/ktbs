@@ -225,7 +225,7 @@ class BrowserHistoryCollector(object):
 
             cursor = conn.cursor()
 
-            cursor.execute('SELECT * FROM moz_places')
+            cursor.execute('SELECT * FROM moz_places WHERE last_visit_date IS NOT NULL ORDER BY last_visit_date')
 
             nb_browser_items = 0 # to be replaced by select count(id) ...
             nb_obsels = 0
