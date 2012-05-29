@@ -17,7 +17,7 @@
 """
 I provide the client implementation of Obsel
 """
-from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.client.resource import register, Resource
 from ktbs.common.obsel import ObselMixin
 from ktbs.namespaces import KTBS
 
@@ -26,9 +26,11 @@ class Obsel(ObselMixin, Resource):
     """TODO docstring"""
     # TODO implement client-specifid methods
 
-RESOURCE_MAKER[KTBS.Obsel] = Obsel
+    RDF_MAIN_TYPE = KTBS.Obsel
 
-# the following import ensures that required classes are registered in
-# RESOURCE_MAKER (AttributeType, RelationType)
+register(Obsel)
+
+# the following import ensures that required classes are registered as well
+# (AttributeType, RelationType)
 import ktbs.client.model #pylint: disable-msg=W0611
 # NB: we have to disable pylint W0611 (Unused import)

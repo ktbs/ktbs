@@ -17,7 +17,7 @@
 """
 I provide the client implementation of trace models and their elements.
 """
-from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.client.resource import register, Resource
 from ktbs.common.model import (ModelMixin, AttributeTypeMixin, ObselTypeMixin,
                                RelationTypeMixin)
 from ktbs.namespaces import KTBS
@@ -25,22 +25,25 @@ from ktbs.namespaces import KTBS
 
 class Model(ModelMixin, Resource):
     """TODO docstring"""
-    pass
+
+    RDF_MAIN_TYPE = KTBS.TraceModel
 
 class AttributeType(AttributeTypeMixin, Resource):
     """TODO docstring"""
-    pass
+
+    RDF_MAIN_TYPE = KTBS.AttributeType
 
 class ObselType(ObselTypeMixin, Resource):
     """TODO docstring"""
-    pass
+
+    RDF_MAIN_TYPE = KTBS.ObselType
 
 class RelationType(RelationTypeMixin, Resource):
     """TODO docstring"""
-    pass
 
+    RDF_MAIN_TYPE = KTBS.RelationType
 
-RESOURCE_MAKER[KTBS.TraceModel] = Model
-RESOURCE_MAKER[KTBS.ObselType] = ObselType
-RESOURCE_MAKER[KTBS.AttributeType] = AttributeType
-RESOURCE_MAKER[KTBS.RelationType] = RelationType
+register(Model)
+register(ObselType)
+register(AttributeType)
+register(RelationType)

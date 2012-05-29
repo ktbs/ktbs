@@ -17,12 +17,13 @@
 """
 I provide the common subclass for all client resources.
 
-I also provide the RESOURCE_MAKER dict where subclasses can register themselves
-with a given RDF type; :meth:`Resource.make_resource` relies on it.
+I also provide a ``register`` method similar to
+:meth:`rdfrest.service.Service.register`;
+:meth:`Resource.make_resource` relies on it.
 """
 from contextlib import contextmanager
 from httplib2 import Http
-from rdflib import Graph, RDF
+from rdflib import Graph, RDF, URIRef
 from rdflib.graph import ReadOnlyGraphAggregate
 from rdfrest.client import ProxyStore
 from rdfrest.client import ResourceAccessError
@@ -31,7 +32,21 @@ from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
 from rdfrest.utils import coerce_to_uri
 
-RESOURCE_MAKER = {}
+_RESOURCE_MAKER = {}
+
+def register(py_class):
+    """Register `py_class` as a resource implementation used by make_resource.
+
+    The given class `py_class` must have an attribute RDF_MAIN_TYPE, which
+    is a URIRef.
+
+    This method can be used as a class decorator.
+    """
+    rdf_type = py_class.RDF_MAIN_TYPE
+    assert isinstance(rdf_type, URIRef)
+    assert rdf_type not in _RESOURCE_MAKER, "Conflicting implementation"
+    _RESOURCE_MAKER[rdf_type] = py_class
+    return py_class
 
 @extend_api
 class Resource(ResourceMixin):
@@ -115,13 +130,12 @@ class Resource(ResourceMixin):
                 # The URI could not be fetched
                 return None
 
-        graph_node_type = graph.value(uri, _RDF_TYPE)
         if node_type is None:
             node_type = graph.value(uri, _RDF_TYPE)
         else:
-            assert node_type == graph_node_type
+            assert node_type == graph.value(uri, _RDF_TYPE)
 
-        maker = RESOURCE_MAKER[node_type]
+        maker = _RESOURCE_MAKER[node_type]
         return maker(uri, graph)
 
     def remove(self):

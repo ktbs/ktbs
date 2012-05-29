@@ -20,7 +20,7 @@ I provide the client implementation of KtbsRoot.
 from rdflib import Graph, Literal, RDF
 #from rdfrest.client import ProxyStore
 
-from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.client.resource import register, Resource
 from ktbs.common.root import KtbsRootMixin
 from ktbs.common.utils import post_graph
 from ktbs.namespaces import KTBS, SKOS
@@ -29,6 +29,8 @@ from rdfrest.utils import coerce_to_node
 class KtbsRoot(KtbsRootMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
     """
+
+    RDF_MAIN_TYPE = KTBS.KtbsRoot
 
     def create_base(self, label=None, id=None, graph=None):
         """Create a new base in this kTBS.
@@ -51,12 +53,12 @@ class KtbsRoot(KtbsRootMixin, Resource):
         created_uri = rheaders['location']
         return self.make_resource(created_uri, _BASE)
 
-RESOURCE_MAKER[KTBS.KtbsRoot] = KtbsRoot
+register(KtbsRoot)
+
+# the following import ensures that Base is registered as well
+import ktbs.client.base #pylint: disable-msg=W0611
+# NB: we have to disable pylint W0611 (Unused import)
 
 _RDF_TYPE = RDF.type
 _BASE = KTBS.Base
 _HAS_BASE = KTBS.hasBase
-
-# the following import ensures that Base is registered in RESOURCE_MAKER
-import ktbs.client.base #pylint: disable-msg=W0611
-# NB: we have to disable pylint W0611 (Unused import)

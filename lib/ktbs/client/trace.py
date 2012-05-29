@@ -19,7 +19,7 @@ I provide the client implementation of StoredTrace and ComputedTrace.
 """
 from datetime import datetime
 
-from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.client.resource import register, Resource
 from ktbs.common.computed_trace import ComputedTraceMixin
 from ktbs.common.trace import StoredTraceMixin
 from ktbs.common.utils import extend_api, post_graph
@@ -91,6 +91,8 @@ class StoredTrace(StoredTraceMixin, Trace):
     """TODO docstring"""
     # TODO implement client-specifid methods
 
+    RDF_MAIN_TYPE = KTBS.StoredTrace
+
     def create_obsel(self, type, begin, end, subject=None,
                      attributes=None, relations=None, inverse_relations=None,
                      source_obsels=None, label=None, id=None):
@@ -110,6 +112,7 @@ class StoredTrace(StoredTraceMixin, Trace):
 
         :rtype: `ktbs.client.obsel.Obsel`
         """
+
         # redefining built-in 'id' #pylint: disable=W0622                 
 
         # TODO Which tests for type, begin and end parameters ?
@@ -173,8 +176,15 @@ class ComputedTrace(ComputedTraceMixin, Trace):
     """TODO docstring"""
     # TODO implement client-specifid methods
 
-RESOURCE_MAKER[KTBS.StoredTrace] = StoredTrace
-RESOURCE_MAKER[KTBS.ComputedTrace] = ComputedTrace
+    RDF_MAIN_TYPE = KTBS.ComputedTrace
+
+register(StoredTrace)
+register(ComputedTrace)
+
+# the following import ensures that Obsel are registered as well
+import ktbs.client.obsel #pylint: disable-msg=W0611
+# NB: we have to disable pylint W0611 (Unused import)
+
 
 _HAS_BEGIN = KTBS.hasBegin
 _HAS_BEGIN_DT = KTBS.hasBeginDT
@@ -186,6 +196,3 @@ _HAS_SUBJECT = KTBS.hasSubject
 _HAS_TRACE = KTBS.hasTrace
 _OBSEL = KTBS.Obsel
 
-# the following import ensures that Obsel are registered in RESOURCE_MAKER
-import ktbs.client.obsel #pylint: disable-msg=W0611
-# NB: we have to disable pylint W0611 (Unused import)

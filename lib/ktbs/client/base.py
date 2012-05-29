@@ -22,7 +22,7 @@ from rdflib import Graph, RDF, Literal
 
 from datetime import datetime
 
-from ktbs.client.resource import Resource, RESOURCE_MAKER
+from ktbs.client.resource import register, Resource
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import post_graph
 from ktbs.namespaces import KTBS
@@ -31,6 +31,8 @@ from rdfrest.utils import coerce_to_node, coerce_to_uri, random_token
 class Base(BaseMixin, Resource):
     """I implement a client proxy on the root of a kTBS.
     """
+
+    RDF_MAIN_TYPE = KTBS.Base
 
     def create_model(self, parents=None, id=None, graph=None):
         """Create a new model in this trace base.
@@ -101,7 +103,15 @@ class Base(BaseMixin, Resource):
     # TODO implement other create_X
 
 
-RESOURCE_MAKER[KTBS.Base] = Base
+register(Base)
+
+# the following import ensures that required classes are registered as well
+# (Model, StoredTrace, ComputedTrace, Method)
+#import ktbs.client.method #pylint: disable-msg=W0611
+import ktbs.client.model #pylint: disable-msg=W0611
+import ktbs.client.trace #pylint: disable-msg=W0611,W0404
+# NB: we have to disable pylint W0611 (Unused import) and W0404 (Reimport)
+
 
 _CONTAINS = KTBS.contains
 _HAS_DEFAULT_SUBBJECT = KTBS.hasDefaultSubject
@@ -112,10 +122,3 @@ _STORED_TRACE = KTBS.StoredTrace
 _COMPUTED_TRACE = KTBS.ComputedTrace
 _HAS_MODEL = KTBS.hasModel
 _HAS_ORIGIN = KTBS.hasOrigin
-
-# the following import ensures that required classes are registered in
-# RESOURCE_MAKER (Model, StoredTrace, ComputedTrace, Method)
-#import ktbs.client.method #pylint: disable-msg=W0611
-import ktbs.client.model #pylint: disable-msg=W0611
-import ktbs.client.trace #pylint: disable-msg=W0611,W0404
-# NB: we have to disable pylint W0611 (Unused import) and W0404 (Reimport)
