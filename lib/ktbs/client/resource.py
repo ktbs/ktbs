@@ -66,7 +66,7 @@ class Resource(ResourceMixin):
         self.uri = coerce_to_uri(uri)
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
-            graph.store._pull()
+            graph.store._pull() #friend _pull #pylint: disable-msg=W0212
 
         self.__graph = graph
         self._graph = ReadOnlyGraphAggregate([graph])
@@ -110,7 +110,7 @@ class Resource(ResourceMixin):
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
             try:
-                graph.store._pull()
+                graph.store._pull() #friend _pull #pylint: disable-msg=W0212
             except ResourceAccessError:
                 # The URI could not be fetched
                 return None

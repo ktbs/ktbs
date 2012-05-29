@@ -183,13 +183,14 @@ class ModelMixin(InBaseMixin):
             add((uri, _RDF_TYPE, _ATTR_TYPE))
             add((uri, _PREF_LABEL, Literal(label)))
             if obsel_type is not None:
-                obsel_type_uri = coerce_to_uri(obsel_type, self.uri)
+                obsel_type_uri = coerce_to_uri(obsel_type, base_uri)
                 add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
             if data_type is not None:
-                data_type_uri = coerce_to_uri(data_type, self.uri)
+                data_type_uri = coerce_to_uri(data_type, base_uri)
                 add ((uri, _HAS_ATT_DATATYPE, data_type_uri))
-            # value_is_list ??
-            # id ??
+            # TODO make use of value_is_list
+            # ... in the meantime, we lure pylint into ignoring it:
+            _ = value_is_list
         return self.make_resource(uri, _ATTR_TYPE, graph)
 
 
