@@ -69,6 +69,9 @@ import cProfile
 
 from argparse import ArgumentParser
 
+# Peut-on éviter URIRef ...
+from rdflib import URIRef
+
 try:
     from ktbs.client.root import KtbsRoot
 except:
@@ -83,6 +86,8 @@ except:
 from ktbs.client.base import Base as KtbsBase
 from ktbs.client.model import Model as KtbsModel
 from ktbs.client.trace import Trace as KtbsTrace
+
+from rdfrest.client import ResourceAccessError
 
 # General
 NB_MAX_ITEMS = 10000
@@ -174,7 +179,13 @@ class BrowserHistoryCollector(object):
         """
         root = KtbsRoot(self._args.root)
 
-        base = root.create_base(id="BrowserHistory/")
+        base = root.get_base(id="BrowserHistory/")
+
+        try:
+            # At the moment, the only way to know if the base really exists
+            label = base.label
+        except ResourceAccessError:
+            base = root.create_base(id="BrowserHistory/")
 
         return base
 
@@ -189,8 +200,34 @@ class BrowserHistoryCollector(object):
 
         #pylint: disable-msg=W0612
         # Unused variable obsel_type
-        obsel_type = model.create_obsel_type(BROWSER_HISTORY_OBSELS)
+        bh_obsel_type = model.create_obsel_type(BROWSER_HISTORY_OBSELS)
 
+        # Browser history obsel attributes
+        """
+        id
+        url
+        title
+        rev_host
+        visit_count
+        hidden
+        typed
+        favicon_id
+        frecency
+        last_visit_date
+
+        ../../../test/populate_ktbs_in_rest.py:XSD_PREFIX = "http://www.w3.org/2001/XMLSchema#"
+        """
+        nb_visit_attr_type = model.create_attribute_type("visit_count", 
+                           bh_obsel_type,
+                           URIRef("http://www.w3.org/2001/XMLSchema#integer"))
+
+        title_attr_type = model.create_attribute_type("title", 
+                           bh_obsel_type,
+                           URIRef("http://www.w3.org/2001/XMLSchema#title"))
+
+        frequency_attr_type = model.create_attribute_type("frequency", 
+                           bh_obsel_type,
+                           URIRef("http://www.w3.org/2001/XMLSchema#integer"))
         return model
 
     def create_ktbs_trace_for_history(self, base=None, model=None):
@@ -225,7 +262,25 @@ class BrowserHistoryCollector(object):
 
             cursor = conn.cursor()
 
+            # If obsels are not inserted in chronological order 
+            # We get a "Non-monotonic collection error"
             cursor.execute('SELECT * FROM moz_places WHERE last_visit_date IS NOT NULL ORDER BY last_visit_date')
+
+            # Get Model Information : should we store it ? 
+            model = trace.get_model()
+            model_attributes = model.list_attribute_types()
+            vcnt_attr = model_attributes
+            for ma in model_attributes:
+                ma_uri = ma.get_uri()
+                if ma_uri.endswith('visit_count'):
+                    vcnt_attr_uri = ma_uri
+                    continue
+                if ma_uri.endswith('title'):
+                    title_attr_uri = ma_uri
+                    continue
+                if ma_uri.endswith('frequency'):
+                    freq_attr_uri = ma_uri
+                    continue
 
             nb_browser_items = 0 # to be replaced by select count(id) ...
             nb_obsels = 0
@@ -243,10 +298,17 @@ class BrowserHistoryCollector(object):
                     # We do not create obsels with no date in kTBS
                     continue
 
+                # Prepare obsel attributes
+                attributes = {}
+                attributes[vcnt_attr_uri] = row['visit_count']
+                attributes[title_attr_uri] = row['title']
+                attributes[freq_attr_uri] = row['frecency']
+                
                 # Insert history items  as obsels
                 o = trace.create_obsel(type=BROWSER_HISTORY_OBSELS,
                                        begin=last_visit,
                                        end=last_visit,
+                                       attributes={}, #visit_count=row['visit_count'],
                                        subject=row['url'])
 
                 obsels_list.append(o)

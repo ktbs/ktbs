@@ -170,6 +170,27 @@ class ModelMixin(InBaseMixin):
 
 
     # TODO implement add_parent, remove_parent, create_attribute_type
+    def create_attribute_type(self, label, obsel_type=None, data_type=None,
+                              value_is_list=False, id=None):
+        """
+        I create a new obsel type in this model.
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        base_uri = self.uri
+        with self._edit as graph:
+            uri = mint_uri_from_label(label, self, id)
+            add = graph.add
+            add((uri, _RDF_TYPE, _ATTR_TYPE))
+            add((uri, _PREF_LABEL, Literal(label)))
+            if obsel_type is not None:
+                obsel_type_uri = coerce_to_uri(obsel_type, self.uri)
+                add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
+            if data_type is not None:
+                data_type_uri = coerce_to_uri(data_type, self.uri)
+                add ((uri, _HAS_ATT_DATATYPE, data_type_uri))
+            # value_is_list ??
+            # id ??
+        return self.make_resource(uri, _ATTR_TYPE, graph)
 
 
 @extend_api

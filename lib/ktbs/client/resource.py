@@ -25,6 +25,7 @@ from httplib2 import Http
 from rdflib import Graph, RDF
 from rdflib.graph import ReadOnlyGraphAggregate
 from rdfrest.client import ProxyStore
+from rdfrest.client import ResourceAccessError
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
@@ -66,6 +67,7 @@ class Resource(ResourceMixin):
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
             graph.store._pull()
+
         self.__graph = graph
         self._graph = ReadOnlyGraphAggregate([graph])
         # NB: self._graph is made read-only in order to catch implementation
@@ -107,8 +109,18 @@ class Resource(ResourceMixin):
         """
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
+            try:
+                graph.store._pull()
+            except ResourceAccessError:
+                # The URI could not be fetched
+                return None
+
+        graph_node_type = graph.value(uri, _RDF_TYPE)
         if node_type is None:
             node_type = graph.value(uri, _RDF_TYPE)
+        else:
+            assert node_type == graph_node_type
+
         maker = RESOURCE_MAKER[node_type]
         return maker(uri, graph)
 
