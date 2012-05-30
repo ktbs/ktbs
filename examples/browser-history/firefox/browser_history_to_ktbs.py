@@ -181,10 +181,7 @@ class BrowserHistoryCollector(object):
 
         base = root.get_base(id="BrowserHistory/")
 
-        try:
-            # At the moment, the only way to know if the base really exists
-            label = base.label
-        except ResourceAccessError:
+        if base is None:
             base = root.create_base(id="BrowserHistory/")
 
         return base

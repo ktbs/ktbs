@@ -122,18 +122,20 @@ class Resource(ResourceMixin):
     def make_resource(uri, node_type=None, graph=None):
         """TODO docstring
         """
+        graph_uri = coerce_to_uri(uri)
         if graph is None:
-            graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
+            graph = Graph(ProxyStore({"uri":graph_uri}), identifier=graph_uri)
             try:
                 graph.store._pull() #friend _pull #pylint: disable-msg=W0212
             except ResourceAccessError:
                 # The URI could not be fetched
                 return None
 
+        graph_node_type = graph.value(graph_uri, _RDF_TYPE)
         if node_type is None:
-            node_type = graph.value(uri, _RDF_TYPE)
+            node_type = graph_node_type
         else:
-            assert node_type == graph.value(uri, _RDF_TYPE)
+            assert URIRef(node_type) == graph_node_type
 
         maker = _RESOURCE_MAKER[node_type]
         return maker(uri, graph)
