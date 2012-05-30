@@ -40,14 +40,14 @@ class TraceMixin(InBaseMixin):
         #pylint: disable-msg=W0622
         #  Redefining built-in id
         uri = coerce_to_uri(id, self.uri)
-        return self.make_resource(uri, KTBS.Obsel)
+        return self.factory(uri, KTBS.Obsel)
 
     def get_model(self):
         """
         I return the trace model of this trace.
         """
         tmodel_uri = self._graph.value(self.uri, _HAS_MODEL)
-        return self.make_resource(tmodel_uri)
+        return self.factory(tmodel_uri)
         # TODO MAJOR override this in ktbs.local,
         # so that it works for external models as well
 
@@ -78,17 +78,17 @@ class TraceMixin(InBaseMixin):
         """
         I iter over the sources of this computed trace.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for src in self._graph.objects(self.uri, _HAS_SOURCE_TRACE):
-            yield make_resource(src)
+            yield factory(src)
 
     def iter_transformed_traces(self):
         """
         Iter over the traces having this trace as a source.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for trc in self._graph.subjects(self.uri, _HAS_SOURCE_TRACE):
-            yield make_resource(trc)
+            yield factory(trc)
 
 
 @extend_api

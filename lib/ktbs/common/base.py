@@ -47,28 +47,28 @@ class BaseMixin(ResourceMixin):
         """
         Iter over all the traces (stored or computed) of this base.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == _STORED_TRACE or typ == _COMPUTED_TRACE:
-                yield make_resource(uri, typ)
+                yield factory(uri, typ)
 
     def iter_models(self):
         """
         Iter over all the trace models of this base.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == _MODEL:
-                yield make_resource(uri, typ)
+                yield factory(uri, typ)
 
     def iter_methods(self):
         """
         Iter over all the methods of this base.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == _METHOD:
-                yield make_resource(uri, typ)
+                yield factory(uri, typ)
 
     def get(self, id):
         """
@@ -81,14 +81,14 @@ class BaseMixin(ResourceMixin):
         if typ not in (_STORED_TRACE, _COMPUTED_TRACE, _MODEL, _METHOD):
             return None
         else:
-            return self.make_resource(elt_uri, typ)
+            return self.factory(elt_uri, typ)
 
     def get_root(self):
         """
         Return the root of the KTBS containing this base.
         """
         root_uri = URIRef("..", self.uri)
-        return self.make_resource(root_uri, _ROOT)
+        return self.factory(root_uri, _ROOT)
 
 
 @extend_api
@@ -105,7 +105,7 @@ class InBaseMixin(ResourceMixin):
         """
         cut = urldefrag(self.uri)[0].rfind("/", 0, -1)
         base_uri = self.uri[:cut+1]
-        return self.make_resource(base_uri, _BASE)
+        return self.factory(base_uri, _BASE)
 
         
 _CONTAINS = KTBS.contains    

@@ -36,7 +36,7 @@ class KtbsResourceMixin(WithCardinalityMixin, WithReservedNamespacesMixin,
 
     RDF_RESERVED_NS = [KTBS]
 
-    def make_resource(self, uri, node_type=None, graph=None):
+    def factory(self, uri, node_type=None, graph=None):
         """I make a resource with the given URI.
 
         NB: the service does not use the `node_type` and `graph` hints.

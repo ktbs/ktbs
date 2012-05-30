@@ -58,17 +58,17 @@ class ModelMixin(InBaseMixin):
         uri = coerce_to_uri(id, self.uri)
         for rdf_type in self._graph.objects(uri, _RDF_TYPE):
             if rdf_type in (_ATTR_TYPE, _OBSEL_TYPE, _REL_TYPE):
-                return self.make_resource(uri, rdf_type)
+                return self.factory(uri, rdf_type)
         return None
 
     def iter_parents(self, include_indirect=False):
         """
         I iter over all the parent models of this model.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         cache = set()
         for uri in self._graph.objects(self.uri, _HAS_PARENT_MODEL):
-            model = make_resource(uri) or uri
+            model = factory(uri) or uri
             if include_indirect:
                 cache.add(model)
             yield model
@@ -83,9 +83,9 @@ class ModelMixin(InBaseMixin):
         """
         I iter over the attribute types used in this trace model.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_RDF_TYPE, _ATTR_TYPE):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for inherited in self.iter_parents(True):
                 for atype in inherited.iter_attribute_types(False):
@@ -95,9 +95,9 @@ class ModelMixin(InBaseMixin):
         """
         I iter over the obsel types used in this trace model.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_RDF_TYPE, _OBSEL_TYPE):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for inherited in self.iter_parents(True):
                 for otype in inherited.iter_obsel_types(False):
@@ -107,9 +107,9 @@ class ModelMixin(InBaseMixin):
         """
         I iter over the relation types used in this trace model.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_RDF_TYPE, _REL_TYPE):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for inherited in self.iter_parents(True):
                 for rtype in inherited.iter_relation_types(False):
@@ -144,7 +144,7 @@ class ModelMixin(InBaseMixin):
             add((uri, _PREF_LABEL, Literal(label)))
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
-        return self.make_resource(uri, _OBSEL_TYPE, graph)
+        return self.factory(uri, _OBSEL_TYPE, graph)
 
     def create_relation_type(self, label, origin=None, destination=None,
                                 supertypes=(), id=None):
@@ -166,7 +166,7 @@ class ModelMixin(InBaseMixin):
                 add((uri, _HAS_REL_DESTINATION, destination_uri))
             for i in supertypes:
                 add((uri, _HAS_SUPERRTYPE, coerce_to_uri(i, base_uri)))
-        return self.make_resource(uri, _REL_TYPE, graph)
+        return self.factory(uri, _REL_TYPE, graph)
 
 
     # TODO implement add_parent, remove_parent, create_attribute_type
@@ -191,7 +191,7 @@ class ModelMixin(InBaseMixin):
             # TODO make use of value_is_list
             # ... in the meantime, we lure pylint into ignoring it:
             _ = value_is_list
-        return self.make_resource(uri, _ATTR_TYPE, graph)
+        return self.factory(uri, _ATTR_TYPE, graph)
 
 
 @extend_api
@@ -232,7 +232,7 @@ class _ModelElementMixin(ResourceMixin):
         Return the trace model of this element.
         """
         tmodel_uri = self._graph.identifier
-        ret = self.make_resource(tmodel_uri)
+        ret = self.factory(tmodel_uri)
         return ret
 
     def remove(self):
@@ -261,8 +261,8 @@ class _ModelTypeMixin(_ModelElementMixin):
         if include_indirect:
             return _closure(self, "subtypes")
         else:
-            make_resource = self.make_resource
-            return ( make_resource(uri) 
+            factory = self.factory
+            return ( factory(uri) 
                      for uri in self._graph.subjects(self._SUPER_TYPE_PROP,
                                                      self.uri) )
 
@@ -275,8 +275,8 @@ class _ModelTypeMixin(_ModelElementMixin):
         if include_indirect:
             return _closure(self, "supertypes")
         else:
-            make_resource = self.make_resource
-            return ( make_resource(uri)
+            factory = self.factory
+            return ( factory(uri)
                      for uri in self._graph.objects(self.uri, 
                                                     self._SUPER_TYPE_PROP) )
 
@@ -311,7 +311,7 @@ class AttributeTypeMixin(_ModelElementMixin):
         if uri is None:
             return None
         else:
-            return self.make_resource(uri)
+            return self.factory(uri)
 
     def get_data_type(self):
         """
@@ -335,9 +335,9 @@ class ObselTypeMixin(_ModelTypeMixin):
         """
         I iter over the attribute types allowed for this type.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_HAS_ATT_OBSELTYPE, self.uri):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
                 for atype in supertype.iter_attribute_types(False):
@@ -347,9 +347,9 @@ class ObselTypeMixin(_ModelTypeMixin):
         """
         I iter over the relation types having this obsel type as origin.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_HAS_REL_ORIGIN, self.uri):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
                 for rtype in supertype.iter_relation_types(False):
@@ -359,9 +359,9 @@ class ObselTypeMixin(_ModelTypeMixin):
         """
         I iter over the relation types having this obsel type as destination.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for uri in self._graph.subjects(_HAS_REL_DESTINATION, self.uri):
-            yield make_resource(uri)
+            yield factory(uri)
         if include_inherited:
             for supertype in self.iter_supertypes(True):
                 for rtype in supertype.iter_inverse_relation_types(False):
@@ -384,7 +384,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         if uri is None:
             return None
         else:
-            return self.make_resource(uri)
+            return self.factory(uri)
 
     def get_destination(self):
         """
@@ -394,7 +394,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         if uri is None:
             return None
         else:
-            return self.make_resource(uri)
+            return self.factory(uri)
 
     def iter_all_origins(self):
         """

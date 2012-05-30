@@ -36,7 +36,7 @@ class ObselMixin(ResourceMixin):
         """
         I return the trace containing this obsel.
         """
-        return self.make_resource(self._graph.value(self.uri, _HAS_TRACE))
+        return self.factory(self._graph.value(self.uri, _HAS_TRACE))
 
     def get_obsel_type(self):
         """
@@ -84,9 +84,9 @@ class ObselMixin(ResourceMixin):
         """
         I iter over the source obsels of the obsel.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for i in self._graph.objects(self.uri, _HAS_SOURCE_OBSEL):
-            yield make_resource(i, _OBSEL)
+            yield factory(i, _OBSEL)
 
     def iter_attribute_types(self):
         """
@@ -102,10 +102,10 @@ class ObselMixin(ResourceMixin):
                 FILTER (!bound(?t))
             }
         """ % self.uri
-        make_resource = self.make_resource
+        factory = self.factory
         for atype in self._graph.query(query_str):
             if not atype.startswith(KTBS.uri) and atype != _RDF_TYPE:
-                yield make_resource(atype, _ATTRIBUTE_TYPE)
+                yield factory(atype, _ATTRIBUTE_TYPE)
 
     def iter_relation_types(self):
         """
@@ -118,9 +118,9 @@ class ObselMixin(ResourceMixin):
                 ?related <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
             }
         """ % self.uri
-        make_resource = self.make_resource
+        factory = self.factory
         for rtype in self._graph.query(query_str):
-            yield make_resource(rtype, _RELATION_TYPE)
+            yield factory(rtype, _RELATION_TYPE)
 
     def iter_related_obsels(self, rtype):
         """
@@ -134,9 +134,9 @@ class ObselMixin(ResourceMixin):
                 ?related <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
             }
         """ % (self.uri, rtype)
-        make_resource = self.make_resource
+        factory = self.factory
         for rtype in self._graph.query(query_str):
-            yield make_resource(rtype, _OBSEL)
+            yield factory(rtype, _OBSEL)
 
     def iter_inverse_relation_types(self):
         """
@@ -149,9 +149,9 @@ class ObselMixin(ResourceMixin):
                 ?relating <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
             }
         """ % self.uri
-        make_resource = self.make_resource
+        factory = self.factory
         for rtype in self._graph.query(query_str):
-            yield make_resource(rtype, _RELATION_TYPE)
+            yield factory(rtype, _RELATION_TYPE)
 
     def iter_relating_obsels(self, rtype):
         """
@@ -165,9 +165,9 @@ class ObselMixin(ResourceMixin):
                 ?relating <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> ?t .
             }
         """ % (rtype, self.uri)
-        make_resource = self.make_resource
+        factory = self.factory
         for binding in self._graph.query(query_str):
-            yield make_resource(binding, _OBSEL)
+            yield factory(binding, _OBSEL)
 
     def get_attribute_value(self, atype):
         """

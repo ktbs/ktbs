@@ -60,7 +60,7 @@ class Base(BaseMixin, Resource):
 
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
-        return self.make_resource(created_uri, _TRACE_MODEL)
+        return self.factory(created_uri, _TRACE_MODEL)
 
 
     def create_stored_trace(self, model, origin=None, default_subject=None,
@@ -98,7 +98,7 @@ class Base(BaseMixin, Resource):
 
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
-        return self.make_resource(created_uri, _STORED_TRACE)
+        return self.factory(created_uri, _STORED_TRACE)
 
     # TODO implement other create_X
 

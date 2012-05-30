@@ -19,7 +19,7 @@ I provide the common subclass for all client resources.
 
 I also provide a ``register`` method similar to
 :meth:`rdfrest.service.Service.register`;
-:meth:`Resource.make_resource` relies on it.
+:meth:`Resource.factory` relies on it.
 """
 from contextlib import contextmanager
 from httplib2 import Http
@@ -35,7 +35,7 @@ from rdfrest.utils import coerce_to_uri
 _RESOURCE_MAKER = {}
 
 def register(py_class):
-    """Register `py_class` as a resource implementation used by make_resource.
+    """Register `py_class` as a resource implementation used by factory.
 
     The given class `py_class` must have an attribute RDF_MAIN_TYPE, which
     is a URIRef.
@@ -119,7 +119,7 @@ class Resource(ResourceMixin):
             yield self.__graph
 
     @staticmethod
-    def make_resource(uri, node_type=None, graph=None):
+    def factory(uri, node_type=None, graph=None):
         """TODO docstring
         """
         graph_uri = coerce_to_uri(uri)

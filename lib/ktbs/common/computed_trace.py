@@ -35,7 +35,7 @@ class ComputedTraceMixin(TraceMixin, WithParametersMixin):
         """
         method_uri = self._graph.value(self.uri, _HAS_METHOD)
         assert method_uri is not None
-        return self.make_resource(method_uri)
+        return self.factory(method_uri)
 
     def set_method(self, method):
         """I set the method of this trace.

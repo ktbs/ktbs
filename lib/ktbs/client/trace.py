@@ -81,9 +81,9 @@ class Trace(Resource):
         obsels_graph = self._obsels
         tuples = list(obsels_graph.query(query_str))
         tuples.sort() # TODO remove this hack once rdflib supports 'ORDER BY'
-        make_resource = self.make_resource
+        factory = self.factory
         for _, _, obs in tuples:
-            yield make_resource(obs, _OBSEL, obsels_graph)
+            yield factory(obs, _OBSEL, obsels_graph)
 
     
 
@@ -170,7 +170,7 @@ class StoredTrace(StoredTraceMixin, Trace):
 
         rheaders, _rcontent = post_graph(graph, self.uri)
         created_uri = rheaders['location']
-        return self.make_resource(created_uri, _OBSEL)
+        return self.factory(created_uri, _OBSEL)
 
 class ComputedTrace(ComputedTraceMixin, Trace):
     """TODO docstring"""

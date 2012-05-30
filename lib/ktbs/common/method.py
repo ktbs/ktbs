@@ -112,7 +112,7 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         if method_uri is None:
             return None
         else:
-            return self.make_resource(method_uri, _METHOD) or method_uri
+            return self.factory(method_uri, _METHOD) or method_uri
 
     def set_parent(self, method):
         """

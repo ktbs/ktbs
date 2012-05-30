@@ -34,9 +34,9 @@ class KtbsRootMixin(object):
         """
         I iter over all elements owned by this base.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for obs in self._graph.objects(self.uri, _HAS_BASE):
-            yield make_resource(obs, _BASE)
+            yield factory(obs, _BASE)
 
     def get_base(self, id):
         """
@@ -45,15 +45,15 @@ class KtbsRootMixin(object):
         #pylint: disable-msg=W0622
         #  Redefining built-in id
         base_uri = coerce_to_uri(id, self.uri)
-        return self.make_resource(base_uri, _BASE)
+        return self.factory(base_uri, _BASE)
 
     def iter_builtin_methods(self):
         """
         I list all the builtin methods implemented by this kTBS.
         """
-        make_resource = self.make_resource
+        factory = self.factory
         for obs in self._graph.objects(self.uri, _HAS_BUILTIN_METHOD):
-            yield make_resource(obs, _BUILTIN_METHOD)
+            yield factory(obs, _BUILTIN_METHOD)
         
 
 _BASE = KTBS.Base

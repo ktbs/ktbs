@@ -35,11 +35,11 @@ class Model(ModelMixin, InBaseMixin, BookkeepingMixin, RdfPutMixin, Resource):
 
     # KTBS API #
 
-    def make_resource(self, uri, node_type=None, _graph=None):
-        """I override make_resource in order to provide "sub-resources".
+    def factory(self, uri, node_type=None, _graph=None):
+        """I override factory in order to provide "sub-resources".
         """
         if not uri.startswith(self.uri):
-            return super(Model, self).make_resource(uri, node_type)
+            return super(Model, self).factory(uri, node_type)
         # TODO use node_type and ignore graph
         for rdf_type in self._graph.objects(uri, RDF.type):
             if rdf_type == KTBS.ObselType:
@@ -74,9 +74,9 @@ class _ModelResource(object):
         "to please common mixins"
         return self._model._edit #pylint: disable=W0212
 
-    def make_resource(self, uri, node_type=None, graph=None):
+    def factory(self, uri, node_type=None, graph=None):
         "to please common mixins"
-        return self._model.make_resource(uri, node_type, graph)
+        return self._model.factory(uri, node_type, graph)
 
 @extend_api
 class ObselType(ObselTypeMixin, _ModelResource):

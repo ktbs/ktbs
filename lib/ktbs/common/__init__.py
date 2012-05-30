@@ -30,7 +30,7 @@ All those mixin require
   `~rdflib.Graph`:class: and commiting the modifications to the
   resource on exit
 
-* a method `make_resource(node, node_type=None, graph=None)` used to build
+* a method `factory(node, node_type=None, graph=None)` used to build
   another resource as the value of a property. node_type (a URI) and graph
   can be provided as a hint to accelerate the process.
 
