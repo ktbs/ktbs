@@ -30,6 +30,7 @@ from rdfrest.client import ResourceAccessError
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
+from ktbs.namespaces import KTBS
 from rdfrest.utils import coerce_to_uri
 
 _RESOURCE_MAKER = {}
@@ -135,7 +136,9 @@ class Resource(ResourceMixin):
         if node_type is None:
             node_type = graph_node_type
         else:
-            assert URIRef(node_type) == graph_node_type
+            if node_type != KTBS.Obsel:
+                # Obsels have an RDF type that depends of the model
+                assert URIRef(node_type) == graph_node_type
 
         maker = _RESOURCE_MAKER[node_type]
         return maker(uri, graph)

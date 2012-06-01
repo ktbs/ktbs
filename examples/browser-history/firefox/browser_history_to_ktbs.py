@@ -99,7 +99,8 @@ FIREFOX_HISTORY = "places.sqlite"
 KTBS_ROOT = "http://localhost:8001/"
 TRACE_ORIGIN = "1970-01-01T00:00:00Z"
 
-BROWSER_HISTORY_OBSELS = "BHObsels"
+BH_OBSEL_ID = "#BHObsel"
+BH_OBSEL_LABEL = "Brower History Obsel"
 
 class BrowserHistoryCollector(object):
     """
@@ -197,7 +198,8 @@ class BrowserHistoryCollector(object):
 
         #pylint: disable-msg=W0612
         # Unused variable obsel_type
-        bh_obsel_type = model.create_obsel_type(BROWSER_HISTORY_OBSELS)
+        bh_obsel_type = model.create_obsel_type(label=BH_OBSEL_LABEL,
+                                                id=BH_OBSEL_ID)
 
         # Browser history obsel attributes
         """
@@ -265,6 +267,11 @@ class BrowserHistoryCollector(object):
 
             # Get Model Information : should we store it ? 
             model = trace.get_model()
+
+            # Get obsel type URI
+            bh_obsel_type = model.get(id=BH_OBSEL_ID)
+
+            # Get attributes types uris
             model_attributes = model.list_attribute_types()
             vcnt_attr = model_attributes
             for ma in model_attributes:
@@ -302,7 +309,7 @@ class BrowserHistoryCollector(object):
                 attributes[freq_attr_uri] = row['frecency']
                 
                 # Insert history items  as obsels
-                o = trace.create_obsel(type=BROWSER_HISTORY_OBSELS,
+                o = trace.create_obsel(type=bh_obsel_type.get_uri(),
                                        begin=last_visit,
                                        end=last_visit,
                                        attributes={}, #visit_count=row['visit_count'],
