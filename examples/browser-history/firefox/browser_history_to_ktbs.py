@@ -70,7 +70,7 @@ import cProfile
 from argparse import ArgumentParser
 
 # Peut-on éviter URIRef ...
-from rdflib import URIRef
+from rdflib import URIRef, XSD
 
 try:
     from ktbs.client.root import KtbsRoot
@@ -202,31 +202,30 @@ class BrowserHistoryCollector(object):
                                                 id=BH_OBSEL_ID)
 
         # Browser history obsel attributes
+        # id, url, title, rev_host, visit_count, hidden, typed, favicon_id, 
+        # frecency, last_visit_date
+
         """
-        id
-        url
-        title
-        rev_host
-        visit_count
-        hidden
-        typed
-        favicon_id
-        frecency
-        last_visit_date
+        # create_attribute_type is not yet coded !
+        nb_visit_attr_type = bh_obsel_type.create_attribute_type("visit_count",
+                                                                 XSD.integer)
 
-        ../../../test/populate_ktbs_in_rest.py:XSD_PREFIX = "http://www.w3.org/2001/XMLSchema#"
+        title_attr_type = bh_obsel_type.create_attribute_type("title", 
+                                                              XSD.string)
+
+        frequency_attr_type = bh_obsel_type.create_attribute_type("frequency", 
+                                                                  XSD.integer)
         """
-        nb_visit_attr_type = model.create_attribute_type("visit_count", 
-                           bh_obsel_type,
-                           URIRef("http://www.w3.org/2001/XMLSchema#integer"))
 
-        title_attr_type = model.create_attribute_type("title", 
-                           bh_obsel_type,
-                           URIRef("http://www.w3.org/2001/XMLSchema#title"))
+        nb_visit_attr_type = model.create_attribute_type(
+                "visit_count", bh_obsel_type, XSD.integer)
 
-        frequency_attr_type = model.create_attribute_type("frequency", 
-                           bh_obsel_type,
-                           URIRef("http://www.w3.org/2001/XMLSchema#integer"))
+        title_attr_type = model.create_attribute_type(
+                "title", bh_obsel_type, XSD.string)
+
+        frequency_attr_type = model.create_attribute_type(
+                "frequency", bh_obsel_type, XSD.integer)
+
         return model
 
     def create_ktbs_trace_for_history(self, base=None, model=None):

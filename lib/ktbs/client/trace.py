@@ -19,7 +19,7 @@ I provide the client implementation of StoredTrace and ComputedTrace.
 """
 from datetime import datetime
 
-from ktbs.client.resource import register, Resource
+from ktbs.client.resource import Resource
 from ktbs.common.computed_trace import ComputedTraceMixin
 from ktbs.common.trace import StoredTraceMixin
 from ktbs.common.utils import extend_api, post_graph
@@ -177,13 +177,6 @@ class ComputedTrace(ComputedTraceMixin, Trace):
     # TODO implement client-specifid methods
 
     RDF_MAIN_TYPE = KTBS.ComputedTrace
-
-register(StoredTrace)
-register(ComputedTrace)
-
-# the following import ensures that Obsel are registered as well
-import ktbs.client.obsel #pylint: disable-msg=W0611
-# NB: we have to disable pylint W0611 (Unused import)
 
 
 _HAS_BEGIN = KTBS.hasBegin

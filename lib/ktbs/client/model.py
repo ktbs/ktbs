@@ -17,7 +17,7 @@
 """
 I provide the client implementation of trace models and their elements.
 """
-from ktbs.client.resource import register, Resource
+from ktbs.client.resource import Resource
 from ktbs.common.model import (ModelMixin, AttributeTypeMixin, ObselTypeMixin,
                                RelationTypeMixin)
 from ktbs.namespaces import KTBS
@@ -43,7 +43,3 @@ class RelationType(RelationTypeMixin, Resource):
 
     RDF_MAIN_TYPE = KTBS.RelationType
 
-register(Model)
-register(ObselType)
-register(AttributeType)
-register(RelationType)

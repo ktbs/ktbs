@@ -22,10 +22,10 @@ from rdflib import Graph, RDF, Literal
 
 from datetime import datetime
 
-from ktbs.client.resource import register, Resource
+from ktbs.client.resource import Resource
 from ktbs.common.base import BaseMixin
 from ktbs.common.utils import post_graph
-from ktbs.namespaces import KTBS
+from ktbs.namespaces import KTBS, SKOS
 from rdfrest.utils import coerce_to_node, coerce_to_uri, random_token
 
 class Base(BaseMixin, Resource):
@@ -34,7 +34,7 @@ class Base(BaseMixin, Resource):
 
     RDF_MAIN_TYPE = KTBS.Base
 
-    def create_model(self, parents=None, id=None, graph=None):
+    def create_model(self, parents=None, id=None, label=None, graph=None):
         """Create a new model in this trace base.
 
         :param parents: either None, or an iterable of models from which this
@@ -52,6 +52,9 @@ class Base(BaseMixin, Resource):
         graph.add((node, _RDF_TYPE, _TRACE_MODEL))
         graph.add((self.uri, _CONTAINS, node))
 
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+
         uri = self.uri
         add = graph.add
         for parent in parents or ():
@@ -64,7 +67,7 @@ class Base(BaseMixin, Resource):
 
 
     def create_stored_trace(self, model, origin=None, default_subject=None,
-                            id=None, graph=None):
+                            id=None, label=None, graph=None):
         """Create a new store trace in this trace base.
 
         :param model: Trace associated model
@@ -84,6 +87,9 @@ class Base(BaseMixin, Resource):
         graph.add((node, _RDF_TYPE, _STORED_TRACE))
         graph.add((self.uri, _CONTAINS, node))
 
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+
         model_uri = coerce_to_uri(model, self.uri)
         graph.add((node, _HAS_MODEL, model_uri))
 
@@ -102,15 +108,16 @@ class Base(BaseMixin, Resource):
 
     # TODO implement other create_X
 
+    def create_computed_trace(self, method, sources=None, id=None, label=None):
+        """Create a new computed trace in this trace base.
 
-register(Base)
-
-# the following import ensures that required classes are registered as well
-# (Model, StoredTrace, ComputedTrace, Method)
-#import ktbs.client.method #pylint: disable-msg=W0611
-import ktbs.client.model #pylint: disable-msg=W0611
-import ktbs.client.trace #pylint: disable-msg=W0611,W0404
-# NB: we have to disable pylint W0611 (Unused import) and W0404 (Reimport)
+        :param method: Method to applied for computation.
+        :param sources: Source traces to which the method is applied.
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        raise NotImplementedError()
 
 
 _CONTAINS = KTBS.contains

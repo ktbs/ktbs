@@ -36,3 +36,20 @@ I implement the following adaptations to the abstract client API:
   * Datetimes can be used instead of integers for representing timecodes in
     traces when the trace model and origin allow the conversion.
 """
+
+from ktbs.client.resource import register
+from ktbs.client.root import KtbsRoot
+from ktbs.client.base import Base
+from ktbs.client.model import Model, ObselType, AttributeType, RelationType
+from ktbs.client.trace import StoredTrace, ComputedTrace
+from ktbs.client.obsel import Obsel
+
+register(KtbsRoot)
+register(Base)
+register(Model)
+register(ObselType)
+register(AttributeType)
+register(RelationType)
+register(StoredTrace)
+register(ComputedTrace)
+register(Obsel)
