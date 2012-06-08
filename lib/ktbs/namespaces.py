@@ -31,7 +31,6 @@ KTBS_IDENTIFIERS = [
     "ComputedTraceObsels",
     "KtbsRoot",
     "Method",
-    "Method",
     "Obsel",
     "ObselType",
     "RelationType",
