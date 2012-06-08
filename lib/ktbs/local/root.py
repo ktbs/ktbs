@@ -55,10 +55,10 @@ class KtbsRoot(KtbsRootMixin, KtbsPostMixin, RdfPutMixin, Resource):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         return self._post_or_trust(Base, node, graph, trust_graph)
 
-    def ack_new_child(self, child_uri):
+    def ack_new_child(self, child_uri, child_type):
         """Override :meth:`ktbs.local.resource.PostableResource.ack_new_child`
         """
-        super(KtbsRoot, self).ack_new_child(child_uri)
+        super(KtbsRoot, self).ack_new_child(child_uri, child_type)
         with self._edit as g:
             g.add((self.uri, _HAS_BASE, child_uri))
                     

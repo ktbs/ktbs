@@ -143,12 +143,13 @@ class Base(BaseMixin, KtbsPostMixin, RdfPutMixin, Resource):
         return self._post_or_trust(StoredTrace, node, graph, trust_graph)
         
 
-    def ack_new_child(self, child_uri):
+    def ack_new_child(self, child_uri, child_type):
         """Override :meth:`ktbs.local.resource.PostableResource.ack_new_child`
         """
-        super(Base, self).ack_new_child(child_uri)
+        super(Base, self).ack_new_child(child_uri, child_type)
         with self._edit as g:
-            g.add((self.uri, _CONTAINS, child_uri))
+            g.add((self.uri, KTBS.contains, child_uri))
+            g.add((child_uri, RDF.type, child_type))
             
     # RDF-REST API #
 
@@ -162,7 +163,7 @@ class Base(BaseMixin, KtbsPostMixin, RdfPutMixin, Resource):
         I only search for nodes that this base ktbs:contains .
         """
         if query is None:
-            query = "SELECT ?c WHERE { <%%(uri)s> <%s> ?c }" % _CONTAINS
+            query = "SELECT ?c WHERE { <%%(uri)s> <%s> ?c }" % KTBS.contains
         return super(Base, self).find_created(new_graph, query)
 
     KTBS_CHILDREN_TYPES = [ # used by check_posted_graph
@@ -185,5 +186,3 @@ class InBaseMixin(KtbsResourceMixin):
 from ktbs.local.model import Model
 from ktbs.local.method import Method
 from ktbs.local.trace import StoredTrace
-
-_CONTAINS = KTBS.contains

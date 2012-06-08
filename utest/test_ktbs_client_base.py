@@ -86,7 +86,7 @@ class TestKtbsClientBase(TestCase):
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/model-with-label")
         assert m.get_uri() == generated_uri
 
-    @skip("Base.list_models does'nt seem to work yet")
     def test_list_models(self):
         lm = self.base.list_models()
         assert len(lm) == 3
+

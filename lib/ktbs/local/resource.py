@@ -62,10 +62,11 @@ class KtbsPostMixin(BookkeepingMixin, RdfPostMixin, KtbsResourceMixin):
     """I provide support for POST to KtbsResourceMixin.
     """
 
-    def ack_new_child(self, child_uri):
+    def ack_new_child(self, child_uri, child_type):
         """**Hook**: called after the creation of a new child resource.
 
         :param child_uri: the URI of the newly created child resource
+        :param child_type: the type URI of the newly created child resource
         """
         pass
 
@@ -73,9 +74,10 @@ class KtbsPostMixin(BookkeepingMixin, RdfPostMixin, KtbsResourceMixin):
 
     def rdf_post(self, graph, parameters=None):
         created = super(KtbsPostMixin, self).rdf_post(graph, parameters)
-        with self._edit as graph:
+        with self._edit:
             for i in created:
-                self.ack_new_child(i)
+                itype = graph.value(i, RDF.type)
+                self.ack_new_child(i, itype)
         return created
 
     def check_posted_graph(self, created, new_graph):
@@ -136,9 +138,8 @@ class KtbsPostMixin(BookkeepingMixin, RdfPostMixin, KtbsResourceMixin):
                    py_class.check_new_graph(self.service, uri, graph)
             with self.service:
                 py_class.store_graph(self.service, uri, graph)
-                self.ack_new_child(uri)
+                self.ack_new_child(uri, py_class.RDF_MAIN_TYPE)
                 return py_class(self.service, uri)
         else:
             base_uri = self.rdf_post(graph)[0]
             return self.service.get(base_uri)
-
