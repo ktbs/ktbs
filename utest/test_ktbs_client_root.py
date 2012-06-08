@@ -78,8 +78,6 @@ class TestKtbsClientRoot(TestCase):
         b = self.root.get_base(id="BaseWithID/")
         assert b.RDF_MAIN_TYPE == KTBS.Base
 
-
-    @skip("KtbsRoot.list_builtin_methods does'nt seem to work")
     def test_list_builtin_methods(self):
         for m in self.root.list_builtin_methods():
             print m.get_uri()

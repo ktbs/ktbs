@@ -136,7 +136,8 @@ class Resource(ResourceMixin):
         if node_type is None:
             node_type = graph_node_type
         else:
-            if node_type != KTBS.Obsel:
+            if node_type not in (KTBS.BuiltinMethod, KTBS.Obsel):
+                # BuiltinMethod have no graph at least at the moment
                 # Obsels have an RDF type that depends of the model
                 assert URIRef(node_type) == graph_node_type
 

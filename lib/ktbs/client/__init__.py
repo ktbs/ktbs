@@ -41,6 +41,7 @@ from ktbs.client.resource import register
 from ktbs.client.root import KtbsRoot
 from ktbs.client.base import Base
 from ktbs.client.model import Model, ObselType, AttributeType, RelationType
+from ktbs.client.method import BuiltinMethod
 from ktbs.client.trace import StoredTrace, ComputedTrace
 from ktbs.client.obsel import Obsel
 
@@ -50,6 +51,7 @@ register(Model)
 register(ObselType)
 register(AttributeType)
 register(RelationType)
+register(BuiltinMethod)
 register(StoredTrace)
 register(ComputedTrace)
 register(Obsel)
