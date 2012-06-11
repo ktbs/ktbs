@@ -39,7 +39,7 @@ Below is a language independant API that has been designed to document the funct
        
     
     Base (Base)
-      get(id:uri) → Trace|Model|Method|ObselType|AttributeType|RelationType|Obsel
+      get(id:uri) → Trace|Model|Method
           return the element of this base identified by the given URI, or null
       list_traces() → [Trace]
       list_models() → [Model]

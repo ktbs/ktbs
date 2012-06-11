@@ -106,8 +106,7 @@ class Base(BaseMixin, Resource):
         created_uri = rheaders['location']
         return self.factory(created_uri, _STORED_TRACE)
 
-    # TODO implement other create_X
-
+    # TODO implement create_computed_trace
     def create_computed_trace(self, method, sources=None, id=None, label=None):
         """Create a new computed trace in this trace base.
 
@@ -119,6 +118,17 @@ class Base(BaseMixin, Resource):
         # redefining built-in 'id' #pylint: disable=W0622
         raise NotImplementedError()
 
+    # TODO implement create_method
+    def create_method(self, parent, parameters=None, id=None, label=None):
+        """Create a new computed trace in this trace base.
+
+        :param parent: Parent method (mandatory ?)
+        :param parameters: Method parameters
+        :param id: see :ref:`ktbs-resource-creation`
+        :param graph: see :ref:`ktbs-resource-creation`
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        raise NotImplementedError()
 
 _CONTAINS = KTBS.contains
 _HAS_DEFAULT_SUBBJECT = KTBS.hasDefaultSubject
