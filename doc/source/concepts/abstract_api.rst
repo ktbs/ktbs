@@ -33,7 +33,7 @@ Below is a language independant API that has been designed to document the funct
       list_bases() → [Base]
       get_base(id:uri) → Base
           return the trace base identified by the given URI, or null
-      create_base(label:str?, id:uri?) → Base
+      create_base(id:uri?, label:str?) → Base
       list_builtin_methods() → [Method]
           list the builtin methods supported by the kTBS
        
@@ -46,17 +46,16 @@ Below is a language independant API that has been designed to document the funct
           list the models stored in that base
       list_methods() → [Method]
           list the methods stored in that base
-      create_stored_trace(model:Model, origin:str?, default_subject:str?,
-                          label:str?, id:uri?)
-                         → StoredTrace
+      create_stored_trace(id:uri?, model:Model, origin:str?,
+                          default_subject:str?, label:str?, ) → StoredTrace
           list the stored traces stored in that base
           if origin is not specified, a fresh opaque string is generated
-      create_computed_trace(method:Method, sources:[Trace]?, label:str?, id:uri?)
-                           → ComputedTrace
+      create_computed_trace(id:uri?, method:Method, parameters:[str=>any]?,
+                            sources:[Trace]?, label:str?, ) → ComputedTrace
           list the computed traces stored in that base
-      create_model(parents:[Model]?, label:str?, id:uri?) → Model
-      create_method(parent:Method, parameters:[str=>any]?, label:str?,
-                    id:uri) → Method
+      create_model(id:uri?, parents:[Model]?, label:str?) → Model
+      create_method(id:uri, parent:Method, parameters:[str=>any]?,
+                    label:str?) → Method
     
     Trace (Resource)
       get_base() → Base
@@ -79,11 +78,11 @@ Below is a language independant API that has been designed to document the funct
           the default subject is associated to new obsels if they do not specify
           a subject at creation time
       set_default_subject(subject:str)
-      create_obsel(type:ObselType, begin:int, end:int?, subject:str?,
+      create_obsel(id:uri?, type:ObselType, begin:int, end:int?, subject:str?,
                    attributes:[AttributeType=>any]?,
                    relations:[(RelationType, Obsel)]?,
                    inverse_relations:[(Obsel, RelationType)]?,
-                   source_obsels:[Obsel]?, label:str?, id:uri?) → Obsel
+                   source_obsels:[Obsel]?, label:str?) → Obsel
     
     ComputedTrace(Trace)
       get_method() → Method
@@ -126,10 +125,11 @@ Below is a language independant API that has been designed to document the funct
     
       add_parent(m:Model)
       remove_parent(m:Model)
-      create_obsel_type(label:str, supertypes:[ObselType]?, id:uri?) → ObselType
+      create_obsel_type(id:uri?, supertypes:[ObselType]?,
+                        label:str) → ObselType
           NB: if id is not provided, label is used to mint a human-friendly URI
-      create_attribute_type(label:str, obsel_type:ObselType?, data_type:uri?,
-                            value_is_list:bool?, id:uri?) → AttributeType
+      create_attribute_type(id:uri?, obsel_type:ObselType?, data_type:uri?,
+                            value_is_list:bool?, label:str) → AttributeType
           the data_type uri is an XML-Schema datatype URI;
           value_is_list indicates whether the attributes accepts a single value
           (false, default) or a list of values (true).
@@ -138,8 +138,9 @@ Below is a language independant API that has been designed to document the funct
           NB: if id is not provided, label is used to mint a human-friendly URI
           TODO specify a minimum list of datatypes that must be supported
           TODO define a URI for representing "list of X" for each supported datatype
-      create_relation_type(label:str, origin:ObselType?, destination:ObselType?,
-                           supertypes:[RelationType]?, id:uri?) → RelationType
+      create_relation_type(id:uri?, origin:ObselType?, destination:ObselType?,
+                           supertypes:[RelationType]?,
+                           label:str) → RelationType
           NB: if id is not provided, label is used to mint a human-friendly URI
     
     
@@ -186,13 +187,12 @@ Below is a language independant API that has been designed to document the funct
           list the inverse relation types of this obsel type (direct or inherited)
           include_inherited defaults to true and means that inverse relation types
           inherited from supertypes should be included
-      create_attribute_type(label:str, data_type:uri?, value_is_list:book?,
-                            id:uri?)
-                           → AttributeType
+      create_attribute_type(id:uri?, data_type:uri?, value_is_list:book?,
+                            label:str) → AttributeType
           shortcut to get_model().create_attribute_type where this ObselType is the
           obsel type
-      create_relation_type(label:str, destination:ObselType?,
-                           supertypes:[RelationType]?, id:uri?)
+      create_relation_type(id:uri?, destination:ObselType?,
+                           supertypes:[RelationType]?, label:str)
                           → RelationType
           shortcut to get_model().create_relation_type where this ObselType is the
           origin
@@ -252,7 +252,7 @@ Below is a language independant API that has been designed to document the funct
 General Rules
 -------------
 
-* Whenever parameter is named 'id:uri', it should be possible to provide a
+* Whenever parameter is named 'id:uri', it must be possible to provide a
   relative URI, which will be resolved against the URI of the target object.
 
 * The order of the parameter is important. Whenever an optional parameter is to
