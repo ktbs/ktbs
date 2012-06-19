@@ -90,6 +90,16 @@ We will first create the obsel types. Copy the following text in the editor
 
 then press the ``save`` button. The page should reload and show the new obsel types.
 
+.. note::
+
+   From the example above, all URIs are relative to the URI *of the model*.
+
+   For the sake of readability, we keep ``<model1>`` to identify the model
+   (but ``<>`` would work as well).
+   All components of the models have their URI starting with ``#``,
+   so ``<#OpenChannel>`` could also be written ``<model1#OpenChannel>``,
+   for example.
+
 Adding attributes
 ^^^^^^^^^^^^^^^^^
 
