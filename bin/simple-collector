@@ -29,7 +29,7 @@ from rdfrest.utils import coerce_to_uri, urisplit
 MODEL_URI = "http://liris.cnrs.fr/silex/2011/simple-trace-model"
 TRACE_ORIGIN = "1970-01-01T00:00:00Z"
 #MODEL_PREFIX = Namespace("http://liris.cnrs.fr/silex/2011/simple-trace-model#")
-OBSEL_TYPE = "SimpleObsel"
+OBSEL_TYPE = "#SimpleObsel"
 
 class ObselCollector(object):
     """
@@ -70,6 +70,8 @@ class ObselCollector(object):
         self._args = self._parser.parse_args()
         #self.display("Parsed with argparse: %s" % str(self._args))
 
+        self.root_uri = "http://localhost:8001/"
+
     def validate_entries(self):
         """
         Check user entries, the trace URI in fact.
@@ -77,8 +79,14 @@ class ObselCollector(object):
         # TODO Use rdfrest.utils.urisplit() to analyze and check Trace URI
         # Then check the path component
         # .rsplit("/",2) to get the last two items
+
         sr = urisplit(self._args.trace[0])
-        #self.display("----- %s " % str(sr))
+
+        # Result for http://localhost:8001/Base/t01/
+        #SplitResult(scheme='http', netloc='localhost:8001', path='/Base/t01/', 
+        #            query=None, fragment=None)r
+
+        self.display("----- %s " % repr(sr))
 
         # Transform URI string to an rdflib URIRef
         return (coerce_to_uri(self._args.trace[0]))
@@ -90,14 +98,26 @@ class ObselCollector(object):
         if self._args.verbose:
             print msg
 
+    def get_root(self):
+        """
+        Get the kTBS root from the trace uri.
+        """
+        sr = urisplit(self._args.trace[0])
+        self.root_uri = urisplit(self._args.trace[0])
+
+        # TODO Improve this dirty hack
+        if sr.scheme == "http":
+            self.root_uri = "http://%s/" % sr.netloc
+
     def get_base(self, trace_uri):
         """
-        Get the KTBS Base object for the trace whose URI has been passed. 
+        Get the kTBS Base object for the trace whose URI has been passed. 
         If it does not exist, create it.
         """
 
         # Get a KTBS access 
-        root = KtbsRoot("http://localhost:8001/")
+        #root = KtbsRoot("http://localhost:8001/")
+        root = KtbsRoot(self.root_uri)
         self.display("----- root.label: %s" % root.label)
 
         tbase = None
@@ -114,13 +134,13 @@ class ObselCollector(object):
         if tbase is None:
             self.display("----- No matching base found, creating ...")
 
-            root_uri = root.uri
+            root_uri = root.get_uri()
             if (trace_uri.find(root_uri) == 0) and (len(trace_uri) > len(root_uri)):
                 wrkuri = trace_uri[len(root_uri):]
                 if wrkuri.find('/') != -1:
                     # We should have base_name/trace_name/
                     base_name = wrkuri.split('/')[0]
-                    tbase = root.create_base(label="%s" % base_name, id="%s/" % base_name)
+                    tbase = root.create_base(id="%s/" % base_name, label="%s" % base_name)
 
                     # Add a default model
                     #tbase.create_model(id=MODEL_URI)
@@ -143,9 +163,9 @@ class ObselCollector(object):
                 self.display("----- The trace %s already exists" % trace_uri)
                 ttrace = t
 
-                tmodel = ttrace.model
-                if tmodel is not None:
-                    self.display("----- %s model uri: %s" % (ttrace.label, tmodel.uri))
+                model = ttrace.model
+                if model is not None:
+                    self.display("----- %s model uri: %s" % (ttrace.label, model.uri))
                 else:
                     self.display("----- No model found for %s" % ttrace.label)
 
@@ -162,12 +182,11 @@ class ObselCollector(object):
                 if wrkuri.find('/') != -1:
                     trace_name = wrkuri.split('/')[0]
 
-                    ttrace = base.create_stored_trace(model=MODEL_URI,
-                                                      origin=TRACE_ORIGIN,
-                                                      #label="%s" % 
-                                                      #     trace_name,
-                                                      id="%s/" % 
-                                                      trace_name)
+                    ttrace = base.create_stored_trace(id="%s/" % trace_name,
+                                                      model=MODEL_URI,
+                                                      origin=TRACE_ORIGIN
+                                                      #label="%s" % trace_name
+                                                      )
                 else:
                     sys.exit("Invalid trace uri '%s': check this uri ends with"
                              " a '/' character." % trace_uri)
@@ -184,10 +203,10 @@ class ObselCollector(object):
         assert isinstance(base, KtbsBase)
         self.display("----- No model found for %s, creating ..." % base.label)
 
-        tmodel = base.create_model(id="model1")
-        if tmodel is not None:
-            simpleobseltype = tmodel.create_obsel_type("SimpleObsel")
-        return tmodel
+        model = base.create_model(id="model1")
+        if model is not None:
+            simpleobseltype = model.create_obsel_type(OBSEL_TYPE)
+        return model
 
     def add_obsel(self, trace, value):
         """
@@ -206,19 +225,20 @@ class ObselCollector(object):
         if not self._args.empty and len(value) == 0:
             return None
 
-        tmodel = trace.model
+        # Get Model Information
+        model = trace.get_model()
+
+        # Get obsel type URI
+        simple_obsel_type = model.get(id=OBSEL_TYPE)
+
         attributes = {}
-        if tmodel is not None:
-            self.display("----- %s model uri: %s" % (ttrace.label, tmodel.uri))
-            atypes = tmodel.attribute_types
+        if model is not None:
+            self.display("----- %s model uri: %s" % (trace.label, model.uri))
+            atypes = model.attribute_types
             if len(atypes) > 0:
                 attributes[atypes[0]] = value
 
-        # Worse alternate way
-        #if len(attributes) == 0:
-        #    attributes[MODEL_PREFIX.value] = value
-
-        obsel = trace.create_obsel(type=OBSEL_TYPE,
+        obsel = trace.create_obsel(type=simple_obsel_type.get_uri(),
                                    begin=datetime.now(),
                                    end=datetime.now(),
                                    subject="me",
@@ -234,6 +254,7 @@ if __name__ == "__main__":
     if turi is None:
         sys.exit("No valid URI, programm stopped.")
 
+    ocollector.get_root()
     tbase = ocollector.get_base(turi)
 
     if tbase is None:

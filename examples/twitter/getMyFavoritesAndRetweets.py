@@ -17,7 +17,7 @@ CREDENTIAL = "credentials.txt"
 
 # kTBS elements
 KTBS_ROOT = "http://localhost:8001/"
-TWITTER_OBSELS = "TwitterObsels"
+TWITTER_OBSELS = "#TwitterObsels"
 
 def createkTBSForTweets(root=None):
     """
@@ -26,18 +26,25 @@ def createkTBSForTweets(root=None):
 
     baseTw = root.create_base(id="BaseTw/")
 
-    modelTw = baseTw.create_model(None, id="twitterModel")
+    modelTw = baseTw.create_model(id="twitterModel")
 
-    obselTw = modelTw.create_obsel_type(TWITTER_OBSELS)
+    obselTw = modelTw.create_obsel_type(id=TWITTER_OBSELS)
 
-    traceTw = baseTw.create_stored_trace(modelTw, origin=datetime.datetime.now(),
-                                         id="FavoriteTweets/")
+    traceTw = baseTw.create_stored_trace(id="FavoriteTweets/",
+                                         model=modelTw, 
+                                         origin=datetime.datetime.now())
     return traceTw
 
 def getTwitterFavorites(trace=None):
     """
     Populates the kTBS Trace with favorite tweets.
     """
+
+    # Get Model Information : should we store it ? 
+    model = trace.get_model()
+
+    # Get obsel type URI
+    tw_obsel_type = model.get(id=TWITTER_OBSELS)
 
     with open(CREDENTIAL) as f:
         twitter_credential = dict(line.split() for line in f)
@@ -59,7 +66,7 @@ def getTwitterFavorites(trace=None):
             #print "t_date: ", t_date.isoformat(), "\n"
 
             # Insert tweets as obsels
-            trace.create_obsel(type=TWITTER_OBSELS,
+            trace.create_obsel(type=tw_obsel_type.get_uri(),
                                begin=t_date,
                                end=t_date,
                                subject=p.text)
@@ -71,5 +78,6 @@ def getTwitterFavorites(trace=None):
 if __name__ == "__main__":
     root = KtbsRoot(KTBS_ROOT)
     trace = createkTBSForTweets(root)
-    getTwitterFavorites(trace)
+    if trace is not None:
+        getTwitterFavorites(trace)
     sys.exit(0)

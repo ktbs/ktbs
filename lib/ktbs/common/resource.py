@@ -62,6 +62,12 @@ class ResourceMixin(object):
         with self._edit as graph:
             graph.set((self.uri, SKOS.prefLabel, Literal(value)))
 
+    def reset_label(self, value):
+        """
+        Reset the skos:prefLabel of this resource.
+        """
+        raise NotImplementedError()
+
     def del_label(self):
         """
         Remove the skos:prefLabel of this resource.

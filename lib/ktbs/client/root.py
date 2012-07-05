@@ -32,13 +32,14 @@ class KtbsRoot(KtbsRootMixin, Resource):
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
 
-    def create_base(self, label=None, id=None, graph=None):
+    def create_base(self, id=None, label=None, graph=None):
         """Create a new base in this kTBS.
 
         :param id: see :ref:`ktbs-resource-creation`
+        :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.model.Base`
+        :rtype: `ktbs.client.base.Base`
         """
         #pylint: disable-msg=W0622
         #    redefining built-in 'id'

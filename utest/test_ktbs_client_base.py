@@ -19,43 +19,6 @@
 
 """
 Nose unit-testing for the kTBS base client API.
-
-Resource
-  get_uri() → uri
-  get_sync_status() → str
-      return "ok" if the resource is in sync with the data at its URI,
-      else any other string describing the reason why it is not.
-  get_readonly() → bool
-      return true if this resource is not modifiable
-  remove()
-      remove this resource from the KTBS
-      If the resource can not be removed, an exception must be raised.
-  get_label() → str
-      returns a user-friendly label
-  set_label(str)
-      set a user-friendly label
-  reset_label()
-      reset the user-friendly label to its default value
-
-Base (Base)
-  get(id:uri) → Trace|Model|Method|ObselType|AttributeType|RelationType|Obsel
-      return the element of this base identified by the given URI, or null
-  list_traces() → [Trace]
-  list_models() → [Model]
-      list the models stored in that base
-  list_methods() → [Method]
-      list the methods stored in that base
-  create_stored_trace(model:Model, origin:str?, default_subject:str?,
-                      label:str?, id:uri?)
-                     → StoredTrace
-      list the stored traces stored in that base
-      if origin is not specified, a fresh opaque string is generated
-  create_computed_trace(method:Method, sources:[Trace]?, label:str?, id:uri?)
-                       → ComputedTrace
-      list the computed traces stored in that base
-  create_model(parents:[Model]?, label:str?, id:uri?) → Model
-  create_method(parent:Method, parameters:[str=>any]?, label:str?,
-                id:uri) → Method
 """
 from unittest import TestCase, skip
 
@@ -162,20 +125,20 @@ class TestKtbsClientBase(TestCase):
 
     def test_create_stored_trace_no_id_no_label(self):
         model_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
-        st = self.base.create_stored_trace(model_uri)
+        st = self.base.create_stored_trace(model=model_uri)
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/storedtrace/")
         assert st.get_uri() == generated_uri
 
     def test_create_stored_trace_with_id(self):
         model_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
-        st = self.base.create_stored_trace(model_uri, id="StoredTraceWithID/")
+        st = self.base.create_stored_trace(id="StoredTraceWithID/", model=model_uri)
         assert st.get_uri() == generated_uri
 
     def test_create_stored_trace_with_label(self):
         model_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/stored-trace-with-label/")
-        st = self.base.create_stored_trace(model_uri, label="stored-trace-with-label")
+        st = self.base.create_stored_trace(model=model_uri, label="stored-trace-with-label")
         assert st.get_uri() == generated_uri
 
     def test_list_stored_traces(self):
@@ -194,7 +157,7 @@ class TestKtbsClientBase(TestCase):
         #for m in self.root.list_builtin_methods():
         method_uri = "fake"
         generated_uri = "fake"
-        meth = self.base.create_method(method_uri)
+        meth = self.base.create_method(method=method_uri)
         assert meth.get_uri() == generated_uri
 
     @skip("Base.list_methods is not usable yet - no method created")
@@ -215,7 +178,7 @@ class TestKtbsClientBase(TestCase):
         method_uri = "fake"
         source_trace_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
         generated_uri = "fake"
-        ct = self.base.create_computed_trace(method_uri)
+        ct = self.base.create_computed_trace(method=method_uri)
         assert ct.get_uri() == generated_uri
 
     @skip("Base.list_traces() will not render computed trace yet")

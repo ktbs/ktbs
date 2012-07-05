@@ -79,6 +79,7 @@ Model (Resource)
       NB: if id is not provided, label is used to mint a human-friendly URI
 """
 from unittest import TestCase, skip
+from nose.tools import raises
 
 from os.path import abspath, dirname, join
 from subprocess import Popen, PIPE
@@ -124,7 +125,7 @@ class TestKtbsClientModelResource(TestCase):
     def test_get_model_label(self):
         assert self.model.get_label() == "Test model"
 
-    def test_set_base_label(self):
+    def test_set_model_label(self):
         self.model.set_label("New model label")
         assert self.model.get_label() == "New model label"
 
@@ -162,3 +163,34 @@ class TestKtbsClientModel(TestCase):
         base = self.model.get_base()
         assert base.get_uri() == self.base.get_uri()
 
+    def test_get_unit(self):
+        assert self.model.get_unit() == "ms"
+
+    @skip("ModelMixin.set_unit() does not work : 403 Forbidden")
+    def test_set_unit(self):
+        unit = "s"
+        self.model.set_unit(unit)
+        assert self.model.get_unit() == unit
+
+    @raises(ValueError)
+    def test_create_obsel_type_no_id_no_label(self):
+        obsel_type = self.model.create_obsel_type()
+
+    def test_create_obsel_type_with_id(self):
+        obsel_type = self.model.create_obsel_type(id="#ObselTypeWithID")
+        generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID#ObselTypeWithID")
+        assert obsel_type.get_uri() == generated_uri
+
+    def test_create_obsel_type_with_label(self):
+        obsel_type = self.model.create_obsel_type(label="Test obsel type")
+        generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID#test-obsel-type")
+        assert obsel_type.get_uri() == generated_uri
+
+    def test_create_obsel_type_with_id_and_label(self):
+        obsel_type = self.model.create_obsel_type(id="#ObselTypeWithIDAndLabel", label="Test obsel type")
+        generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID#ObselTypeWithIDAndLabel")
+        assert obsel_type.get_uri() == generated_uri
+
+    def test_list_obsel_types(self):
+        lot = self.model.list_obsel_types()
+        assert len(lot) == 3

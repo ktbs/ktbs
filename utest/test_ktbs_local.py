@@ -31,8 +31,8 @@ class TestKtbsLocal():
         print "model1.uri:", model1.uri
         print "model2.uri:", model2.uri
 
-        my_obsel = model1.create_obsel_type("MyObsel")
-        my_spec_obsel = model2.create_obsel_type("MySpecializedObsel",)
+        my_obsel = model1.create_obsel_type(label="MyObsel")
+        my_spec_obsel = model2.create_obsel_type(label="MySpecializedObsel")
 
         method1 = base1.create_method(KTBS.filter, {"after":1000})
         method2 = base1.create_method(method1, {"before":5000})
@@ -105,7 +105,7 @@ class TestKtbsLocal():
     def test_blank_obsels(self):
         base = self.ktbs.create_base()
         model = base.create_model()
-        otype = model.create_obsel_type("MyObsel")
+        otype = model.create_obsel_type(label="MyObsel")
         trace = base.create_stored_trace(model)
         obs1 = trace.create_obsel(otype, 1000, subject="alice")
         obs2 = trace.create_obsel(otype, 2000, subject="alice")

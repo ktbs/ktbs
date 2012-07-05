@@ -93,12 +93,13 @@ class StoredTrace(StoredTraceMixin, Trace):
 
     RDF_MAIN_TYPE = KTBS.StoredTrace
 
-    def create_obsel(self, type, begin, end, subject=None,
-                     attributes=None, relations=None, inverse_relations=None,
-                     source_obsels=None, label=None, id=None):
+    def create_obsel(self, id=None, type=None, begin=None, end=None, 
+                     subject=None, attributes=None, relations=None, 
+                     inverse_relations=None, source_obsels=None, label=None):
         """
         Creates a new obsel for the stored trace.
 
+        :param id: see :ref:`ktbs-resource-creation`.
         :param type: Obsel type, defined by the Trace model.
         :param begin: Begin timestamp of the obsel, can be an int.
         :param end: End timestamp of the obsel, can be an int.
@@ -108,12 +109,18 @@ class StoredTrace(StoredTraceMixin, Trace):
         :param inverse_relations: explain.
         :param source_obsels: explain.
         :param label: explain.
-        :param id: see :ref:`ktbs-resource-creation`.
 
         :rtype: `ktbs.client.obsel.Obsel`
         """
-
         # redefining built-in 'id' #pylint: disable=W0622                 
+        if type is None:
+            raise ValueError("type is mandatory for obsel creation")
+
+        if begin is None:
+            raise ValueError("begin timestamp is mandatory for obsel creation")
+
+        if type is None:
+            raise ValueError("end timestamp is mandatory for obsel creation")
 
         # TODO Which tests for type, begin and end parameters ?
         graph = Graph()

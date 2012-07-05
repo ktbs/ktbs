@@ -34,12 +34,13 @@ class Base(BaseMixin, Resource):
 
     RDF_MAIN_TYPE = KTBS.Base
 
-    def create_model(self, parents=None, id=None, label=None, graph=None):
+    def create_model(self, id=None, parents=None, label=None, graph=None):
         """Create a new model in this trace base.
 
+        :param id: see :ref:`ktbs-resource-creation`
         :param parents: either None, or an iterable of models from which this
                         model inherits
-        :param id: see :ref:`ktbs-resource-creation`
+        :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
         :rtype: `ktbs.client.model.Model`
@@ -66,20 +67,26 @@ class Base(BaseMixin, Resource):
         return self.factory(created_uri, _TRACE_MODEL)
 
 
-    def create_stored_trace(self, model, origin=None, default_subject=None,
-                            id=None, label=None, graph=None):
+    def create_stored_trace(self, id=None, model=None, origin=None, 
+                            default_subject=None, label=None, graph=None):
         """Create a new store trace in this trace base.
 
+        :param id: see :ref:`ktbs-resource-creation`
         :param model: Trace associated model
         :param origin: Typically a timestamp. It can be an opaque string, 
              meaning that the precise time when the trace was collected is not
              known
         :param default_subject: The subject to set to new obsels when they do
             not specifify a subject
-        :param id: see :ref:`ktbs-resource-creation`
+        :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.trace.StoredTrace`
         """
         # redefining built-in 'id' #pylint: disable=W0622
+        if model is None:
+            raise ValueError("You must supply a model for the stored trace")
+
         node = coerce_to_node(id, self.uri)
 
         if graph is None:
@@ -107,27 +114,44 @@ class Base(BaseMixin, Resource):
         return self.factory(created_uri, _STORED_TRACE)
 
     # TODO implement create_computed_trace
-    def create_computed_trace(self, method, sources=None, id=None, label=None):
+    def create_computed_trace(self, id=None, method=None, sources=None, 
+                              label=None):
         """Create a new computed trace in this trace base.
 
-        :param method: Method to applied for computation.
-        :param sources: Source traces to which the method is applied.
         :param id: see :ref:`ktbs-resource-creation`
+        :param method: Method to apply for computation.
+        :param sources: Source traces to which the method is applied.
+        :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.trace.ComputedTrace`
         """
-        # redefining built-in 'id' #pylint: disable=W0622
+        # redefining built-in 'id', Unused argument and Method could be a 
+        # funtion
+        # pylint: disable=W0622,W0613,R0201
+        if method is None:
+            raise ValueError("You must supply a method for the computed trace")
+
         raise NotImplementedError()
 
     # TODO implement create_method
-    def create_method(self, parent, parameters=None, id=None, label=None):
+    def create_method(self, id=None, parent=None, parameters=None, label=None):
         """Create a new computed trace in this trace base.
 
+        :param id: see :ref:`ktbs-resource-creation`
         :param parent: Parent method (mandatory ?)
         :param parameters: Method parameters
-        :param id: see :ref:`ktbs-resource-creation`
+        :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.method.Method`
         """
-        # redefining built-in 'id' #pylint: disable=W0622
+        # redefining built-in 'id', Unused argument and Method could be a 
+        # funtion
+        # pylint: disable=W0622,W0613,R0201
+        if parent is None:
+            raise ValueError("You must supply a parent method")
+
         raise NotImplementedError()
 
 _CONTAINS = KTBS.contains

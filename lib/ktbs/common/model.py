@@ -131,33 +131,64 @@ class ModelMixin(InBaseMixin):
             graph.remove((self.uri, _HAS_PARENT_MODEL,
                           coerce_to_uri(model, self.uri)))
 
-    def create_obsel_type(self, label, supertypes=(), id=None):
+    def create_obsel_type(self, id=None, supertypes=(), label=None):
         """
         I create a new obsel type in this model.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param supertypes: explain.
+        :param label: explain.
+
+        :rtype: `ktbs.client.model.ObselType`
         """
         # redefining built-in 'id' #pylint: disable=W0622
+        if id is not None:
+            uri = coerce_to_uri(id, self.uri)
+        else:
+            if label is not None:
+                uri = mint_uri_from_label(label, self, id)
+            else:
+                raise ValueError("id or label must be supplied")
+
         base_uri = self.uri
         with self._edit as graph:
-            uri = mint_uri_from_label(label, self, id)
             add = graph.add
             add((uri, _RDF_TYPE, _OBSEL_TYPE))
-            add((uri, _PREF_LABEL, Literal(label)))
+            if label is not None:
+                add((uri, _PREF_LABEL, Literal(label)))
+
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
         return self.factory(uri, _OBSEL_TYPE, graph)
 
-    def create_relation_type(self, label, origin=None, destination=None,
-                                supertypes=(), id=None):
+    def create_relation_type(self, id=None, origin=None, destination=None,
+                                supertypes=(), label=None):
         """
         I create a new relation type in this model.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param origin: explain.
+        :param destination: explain.
+        :param supertypes: explain.
+        :param label: explain.
+
+        :rtype: `ktbs.client.model.RelationType`
         """
         # redefining built-in 'id' #pylint: disable=W0622
+        if id is not None:
+            uri = coerce_to_uri(id, self.uri)
+        else:
+            if label is not None:
+                uri = mint_uri_from_label(label, self, id)
+            else:
+                raise ValueError("id or label must be supplied")
+
         base_uri = self.uri
         with self._edit as graph:
-            uri = mint_uri_from_label(label, self, id)
             add = graph.add
             add((uri, _RDF_TYPE, _REL_TYPE))
-            add((uri, _PREF_LABEL, Literal(label)))
+            if label is not None:
+                add((uri, _PREF_LABEL, Literal(label)))
             if origin is not None:
                 origin_uri = coerce_to_uri(origin, self.uri)
                 add((uri, _HAS_REL_ORIGIN, origin_uri))
@@ -170,18 +201,34 @@ class ModelMixin(InBaseMixin):
 
 
     # TODO implement add_parent, remove_parent, create_attribute_type
-    def create_attribute_type(self, label, obsel_type=None, data_type=None,
-                              value_is_list=False, id=None):
+    def create_attribute_type(self, id=None, obsel_type=None, data_type=None,
+                              value_is_list=False, label=None):
         """
         I create a new obsel type in this model.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param obsel_type: explain.
+        :param data_type: explain.
+        :param value_is_list: explain.
+        :param label: explain.
+
+        :rtype: `ktbs.client.model.AttributeType`
         """
         # redefining built-in 'id' #pylint: disable=W0622
+        if id is not None:
+            uri = coerce_to_uri(id, self.uri)
+        else:
+            if label is not None:
+                uri = mint_uri_from_label(label, self, id)
+            else:
+                raise ValueError("id or label must be supplied")
+
         base_uri = self.uri
         with self._edit as graph:
-            uri = mint_uri_from_label(label, self, id)
             add = graph.add
             add((uri, _RDF_TYPE, _ATTR_TYPE))
-            add((uri, _PREF_LABEL, Literal(label)))
+            if label is not None:
+                add((uri, _PREF_LABEL, Literal(label)))
             if obsel_type is not None:
                 obsel_type_uri = coerce_to_uri(obsel_type, base_uri)
                 add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
@@ -240,7 +287,7 @@ class _ModelElementMixin(ResourceMixin):
         Override whatever behaviour is inherited, as this actually requires
         to modify the containing model.
         """
-        raise NotImplementedError() # TODO MAJOT implement it
+        raise NotImplementedError() # TODO MAJOR implement it
     #
 
 @extend_api

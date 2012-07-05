@@ -194,37 +194,31 @@ class BrowserHistoryCollector(object):
         """
         assert isinstance(base, KtbsBase)
 
-        model = base.create_model(None, id="BHModel")
+        model = base.create_model(id="BHModel")
 
         #pylint: disable-msg=W0612
         # Unused variable obsel_type
-        bh_obsel_type = model.create_obsel_type(label=BH_OBSEL_LABEL,
-                                                id=BH_OBSEL_ID)
+        bh_obsel_type = model.create_obsel_type(id=BH_OBSEL_ID, 
+                                                label=BH_OBSEL_LABEL)
 
         # Browser history obsel attributes
         # id, url, title, rev_host, visit_count, hidden, typed, favicon_id, 
         # frecency, last_visit_date
 
-        """
-        # create_attribute_type is not yet coded !
-        nb_visit_attr_type = bh_obsel_type.create_attribute_type("visit_count",
-                                                                 XSD.integer)
-
-        title_attr_type = bh_obsel_type.create_attribute_type("title", 
-                                                              XSD.string)
-
-        frequency_attr_type = bh_obsel_type.create_attribute_type("frequency", 
-                                                                  XSD.integer)
-        """
-
         nb_visit_attr_type = model.create_attribute_type(
-                "visit_count", bh_obsel_type, XSD.integer)
+                                                  id="#visit_count",
+                                                  obsel_type=bh_obsel_type, 
+                                                  data_type=XSD.integer) 
 
         title_attr_type = model.create_attribute_type(
-                "title", bh_obsel_type, XSD.string)
+                                                  id="#title",
+                                                  obsel_type=bh_obsel_type, 
+                                                  data_type=XSD.string)
 
         frequency_attr_type = model.create_attribute_type(
-                "frequency", bh_obsel_type, XSD.integer)
+                                                  id="#frequency",
+                                                  obsel_type=bh_obsel_type, 
+                                                  data_type=XSD.integer) 
 
         return model
 
