@@ -92,7 +92,7 @@ from ktbs.client.root import KtbsRoot
 
 KTBS_ROOT = "http://localhost:8001/"
 
-class TestKtbsClientModelResource(TestCase):
+class TestKtbsClientModelGetGeneralInformation(TestCase):
 
     process = None
 
@@ -125,14 +125,82 @@ class TestKtbsClientModelResource(TestCase):
     def test_get_model_label(self):
         assert self.model.get_label() == "Test model"
 
+    def test_get_base(self):
+        base = self.model.get_base()
+        assert base.get_uri() == self.base.get_uri()
+
+    def test_get_unit(self):
+        assert self.model.get_unit() == "ms"
+
+    def test_list_parents(self):
+        lpm = self.model.list_parents()
+        assert len(lpm) == 0
+
+    def test_list_obsel_types(self):
+        lot = self.model.list_obsel_types()
+        assert len(lot) == 0
+
+    def test_list_attribute_types(self):
+        lat = self.model.list_attribute_types()
+        assert len(lat) == 0
+
+    def test_list_relation_types(self):
+        lot = self.model.list_relation_types()
+        assert len(lot) == 0
+
+class TestKtbsClientModelSetInformation(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.model = cls.base.create_model(id="ModelTest", label="Test model")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
     def test_set_model_label(self):
         self.model.set_label("New model label")
         assert self.model.get_label() == "New model label"
 
     @skip("Resource.reset_label() is not yet implemented")
     def test_reset_model_label(self):
+        self.model.set_label("New model label")
         self.model.reset_label()
         assert self.model.get_label() == "Test model"
+
+    @skip("ModelMixin.set_unit() does not work : 403 Forbidden")
+    def test_set_unit(self):
+        unit = "s"
+        self.model.set_unit(unit)
+        assert self.model.get_unit() == unit
+
+class TestKtbsClientModelRemove(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.model = cls.base.create_model(id="ModelTest", label="Test model")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
 
     @skip("Resource.remove() does not work : 405 Not Allowed")
     def test_remove_model(self):
@@ -140,7 +208,58 @@ class TestKtbsClientModelResource(TestCase):
         self.model.remove()
         assert self.base.get(model_uri) == None
 
-class TestKtbsClientModel(TestCase):
+class TestKtbsClientModelAddParents(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.base_model = cls.base.create_model(id="BaseModel", label="Base model")
+        cls.model = cls.base.create_model(id="ModelWithID", label="Test model")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    def test_add_parents(self):
+        self.model.add_parent(self.base_model.get_uri())
+        lpm = self.model.list_parents()
+        assert len(lpm) == 1
+
+class TestKtbsClientModelRemoveParents(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.base_model = cls.base.create_model(id="BaseModel", label="Base model")
+        cls.model = cls.base.create_model(id="ModelWithID", label="Test model")
+        cls.model.add_parent(cls.base_model.get_uri())
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    def test_remove_parents(self):
+        self.model.remove_parent(self.base_model.get_uri())
+        lpm = self.model.list_parents()
+        assert len(lpm) == 0
+
+class TestKtbsClientModelAddElementTypes(TestCase):
 
     process = None
 
@@ -158,19 +277,6 @@ class TestKtbsClientModel(TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.process.terminate()
-
-    def test_get_base(self):
-        base = self.model.get_base()
-        assert base.get_uri() == self.base.get_uri()
-
-    def test_get_unit(self):
-        assert self.model.get_unit() == "ms"
-
-    @skip("ModelMixin.set_unit() does not work : 403 Forbidden")
-    def test_set_unit(self):
-        unit = "s"
-        self.model.set_unit(unit)
-        assert self.model.get_unit() == unit
 
     @raises(ValueError)
     def test_create_obsel_type_no_id_no_label(self):
@@ -191,6 +297,27 @@ class TestKtbsClientModel(TestCase):
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID#ObselTypeWithIDAndLabel")
         assert obsel_type.get_uri() == generated_uri
 
+class TestKtbsClientModelList(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.model = cls.base.create_model(id="ModelTest", label="Test model")
+        cls.obsel_type = cls.model.create_obsel_type(id="#ObselTypeWithID")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
     def test_list_obsel_types(self):
         lot = self.model.list_obsel_types()
-        assert len(lot) == 3
+        assert len(lot) == 1
+
