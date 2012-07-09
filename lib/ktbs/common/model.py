@@ -323,7 +323,7 @@ class _ModelTypeMixin(_ModelElementMixin):
             return _closure(self, "supertypes")
         else:
             factory = self.factory
-            return ( factory(uri)
+            return ( factory(uri, self.RDF_MAIN_TYPE)
                      for uri in self._graph.objects(self.uri, 
                                                     self._SUPER_TYPE_PROP) )
 
