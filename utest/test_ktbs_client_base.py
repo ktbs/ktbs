@@ -33,7 +33,7 @@ from ktbs.client.root import KtbsRoot
 
 KTBS_ROOT = "http://localhost:8001/"
 
-class TestKtbsClientBaseResource(TestCase):
+class TestKtbsClientBaseGetInformation(TestCase):
 
     process = None
 
@@ -65,23 +65,7 @@ class TestKtbsClientBaseResource(TestCase):
     def test_get_base_label(self):
         assert self.base.get_label() == "Test base"
 
-    @skip("Resource.set_label() does not work for base : 403 forbidden")
-    def test_set_base_label(self):
-        self.base.set_label("New base label")
-        assert self.base.get_label() == "New base label"
-
-    @skip("Resource.reset_label() is not yet implemented")
-    def test_reset_base_label(self):
-        self.base.reset_label()
-        assert self.base.get_label() == "Test base"
-
-    @skip("Resource.remove() does not work : 405 Not Allowed")
-    def test_remove_base(self):
-        base_uri = self.base.get_uri()
-        self.base.remove()
-        assert self.root.get_base(base_uri) == None
-
-class TestKtbsClientBase(TestCase):
+class TestKtbsClientBaseSetInformation(TestCase):
 
     process = None
 
@@ -93,7 +77,35 @@ class TestKtbsClientBase(TestCase):
         # we know that it will write on its stderr when ready
         cls.process.stderr.read(1)
         cls.root = KtbsRoot(KTBS_ROOT)
-        cls.base = cls.root.create_base(id="BaseTest/")
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    @skip("Resource.set_label() does not work for base : 403 forbidden")
+    def test_set_base_label(self):
+        self.base.set_label("New base label")
+        assert self.base.get_label() == "New base label"
+
+    @skip("Resource.reset_label() is not yet implemented")
+    def test_reset_base_label(self):
+        self.base.reset_label()
+        assert self.base.get_label() == "Test base"
+
+class TestKtbsClientBaseAddElements(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
 
     @classmethod
     def tearDownClass(cls):
@@ -114,15 +126,6 @@ class TestKtbsClientBase(TestCase):
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/model-with-label")
         assert mod.get_uri() == generated_uri
 
-    def test_list_models(self):
-        lmod = self.base.list_models()
-        assert len(lmod) == 3
-
-    def test_get_model(self):
-        model_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
-        mod = self.base.get(model_uri)
-        assert mod.get_uri() == model_uri
-
     def test_create_stored_trace_no_id_no_label(self):
         model_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
         st = self.base.create_stored_trace(model=model_uri)
@@ -141,15 +144,6 @@ class TestKtbsClientBase(TestCase):
         st = self.base.create_stored_trace(model=model_uri, label="stored-trace-with-label")
         assert st.get_uri() == generated_uri
 
-    def test_list_stored_traces(self):
-        lt = self.base.list_traces()
-        assert len(lt) == 3
-
-    def test_get_stored_trace(self):
-        trace_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
-        st = self.base.get(trace_uri)
-        assert st.get_uri() == trace_uri
-
     @skip("Base.create_method is not implemented yet")
     def test_create_method_no_id_no_label(self):
         # A method should always be build upon a parent one
@@ -159,6 +153,57 @@ class TestKtbsClientBase(TestCase):
         generated_uri = "fake"
         meth = self.base.create_method(method=method_uri)
         assert meth.get_uri() == generated_uri
+
+    @skip("Base.create_computed_trace is not implemented yet")
+    def test_create_computed_trace_no_id_no_label(self):
+        # A computed trace could have no source ???
+        #for m in self.root.list_builtin_methods():
+        method_uri = "fake"
+        source_trace_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
+        generated_uri = "fake"
+        ct = self.base.create_computed_trace(method=method_uri)
+        assert ct.get_uri() == generated_uri
+
+class TestKtbsClientBaseGetElementInformation(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.model = cls.base.create_model(id="ModelWithID", label="Test model")
+        cls.stored_trace = cls.base.create_stored_trace(
+                                          id="StoredTraceWithID/", 
+                                          model=cls.model.get_uri(),
+                                          label="Test stored trace")
+        # TODO Test method when available
+        # TODO Test computed trace when available
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    def test_list_models(self):
+        lmod = self.base.list_models()
+        assert len(lmod) == 1
+
+    def test_get_model(self):
+        mod = self.base.get("ModelWithID")
+        assert mod.get_uri() == self.model.get_uri()
+
+    def test_list_stored_traces(self):
+        lt = self.base.list_traces()
+        assert len(lt) == 1
+
+    def test_get_stored_trace(self):
+        st = self.base.get("StoredTraceWithID/")
+        assert st.get_uri() == self.stored_trace.get_uri()
 
     @skip("Base.list_methods is not usable yet - no method created")
     def list_methods():
@@ -171,24 +216,32 @@ class TestKtbsClientBase(TestCase):
         meth = self.base.get(method_uri)
         assert meth.get_uri() == method_uri
 
-    @skip("Base.create_computed_trace is not implemented yet")
-    def test_create_computed_trace_no_id_no_label(self):
-        # A computed trace could have no source ???
-        #for m in self.root.list_builtin_methods():
-        method_uri = "fake"
-        source_trace_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
-        generated_uri = "fake"
-        ct = self.base.create_computed_trace(method=method_uri)
-        assert ct.get_uri() == generated_uri
-
-    @skip("Base.list_traces() will not render computed trace yet")
-    def test_list_stored_traces(self):
-        lt = self.base.list_traces()
-        assert len(lt) == 4
-
     @skip("Base.get(computed_trace_uri) is not usable yet")
     def test_get_computed_trace(self):
         trace_uri = URIRef(KTBS_ROOT + "BaseTest/ComputedTraceWithID/")
         st = self.base.get(trace_uri)
         assert st.get_uri() == trace_uri
 
+class TestKtbsClientBaseRemoveElements(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    @skip("Resource.remove() does not work : 405 Not Allowed")
+    def test_remove_base(self):
+        base_uri = self.base.get_uri()
+        self.base.remove()
+        assert self.root.get_base(base_uri) == None

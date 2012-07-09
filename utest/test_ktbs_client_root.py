@@ -33,7 +33,37 @@ from ktbs.client.root import KtbsRoot
 
 KTBS_ROOT = "http://localhost:8001/"
 
-class TestKtbsClientRoot(TestCase):
+class TestKtbsClientRootGetInformation(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.baseb = cls.root.create_base(id="BaseWithID/")
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    def test_list_bases(self):
+        lb = self.root.list_bases()
+        assert len(lb) == 1
+
+    def test_get_base(self):
+        b = self.root.get_base(id="BaseWithID/")
+        assert b.RDF_MAIN_TYPE == KTBS.Base
+
+    def test_list_builtin_methods(self):
+        for m in self.root.list_builtin_methods():
+            print m.get_uri()
+
+class TestKtbsClientRootAddElements(TestCase):
 
     process = None
 
@@ -69,15 +99,3 @@ class TestKtbsClientRoot(TestCase):
         b = self.root.create_base(id="BaseWithIDAndLabel/", label="Base with ID and label")
         generated_uri = URIRef(KTBS_ROOT + "BaseWithIDAndLabel/")
         assert b.get_uri() == generated_uri
-
-    def test_list_bases(self):
-        lb = self.root.list_bases()
-        assert len(lb) == 4
-
-    def test_get_base(self):
-        b = self.root.get_base(id="BaseWithID/")
-        assert b.RDF_MAIN_TYPE == KTBS.Base
-
-    def test_list_builtin_methods(self):
-        for m in self.root.list_builtin_methods():
-            print m.get_uri()
