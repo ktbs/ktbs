@@ -415,7 +415,20 @@ class ObselTypeMixin(_ModelTypeMixin):
                     yield rtype
 
     # TODO implement add_supertype, remove_supertype, create_*
-
+    def get_model(self):
+        """
+        Return the model of this obsel type.
+        We can have .../Model#ObselType
+        or          .../Model/ObselType
+        """
+        defragmented_uri = self.uri.defrag()
+        if len(self.uri) != len(defragmented_uri):
+            model_uri = defragmented_uri
+        else:
+            cut = self.uri.rfind("/", 0, -1)
+            model_uri = self.uri[:cut+1]
+        return self.factory(model_uri, _MODEL)
+        
 @extend_api
 class RelationTypeMixin(_ModelTypeMixin):
     """
@@ -498,3 +511,4 @@ _HAS_SUPERRTYPE = KTBS.hasSuperRelationType
 _HAS_UNIT = KTBS.hasUnit
 _HAS_PARENT_MODEL = KTBS.hasParentModel
 _PREF_LABEL = SKOS.prefLabel
+_MODEL = KTBS.TraceModel
