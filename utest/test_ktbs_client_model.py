@@ -448,12 +448,15 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
     def tearDownClass(cls):
         cls.process.terminate()
 
-    @skip("create_attribute_type() is not yet implemented")
+    def test_get_model(self):
+        m = self.obsel_type_1.get_model()
+        assert m.get_uri() == self.model.get_uri()
+
+    @raises(ValueError)
     def test_create_attribute_type_no_id_no_label(self):
-        # raises(ValueError)
+        #skip("create_attribute_type() is not yet implemented")
         attribute_type = self.obsel_type_1.create_attribute_type()
 
-    @skip("create_attribute_type() is not yet implemented")
     def test_create_attribute_type_with_id(self):
         attribute_type = self.obsel_type_1.create_attribute_type(
                                          id="#AttibuteTypeWithID")
@@ -461,7 +464,6 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
                                "BaseTest/ModelWithID#AttibuteTypeWithID")
         assert attribute_type.get_uri() == generated_uri
 
-    @skip("create_attribute_type() is not yet implemented")
     def test_create_attribute_type_with_label(self):
         attribute_type = self.obsel_type_1.create_attribute_type(
                                          label="Test attribute type")
@@ -469,13 +471,11 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
                                "BaseTest/ModelWithID#test-attribute-type")
         assert attribute_type.get_uri() == generated_uri
 
-    @skip("create_relation_type() is not yet implemented")
+    @raises(ValueError)
     def test_create_relation_type_no_id_no_label(self):
-        #raises(ValueError)
         relation_type = self.obsel_type_1.create_relation_type(
                                         destination=self.obsel_type_2.get_uri())
 
-    @skip("create_relation_type() is not yet implemented")
     def test_create_relation_type_with_id(self):
         relation_type = self.obsel_type_1.create_relation_type(
                                         id="#RelationTypeWithID",
@@ -484,7 +484,6 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
                                "BaseTest/ModelWithID#RelationTypeWithID")
         assert relation_type.get_uri() == generated_uri
 
-    @skip("create_relation_type() is not yet implemented")
     def test_create_relation_type_with_label(self):
         relation_type = self.obsel_type_1.create_relation_type(
                                         destination=self.obsel_type_2.get_uri(),
@@ -493,7 +492,6 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
                                "BaseTest/ModelWithID#test-relation-type")
         assert relation_type.get_uri() == generated_uri
 
-    @skip("create_relation_type() is not yet implemented")
     def test_create_relation_type_without_destination(self):
         relation_type = self.obsel_type_1.create_relation_type(
                                         id="#RelationTypeWithoutDestination")

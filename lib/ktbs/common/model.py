@@ -429,6 +429,32 @@ class ObselTypeMixin(_ModelTypeMixin):
             model_uri = self.uri[:cut+1]
         return self.factory(model_uri, _MODEL)
         
+    def create_attribute_type(self, id=None, data_type=None,
+                              value_is_list=False, label=None):
+        """
+        Call the associated Model method.
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        model = self.get_model()
+        return model.create_attribute_type(id=id, 
+                                           obsel_type=self.uri,
+                                           data_type=data_type,
+                                           value_is_list=value_is_list,
+                                           label=label)
+
+    def create_relation_type(self, id=None, destination=None,
+                             supertypes=(), label=None):
+        """
+        Call the associated Model method.
+        """
+        # redefining built-in 'id' #pylint: disable=W0622
+        model = self.get_model()
+        return model.create_relation_type(id=id, 
+                                          origin=self.uri, 
+                                          destination=destination,
+                                          supertypes=supertypes, 
+                                          label=label)
+
 @extend_api
 class RelationTypeMixin(_ModelTypeMixin):
     """
