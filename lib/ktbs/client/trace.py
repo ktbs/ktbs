@@ -122,7 +122,7 @@ class StoredTrace(StoredTraceMixin, Trace):
                 graph.add((obs, rtype_uri, other_uri))
 
         if inverse_relations is not None:
-            for other, rtype in relations:
+            for other, rtype in inverse_relations:
                 other_uri = coerce_to_uri(other)
                 rtype_uri = coerce_to_uri(rtype)
                 graph.add((other_uri, rtype_uri, obs))

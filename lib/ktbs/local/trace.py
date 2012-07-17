@@ -120,10 +120,10 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
         for key, val in (attributes or {}).items():
             graph.add((node, coerce_to_uri(key), Literal(val)))
             # TODO manage the case where val is a list
-        for key, val in (relations or {}).items():
-            graph.add((node, coerce_to_uri(key), coerce_to_uri(val)))
-        for key, val in (inverse_relations or {}).items():
-            graph.add((coerce_to_uri(val), coerce_to_uri(key), node))
+        for rtype, other in (relations or ()):
+            graph.add((node, coerce_to_uri(rtype), coerce_to_uri(other)))
+        for other, rtype in (inverse_relations or ()):
+            graph.add((coerce_to_uri(other), coerce_to_uri(rtype), node))
         for val in (source_obsels or ()):
             graph.add((node, _HAS_SOURCE_OBSEL, coerce_to_uri(val)))
         return self._post_or_trust(Obsel, node, graph, trust_graph)
