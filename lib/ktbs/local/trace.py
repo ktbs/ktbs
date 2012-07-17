@@ -36,9 +36,20 @@ from rdflib.namespace import XSD
 import rdflib.term
 rdflib.term._toPythonMapping[XSD.dateTime] = parse_date #pylint: disable=W0212
 
+class AbstractTrace(Resource):
+    """I impleme the common parts between StoredTrace and ComputedTrace.
+    """
+
+    def __init__(self, service, uri, _graph_uri=None):
+        """Override Resource.__init__ .
+        """
+        Resource.__init__(self, service, uri, _graph_uri)
+        obsels_uri = URIRef("@obsels", uri)
+        self._obsels = Graph(store=service.store, identifier=obsels_uri)
+
 @extend_api
 class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
-                  Resource):
+                  AbstractTrace):
     """I implement a local KTBS stored trace.
     """
 
@@ -116,7 +127,7 @@ class StoredTrace(StoredTraceMixin, InBaseMixin, KtbsPostMixin, RdfPutMixin,
         for val in (source_obsels or ()):
             graph.add((node, _HAS_SOURCE_OBSEL, coerce_to_uri(val)))
         return self._post_or_trust(Obsel, node, graph, trust_graph)
-        
+
         
 
     # RDF-REST API #

@@ -45,46 +45,6 @@ class Trace(Resource):
         self._obsels = Graph(ProxyStore({"uri":obsel_uri}),
                              identifier=obsel_uri)
 
-
-    def iter_obsels(self, begin=None, end=None, reverse=False):
-        """
-        Iter over the obsels of this trace.
-
-        The obsels are sorted by their end timestamp, then their begin
-        timestamp, then their identifier. If reverse is true, the order is
-        inversed.
-
-        If given, begin and/or end are interpreted as the (included)
-        boundaries of an interval; only obsels entirely contained in this
-        interval will be yielded.
-
-        * begin: an int, datetime or Obsel
-        * end: an int, datetime or Obsel
-        * reverse: an object with a truth value
-
-        NB: the order of "recent" obsels may vary even if the trace is not
-        amended, since collectors are not bound to respect the order in begin
-        timestamps and identifiers.
-        """
-        if begin or end or reverse:
-            raise NotImplementedError(
-                "iter_obsels parameters not implemented yet")
-            # TODO MAJOR implement parameters of iter_obsels
-        # TODO MAJOR when rdflib supports ORDER BY, make SPARQL do the sorting
-        query_str = """
-            SELECT ?b ?e ?obs WHERE {
-                ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e
-            }
-        """ % self.uri # TODO simplify once 
-        obsels_graph = self._obsels
-        tuples = list(obsels_graph.query(query_str))
-        tuples.sort() # TODO remove this hack once rdflib supports 'ORDER BY'
-        factory = self.factory
-        for _, _, obs in tuples:
-            yield factory(obs, _OBSEL, obsels_graph)
-
     
 
 class StoredTrace(StoredTraceMixin, Trace):
