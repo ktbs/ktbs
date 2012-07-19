@@ -30,7 +30,7 @@ from rdfrest.utils import ReadOnlyGraph
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
-from ktbs.namespaces import KTBS
+from ktbs.namespaces import KTBS, KTBS_NS_GRAPH
 from rdfrest.utils import coerce_to_uri
 
 _RESOURCE_MAKER = {}
@@ -83,6 +83,8 @@ class Resource(ResourceMixin):
         if graph is None:
             graph = Graph(ProxyStore({"uri":uri}), identifier=uri)
             graph.store._pull() #friend _pull #pylint: disable-msg=W0212
+        else:
+            assert isinstance(graph.identifier, URIRef)
 
         self.__graph = graph
         if __debug__:
@@ -128,12 +130,18 @@ class Resource(ResourceMixin):
         """
         graph_uri = coerce_to_uri(uri)
         if graph is None:
-            graph = Graph(ProxyStore({"uri":graph_uri}), identifier=graph_uri)
-            try:
-                graph.store._pull() #friend _pull #pylint: disable-msg=W0212
-            except ResourceAccessError:
-                # The URI could not be fetched
-                return None
+            if graph_uri.startswith(KTBS.uri):
+                graph = KTBS_NS_GRAPH
+            else:
+                graph = Graph(ProxyStore({"uri":graph_uri}),
+                              identifier=graph_uri)
+                try:
+                    graph.store._pull() #friend _pull #pylint: disable-msg=W0212
+                except ResourceAccessError:
+                    # The URI could not be fetched
+                    return None
+        else:
+            assert isinstance(graph.identifier, URIRef)
 
         graph_node_type = graph.value(graph_uri, _RDF_TYPE)
         if node_type is None:
