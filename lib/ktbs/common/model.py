@@ -200,7 +200,7 @@ class ModelMixin(InBaseMixin):
         return self.factory(uri, _REL_TYPE, graph)
 
 
-    # TODO implement add_parent, remove_parent, create_attribute_type
+    # TODO implement add_parent, remove_parent
     def create_attribute_type(self, id=None, obsel_type=None, data_type=None,
                               value_is_list=False, label=None):
         """
@@ -241,6 +241,53 @@ class ModelMixin(InBaseMixin):
         return self.factory(uri, _ATTR_TYPE, graph)
 
 
+    def add_supertype(self, element=None, element_type=None, super_type=None):
+        """
+        I add a super type to the element (obsel or relation) type in this 
+        model.
+
+        :param element: ObselType or RelationType or their URI.
+        :param element_type: Type of the concerned element.
+        :param super_type: SuperObselType or SuperRelationType.
+        """
+        if element is not None:
+            uri = coerce_to_uri(element, self.uri)
+        else:
+            raise ValueError("element must be supplied")
+
+        base_uri = self.uri
+        with self._edit as graph:
+            if element_type == _OBSEL_TYPE:
+                graph.add((uri, _HAS_SUPEROTYPE,
+                           coerce_to_uri(super_type, base_uri)))
+            if element_type == _REL_TYPE:
+                graph.add((uri, _HAS_SUPERRTYPE, 
+                           coerce_to_uri(super_type, base_uri)))
+
+    def remove_supertype(self, element=None, element_type=None, 
+                         super_type=None):
+        """
+        I remove a super type from the element (obsel or relation) type in 
+        this model.
+
+        :param element: ObselType or RelationType or their URI.
+        :param element_type: Type of the concerned element.
+        :param super_type: SuperObselType or SuperRelationType.
+        """
+        if element is not None:
+            uri = coerce_to_uri(element, self.uri)
+        else:
+            raise ValueError("element must be supplied")
+
+        base_uri = self.uri
+        with self._edit as graph:
+            if element_type == _OBSEL_TYPE:
+                graph.remove((uri, _HAS_SUPEROTYPE,
+                             coerce_to_uri(super_type, base_uri)))
+            if element_type == _REL_TYPE:
+                graph.remove((uri, _HAS_SUPERRTYPE, 
+                             coerce_to_uri(super_type, base_uri)))
+
 @extend_api
 class _ModelElementMixin(ResourceMixin):
     """
@@ -278,10 +325,21 @@ class _ModelElementMixin(ResourceMixin):
         """
         Return the trace model of this element.
         """
-        tmodel_uri = self._graph.identifier
-        ret = self.factory(tmodel_uri)
-        return ret
+        #tmodel_uri = self._graph.identifier
+        #ret = self.factory(tmodel_uri, _MODEL)
+        #return ret
 
+        #Waiting above code to be fixed.
+        #We can have .../Model#ElementType
+        #or          .../Model/ElementType
+        defragmented_uri = self.uri.defrag()
+        if len(self.uri) != len(defragmented_uri):
+            model_uri = defragmented_uri
+        else:
+            cut = self.uri.rfind("/", 0, -1)
+            model_uri = self.uri[:cut+1]
+        return self.factory(model_uri, _MODEL)
+        
     def remove(self):
         """
         Override whatever behaviour is inherited, as this actually requires
@@ -415,20 +473,6 @@ class ObselTypeMixin(_ModelTypeMixin):
                     yield rtype
 
     # TODO implement add_supertype, remove_supertype, create_*
-    def get_model(self):
-        """
-        Return the model of this obsel type.
-        We can have .../Model#ObselType
-        or          .../Model/ObselType
-        """
-        defragmented_uri = self.uri.defrag()
-        if len(self.uri) != len(defragmented_uri):
-            model_uri = defragmented_uri
-        else:
-            cut = self.uri.rfind("/", 0, -1)
-            model_uri = self.uri[:cut+1]
-        return self.factory(model_uri, _MODEL)
-        
     def create_attribute_type(self, id=None, data_type=None,
                               value_is_list=False, label=None):
         """
@@ -454,6 +498,30 @@ class ObselTypeMixin(_ModelTypeMixin):
                                           destination=destination,
                                           supertypes=supertypes, 
                                           label=label)
+
+    def add_supertype(self, super_obsel_type):
+        """
+        Add super obsel type to the current obsel type.
+        """
+        # TODO Control that super_obsel_type is an ObselType ?
+        # or the URI of an ObselType ?
+        model = self.get_model()
+
+        model.add_supertype(element=self.uri,
+                            element_type= self.RDF_MAIN_TYPE,
+                            super_type=super_obsel_type)
+
+    def remove_supertype(self, super_obsel_type):
+        """
+        Remove super obsel type to the current obsel type.
+        """
+        # TODO Control that super_obsel_type is an ObselType ?
+        # or the URI of an ObselType ?
+        model = self.get_model()
+
+        model.remove_supertype(element=self.uri,
+                               element_type= self.RDF_MAIN_TYPE,
+                               super_type=super_obsel_type)
 
 @extend_api
 class RelationTypeMixin(_ModelTypeMixin):
@@ -506,7 +574,31 @@ class RelationTypeMixin(_ModelTypeMixin):
                 seen.add(rdestination)
 
     # TODO implement add_supertype, remove_supertype, set_*, create_*
+    def add_supertype(self, super_relation_type):
+        """
+        Add super relation type to the current relation type.
+        """
+        # TODO Control that super_relation_type is a RelationType ?
+        # or the URI of a RelationType ?
+        # Control origin & destination of the supertype ?
+        model = self.get_model()
 
+        model.add_supertype(element=self.uri,
+                            element_type= self.RDF_MAIN_TYPE,
+                            super_type=super_relation_type)
+
+    def remove_supertype(self, super_relation_type):
+        """
+        Remove super relation type to the current relation type.
+        """
+        # TODO Control that super_relation_type is a RelationType ?
+        # or the URI of a RelationType ?
+        # Control origin & destination of the supertype ?
+        model = self.get_model()
+
+        model.remove_supertype(element=self.uri,
+                               element_type= self.RDF_MAIN_TYPE,
+                               super_type=super_relation_type)
 
 def _closure(obj, iter_property_name):
     """

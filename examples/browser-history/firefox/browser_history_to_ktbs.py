@@ -229,8 +229,10 @@ class BrowserHistoryCollector(object):
         assert isinstance(base, KtbsBase)
         assert isinstance(model, KtbsModel)
 
-        trace = base.create_stored_trace(model, origin=self._args.origin,
-                                         id="RawHistory/")
+        trace = base.create_stored_trace(id="RawHistory/",
+                                         model=model.get_uri(), 
+                                         origin=self._args.origin)
+                                         
         return trace
 
     def collect_history_items(self, trace=None):
