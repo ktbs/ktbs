@@ -34,6 +34,8 @@ def extend_api(cls):
     * for every iter_xs(...) method I add a list_xs(...) method
     * for every iter_xs(...) method I add a 'xs' property (if it accepts 0 args)
     """
+    # Use of the exec statement #pylint: disable=W0122
+
     methods = [ pair for pair in cls.__dict__.items()
                 if _INTERESTING_METHOD.match(pair[0]) ]
     methods.sort()  # put all the get_ before the set_
@@ -60,12 +62,14 @@ def extend_api(cls):
             setattr(cls, stripped_name, prop.setter(raw_function))
         else: # methodname.startswith("iter_"):
             stripped_name = methodname[5:]
-            func = eval("lambda self, *args, **kw: list(self.%s(*args, **kw))"
-                        % methodname) # eval is necessary:
-            # calling raw_function from inside a lambda doesn't work
-            func.func_name = "list_%s" % stripped_name
-            func.__doc__ = "Make a list from %s" % methodname
-            setattr(cls, func.func_name, func)
+            new_name = "list_%s" % stripped_name
+            repo = {}
+            exec ("""def %(new_name)s(self, *args, **kw):
+                         "Make a list from %(methodname)s"
+                         return list(self.%(methodname)s(*args, **kw))
+                  """ % locals()) in globals(), repo
+            func = repo[new_name]
+            setattr(cls, new_name, func)
 
             if nrequired > 1: # self is always required
                 continue
