@@ -21,6 +21,7 @@ I define useful functions and classes for RDF RESTful services.
 from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
+from rdflib.graph import Graph, ModificationException
 from urlparse import SplitResult, urlsplit
 
 def cache_result(callabl):
@@ -212,3 +213,87 @@ class Diagnosis(object):
         """Append a problem to this diagnosis.
         """
         self.errors.append(error_msg)
+
+
+class ReadOnlyGraph(Graph):
+    """A read-only version of rdflib.Graph.
+    """
+    # Invalid name #pylint: disable=C0103
+    # Redefining built-in #pylint: disable=W0622
+
+    @classmethod
+    def wrap(cls, graph):
+        """Wrap ``graph`` in a read-only view.
+        """
+        return cls(graph.store, graph.identifier,
+                   namespace_manager=graph.namespace_manager)
+
+    def destroy(self, configuration):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def commit(self):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def rollback(self):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+    
+    def open(self, configuration, create=False):
+        """Raise a ModificationException if create, as this graph is read-only.
+        """
+        if create:
+            raise ModificationException("ReadOnlyGraph does not support this")
+        else:
+            Graph.open(self, configuration, create)
+
+    def add(self, (s, p, o)):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def addN(self, quads):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def remove(self, (s, p, o)):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def __iadd__(self, other):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def __isub__(self, other):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def set(self, (subject, predicate, object)):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def bind(self, prefix, namespace, override=True):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def parse(self, source=None, publicID=None, format=None,
+              location=None, file=None, data=None, **args):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
+    def load(self, source, publicID=None, format="xml"):
+        """Raise a ModificationException as this graph is read-only.
+        """
+        raise ModificationException("ReadOnlyGraph does not support this")
+
