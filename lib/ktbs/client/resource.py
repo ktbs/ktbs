@@ -24,9 +24,9 @@ I also provide a ``register`` method similar to
 from contextlib import contextmanager
 from httplib2 import Http
 from rdflib import Graph, RDF, URIRef
-from rdflib.graph import ReadOnlyGraphAggregate
 from rdfrest.client import ProxyStore
 from rdfrest.client import ResourceAccessError
+from rdfrest.utils import ReadOnlyGraph
 
 from ktbs.common.resource import ResourceMixin
 from ktbs.common.utils import extend_api
@@ -85,9 +85,12 @@ class Resource(ResourceMixin):
             graph.store._pull() #friend _pull #pylint: disable-msg=W0212
 
         self.__graph = graph
-        self._graph = ReadOnlyGraphAggregate([graph])
-        # NB: self._graph is made read-only in order to catch implementation
-        # errors that would forget to make use of the _edit context
+        if __debug__:
+            self._graph = ReadOnlyGraph.wrap(graph)
+            # NB: self._graph is made read-only in order to catch implementation
+            # errors that would forget to make use of the _edit context
+        else:
+            self._graph = graph
         self._edit_level = 0
 
     def __eq__(self, other):

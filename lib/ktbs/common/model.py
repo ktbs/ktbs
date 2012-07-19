@@ -415,19 +415,6 @@ class ObselTypeMixin(_ModelTypeMixin):
                     yield rtype
 
     # TODO implement add_supertype, remove_supertype, create_*
-    def get_model(self):
-        """
-        Return the model of this obsel type.
-        We can have .../Model#ObselType
-        or          .../Model/ObselType
-        """
-        defragmented_uri = self.uri.defrag()
-        if len(self.uri) != len(defragmented_uri):
-            model_uri = defragmented_uri
-        else:
-            cut = self.uri.rfind("/", 0, -1)
-            model_uri = self.uri[:cut+1]
-        return self.factory(model_uri, _MODEL)
         
     def create_attribute_type(self, id=None, data_type=None,
                               value_is_list=False, label=None):
