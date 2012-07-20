@@ -159,7 +159,7 @@ class ModelMixin(InBaseMixin):
 
             for i in supertypes:
                 add((uri, _HAS_SUPEROTYPE, coerce_to_uri(i, base_uri)))
-        return self.factory(uri, _OBSEL_TYPE, graph)
+        return self.factory(uri, _OBSEL_TYPE)
 
     def create_relation_type(self, id=None, origin=None, destination=None,
                                 supertypes=(), label=None):
@@ -197,7 +197,7 @@ class ModelMixin(InBaseMixin):
                 add((uri, _HAS_REL_DESTINATION, destination_uri))
             for i in supertypes:
                 add((uri, _HAS_SUPERRTYPE, coerce_to_uri(i, base_uri)))
-        return self.factory(uri, _REL_TYPE, graph)
+        return self.factory(uri, _REL_TYPE)
 
 
     # TODO implement add_parent, remove_parent
@@ -238,7 +238,7 @@ class ModelMixin(InBaseMixin):
             # TODO make use of value_is_list
             # ... in the meantime, we lure pylint into ignoring it:
             _ = value_is_list
-        return self.factory(uri, _ATTR_TYPE, graph)
+        return self.factory(uri, _ATTR_TYPE)
 
 
     def add_supertype(self, element=None, element_type=None, super_type=None):
