@@ -23,11 +23,14 @@ RDF-REST HTTP Client module.
 I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 """
 
-import types
-from StringIO import StringIO
+import atexit
 import httplib
 import httplib2
+from os import listdir, rmdir, unlink
+from os.path import isdir, join
+from StringIO import StringIO
 from tempfile import mkdtemp 
+import types
 
 #http://docs.python.org/howto/logging-cookbook.html
 import logging
@@ -303,6 +306,8 @@ class ProxyStore(Store):
         parse_format = self._format
         if parse_format == "nt":
             parse_format = "n3" # seems to be more efficient!...
+        self._graph = Graph()
+        # the above is much faster than remove((None, None, None))
         self._graph.parse(StringIO(content), format=self._format,
                           publicID=self._identifier)
 
@@ -589,3 +594,16 @@ class ResourceAccessError(Exception):
         message = ("The graph can not be accessed check identifier and "
                    "configuration. retcode : %s") % (retcode,)
         Exception.__init__(self, message)
+
+
+def rm_rf(dirname):
+    """Recursively remove directory ``dirname``.
+    """
+    for path in (join(dirname, i) for i in listdir(dirname)):
+        if isdir(path):
+            rm_rf(path)
+        else:
+            unlink(path)
+    rmdir(dirname)
+
+atexit.register(rm_rf, CACHE_DIR)
