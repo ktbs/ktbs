@@ -499,6 +499,81 @@ class TestKtbsClientModelAddAttibuteAndRelationTypesFromObselType(TestCase):
                                "BaseTest/ModelWithID#RelationTypeWithoutDestination")
         assert relation_type.get_uri() == generated_uri
 
+class TestKtbsClientModelManageSuperTypesFromElementObselType(TestCase):
+
+    process = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.process = Popen([join(dirname(dirname(abspath(__file__))),
+                              "bin", "ktbs")], stderr=PIPE)
+        # then wait for the server to actually start:
+        # we know that it will write on its stderr when ready
+        cls.process.stderr.read(1)
+        cls.root = KtbsRoot(KTBS_ROOT)
+        cls.base = cls.root.create_base(id="BaseTest/", label="Test base")
+        cls.model = cls.base.create_model(id="ModelTest", label="Test model")
+        cls.obsel_super_type_A = cls.model.create_obsel_type(
+                                                 id="#ObselSuperTypeA", 
+                                                 label="Obsel Super Type A")
+        cls.obsel_super_type_B = cls.model.create_obsel_type(
+                                                 id="#ObselSuperTypeB", 
+                                                 label="Obsel Super Type B")
+        cls.obsel_type_1 = cls.model.create_obsel_type(id="#ObselType1", 
+                                                       label="Obsel Type 1")
+        cls.obsel_type_2 = cls.model.create_obsel_type(id="#ObselType2", 
+                                                       label="Obsel Type 2")
+        cls.obsel_type_3 = cls.model.create_obsel_type(id="#ObselType3", 
+                                                       label="Obsel Type 3")
+        cls.obsel_type_4 = cls.model.create_obsel_type(
+                              id="#ObselType4", 
+                              supertypes=(cls.obsel_super_type_B.get_uri(),),
+                              label="Obsel Type 4")
+        cls.super_relation_type_A = cls.model.create_relation_type(
+                                       id="#RelationSuperTypeA",
+                                       origin=cls.obsel_type_1.get_uri(),
+                                       destination=cls.obsel_type_2.get_uri(),
+                                       label="Relation Super Type A")
+        cls.super_relation_type_B = cls.model.create_relation_type(
+                                       id="#RelationSuperTypeB",
+                                       origin=cls.obsel_type_1.get_uri(),
+                                       destination=cls.obsel_type_2.get_uri(),
+                                       label="Relation Super Type B")
+        cls.relation_type_1 = cls.model.create_relation_type(
+                                     id="#RelationType1",
+                                     origin=cls.obsel_type_1.get_uri(),
+                                     destination=cls.obsel_type_2.get_uri(),
+                                     label="Relation Type 1")
+        cls.relation_type_2 = cls.model.create_relation_type(
+                              id="#RelationType2",
+                              origin=cls.obsel_type_1.get_uri(),
+                              destination=cls.obsel_type_2.get_uri(),
+                              supertypes=(cls.super_relation_type_B.get_uri(),),
+                              label="Relation Type 2")
+
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.process.terminate()
+
+    def test_add_super_obsel_type(self):
+        self.obsel_type_3.add_supertype(self.obsel_super_type_A)
+        assert len(self.obsel_type_3.list_supertypes()) == 1
+
+    def test_add_super_relation_type(self):
+        self.relation_type_1.add_supertype(self.super_relation_type_A)
+        assert len(self.relation_type_1.list_supertypes()) == 1
+
+    @skip("Not working - investigating")
+    def test_remove_super_obsel_type(self):
+        self.obsel_type_4.remove_supertype(self.obsel_super_type_B)
+        assert len(self.obsel_type_4.list_supertypes()) == 0
+
+    @skip("Not working - investigating")
+    def test_remove_super_relation_type(self):
+        self.relation_type_2.remove_supertype(self.super_relation_type_B)
+        assert len(self.relation_type_2.list_supertypes()) == 0
+
 class TestKtbsClientModelGetElementInformation(TestCase):
 
     process = None
