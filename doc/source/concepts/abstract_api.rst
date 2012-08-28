@@ -12,7 +12,13 @@ Below is a language independant API that has been designed to document the funct
 ::
 
     Resource
+
+      get_id() → sre
+          return the URI of this resource relative to its "containing"
+          resource; basically, this is short 'id' that could have been used
+          to create this resource in the corresponding 'create_X' method
       get_uri() → uri
+          return the absolute URI of this resource
       get_sync_status() → str
           return "ok" if the resource is in sync with the data at its URI,
           else any other string describing the reason why it is not.
@@ -30,12 +36,15 @@ Below is a language independant API that has been designed to document the funct
       
     
     Ktbs (Resource)
+      list_builtin_methods() → [Method]
+          list the builtin methods supported by the kTBS
+      get_builtin_method(uri:str) → Method
+          return the builtin method identified by the given URI if supported,
+          or null
       list_bases() → [Base]
       get_base(id:uri) → Base
           return the trace base identified by the given URI, or null
       create_base(id:uri?, label:str?) → Base
-      list_builtin_methods() → [Method]
-          list the builtin methods supported by the kTBS
        
     
     Base (Base)

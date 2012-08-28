@@ -12,8 +12,6 @@ This chapter describes the API of kTBS. The alternative is to use a dedicated AP
 .. toctree::
     :glob:
     
-    rest/tutorial
-    rest/tutorial-jsonld
     rest/rest
     rest/KtbsRoot
     rest/Base

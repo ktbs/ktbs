@@ -10,7 +10,7 @@ import datetime
 
 import twitter
 
-from ktbs.client.root import KtbsRoot
+from ktbs.client import get_ktbs
 
 # Twitter elements
 CREDENTIAL = "credentials.txt"
@@ -76,7 +76,7 @@ def getTwitterFavorites(trace=None):
                   ,"\n\thastags: ", p.hashtags, "\n"
 
 if __name__ == "__main__":
-    root = KtbsRoot(KTBS_ROOT)
+    root = get_ktbs(KTBS_ROOT)
     trace = createkTBSForTweets(root)
     if trace is not None:
         getTwitterFavorites(trace)

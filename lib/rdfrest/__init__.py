@@ -1,5 +1,8 @@
-#    This file is part of RDF-REST <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+# -*- coding: utf-8 -*-
+
+#    This file is part of RDF-REST <http://champin.net/2012/rdfrest>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    RDF-REST is free software: you can redistribute it and/or modify
@@ -15,19 +18,38 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-"""
-Infrastructure for RDF-based REST services
+"""RDF-based REST framework.
 
-.. todo::
+RDF-REST is a framework for building applications that
 
-  write general documentation for RDF-REST
+* expose their functionalities in a RESTful way, and/or
+* use RESTful services.
+
+It provides a python abstraction of REST resources, so that client code can
+handle and mix local and remote resources in a completely transparent way.
+
+In a nutshell, a RESTful application is made of a set of *resource*, which:
+
+* are identified by a URI,
+* expose a uniform interface,
+* have an internal state that can be serialized in one or different formats,
+* link to each other.
+
+More precisely, in RDF-REST:
+
+* the uniform interface of resources is defined in :mod:`.interface`;
+* RDF is used as a unifying model to represent resource's states (with the
+  :mod:`rdflib` library);
+* :mod:`.serializers` and :mod:`.parsers` provide an extensible framework for
+  supporting multiple formats.
 """
 
 import rdflib
 assert rdflib.__version__[0] == "3"
-import rdfrest.compat
 
 rdflib.plugin.register('sparql', rdflib.query.Processor,
                        'rdfextras.sparql.processor', 'Processor')
 rdflib.plugin.register('sparql', rdflib.query.Result,
                        'rdfextras.sparql.query', 'SPARQLQueryResult')
+
+import rdfrest.compat

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 #    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    KTBS is free software: you can redistribute it and/or modify
@@ -16,6 +17,7 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 JSON-LD parser and serializer for KTBS.
 
@@ -24,6 +26,9 @@ https://github.com/digitalbazaar/pyld d45816708b1f8d7ec813a6d5b662b97ed9c2dda3
 This 2012 february parser is based on :
 https://github.com/digitalbazaar/pyld a0b45ed6a90874beec12e77dc20520f066e8bc37
 """
+import logging
+
+LOG = logging.getLogger(__name__)
 
 try:
     import pyld
@@ -39,11 +44,11 @@ if pyld:
     from rdflib import BNode, Graph, Literal, URIRef
     from rdflib import RDF
 
-    from rdfrest.parser import register as register_parser
-    from rdfrest.serializer import register as register_serializer
+    from rdfrest.parsers import register_parser
+    from rdfrest.serializers import register_serializer
     from rdfrest.exceptions import ParseError
 
-    from ktbs.namespaces import KTBS
+    from ktbs.namespace import KTBS
 
     def jsonld2graph(json, base_uri, graph, context=None):
         """
@@ -112,14 +117,14 @@ if pyld:
 
         return list(triples(json, jld_callback))
 
-    @register_parser("application/json")
-    def parse_jsonld(content, base_uri=None, encoding="utf-8"):
+    def parse_jsonld(content, base_uri=None, encoding="utf-8", graph=None):
         """I parse RDF content from JSON-LD.
 
         See :func:`rdfrest.parse.parse_rdf_xml` for prototype
         documentation.
         """
-        graph = Graph()
+        if graph is None:
+            graph = Graph()
         #TODO à coder :D
         #if isinstance(content, basestring):
         if encoding.lower() != "utf-8":
@@ -183,8 +188,7 @@ if pyld:
                 ret = ret["@value"]
             return ret
 
-    @register_serializer("application/json", "json") 
-    def serialize_json(graph, service, _sregister, base_uri=None):
+    def serialize_json(graph, resource, _binding=None):
         """I serialize an RDF graph as JSON-LD.
            I serialize 'graph' in plain and ugly JSON-LD.
 
@@ -197,9 +201,7 @@ if pyld:
         local_graph += graph
 
         json_obj = []
-        if base_uri is not None:
-            if not isinstance(base_uri, URIRef):
-                base_uri = URIRef(base_uri)
+        base_uri = resource.uri
 
         for p in XREVS:
             rev_p = URIRef("x-rev:%s" % p)
@@ -214,7 +216,7 @@ if pyld:
             is_obsels_graph = True
             trace_uri = graph.value(object=base_uri, 
                                     predicate=KTBS.hasObselCollection)
-            trace = service.get(trace_uri)
+            trace = resource.factory(trace_uri)
             trace_model = trace.get_model_uri()
 
         cache = {}
@@ -360,3 +362,16 @@ if pyld:
                                                   uri2iri(KTBS.StoredTrace)
     KTBS_FRAME_TYPES[uri2iri(KTBS.ComputedTraceObsels)] =  \
                                                   uri2iri(KTBS.ComputedTrace)
+
+
+def start_plugin():
+    """Start the JSON-LD plugin for kTBS."""
+    if pyld is None:
+        LOG.error("Can not plugin: pyld package is not available")
+        return
+    register_parser("application/json")(parse_jsonld)
+    register_serializer("application/json", "json")(serialize_json)
+    LOG.info("JSON-LD parser and serializer registered succesfully")
+
+# TODO LATER split this plugin into a customizable generic version for rdfrest,
+# and a specialization of it for kTBS

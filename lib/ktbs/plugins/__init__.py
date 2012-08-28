@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 #    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    KTBS is free software: you can redistribute it and/or modify
@@ -16,6 +14,9 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
-"""
-Shipped plugins for KTBS.
+
+"""I contain plugins for kTBS.
+
+Additional plugins can be provided by third party.
+A plugin is a python module containing a `start_plugin()` function.
 """

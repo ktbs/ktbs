@@ -1,4 +1,0 @@
-KTBS
-====
-
-.. automodule:: ktbs

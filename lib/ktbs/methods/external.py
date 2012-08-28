@@ -1,5 +1,5 @@
 #    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    KTBS is free software: you can redistribute it and/or modify
@@ -14,16 +14,31 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 Implementation of the external builtin methods.
 """
-from ktbs.namespaces import KTBS
+from rdfrest.utils import Diagnosis
 
-class _ExternalMethod(object):
-    """I impplement the external builtin method.
+from .interface import IMethod
+from ..namespace import KTBS
+from ..engine.builtin_method import register_builtin_method_impl
+
+class _ExternalMethod(IMethod):
+    """I implement the external builtin method.
     """
-    # TODO implement it! #pylint: disable=R0903
     uri = KTBS.external
-    label = "External built-in method"
 
-EXTERNAL = _ExternalMethod()
+    def compute_trace_description(self, computed_trace):
+        """I implement :meth:`.interface.IMethod.compute_trace_description`.
+        """
+        diag = Diagnosis("external.compute_trace_description")
+        return diag
+
+    def compute_obsels(self, computed_trace):
+        """I implement :meth:`.interface.IMethod.compute_obsels`.
+        """
+        diag = Diagnosis("external.compute_obsels")
+        return diag
+
+register_builtin_method_impl(_ExternalMethod())

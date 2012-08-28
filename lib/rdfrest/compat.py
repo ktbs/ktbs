@@ -1,5 +1,5 @@
-#    This file is part of RDF-REST <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    This file is part of RDF-REST <http://champin.net/2012/rdfrest>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    RDF-REST is free software: you can redistribute it and/or modify
@@ -16,10 +16,12 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Compatibility module. Ensures compatibility with older versions of python.
+I ensure compatibility with older versions of python.
+
+I am automatically loaded when importing `rdfrest`:mod:.
 """
 #pylint: disable=W0622
-#    redefining built-in
+#    redefining built-in #pylint: disable=W0622
 
 import sys
 assert sys.version_info[0] == 2 and sys.version_info[1] >= 5

@@ -9,14 +9,6 @@ rdfrest:
 kTBS:
   A kernel for trace-based systems (python implementation)
 
-WARNING::
-
-  Only the client side API of kTBS is (partly) operational.
-
-  For the server part, please still use the old SVN for the moment:
-
-  https://svn.liris.cnrs.fr/sbt-dev/ktbs-rest-impl
-
 
 Dependencies
 ============

@@ -1,5 +1,5 @@
-#    This file is part of RDF-REST <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    This file is part of RDF-REST <http://champin.net/2012/rdfrest>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    RDF-REST is free software: you can redistribute it and/or modify
@@ -22,7 +22,28 @@ from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
 from rdflib.graph import Graph, ModificationException
-from urlparse import SplitResult, urlsplit
+from urllib import quote_plus
+from urlparse import SplitResult, urlsplit, urlunsplit
+
+def add_uri_params(uri, parameters):
+    """Add query-string parameters to a given URI.
+
+    :param basestring uri:        the URI to add the paramateres to
+    :para  dict-like  parameters: the parameters to add to the URI
+
+    """
+    split = list(urisplit(uri))
+    if split[3] is None:
+        lst = []
+    else:
+        lst = [ split[3] ]
+    for key, values in parameters.items():
+        if not isinstance(values, list):
+            values = [values]
+        for val in values:
+            lst.append("%s=%s" % (quote_plus(str(key)), quote_plus(str(val))))
+    split[3] = "&".join(lst)
+    return uriunsplit(split)
 
 def cache_result(callabl):
     """Decorator for caching the result of a callable.
@@ -35,8 +56,9 @@ def cache_result(callabl):
     @wraps(callabl)
     def wrapper(self):
         "the decorated callable"
-        ret = getattr(self, cache_name, None)
-        if not hasattr(self, cache_name):
+        # we use __dict__ below rather than hasattr,
+        # so that, for class method, the cache is not inherited
+        if not cache_name in self.__dict__:
             ret = callabl(self)
             setattr(self, cache_name, ret)
         else:
@@ -93,7 +115,6 @@ def extsplit(path_info):
         return path_info, None
     else:
         return path_info[:dot], path_info[dot+1:]
-    #
 
 def make_fresh_uri(graph, prefix, suffix=""):
     """Creates a URIRef which is not in graph, with given prefix and suffix.
@@ -110,15 +131,25 @@ def parent_uri(uri):
 
     :type uri: basestring
     """
-    return uri[:uri[:-1].rfind("/")+1]
+    return uri[:uri.rfind("/", 0, -1)+1]
 
-def random_token(length, characters="abcdefghijklmnopqrstuvwxyz0123456789"):
+def random_token(length, characters="0123456789abcdefghijklmnopqrstuvwxyz",
+                 firstlimit=10):
     """Create a random opaque string.
 
     :param length:     the length of the string to generate
     :param characters: the range of characters to use
+    :param firstlimit: see below
+
+    The parameter `firstlimit` is use to limit the first character of the token
+    to a subrange of `characters`. The default behaviour is to first the first
+    character of the token to be a digit, which makes it look more "tokenish".
     """
-    return "".join( choice(characters) for i in range(length) )
+    if firstlimit is None:
+        firstlimit = len(characters)
+    lst = [ choice(characters[:firstlimit]) ] \
+        + [ choice(characters) for _ in range(length-1) ]
+    return "".join(lst)
 
 def replace_node(graph, old_node, new_node):
     """Replace a node by another in `graph`.
@@ -166,6 +197,48 @@ def urisplit(url):
 
     return SplitResult(*ret)
     
+def uriunsplit(split_uri):
+    """A better urlunsplit.
+
+    It differentiates empty querystring/fragment from none.
+    e.g.::
+
+      uriunsplit('http', 'a.b', '/c/d', None, None) -> 'http://a.b/c/d'
+      uriunsplit('http', 'a.b', '/c/d', '', None) -> 'http://a.b/c/d?'
+      uriunsplit('http', 'a.b', '/c/d', None, '') ->'http://a.b/c/d#'
+      uriunsplit('http', 'a.b', '/c/d', '', '') -> 'http://a.b/c/d?#'
+
+    """
+    ret = urlunsplit(split_uri)
+    if split_uri[4] == "":
+        ret += "#"
+    if split_uri[3] == "":
+        if split_uri[4] is None:
+            ret += "?"
+        else:
+            prefix, suffix = ret.split('#', 1)
+            ret = prefix + "?#" + suffix
+    return ret
+
+def wrap_exceptions(extype):
+    """I return a function decorator wrapping all exceptions as `extype`.
+    """
+    assert issubclass(extype, BaseException), \
+        "Did you write @wrap_exception instead of @wrap_exception(extype)?"
+    def wrap_exceptions_decorator(func):
+        """The decorator returned by wrap_exceptions"""
+        @wraps(func)
+        def wrapped(*args, **kw):
+            """The decorated function"""
+            try:
+                return func(*args, **kw)
+            except BaseException, ex:
+                raise extype(ex)
+        return wrapped
+    return wrap_exceptions_decorator
+
+
+    
 class Diagnosis(object):
     """I contain a list of problems and eval to True if there is no problem.
     """
@@ -186,7 +259,7 @@ class Diagnosis(object):
 
     def __str__(self):
         if self.errors:
-            return "%s: ko\n* %s" % (self.title, "\n* ".join(self.errors))
+            return "%s: ko\n* %s\n" % (self.title, "\n* ".join(self.errors))
         else:
             return "%s: ok" % self.title
 
@@ -221,79 +294,81 @@ class ReadOnlyGraph(Graph):
     # Invalid name #pylint: disable=C0103
     # Redefining built-in #pylint: disable=W0622
 
-    @classmethod
-    def wrap(cls, graph):
-        """Wrap ``graph`` in a read-only view.
-        """
-        return cls(graph.store, graph.identifier,
-                   namespace_manager=graph.namespace_manager)
-
+    def __init__(self, store_or_graph='default', identifier=None,
+                 namespace_manager=None):
+        if isinstance(store_or_graph, Graph):
+            assert identifier is None and namespace_manager is None
+            Graph.__init__(self, store_or_graph.store,
+                           store_or_graph.identifier,
+                           store_or_graph.namespace_manager)
+        else:
+            Graph.__init__(self, store_or_graph, identifier, namespace_manager)
+        
     def destroy(self, configuration):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def commit(self):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def rollback(self):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
     
     def open(self, configuration, create=False):
         """Raise a ModificationException if create, as this graph is read-only.
         """
         if create:
-            raise ModificationException("ReadOnlyGraph does not support this")
+            raise ModificationException() #ReadOnlyGraph does not support this
         else:
             Graph.open(self, configuration, create)
 
     def add(self, (s, p, o)):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def addN(self, quads):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def remove(self, (s, p, o)):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def __iadd__(self, other):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def __isub__(self, other):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def set(self, (subject, predicate, object)):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def bind(self, prefix, namespace, override=True):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def parse(self, source=None, publicID=None, format=None,
               location=None, file=None, data=None, **args):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
+        raise ModificationException() #ReadOnlyGraph does not support this
 
     def load(self, source, publicID=None, format="xml"):
         """Raise a ModificationException as this graph is read-only.
         """
-        raise ModificationException("ReadOnlyGraph does not support this")
-
+        raise ModificationException() #ReadOnlyGraph does not support this

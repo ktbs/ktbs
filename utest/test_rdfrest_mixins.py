@@ -1,461 +1,422 @@
-from functools import wraps
-from nose.tools import assert_raises, raises, with_setup
+# -*- coding: utf-8 -*-
+
+#    This file is part of RDF-REST <http://champin.net/2012/rdfrest>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
+#    Universite de Lyon <http://www.universite-lyon.fr>
+#
+#    RDF-REST is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    RDF-REST is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
+
+from nose.tools import assert_raises
+from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef, XSD
 from time import sleep
+from unittest import skip
 
-from rdfrest.mixins import *
-from rdfrest.resource import Resource
-from rdfrest.service import Service
-from rdfrest.exceptions import *
+import example2 # can not import do_tests directly, nose tries to run it...
+from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
+    make_example2_service
+from rdfrest.exceptions import InvalidDataError
+from rdfrest.factory import unregister_service
+from rdfrest.utils import coerce_to_node
 
-from rdflib import Graph, Namespace, RDF, RDFS, plugin
-from rdflib.compare import graph_diff
-from rdflib.store import Store
+OTHER = Namespace("http://example.org/other/")
 
+EXPECTING_LITERAL = (EXAMPLE.label,)
 
-from rdfrest_example import Folder, Item, MyService, ONS, RNS, ROOT
+class TestMixins:
 
-class TestRootOnly(object):
-    """Tests on a service with only a root."""
-
-    def setUp(self):
-        self.service = MyService()
-    
-
-    def _test_post_uri(self, cls, uri):
-        """Abstract test. Called below with Item and Folder."""
-        root = self.service.root
-        graph = cls.populate(uri, root.uri)
-        created = root.rdf_post(graph) # may raise InvalidUriError
-        assert isinstance(created, list)
-        assert len(created) == 1
-        got_uri = created[0]
-        assert got_uri == uri
-        got = self.service.get(uri)
-        assert got is not None
-        assert isinstance(got, cls)
-        assert_same_graph(graph, got.rdf_get())
-    
-        root_graph = mutable_copy(root.rdf_get())
-        root_graph.add((root.uri, RNS.hasChild, uri))
-        assert_same_graph(root_graph, root.rdf_get())
-
-    def test_post_item_uri(self):
-        self._test_post_uri(Item, ROOT.i1)
-
-    def test_post_folder_uri(self):
-        self._test_post_uri(Folder, ROOT["f1/"])
-    
-    def test_post_item_duplicate_uri(self):
-        self._test_post_uri(Item, ROOT.i1)
-        assert_raises(RdfRestException, self._test_post_uri, Item, ROOT.i1)
-
-    def test_post_folder_duplicate_uri(self):
-        self._test_post_uri(Folder, ROOT["i1/"])
-        assert_raises(RdfRestException, self._test_post_uri, Folder,
-                      ROOT["i1/"])
-
-    @raises(InvalidUriError)
-    def test_post_item_uri_with_qs(self):
-        self._test_post_uri(Item, ROOT["i1?a=b"])
-
-    @raises(InvalidUriError)
-    def test_post_folder_uri_with_qs(self):
-        self._test_post_uri(Folder, ROOT["f1/?a=b/"])
-    
-    @raises(RdfRestException)
-    def test_post_item_uri_with_fragid(self):
-        # raises RdfRestException instead of InvalidUriException,
-        # because the URI with a frag-id is not even recognized as the created
-        # uri by Folder.find_created
-        self._test_post_uri(Item, ROOT["i1#a"])
-
-    @raises(RdfRestException)
-    def test_post_folder_uri_with_fragid(self):
-        # raises RdfRestException instead of InvalidUriException, cf. above
-        self._test_post_uri(Folder, ROOT["f1/#a/"])
-    
-    def test_post_folder_bad_uri(self):
-        # posting a URI without a trailing slash
-        root = self.service.root
-        folder_graph = Folder.populate(ROOT.g1, root.uri)
-        with assert_raises(InvalidDataError):
-            root.rdf_post(folder_graph)
-
-    def _test_post_bnode(self, cls):
-        """Abstract test. Called below with Item and Folder."""
-        root = self.service.root
-        graph = cls.populate(BNode(), root.uri)
-        created = root.rdf_post(graph)
-    
-        assert isinstance(created, list)
-        assert len(created) == 1
-        uri = created[0]
-        assert isinstance(uri, URIRef)
-        graph = cls.populate(uri, root.uri)
-        got = self.service.get(uri)
-        assert got is not None
-        assert isinstance(got, cls)
-        assert_same_graph(graph, got.rdf_get())
-    
-        root_graph = mutable_copy(root.rdf_get())
-        root_graph.add((root.uri, RNS.hasChild, uri))
-        assert_same_graph(root_graph, root.rdf_get())
-
-    def test_post_item_bnode(self):
-        self._test_post_bnode(Item)
-
-    def test_post_folder_bnode(self):
-        self._test_post_bnode(Folder)
-
-    def _test_post_postable_type(self, cls):
-        """Abstract test. Called below with Item and Folder."""
-        root = self.service.root
-        graph = cls.populate(BNode(), root.uri)
-        graph.add((graph, RDF.type, RNS.ro_type))
-        root.rdf_post(graph)
-
-    def test_post_item_postable_type(self):
-        self._test_post_postable_type(Item)
-        
-    def test_post_folder_postable_type(self):
-        self._test_post_postable_type(Folder)
-        
-    def _test_post_reserved(self, cls):
-        """Abstract test. Called below with Item and Folder."""
-        root = self.service.root
-        root_graph = mutable_copy(root.rdf_get())
-        bnode = BNode()
-    
-        # testing in
-        graph = cls.populate(bnode, root.uri)
-        graph.add((ONS.foo, RNS.unallowed, bnode))
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
-        # testing out
-        graph = cls.populate(bnode, root.uri)
-        graph.add((bnode, RNS.unallowed, ONS.foo))
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
-        # testing type
-        graph = cls.populate(bnode, root.uri)
-        graph.add((bnode, RDF.type, RNS.unallowed))
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
-             
-    def test_post_item_reserved(self):
-        self._test_post_reserved(Item)
-
-    def test_post_folder_reserved(self):
-        self._test_post_reserved(Folder)
-
-    def _test_post_wrong_dir(self, cls):
-        """Abstract test. Called below with Item and Folder."""
-        root = self.service.root
-        root_graph = mutable_copy(root.rdf_get())
-        bnode = BNode()
-    
-        # testing in
-        graph = cls.populate(ROOT.i1, root.uri)
-        graph.add((ONS.foo, RNS.rw_out, ROOT.i1))
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
-        # testing out
-        graph = cls.populate(ROOT.i1, root.uri)
-        graph.add((ROOT.i1, RNS.rw_in, ONS.foo))
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
-
-    def test_post_item_wrong_dir(self):
-        self._test_post_wrong_dir(Item)
-             
-    def test_post_folder_wrong_dir(self):
-        self._test_post_wrong_dir(Folder)
-
-    
-class _TestWithOneElement(object):
-    """Abstract class for tests with a service with one root and one element.
-
-    Subclassed below as TestWithOneItem and TestWithOneFolder.
-    """
-
-    uri = None # override in subclasses
-    cls = None # override in subclasses
-
+    ROOT_URI = URIRef("http://localhost:11235/foo/")
+    service = None
+    root = None
+    item = None
 
     def setUp(self):
-        self.service = MyService()
-        graph = self.cls.populate(self.uri, self.service.root.uri)
-        self.service.root.rdf_post(graph)
-    
-    def test_get(self):
-        ref = self.cls.populate(self.uri, self.service.root.uri)
-        got = self.service.get(self.uri)
-        assert_same_graph(ref, got.rdf_get())
-        assert_same_graph(got._graph, got.rdf_get())
-    
-    def test_put_idem(self):
-        ref = self.cls.populate(self.uri, self.service.root.uri)
-        got = self.service.get(self.uri)
-        got.rdf_put(mutable_copy(got.rdf_get()))
-        assert_same_graph(ref, got.rdf_get())
-    
-    def test_put_different(self):
-        got = self.service.get(self.uri)
-        graph = mutable_copy(got.rdf_get())
-        graph.add((self.uri, RDFS.label, Literal("hello")))
-        got.rdf_put(graph)
-        assert_same_graph(graph, got.rdf_get())
-        
-    def test_put_reserved(self):
-        i1 = self.service.get(self.uri)
-        # testing in
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((ONS.foo, RNS.rw_unallowed, i1.uri))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing out
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RNS.unallowed, ONS.foo))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing reserved type
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RDF.type, RNS.unallowed))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-    
-    def test_put_postable(self):
-        i1 = self.service.get(self.uri)
-        # testing in
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((ONS.foo, RNS.ro_in, i1.uri))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing out
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RNS.ro_out, ONS.foo))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing type
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RDF.type, RNS.ro_type))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing main type
-        graph = mutable_copy(i1.rdf_get())
-        graph.remove((i1.uri, RDF.type, self.cls.RDF_MAIN_TYPE))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-    
-    def test_put_wrong_dir(self):
-        i1 = self.service.get(self.uri)
-        # testing in (while allowed out)
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((ONS.foo, RNS.rw_out, i1.uri))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-        # testing out (while allowed in)
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RNS.rw_in, ONS.foo))
-        with assert_raises(InvalidDataError):
-            i1.rdf_put(graph)
-    
-    def test_putable_type(self):
-        i1 = self.service.get(self.uri)
-        graph = mutable_copy(i1.rdf_get())
-        graph.add((i1.uri, RDF.type, RNS.rw_type))
-        i1.rdf_put(graph)
-        assert_same_graph(graph, i1.rdf_get())
-        graph.remove((i1.uri, RDF.type, RNS.rw_type))
-        i1.rdf_put(graph)
-        assert_same_graph(graph, i1.rdf_get())
-    
-    def test_putable_in(self):
-        i1 = self.service.get(self.uri)
-        graph = mutable_copy(i1.rdf_get())
-    
-        if self.cls is Folder:
-            # only try to change value,
-            # as rw_in has cardinality constraints in Folder
-            graph.remove((None, RNS.rw_in, i1.uri))
-            graph.add((ONS.bar, RNS.rw_in, i1.uri))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
+        self.service = make_example2_service(self.ROOT_URI,
+                                             additional = [TestItem])
+        self.root = self.service.get(self.ROOT_URI,
+                                     _rdf_type=EXAMPLE.Group2)
+        assert isinstance(self.root, Group2Implementation)
+        self.items = []
 
-        else:
-            # try 0, 1 and 2 values
-            graph.remove((None, RNS.rw_in, i1.uri))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
+    def tearDown(self):
+        if self.items is not None:
+            for i in self.items:
+                try:
+                    i.delete()
+                except:
+                    pass
+            del self.items
+        if self.root is not None:
+            del self.root
+        if self.service is not None:
+            unregister_service(self.service)
+            del self.service
     
-            graph.add((ONS.foo, RNS.rw_in, i1.uri))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-    
-            graph.add((ONS.bar, RNS.rw_in, i1.uri))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-    
-    def test_putable_out(self):
-        i1 = self.service.get(self.uri)
-        graph = mutable_copy(i1.rdf_get())
-    
-        if self.cls is Folder:
-            # only try to change value,
-            # as rw_out has cardinality constraints in Folder
-            graph.remove((i1.uri, RNS.rw_out, None))
-            graph.add((i1.uri, RNS.rw_out, ONS.bar))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-        else:
-            # try 0, 1 and 2 values
-            graph.remove((i1.uri, RNS.rw_out, None))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-    
-            graph.add((i1.uri, RNS.rw_out, ONS.foo))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-    
-            graph.add((i1.uri, RNS.rw_out, ONS.bar))
-            i1.rdf_put(graph)
-            assert_same_graph(graph, i1.rdf_get())
-    
-    def test_post_uri_in_use(self):
-        root = self.service.root
-        graph = self.cls.populate(self.uri, root.uri)
-        with assert_raises(InvalidDataError):
-            root.rdf_post(graph)
+    def prepare_test_item(self):
+        new_graph = Graph()
+        bnode = BNode()
+        for triple in [(self.root.uri, EXAMPLE.contains, bnode),
+                       (bnode, RDF.type, RESERVED.TestItem),
+                       (CARD.something1, CARD.card1_in, bnode),
+                       (CARD.something1, CARD.card1n_in, bnode),
+                       (CARD.something1, CARD.card23_in, bnode),
+                       (CARD.something2, CARD.card23_in, bnode),
+                       (bnode, CARD.card1_out, CARD.something1),
+                       (bnode, CARD.card1n_out, CARD.something1),
+                       (bnode, CARD.card23_out, CARD.something1),
+                       (bnode, CARD.card23_out, CARD.something2),
+                       ]:
+            new_graph.add(triple)
+        return bnode, new_graph
 
-    def test_post_second_bnode(self):
-        root = self.service.root
-        graph = self.cls.populate(BNode(), root.uri)
-        root.rdf_post(graph)
+    def make_test_item(self):
+        created, graph = self.prepare_test_item()
+        uris = self.root.post_graph(graph, _created=created,
+                                    _rdf_type=RESERVED.TestItem)
+        ret = self.root.factory(uris[0], _rdf_type=RESERVED.TestItem)
+        assert isinstance(ret, TestItem)
+        self.items.append(ret)
+        return ret
+
+    def test_example2(self):
+        """I use the comprehensive test sequence defined in example1.py
+
+        Note that this sequence does not explicitly use the functionalities
+        of the :mod:`mixins` module; but at least it shows that "normal"
+        functionalities still work when the mix-in classes are used.
+        """        
+        example2.do_tests(self.root)
+
+    ################################################################
+    #
+    # BookkeepingMixin tests
+    #
+
+    def test_bk_on_created(self):
+        assert hasattr(self.root, "iter_etags")
+        assert hasattr(self.root, "last_modified")
+
+    def test_bk_changed_on_edit(self):
+        old_etag = list(self.root.iter_etags())
+        old_lm = self.root.last_modified
+        with self.root.edit() as graph:
+            sleep(1) # ensures last_modified will actually change
+            graph.add((self.root.uri, RDFS.label, Literal("modified")))
+        assert list(self.root.iter_etags()) != old_etag
+        assert self.root.last_modified > old_lm
+
+    ################################################################
+    #
+    # WithReservedNamespaceMixin tests
+    #
+
+    def test_rns_in_forbidden(self):
+        for uri in [RESERVED.creatableOut, RESERVED.creatableType,
+                    RESERVED.editableOut, RESERVED.editableType,
+                    RESERVED.otherProp, EXAMPLE.otherProp, EXAMPLE.label]:
+            # check that we can not create it        
+            with assert_raises(InvalidDataError):
+                created, graph = self.prepare_test_item()
+                graph.add((RESERVED.somethingElse, uri, created))
+                self.root.post_graph(graph)
+
+    def test_rns_in_creatable_only(self):
+        for uri in [RESERVED.creatableIn]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            graph.add((RESERVED.somethingElse, uri, bnode))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can not edit it
+            with assert_raises(InvalidDataError):
+                with item.edit() as editable:
+                    editable.remove((None, uri, item.uri))
+
+    def test_rns_in_editable(self):
+        for uri in [RESERVED.editableIn, OTHER.prop ]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            graph.add((RESERVED.somethingElse, uri, bnode))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can edit it
+            with item.edit() as editable:
+                editable.remove((None, uri, item.uri))
 
 
-class TestWithOneItem(_TestWithOneElement):
-    uri = ROOT.i1
-    cls = Item
+    def test_rns_out_forbidden(self):
+        for uri in [RESERVED.creatableIn, RESERVED.creatableType,
+                    RESERVED.editableIn, RESERVED.editableType,
+                    RESERVED.otherProperty, EXAMPLE.otherProp]:
+            # check that we can not create it        
+            with assert_raises(InvalidDataError):
+                created, graph = self.prepare_test_item()
+                if uri in EXPECTING_LITERAL:
+                    other = Literal("something else")
+                else:
+                    other = RESERVED.somethingElse
+                graph.add((created, uri, other))
+                self.root.post_graph(graph)
 
-class TestWithOneFolder(_TestWithOneElement):
-    uri = ROOT["f1/"]
-    cls = Folder
+    def test_rns_out_creatable_only(self):
+        for uri in [RESERVED.creatableOut]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            if uri in EXPECTING_LITERAL:
+                other = Literal("something else")
+            else:
+                other = RESERVED.somethingElse
+            graph.add((bnode, uri, other))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can not edit it
+            with assert_raises(InvalidDataError):
+                with item.edit() as editable:
+                    editable.remove((item.uri, uri, None))
+
+    def test_rns_out_editable(self):
+        for uri in [RESERVED.editableOut, EXAMPLE.label, OTHER.prop ]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            if uri in EXPECTING_LITERAL:
+                other = Literal("something else")
+            else:
+                other = RESERVED.somethingElse
+            graph.add((bnode, uri, other))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can edit it
+            with item.edit() as editable:
+                editable.remove((item.uri, uri, None))
 
 
-def test_cardinality():
-    for cls in ["Item", "Folder",]:
-        for prop, cmin, cmax in [
-            ("c1_in",   1, 1),
-            ("c01_in",  0, 1),
-            ("c23_in",  2, 3),
-            ("c1n_in",  1, 999),
-            ("c0_in",   0, 0),
-            ("c1_out",  1, 1),
-            ("c01_out", 0, 1),
-            ("c23_out", 2, 3),
-            ("c1n_out", 1, 999),
-            ("c0_out",  0, 0),
+    def test_rns_type_forbidden(self):
+        for uri in [RESERVED.creatableIn, RESERVED.creatableOut,
+                    RESERVED.editableIn, RESERVED.editableOut,
+                    RESERVED.otherType, EXAMPLE.otherType ]:
+            # check that we can not create it        
+            with assert_raises(InvalidDataError):
+                created, graph = self.prepare_test_item()
+                graph.add((created, RDF.type, uri))
+                self.root.post_graph(graph)
+
+    def test_rns_type_creatable_only(self):
+        for uri in [RESERVED.creatableType]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            graph.add((bnode, RDF.type, uri))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can not edit it
+            with assert_raises(InvalidDataError):
+                with item.edit() as editable:
+                    editable.remove((item.uri, RDF.type, uri))
+
+    def test_rns_type_editable(self):
+        for uri in [RESERVED.editableType, OTHER.type ]:
+            # check that we can create it
+            bnode, graph = self.prepare_test_item()
+            graph.add((bnode, RDF.type, uri))
+            uris = self.root.post_graph(graph)
+            item = self.root.factory(uris[0])
+            assert isinstance(item, TestItem)
+            # check that we can edit it
+            with item.edit() as editable:
+                editable.remove((item.uri, RDF.type, uri))
+
+    ################################################################
+    #
+    # WithCardinalityMixin tests
+    #
+
+    def test_cardinality(self):
+        test_create = self.check_cardinality_create
+        test_edit = self.check_cardinality_create
+
+        for prop,             inmin, inmax, outmin, outmax in [
+            (CARD.card1_in,   1,     1,     0,      999),
+            (CARD.card01_in,  0,     1,     0,      999),
+            (CARD.card23_in,  2,     3,     0,      999),
+            (CARD.card1n_in,  1,   999,     0,      999),
+            (CARD.card0_in,   0,     0,     0,      999),
+            (CARD.card1_out,  0,   999,     1,        1),
+            (CARD.card01_out, 0,   999,     0,        1),
+            (CARD.card23_out, 0,   999,     2,        3),
+            (CARD.card1n_out, 0,   999,     1,      999),
+            (CARD.card0_out,  0,   999,     0,        0),
+            (EXAMPLE.label,   0,     0,     0,        1),
             ]:
             for i in range(4):
-                if cls == "Item":
-                    # check that opposite direction is always allowed
-                    # (but not in Folder, where ONS is reserved)
-                    yield check_cardinality, cls, prop, i, "opposite"
-                if cls == "Folder" and prop[:3] == "c01":
-                    # c01_in and c01_out are not allowed on Folders
-                    must_pass = (i == 0)
-                else:                
-                    must_pass = (cmin <= i <= cmax)
-                yield check_cardinality, cls, prop, i, must_pass
+                must_pass_in = (inmin <= i <= inmax)
+                must_pass_out = (outmin <= i <= outmax)
 
-    # cardinality constraints overridden in Folder
-    for prop, cmin, cmax in [
-        ("rw_in",  1, 1),
-        ("rw_out", 1, 1),
-        ]:
-        for i in range(4):
-            must_pass = (cmin <= i <= cmax)
-            yield check_cardinality, "Folder", prop, i, must_pass
+                for test_proc in [self.check_cardinality_create,
+                                  self.check_cardinality_create]:
 
-def check_cardinality(cls, prop, num, must_pass):
-    # pre-process arguments
-    cls = globals()[cls]
-    if prop[0] == "r":
-        prop = RNS[prop]
-    else:
-        prop = ONS[prop]
-    if prop[-3:] == "_in":
-        direction = -1
-    else:
-        direction = 1
-    if must_pass == "opposite":
-        # testing that direction opposite to the constraint always pass
-        direction = -direction
-        must_pass = True
-    direction = slice(None, None, direction)
+                    if must_pass_in:
+                        test_proc("in", prop, i)
+                    else:
+                        with assert_raises(InvalidDataError):
+                            test_proc("in", prop, i)
 
-    # setUp service
-    service = MyService()
-    graph = cls.populate(BNode, service.root.uri)
-    uri = service.root.rdf_post(graph)[0]
-    created = service.get(uri)
-    # alter graph with 'num' occurences of 'prop'
-    graph.remove((uri, prop, None)[direction])
-    for i in range(num):
-        other = ONS["other%s" % i]
-        graph.add((uri, prop, other)[direction])
-    # do test
-    if must_pass:
-        created.rdf_put(graph)
-    else:
-        with assert_raises(InvalidDataError):
-            created.rdf_put(graph)
+                    if must_pass_out:
+                        test_proc("out", prop, i)
+                    else:
+                        with assert_raises(InvalidDataError):
+                            test_proc("out", prop, i)
 
 
-def test_bk():
-    service = MyService()
-    root = service.root
-    assert hasattr(root, "etag")
-    assert hasattr(root, "last_modified")
+    def check_cardinality_create(self, direction, prop, nb):
+        bnode, new_graph = self.prepare_test_item()
+        self.change_cardinality_prop(new_graph, bnode, prop, nb, direction)
+        uris = self.root.post_graph(new_graph)
+        self.root.factory(uris[0]).delete()
+        self.root.force_state_refresh()
+                             
+    def check_cardinality_edit(self, direction, prop, nb):
+        bnode, new_graph = self.prepare_test_item()
+        uris = self.root.post_graph(new_graph)
+        test = self.root.factory(uris[0])
+        assert isinstance(item, TestItem)
+        with test.edit() as editable:
+            self.change_cardinality_prop(editable, test.uri, prop, nb,direction)
+        test.delete()
+        self.root.force_state_refresh()
 
-def test_bk_changed_on_put():
-    service = MyService()
-    root = service.root
-    old_etag = root.etag
-    old_lm = root.last_modified
-    graph = mutable_copy(root.rdf_get())
-    graph.add((root.uri, RDFS.label, Literal("modified")))
-    sleep(0.05) # ensures last_modified will actually change
-    root.rdf_put(graph)
-    assert root.etag != old_etag
-    assert root.last_modified > old_lm
+    def change_cardinality_prop(self, graph, subject, prop, nb, direction):
+        if direction == "in":
+            graph.remove((None, prop, subject))
+        else: # direction == "out"
+            graph.remove((subject, prop, None))
+        for i in range(nb):
+            if prop == EXAMPLE.label and direction == "out":
+                other = Literal("something%s" % (i+1))
+            else:
+                other = CARD["something%s" % (i+1)]
+            if direction == "in":
+                graph.add((other, prop, subject))
+            else: # direction == "out"
+                graph.add((subject, prop, other))
 
-def test_bk_changed_on_post():
-    service = MyService()
-    root = service.root
-    old_etag = root.etag
-    old_lm = root.last_modified
-    sleep(0.05) # ensures last_modified will actually change
-    root.rdf_post(Item.populate(BNode(), root.uri))
-    assert root.etag != old_etag
-    assert root.last_modified > old_lm
-    
+    ################################################################
+    #
+    # WithTypedPropertiesMixin tests
+    #
 
-# toolbox                      
+    def test_typed_properties(self):
+        for typed_prop in (Item2Implementation.RDF_TYPED_PROP
+                           + TestItem.RDF_TYPED_PROP):
+            if len(typed_prop) == 2:
+                typed_prop += (None,)
+            prop, ntype, vtype = typed_prop
 
-def assert_same_graph(g1, g2):
-    in_both, in_first, in_second = graph_diff(g1, g2)
-    def dump_diff():
-        return "\n+++\n%s---\n%s===\n" % (
-            in_first.serialize(format="n3"),
-            in_second.serialize(format="n3"),
-            )
-    assert len(in_both) == len(g1), dump_diff()
-    assert len(in_first) == 0, dump_diff()
-    assert len(in_first) == 0, dump_diff()
+            for val in [Literal("foo"),
+                        Literal("foo", lang="en"),
+                        Literal("foo", datatype=XSD.string),
+                        Literal(42),
+                        Literal(3.14),
+                        Literal(True),
+                        Literal("foo", datatype=TYPED.custom)]:
 
-def mutable_copy(graph):
-    ret = Graph()
-    for triple in graph:
-        ret.add((triple))
-    return ret
+                testitem = self.make_test_item()
+                must_pass = (ntype == "literal"
+                             and (vtype is None
+                                  or vtype == val.datatype
+                                  or (vtype == XSD.string
+                                      and val.datatype is None)))
+                print prop, val.n3(), must_pass
+                if must_pass:
+                    with testitem.edit() as editable:
+                        editable.add((testitem.uri, prop, val))
+                else:
+                    with assert_raises(InvalidDataError):
+                        with testitem.edit() as editable:
+                            editable.add((testitem.uri, prop, val))
+
+            for obj, typ in [(TYPED.other, None),
+                             (TYPED.other, TYPED.Foo),
+                             (TYPED.other, TYPED.Bar),
+                             (BNode(), None),
+                             (BNode(), TYPED.Foo),
+                             (BNode(), TYPED.Bar)]:
+
+                testitem = self.make_test_item()
+                must_pass = (ntype == "uri"
+                             and (vtype is None or vtype == typ))
+                
+                print prop, obj, typ, must_pass
+                if must_pass:
+                    with testitem.edit() as editable:
+                        editable.add((testitem.uri, prop, obj))
+                        if typ:
+                            editable.add((obj, RDF.type, typ))
+                            
+                else:
+                    with assert_raises(InvalidDataError):
+                        with testitem.edit() as editable:
+                            editable.add((testitem.uri, prop, obj))
+                            if typ:
+                                editable.add((obj, RDF.type, typ))
+
+
+RESERVED = Namespace("http://example.org/reserved#")
+CARD = Namespace("http://example.org/cardinality#")
+TYPED = Namespace("http://example.org/typed#")
+
+class TestItem(Item2Implementation):
+    """A subclass of Item2 for systematical testing of the mixins module.
+    """
+    RDF_MAIN_TYPE = RESERVED.TestItem
+
+    RDF_RESERVED_NS =     [RESERVED]
+    RDF_CREATABLE_IN =    [RESERVED.creatableIn]
+    RDF_CREATABLE_OUT =   [RESERVED.creatableOut]
+    RDF_CREATABLE_TYPES = [RESERVED.creatableType]
+    RDF_EDITABLE_IN =     [RESERVED.editableIn]
+    RDF_EDITABLE_OUT =    [RESERVED.editableOut]
+    RDF_EDITABLE_TYPES =  [RESERVED.editableType]
+
+    RDF_CARDINALITY_IN = [
+        (CARD.card1_in,      1,    1),
+        (CARD.card01_in,  None,    1),
+        (CARD.card23_in,     2,    3),
+        (CARD.card1n_in,     1, None),
+        (CARD.card0_in,      0,    0),
+        # the last example shows how to forbit a spefic
+        # NB (..., 0, 0) is equivalent to (..., None, 0) but is more explicit
+        ]
+    RDF_CARDINALITY_OUT = [
+        (CARD.card1_out,     1,    1),
+        (CARD.card01_out, None,    1),
+        (CARD.card23_out,    2,    3),
+        (CARD.card1n_out,    1, None),
+        (CARD.card0_out,     0,    0),
+        # NB (..., 0, 0) is equivalent to (..., None, 0) but is more explicit
+        ]
+
+    RDF_TYPED_PROP = [
+        (TYPED.hasUri,     "uri"),
+        (TYPED.hasFoo  ,   "uri",     TYPED.Foo),
+        (TYPED.hasLiteral, "literal"),
+        (TYPED.hasString,  "literal", XSD.string),
+        (TYPED.hasInteger, "literal", XSD.string),
+        (TYPED.hasFloat,   "literal", XSD.float),
+        (TYPED.hasBoolean, "literal", XSD.boolean),
+        (TYPED.hasCustom,  "literal", TYPED.custom),
+    ]

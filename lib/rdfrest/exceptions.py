@@ -1,5 +1,5 @@
-#    This file is part of RDF-REST <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    This file is part of RDF-REST <http://champin.net/2012/rdfrest>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    RDF-REST is free software: you can redistribute it and/or modify
@@ -20,8 +20,18 @@
 
 class RdfRestException(Exception):
     """The common superclass of all RDF-REST exceptions.
+
+    :param arg: can be either a message or an exception to embed
     """
-    pass
+    def __init__(self, arg=None):
+        if isinstance(arg, BaseException):
+            message = "embeded %s: %s" % (arg.__class__.__name__,
+                                               arg.message)
+            self.embeded = arg
+        else:
+            message = str(arg)
+            self.embeded = None
+        Exception.__init__(self, message)
 
 class CorruptedStore(RdfRestException):
     """An error raised when the RDF store is in an unexpected state.
@@ -53,48 +63,25 @@ class InvalidParametersError(RdfRestException):
     pass
 
 class InvalidUriError(InvalidDataError):
-    """An error raised the URI used to create a resoutce is not acceptable.
+    """An error raised when the URI used to create a resource is not acceptable.
     """
     pass
 
-
 class MethodNotAllowedError(NotImplementedError, RdfRestException):
     """An error raised when an RDF-REST method is not supported.
-
-    :param message: the message of this exception
-    :param allowed: a list of the allowed operations
     """
-    def __init__(self, message, allowed=("head", "get")):
+    def __init__(self, message):
         NotImplementedError.__init__(self)
         RdfRestException.__init__(self, message)
-        self.allowed = list(allowed)
 
 class ParseError(RdfRestException):
     """An error during parsing a user-provided content.
-
-    :param message:  the message of this exception
-    :param original: if provided, the original exception that caused this error
     """
-    def __init__(self, message, original=None):
-        RdfRestException.__init__(self, message)
-        self.original = original
-
-class Redirect(RdfRestException):
-    """Causes a redirection to another resource.
-    
-    .. note:
-    
-        This is used to force http_front to issue a 303 redirect, but note that
-        it makes the resource hardly usable outside the HTTP protocol.
-    """
-    def __init__(self, uri):
-        RdfRestException.__init__(self, uri)
-        self.uri = uri
+    pass
 
 class SerializeError(RdfRestException):
     """An error during serializing a graph.
 
-    Can be raised by specialized serializers that are not able to serialize
-    arbitrary RDF graphs.
+    :param arg: can be either a message or an exception to embed
     """
     pass

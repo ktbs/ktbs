@@ -1,9 +1,14 @@
 Developers' documentation
 =========================
 
-.. toctree::
+.. automodule:: ktbs
 
-   devel/ktbs
+.. toctree::
+   :maxdepth: 2
+
    devel/ktbs_client
-   devel/ktbs_common
-   devel/rdfrest
+   devel/ktbs_api
+   devel/ktbs_engine
+   devel/ktbs_methods
+   devel/ktbs_plugins
+   devel/ktbs_utilities

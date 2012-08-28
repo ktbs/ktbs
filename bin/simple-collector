@@ -1,6 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
+#    Universite de Lyon <http://www.universite-lyon.fr>
+#
+#    KTBS is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    KTBS is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
+# invalid module name #pylint: disable=C0103
 """
 A simple collector program that populates the KTBS with collected obsels.
 """
@@ -8,27 +27,26 @@ A simple collector program that populates the KTBS with collected obsels.
 import sys
 from os.path import abspath, dirname, join
 
-source_dir = dirname(dirname(abspath(__file__)))
-lib_dir = join(source_dir, "lib")
-sys.path.insert(0, lib_dir)
+SOURCE_DIR = dirname(dirname(abspath(__file__)))
+LIB_DIR = join(SOURCE_DIR, "lib")
+sys.path.insert(0, LIB_DIR)
 
-from optparse import OptionParser
 from argparse import ArgumentParser
 
 from datetime import datetime
 
-from rdflib import BNode, Graph, Literal, Namespace, RDF, URIRef
+from rdflib import Namespace
 
-from ktbs.namespaces import KTBS, SKOS
-from ktbs.client.root import KtbsRoot
-from ktbs.client.base import Base as KtbsBase
-from ktbs.common.utils import post_graph
-from rdfrest.utils import coerce_to_uri, urisplit
+from rdfrest.utils import coerce_to_uri, parent_uri, urisplit
+
+from ktbs.api.base import BaseMixin as KtbsBase
+from ktbs.api.trace import StoredTraceMixin as StoredTrace
+from ktbs.client import get_ktbs
 
 
 MODEL_URI = "http://liris.cnrs.fr/silex/2011/simple-trace-model"
-TRACE_ORIGIN = "1970-01-01T00:00:00Z"
-#MODEL_PREFIX = Namespace("http://liris.cnrs.fr/silex/2011/simple-trace-model#")
+TRACE_ORIGIN = datetime.utcnow()  #"1970-01-01T00:00:00Z"
+MODEL_PREFIX = Namespace("http://liris.cnrs.fr/silex/2011/simple-trace-model#")
 OBSEL_TYPE = "#SimpleObsel"
 
 class ObselCollector(object):
@@ -41,30 +59,26 @@ class ObselCollector(object):
         Define simple collector parser and its command line options.
         To begin, we just ask for a Trace URI which is mandatory.
         """
-        self._parser = ArgumentParser(description="Fill a stored trace with obsels.")
-        self._parser.add_argument("trace", 
-                                  nargs=1, 
-                                  help="Enter the uri of the trace that will \
-                                        contain the collected obsels")
-        self._parser.add_argument("-m", "--model",
-                                  nargs="?",
-                                  help="NOT IMPLEMENTED YET - Enter the model uri if different from \
-                                        the default (%s), it can be a relative \
-                                        URI." % MODEL_URI)
-        self._parser.add_argument("-t", "--type",
-                                  nargs="?",
-                                  help="NOT IMPLEMENTED YET - Enter the obsel type uri if different \
-                                        from the default (%s), it can be a \
-                                        relative URI." % OBSEL_TYPE)
-        self._parser.add_argument("-a", "--attribute",
-                                  nargs="?",
-                                  help="NOT IMPLEMENTED YET - Enter the attribute uri it can be a \
-                                        relative")
-        self._parser.add_argument("-e", "--empty",
-                                  action="store_true",
+        self._parser = ArgumentParser(description="Fill a stored trace with "
+                                      "obsels.")
+        self._parser.add_argument("trace", nargs=1, 
+                                  help="Enter the uri of the trace that will "
+                                  "contain the collected obsels")
+        self._parser.add_argument("-m", "--model", nargs="?",
+                                  help="NOT IMPLEMENTED YET - Enter the model "
+                                  "uri if different from the default (%s), it "
+                                  "can be a relative URI." % MODEL_URI)
+        self._parser.add_argument("-t", "--type", nargs="?",
+                                  help="NOT IMPLEMENTED YET - Enter the obsel "
+                                  "type uri if different from the default "
+                                  "(%s), it can be a relative URI."
+                                  % OBSEL_TYPE)
+        self._parser.add_argument("-a", "--attribute", nargs="?",
+                                  help="NOT IMPLEMENTED YET - Enter the "
+                                  "attribute uri it can be a relative")
+        self._parser.add_argument("-e", "--empty", action="store_true",
                                   help="Allow empty value for obsels")
-        self._parser.add_argument("-v", "--verbose",
-                                  action="store_true",
+        self._parser.add_argument("-v", "--verbose", action="store_true",
                                   help="Display print messages")
 
         self._args = self._parser.parse_args()
@@ -80,13 +94,13 @@ class ObselCollector(object):
         # Then check the path component
         # .rsplit("/",2) to get the last two items
 
-        sr = urisplit(self._args.trace[0])
+        split = urisplit(self._args.trace[0])
 
         # Result for http://localhost:8001/Base/t01/
         #SplitResult(scheme='http', netloc='localhost:8001', path='/Base/t01/', 
         #            query=None, fragment=None)r
 
-        self.display("----- %s " % repr(sr))
+        self.display("----- %s " % repr(split))
 
         # Transform URI string to an rdflib URIRef
         return (coerce_to_uri(self._args.trace[0]))
@@ -102,12 +116,8 @@ class ObselCollector(object):
         """
         Get the kTBS root from the trace uri.
         """
-        sr = urisplit(self._args.trace[0])
-        self.root_uri = urisplit(self._args.trace[0])
-
-        # TODO Improve this dirty hack
-        if sr.scheme == "http":
-            self.root_uri = "http://%s/" % sr.netloc
+        self.root_uri = parent_uri(parent_uri(self._args.trace[0]))
+        self.display("----- root_uri: %s" % self.root_uri)
 
     def get_base(self, trace_uri):
         """
@@ -116,34 +126,16 @@ class ObselCollector(object):
         """
 
         # Get a KTBS access 
-        #root = KtbsRoot("http://localhost:8001/")
-        root = KtbsRoot(self.root_uri)
+        root = get_ktbs(self.root_uri)
         self.display("----- root.label: %s" % root.label)
 
-        tbase = None
-
-        for b in root.bases:
-            base_uri = b.uri
-
-            if trace_uri.find(base_uri) != -1:
-                self.display("----- %s is the base of %s" % (base_uri, trace_uri))
-                tbase = b
-            else:
-                self.display("----- %s base does not match" % base_uri)
-
+        base_uri = parent_uri(trace_uri)
+        tbase = root.get_base(base_uri)
         if tbase is None:
             self.display("----- No matching base found, creating ...")
-
-            root_uri = root.get_uri()
-            if (trace_uri.find(root_uri) == 0) and (len(trace_uri) > len(root_uri)):
-                wrkuri = trace_uri[len(root_uri):]
-                if wrkuri.find('/') != -1:
-                    # We should have base_name/trace_name/
-                    base_name = wrkuri.split('/')[0]
-                    tbase = root.create_base(id="%s/" % base_name, label="%s" % base_name)
-
-                    # Add a default model
-                    #tbase.create_model(id=MODEL_URI)
+            tbase = root.create_base(base_uri)
+            # Add a default model
+            #tbase.create_model(id=MODEL_URI)
 
         if tbase is not None:
             self.display("----- base.label: %s" % tbase.label)
@@ -156,43 +148,34 @@ class ObselCollector(object):
         If found, check the model and the origin.
         If it does not exist, create it.
         """
-        ttrace = None
+        ttrace = base.get(trace_uri)
+        if ttrace is not None: 
+            self.display("----- The trace %s already exists" % trace_uri)
+            assert isinstance(ttrace, StoredTrace)
 
-        for t in base.traces:
-            if trace_uri.find(t.uri) != -1:
-                self.display("----- The trace %s already exists" % trace_uri)
-                ttrace = t
+            ## the model may be unreachable
+            # model = ttrace.model
+            # if model is not None:
+            #     self.display("----- %s model uri: %s"
+            #                  % (ttrace.label, model.uri))
+            # else:
+            #     self.display("----- No model found for %s" % ttrace.label)
 
-                model = ttrace.model
-                if model is not None:
-                    self.display("----- %s model uri: %s" % (ttrace.label, model.uri))
-                else:
-                    self.display("----- No model found for %s" % ttrace.label)
+            #     # TODO Check trace origin
+            #     self.display("----- %s origin: %s"
+            #                  % (ttrace.label, ttrace.origin))
 
-                # TODO Check trace origin
-                self.display("----- %s origin: %s" % (ttrace.label, ttrace.origin))
-
-        if ttrace is None:
+        else:
             self.display("----- No matching trace found, creating ...")
-
             # TODO Trace URI is already checked do the job
-            base_uri = base.uri
-            if (trace_uri.find(base_uri) == 0) and (len(trace_uri) > len(base_uri)):
-                wrkuri = trace_uri[len(base_uri):]
-                if wrkuri.find('/') != -1:
-                    trace_name = wrkuri.split('/')[0]
-
-                    ttrace = base.create_stored_trace(id="%s/" % trace_name,
-                                                      model=MODEL_URI,
-                                                      origin=TRACE_ORIGIN
-                                                      #label="%s" % trace_name
-                                                      )
-                else:
-                    sys.exit("Invalid trace uri '%s': check this uri ends with"
-                             " a '/' character." % trace_uri)
-
-        if ttrace is not None:
-            self.display("----- trace.label: %s" % ttrace.label)
+            if parent_uri(trace_uri) != str(base.uri):
+                sys.exit("Invalid trace uri '%s': check this uri ends with a "
+                         "'/' character." % trace_uri)
+            ttrace = base.create_stored_trace(id=trace_uri,
+                                              model=MODEL_URI,
+                                              origin=TRACE_ORIGIN
+                                              #label="%s" % trace_name
+                                              )
 
         return ttrace
 
@@ -205,7 +188,7 @@ class ObselCollector(object):
 
         model = base.create_model(id="model1")
         if model is not None:
-            simpleobseltype = model.create_obsel_type(OBSEL_TYPE)
+            model.create_obsel_type(OBSEL_TYPE)
         return model
 
     def add_obsel(self, trace, value):
@@ -225,28 +208,26 @@ class ObselCollector(object):
         if not self._args.empty and len(value) == 0:
             return None
 
-        # Get Model Information
-        model = trace.get_model()
-
-        # Get obsel type URI
-        simple_obsel_type = model.get(id=OBSEL_TYPE)
-
         attributes = {}
-        if model is not None:
-            self.display("----- %s model uri: %s" % (trace.label, model.uri))
-            atypes = model.attribute_types
-            if len(atypes) > 0:
-                attributes[atypes[0]] = value
 
-        obsel = trace.create_obsel(type=simple_obsel_type.get_uri(),
-                                   begin=datetime.now(),
-                                   end=datetime.now(),
+        # as the model may not be available, do not use it
+        # model = trace.get_model()
+        # if model is not None:
+        #     self.display("----- %s model uri: %s" % (trace.label, model.uri))
+        #     atypes = model.attribute_types
+        #     if len(atypes) > 0:
+        #         attributes[atypes[0]] = value
+
+        obsel = trace.create_obsel(type=MODEL_URI + OBSEL_TYPE,
+                                   #begin=datetime.now(),
+                                   #end=datetime.now(),
                                    subject="me",
                                    attributes=attributes)
 
         return obsel
 
-if __name__ == "__main__":
+def main():
+    """The main function of simple-collector"""
     ocollector = ObselCollector()
 
     turi =  ocollector.validate_entries() 
@@ -272,8 +253,11 @@ if __name__ == "__main__":
         try:
             value = raw_input("====> ")
             ocollector.add_obsel(ttrace, value)
-        except EOFError, ex:
+        except EOFError, _ex:
             ocollector.display("Sortie du programme")
             break
 
     sys.exit(0)
+
+if __name__ == "__main__":
+    main()

@@ -1,5 +1,5 @@
 #    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
-#    Copyright (C) 2011 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
 #    KTBS is free software: you can redistribute it and/or modify
@@ -14,16 +14,33 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
 """
 Implementation of the fusion builtin methods.
 """
-from ktbs.namespaces import KTBS
+from rdfrest.utils import Diagnosis
 
-class _FusionMethod(object):
-    """I impplement the fusion builtin method.
+from .interface import IMethod
+from ..namespace import KTBS
+from ..engine.builtin_method import register_builtin_method_impl
+
+class _FusionMethod(IMethod):
+    """I implement the fusion builtin method.
     """
-    # TODO implement it! #pylint: disable=R0903
     uri = KTBS.fusion
-    label = "Fusion built-in method"
 
-FUSION = _FusionMethod()
+    def compute_trace_description(self, computed_trace):
+        """I implement :meth:`.interface.IMethod.compute_trace_description`.
+        """
+        diag = Diagnosis("fusion.compute_trace_description")
+        diag.append("Not implemented yet")
+        return diag
+
+    def compute_obsels(self, computed_trace):
+        """I implement :meth:`.interface.IMethod.compute_obsels`.
+        """
+        diag = Diagnosis("fusion.compute_obsels")
+        diag.append("Not implemented yet")
+        return diag
+
+register_builtin_method_impl(_FusionMethod())

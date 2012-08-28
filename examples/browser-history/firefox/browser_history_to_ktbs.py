@@ -73,7 +73,7 @@ from argparse import ArgumentParser
 from rdflib import URIRef, XSD
 
 try:
-    from ktbs.client.root import KtbsRoot
+    from ktbs.client import get_ktbs
 except:
     from os.path import abspath, dirname, join
 
@@ -81,13 +81,9 @@ except:
     lib_dir = join(source_dir, "lib")
     sys.path.insert(0, lib_dir)
 
-    from ktbs.client.root import KtbsRoot
+    from ktbs.client import get_ktbs
 
-from ktbs.client.base import Base as KtbsBase
-from ktbs.client.model import Model as KtbsModel
-from ktbs.client.trace import Trace as KtbsTrace
-
-from rdfrest.client import ResourceAccessError
+from rdfrest.proxystore import ResourceAccessError
 
 # General
 NB_MAX_ITEMS = 10000
@@ -178,7 +174,7 @@ class BrowserHistoryCollector(object):
         """
         Creates a kTBS Base for browser history data.
         """
-        root = KtbsRoot(self._args.root)
+        root = get_ktbs(self._args.root)
 
         base = root.get_base(id="BrowserHistory/")
 
@@ -192,8 +188,6 @@ class BrowserHistoryCollector(object):
         """
         Creates a kTBS Model for browser history data.
         """
-        assert isinstance(base, KtbsBase)
-
         model = base.create_model(id="BHModel")
 
         #pylint: disable-msg=W0612
@@ -226,9 +220,6 @@ class BrowserHistoryCollector(object):
         """
         Creates a kTBS Trace for browser history data.
         """
-        assert isinstance(base, KtbsBase)
-        assert isinstance(model, KtbsModel)
-
         trace = base.create_stored_trace(id="RawHistory/",
                                          model=model.get_uri(), 
                                          origin=self._args.origin)
@@ -240,7 +231,6 @@ class BrowserHistoryCollector(object):
         Open the browser history database, extract history items and
         populates a kTBS stored trace with it.
         """
-        assert isinstance(trace, KtbsTrace)
         obsels_list = []
 
         try:
@@ -345,8 +335,6 @@ class BrowserHistoryCollector(object):
         Open the browser history database, extract history items and
         populates a kTBS stored trace with it.
         """
-        assert isinstance(trace, KtbsTrace)
-
         if self._args.stats:
             start_time = time.time()
             start_cpu = time.clock()
@@ -376,8 +364,6 @@ class BrowserHistoryCollector(object):
     def display_obsel(self, trace=None, obsel_id=None):
         """
         """
-        assert isinstance(trace, KtbsTrace)
-
         if self._args.stats:
             start_cpu = time.clock()
             start_time = time.time()
