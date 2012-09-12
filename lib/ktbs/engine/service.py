@@ -23,6 +23,7 @@ from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef
 from rdflib.store import Store
 from rdfrest.local import Service
 from rdfrest.utils import parent_uri
+from urlparse import uses_relative
 
 from .builtin_method import get_builtin_method_impl, iter_builtin_method_impl
 from .base import Base
@@ -34,10 +35,13 @@ from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
 
-def make_ktbs(root_uri, repository=None, create=None):
+uses_relative.append("ktbs") # makes relative URIs work with ktbs:/
+    
+def make_ktbs(root_uri="ktbs:/", repository=None, create=None):
     """I create a kTBS engine conforming with the `abstract-ktbs-api`:ref:.
 
     :param root_uri:    the URI to use as the root of this kTBS
+                        (defaults to <ktbs:/>)
     :param repository:  where to store kTBS data
     :param create:      whether the data repository should be initialized;
                         (see below)
