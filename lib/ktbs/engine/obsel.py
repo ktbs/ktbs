@@ -25,7 +25,7 @@ from rdfrest.iso8601 import UTC
 from rdfrest.local import ILocalResource
 from rdfrest.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
-from rdfrest.utils import check_new, Diagnosis, make_fresh_uri, parent_uri
+from rdfrest.utils import Diagnosis, make_fresh_uri, parent_uri
 import re
 
 from ..api.obsel import ObselMixin
@@ -248,13 +248,7 @@ class _ObselImpl(ILocalResource):
         label = (new_graph.value(created, SKOS.prefLabel)
                  or basename).lower()
         prefix = "%s%s-" % (target.uri, _NON_ALPHA.sub("-", label))
-        host_graph = \
-            target.obsel_collection.state
-        uri = make_fresh_uri(host_graph, prefix, suffix)
-        if not check_new(host_graph, uri):
-            prefix = "%s" % prefix
-            uri = make_fresh_uri(host_graph, prefix, suffix)
-        return uri
+        return make_fresh_uri(target.obsel_collection.state, prefix, suffix)
 
     @classmethod
     def create(cls, service, uri, new_graph):

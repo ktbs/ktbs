@@ -104,15 +104,18 @@ class Service(object):
         self._context_level = 0
 
         root_metadata_uri = URIRef(root_uri + "#metadata")
-        initialized = list(
-            store.triples((root_uri, NS.hasImplementation, None),
-                          root_metadata_uri)
-            )
+        metadata_graph = Graph(store, root_metadata_uri)
+        initialized = list(metadata_graph.triples((self.root_uri,
+                                                   NS.hasImplementation,
+                                                   None)))
         if not initialized:
             assert init_with, \
                 "Store is not initialized, and no initializer was provided"
             init_with(self)
-
+            assert (list(metadata_graph.triples((self.root_uri,
+                                                 NS.hasImplementation,
+                                                 None)))) # correctly init'ed
+            
         register_service(self)
 
     def __del__(self):
