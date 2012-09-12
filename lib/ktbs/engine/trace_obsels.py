@@ -19,6 +19,7 @@
 I provide the implementation of kTBS obsel collections.
 """
 from rdflib import Graph, Literal, RDF
+from rdfextras.sparql.parser import parse as parse_sparql
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.local import NS as RDFREST
@@ -187,6 +188,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 graph_add(triple)
 
             # build SPARQL query to retrieve matching obsels
+            # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
             minb = parameters.get("minb")
             if minb is not None:
@@ -239,25 +241,34 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             parameters = None # hide all parameters for super call below
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
     
-    def ack_edit(self, parameters, prepared):
+    def ack_edit(self, parameters, prepared, _query_cache=[None]):
         """I override :meth:`.local.ILocalResource.ack_edit`
         to update bookkeeping metadata and force transformed trace to refresh.
         """
+        # using lists as default value     #pylint: disable=W0102
+        # additional argument _query_cache #pylint: disable=W0221
+
         super(AbstractTraceObsels, self).ack_edit(parameters, prepared)
 
         # find the last obsel and store it in metadata
-        query_filter = ""
+        query = _query_cache[0]
+        if query is None:
+            query = _query_cache[0] = parse_sparql("""
+                PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
+                SELECT ?e ?o {
+                    ?o :hasEnd ?e .
+                    FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
+                }
+                ORDER BY DESC(?e) #LIMIT 1 #uncomment when ORDER works
+            """)
+        init_bindings = {}
         last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
         if last_obsel is not None:
-            # last_end can still be None if last_obsel has been deleted
             last_end = self.state.value(last_obsel, KTBS.hasEnd)
+            # NB: last_end can still be None if last_obsel has been deleted
             if last_end is not None:
-                query_filter = "FILTER (?e >= %s)" % last_end
-        query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?e ?o { ?o :hasEnd ?e .  %s }
-            ORDER BY DESC(?e) #LIMIT 1 #uncomment when ORDER works
-            """ % (query_filter)
-        results = list(self.state.query(query_str))
+                init_bindings['last_end'] = last_end
+        results = list(self.state.query(query, initBindings=init_bindings))
         # TODO LATER remove hack below when rdflib supports full SPARQL
         # We implement ORDER, as rdflib does not
         # (and so we have to implement LIMIT as well)
@@ -348,23 +359,30 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 last_obsel = obs
         return last_obsel, last_end
 
-    def _detect_mon_change(self, graph, old_last_end, pse_mon_limit):
+    def _detect_mon_change(self, graph, old_last_end, pse_mon_limit,
+                           _query_cache=[None]):
         """Detect monotonicity changed induced by 'graph'.
         
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
+        # using lists as default value #pylint: disable=W0102
+        query = _query_cache[0]
+        if query is None:
+            query = _query_cache[0] = parse_sparql("""
+                PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
+                SELECT DISTINCT ?e {
+                    { ?o :hasEnd ?e FILTER (?o = ?new_obs) } UNION
+                    { ?new_obs ?p ?o . ?o :hasEnd ?e . } UNION
+                    { ?o ?p ?new_obs . ?o :hasEnd ?e . }
+                }
+            """)
         str_mon = True
         pse_mon = True
         trace_uri = self.trace.uri
         for new_obs in graph.subjects(KTBS.hasTrace, trace_uri):
-            query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT DISTINCT ?e {
-                { ?o :hasEnd ?e FILTER (?o = <%s>) } UNION
-                { <%s> ?p ?o . ?o :hasEnd ?e . } UNION
-                { ?o ?p <%s> . ?o :hasEnd ?e . }
-            }""" % (new_obs, new_obs, new_obs)
-            for end in self.state.query(query_str):
+            for end in self.state.query(query,
+                                        initBindings={"new_obs": new_obs}):
                 end = int(end)
                 if end < old_last_end:
                     str_mon = False
