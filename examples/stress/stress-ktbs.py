@@ -27,6 +27,9 @@ def setUp():
     if ARGS.ktbs is None:
         my_ktbs = make_ktbs()
         ARGS.ktbs = my_ktbs.uri
+    elif ARGS.ktbs.startswith("file://"):
+        my_ktbs = make_ktbs(repository=ARGS.ktbs[7:])
+        ARGS.ktbs = my_ktbs.uri
     else:
         my_ktbs = get_ktbs(ARGS.ktbs)
     
