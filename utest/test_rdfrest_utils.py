@@ -18,11 +18,13 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-from rdfrest.utils import add_uri_params, cache_result, coerce_to_uri, \
-    Diagnosis, urisplit, uriunsplit
+from rdfrest.utils import add_uri_params, bounded_description, cache_result, \
+    coerce_to_uri, Diagnosis, urisplit, uriunsplit
 
 from nose.tools import eq_
-from rdflib import Namespace
+from rdflib import Graph, Namespace, URIRef
+from rdflib.compare import isomorphic
+from StringIO import StringIO
 from unittest import skip
 
 NS1 = Namespace("http://ns1.com/#")
@@ -116,6 +118,45 @@ def test_add_uri_parameters():
 
     uri = add_uri_params("http://a.b/c/d", { "p": [ "v1", "v2" ] })
     assert uri[14:] in ("?p=v1&p=v2", "?p=v2&p=v1"), uri
+
+def test_bounded_description():
+    g1 = Graph()
+    g1.parse(StringIO("""@prefix : <http://example.org/> .
+    :node
+        :p1 :succ1 ;
+        :p2 42 ;
+        :p3 (101 :succ2 [ :p3 "blank list item" ] ) ;
+        .
+    :succ1 :p4 :out1 .
+    :succ2 :p5 :out2 .
+
+    :pred1 :p6 :node .
+    :pred2 :p7 [ :p8 :node ] ;
+           :p8 [ :p9 "out3" ] ;
+           :p9 :out4 .
+
+    [ :pA :pred3 ] :pB :node .
+
+    :out5 :pC :pred3 .
+    :pred1 :pD :succ1 .
+    """), format="n3")
+
+    gref = Graph()
+    gref.parse(StringIO("""@prefix : <http://example.org/> .
+    :node
+        :p1 :succ1 ;
+        :p2 42 ;
+        :p3 (101 :succ2 [ :p3 "blank list item" ] ) ;
+        .
+    :pred1 :p6 :node .
+    :pred2 :p7 [ :p8 :node ] .
+
+    [ :pA :pred3 ] :pB :node .
+    """), format="n3")
+
+    gbd = bounded_description(URIRef("http://example.org/node"), g1)
+    assert isomorphic(gref, gbd)
+    
 
 class TestDiagnosis():
     def test_default_creation(self):

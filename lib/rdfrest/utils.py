@@ -22,6 +22,7 @@ from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
 from rdflib.graph import Graph, ModificationException
+from rdflib.store import Store
 from urllib import quote_plus
 from urlparse import SplitResult, urlsplit, urlunsplit
 
@@ -44,6 +45,38 @@ def add_uri_params(uri, parameters):
             lst.append("%s=%s" % (quote_plus(str(key)), quote_plus(str(val))))
     split[3] = "&".join(lst)
     return uriunsplit(split)
+
+def bounded_description(node, graph, fill=None):
+    """Extract from graph a bounded description of node.
+
+    :param node: the node (uri or blank) to return a description of
+    :param graph: the graph from which to retrieve the description
+    :param fill: if provided, fill this graph rather than a fresh one, and return it
+    """
+    triples = graph.triples
+    if fill is None:
+        ret = Graph()
+    else:
+        ret = fill
+    add = ret.add
+    waiting = {node}
+    seen = set()
+    while waiting:
+        node = waiting.pop()
+        for t_in in triples((None, None, node)):
+            add(t_in)
+            s = t_in[0]
+            if isinstance(s, BNode):
+                if s not in seen:
+                    waiting.add(s)
+        for t_out in triples((node, None, None)):
+            add(t_out)
+            o = t_out[2]
+            if isinstance(o, BNode):
+                if o not in seen:
+                    waiting.add(o)
+        seen.add(node)
+    return ret
 
 def cache_result(callabl):
     """Decorator for caching the result of a callable.
