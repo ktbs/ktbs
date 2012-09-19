@@ -25,7 +25,7 @@ from rdfrest.iso8601 import UTC
 from rdfrest.local import ILocalResource
 from rdfrest.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
-from rdfrest.utils import Diagnosis, make_fresh_uri, parent_uri
+from rdfrest.utils import bounded_description, Diagnosis, make_fresh_uri, parent_uri
 import re
 
 from ..api.obsel import ObselMixin
@@ -55,6 +55,7 @@ class _ObselImpl(ILocalResource):
         self.uri = uri
         self.service = trace.service
         self.home = trace.obsel_collection
+        self._state = None
 
     ######## IResource implementation  ########
 
@@ -70,15 +71,21 @@ class _ObselImpl(ILocalResource):
 
         I return the subgraph of the obsel collection representing this obsel.
         """
-        # TODO SOON filter out the returned graph to only include this obsel
+        # TODO LATER return a state that automatically follows changes in self.home?
         self.check_parameters(parameters, "get_state")
-        return self.home.get_state()
+        ret = self._state
+        if ret is None:
+            ret = self._state = bounded_description(self.uri, self.home.get_state())
+        return ret
 
     def force_state_refresh(self, parameters=None):
         """I override `.hosted.HostedResource.force_state_refresh`.
         """
         # nothing to do, there is no cache involved
         self.check_parameters(parameters, "force_state_refresh")
+        if self._state is not None:
+            self._state.remove((None, None, None))
+            bounded_description(self.uri, self.home.get_state(), self._state)
         return
 
     def edit(self, parameters=None, clear=False, _trust=False):
