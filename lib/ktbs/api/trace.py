@@ -291,7 +291,8 @@ class StoredTraceMixin(AbstractTraceMixin):
 
     def create_obsel(self, id=None, type=None, begin=None, end=None, 
                      subject=None, attributes=None, relations=None, 
-                     inverse_relations=None, source_obsels=None, label=None):
+                     inverse_relations=None, source_obsels=None, label=None,
+                     no_return=False):
         """
         Creates a new obsel for the stored trace.
 
@@ -305,6 +306,8 @@ class StoredTraceMixin(AbstractTraceMixin):
         :param inverse_relations: explain.
         :param source_obsels: explain.
         :param label: explain.
+        :param no_return: if True, None will be returned instead of the created obsek;
+            this saves time and (in the case of a remote kTBS) network traffic
 
         :rtype: `ktbs.client.obsel.Obsel`
         """
@@ -397,9 +400,10 @@ class StoredTraceMixin(AbstractTraceMixin):
         uris = self.post_graph(graph, None, trust, obs, KTBS.Obsel)
         assert len(uris) == 1
         self.obsel_collection.force_state_refresh()
-        ret = self.factory(uris[0], KTBS.Obsel)
-        assert isinstance(ret, ObselMixin)
-        return ret
+        if not no_return:
+            ret = self.factory(uris[0], KTBS.Obsel)
+            assert isinstance(ret, ObselMixin)
+            return ret
 
 @register_mixin(KTBS.ComputedTrace)
 @extend_api

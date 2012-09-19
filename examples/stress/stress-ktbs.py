@@ -46,7 +46,7 @@ def task():
     for i in xrange(ARGS.iterations):
         def create_P_obsels():
             for j in xrange(ARGS.nbobs):
-                trace.create_obsel(None, "#obsel")
+                trace.create_obsel(None, "#obsel", no_return=True)
         print "%ss" % timeit(create_P_obsels, number=1)
 
 def tearDown():
