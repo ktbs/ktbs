@@ -368,13 +368,23 @@ class ProxyStore(Store):
 
         LOG.debug("-- _pull() ... stop ...")
 
-    def force_refresh(self):
+    def force_refresh(self, clear_cache=False):
         """Forces the cache to be updated with HTTP specific headers.
+
+        If `clear_cache` is False (default),
+        etags will still be used, so the server may reply with a 304 Not Changed.
+        If `clear_cache` is True,
+        the cache will be cleared, so the content will have to be resent by the server.
         """
         LOG.debug("-- force_refresh called ()")
 
-        self._req_headers = {
+        if clear_cache:
+            self._req_headers = {
                 "Cache-Control" : "no-cache",
+                }
+        else:
+            self._req_headers = {
+                "Cache-Control" : "max-age=0",
                 }
 
     def _push(self):
