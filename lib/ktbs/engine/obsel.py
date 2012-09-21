@@ -25,7 +25,8 @@ from rdfrest.iso8601 import UTC
 from rdfrest.local import ILocalResource
 from rdfrest.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
-from rdfrest.utils import bounded_description, Diagnosis, make_fresh_uri, parent_uri
+from rdfrest.utils import bounded_description, Diagnosis, make_fresh_uri, \
+    parent_uri
 import re
 
 from ..api.obsel import ObselMixin
@@ -64,18 +65,20 @@ class _ObselImpl(ILocalResource):
 
         I simply rely on my service's get method.
         """
-        return self.service.get(URIRef(uri), _rdf_type)
+        return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement `.interface.IResource.get_state`.
 
         I return the subgraph of the obsel collection representing this obsel.
         """
-        # TODO LATER return a state that automatically follows changes in self.home?
+        # TODO LATER return a state that automatically follows changes in
+        # self.home?
         self.check_parameters(parameters, "get_state")
         ret = self._state
         if ret is None:
-            ret = self._state = bounded_description(self.uri, self.home.get_state())
+            ret = self._state = bounded_description(self.uri,
+                                                    self.home.get_state())
         return ret
 
     def force_state_refresh(self, parameters=None):

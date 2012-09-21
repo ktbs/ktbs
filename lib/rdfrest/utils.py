@@ -22,7 +22,6 @@ from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
 from rdflib.graph import Graph, ModificationException
-from rdflib.store import Store
 from urllib import quote_plus
 from urlparse import SplitResult, urlsplit, urlunsplit
 
