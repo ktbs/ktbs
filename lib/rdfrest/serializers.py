@@ -237,9 +237,10 @@ def serialize_htmlized_turtle(graph, resource, bindings=None):
         ret += u'<a href="%s">%s</a>' % (link, crumbs[i] + "/",)
     ret += u'<a href="%s">%s</a></h1>\n' % (uri, crumbs[-1])
 
-    ret += "<div>#\n"
+    ret += "<div class='formats'>#\n"
     seen_ext = set()
-    for typ in graph.objects(uri, RDF.type):
+    rdf_types = list(graph.objects(uri, RDF.type)) + [None]
+    for typ in rdf_types:
         for _, _, ext in iter_serializers(typ):
             if ext is not None  and  ext not in seen_ext:
                 ret += u'<a href="%s.%s">%s</a>\n' % (uri, ext, ext)
@@ -371,6 +372,7 @@ def _make_curie(bindings, uri, base):
 
 _HTML_STYLE = """
     a { text-decoration: none; }
+    .formats { font-size: 80%; font-style: italic; }
     .prefixes { font-size: 66%; float: right; }
     .prefix { display: none; }
     .subj { margin-top: 2ex; }
