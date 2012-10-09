@@ -27,26 +27,19 @@ from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
 from time import time
 
 from .exceptions import InvalidDataError
-from .local import compute_added_and_removed, EditableResource, \
-    ILocalResource, NS as RDFREST
+from .local import compute_added_and_removed, ILocalResource, NS as RDFREST
 from .utils import cache_result, check_new, Diagnosis, parent_uri, replace_node
 
 
 LOG = getLogger(__name__)
 
-class BookkeepingMixin(EditableResource):
+class BookkeepingMixin(ILocalResource):
     """I add bookkeeping metadata to the mixed-in class.
 
     Bookkeeping metadata consist of:
 
     * a weak etag (as defined in section 13.3 of :RFC:`2616`)
     * a last-modified data
-
-    .. warning::
-
-        This mix-in class can not be used with any implementation of
-        :class:`~.local.ILocalResource`; it only works with subclasses of
-        :class:`~.local.EditableResource`.
 
     .. note::
     

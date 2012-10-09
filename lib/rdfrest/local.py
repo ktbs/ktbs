@@ -139,6 +139,8 @@ class Service(object):
         :return: the resource, or None
         :rtype:  :class:`ILocalResource` or :class:`~.hosted.HostedResource`
 
+        TODO NOW: if no resource is found, try to get it from parent resource
+
         NB: if uri contains a fragment-id, the returned resource will be a
         `~.hosted.HostedResource`:class: hosted by a resource from this
         service.
@@ -391,6 +393,73 @@ class ILocalResource(IResource):
         """
         raise NotImplementedError
 
+    def prepare_edit(self, parameters):
+        """I perform some pre-processing before editing this resource.
+
+        I return an object that will be passed to :meth:`ack_edit`
+        as parameter `prepared`.
+        This object can be used to cache
+        some information from the original state
+        that will be required by :meth:`ack_edit`.
+        
+        This hook method is to be called on entering the :meth:`edit` context.
+
+        :param parameters: the query string parameters passed to `edit` if any
+        :type  parameters: dict or None
+
+        :rtype: a mutable object
+        """
+        raise NotImplementedError
+
+    def ack_edit(self, parameters, prepared):
+        """I perform some post-processing after editing this resource.
+
+        This hook method is to be called when exiting the :meth:`edit` context;
+        calling it directly may *corrupt the service*.
+
+        :param parameters: the query string parameters passed to `edit` if any
+        :type  parameters: dict or None
+        :param prepared:   the object returned by :meth:`prepare_edit`
+
+        Note to implementors: :meth:`ack_edit` may alter the state of
+        the resource using the :meth:`edit` context, but is required to pass
+        True to its `_trust` parameter, leaving you the responsibility of
+        maintaining the integrity of the resource's state).
+        """
+        raise NotImplementedError
+
+    def check_deletable(self, parameters):
+        """I check that this resource can safely be deleted.
+
+        This hook method is to be called on entering the :meth:`delete` method.
+
+        :param parameters: the querystring parameters passed to `delete` if any
+        :type  parameters: dict or None
+
+        :rtype: `.utils.Diagnosis`:class:
+
+        This class method can be overridden by subclasses that have constraints
+        on whether their instances can be deleted.
+        """
+        raise NotImplementedError
+
+    def ack_delete(self, parameters):
+        """I perform some post processing after deleting this resource.
+
+        This hook method is to be called on exiting the :meth:`delete` method;
+        calling it directly may *corrupt the service*.
+
+        :param parameters: the querystring parameters passed to `delete` if any
+        :type  parameters: dict or None
+
+        Note to implementors: this method is actually called *just before* the
+        public and metadata graphs of this resource are emptied, so all the
+        information is still available to this method. Care should nonetheless
+        be taken not to call methods that might alter other resources as if
+        this one was to continue existing.
+        """
+        raise NotImplementedError
+
 
 class StandaloneResource(ILocalResource):
     """I provide a default implementation of :class:`ILocalResource`.
@@ -567,13 +636,12 @@ class EditableResource(StandaloneResource):
 
     def __init__(self, service, uri):
         StandaloneResource.__init__(self, service, uri)
-        self._edit_context = []
+        self._edit_context = None
 
     #
     # .interface.Resource implementation
     #
 
-    @contextmanager
     def edit(self, parameters=None, clear=False, _trust=False):
         """I implement :meth:`.interface.IResource.edit`.
 
@@ -590,19 +658,17 @@ class EditableResource(StandaloneResource):
         :meth:`ack_edit` will be invoked.
 
         On existing a trusted edit context, only :meth:`ack_edit` will be
-        invoked, as the modifications will be directly reflected on the
-        resource's state.
+        invoked, as the modifications are supposed to be acceptable.
 
-        Several edit context can be embeded with the following limitations:
+        Several *trusted* contexts can be embeded,
+        provided that the inner context use either the exact same parameters as
+        the outermost context or no parameter at all (None).
+        In that case,
+        :meth:`prepare_edit` and :meth:`ack_edit` will only be called
+        in the outermost context.
 
-        * they they must all be trusted except for the innermost,
-        * inner contexts must provide either no parameters (None) or the exact
-          same parameters dict as their outer contexts.
-
-        In that case, :meth:`prepare_edit` and :meth:`ack_edit` will only be
-        called in the outermost context. Note also that :meth:`ack_edit` can
-        itself open a trusted edit context if it needs to modify the resource's
-        state.
+        Note also that :meth:`ack_edit` can itself open a trusted edit context
+        if it needs to modify the resource's state.
 
         .. note::
         
@@ -619,103 +685,15 @@ class EditableResource(StandaloneResource):
               detail in the commented source).
 
         """
-        prepared = None
-        assert not (clear and _trust) # not meant to work together
         self.check_parameters(parameters, "edit")
         if parameters is not None:
             parameters = parameters.copy()
             # protects us agains changes to 'parameters' inside 'with' statement
-        if self._edit_context:
-            if len(self._edit_context) == 1: # we are inside ack_edit
-                assert _trust, \
-                    "Only a *trusted* edit context can be used in ack_edit"
-            elif self._edit_context[-1] is not self._graph:
-                raise RdfRestException("Can not embed edit context in an "
-                                             "untrusted one")
-            ctx_param = self._edit_context[0]
-            if parameters is not None  and  parameters != ctx_param:
-                raise RdfRestException("Can not embed edit contexts with "
-                                       "different parameters")
-            outermost = False
+        if _trust:
+            assert not clear # not meant to work in a trusted edit context
+            return self._edit_trusted(parameters)
         else:
-            self._edit_context.append(parameters)
-            prepared = self.prepare_edit(parameters)
-            outermost = True
-        if not _trust:
-            editable = Graph(identifier=self.uri)
-            if not clear:
-                editable_add = editable.add
-                for triple in self._graph: 
-                    editable_add(triple)
-        else:
-            editable = self._graph
-        self._edit_context.append(editable)
-
-        with self.service:
-            failed = False
-            try:
-                yield editable
-            
-                if _trust: # graph is trusted so it SHOULD verify asserts below
-                    # NB: in the call to check_new_graph below, we force
-                    # 'added' and 'removed' to empy graphs to save the time
-                    # of computing them; indeed, they *will* be empty anyway
-                    # since 'new_graph' is 'self._graph'.
-                    # As a side effect, all tests that inspect 'added' and
-                    # 'removed' rather than 'new_graph' will *not* be performed
-                    # -- but again, this is only an assert for debug purposes,
-                    # so this is deemed acceptable.
-                    #
-                    # Actually, WithReservedNamespacesMixin *relies* on this
-                    # side effect; indeed, `modifications done in a trusted edit
-                    # context should be allowed to use reserved URIs; it happens
-                    # that the constraints are checked against 'added' and
-                    # 'removed' so they are not enforced on trusted edit
-                    # contexts.
-                    assert self.check_new_graph(self.service, self.uri,
-                                                parameters, self._graph, self,
-                                                Graph(), Graph()), \
-                           self.check_new_graph(self.service, self.uri,
-                                                parameters, self._graph, self,
-                                                Graph(), Graph())
-                else:
-                    self.complete_new_graph(self.service, self.uri, parameters,
-                                            editable, self)
-                    diag = self.check_new_graph(self.service, self.uri,
-                                                parameters, editable, self)
-                    if not diag:
-                        raise InvalidDataError(unicode(diag))
-
-                    # we replace self._graph by editable
-                    # We assume that
-                    # * most triples between the two graphs are the same
-                    # * testing that a graph contains a triple is less
-                    #   costly than adding it or removing it (which involves
-                    #   to update several indexes -- this is verified by
-                    #   IOMemory, and roughly so by Sleepycat)
-                    # so the following should more efficient than simply
-                    # emptying self_graph and then filling it with
-                    # editable_graph
-                    g_add = self._graph.add
-                    g_remove = self._graph.remove
-                    g_contains = self._graph.__contains__
-                    e_contains = editable.__contains__
-                    for triple in self._graph:
-                        if not e_contains(triple):
-                            g_remove(triple)
-                    for triple in editable:
-                        if not g_contains(triple):
-                            g_add(triple)
-            except BaseException:
-                failed = True
-                raise
-            finally:
-                self._edit_context.pop() # pop yielded graph
-                if outermost:
-                    if not failed:
-                        self.ack_edit(parameters, prepared)
-                    self._edit_context.pop() # pop parameters, empty list
-                    assert not self._edit_context
+            return self._edit_untrusted(parameters, clear)
 
     def delete(self, parameters=None, _trust=False):
         """I implement :meth:`.interface.IResource.delete`.
@@ -738,55 +716,28 @@ class EditableResource(StandaloneResource):
         _mark_as_deleted(self)
 
     #
-    # Hooks and auxiliary method definitions
+    # ILocalResource implementation
     #
 
     def prepare_edit(self, parameters):
-        """I perform some pre-processing before editing this resource.
-
-        I return an object that will be passed to :meth:`ack_edit`.
+        """I implement :meth:`.ILocalResource.prepare_edit`.
 
         The default implementation returns an empty object.
-
-        :param parameters: the query string parameters passed to `edit` if any
-        :type  parameters: dict or None
         """
         # self not used    #pylint: disable=R0201
         # unused arguments #pylint: disable=W0613
         return _Plain()
 
     def ack_edit(self, parameters, prepared):
-        """I perform some post-processing after editing this resource.
-
-        This hook method is called when exiting the :meth:`edit` context;
-        calling it directly may *corrupt the service*.
+        """I implement :meth:`.ILocalResource.ack_edit`.
 
         The default implementation does nothing.
-
-        :param parameters: the query string parameters passed to `edit` if any
-        :type  parameters: dict or None
-        :param prepared:   the object returned by :meth:`prepare_edit`
-
-        Note to subclass implementors: :meth:`ack_edit` may alter the state of
-        the resource using the :meth:`edit` context, but must set the `_trust`
-        parameter to True (and hence, you are responsible of the integrity of
-        the resource's state).
         """
         pass
 
     def check_deletable(self, parameters):
-        """I check that this resource can safely be deleted.
+        """I implement :meth:`.ILocalResource.check_deletable`.
 
-        This hook method is called by :meth:`delete`.
-
-        :param parameters: the querystring parameters passed to `delete` if any
-        :type  parameters: dict or None
-
-        :rtype: `.utils.Diagnosis`:class:
-
-        This class method can be overridden by subclasses that have constraints
-        on whether their instances can be deleted.
-        
         The default always accepts.
         """
         # unused self #pylint: disable=R0201
@@ -794,24 +745,118 @@ class EditableResource(StandaloneResource):
         return Diagnosis("check_deletable")
 
     def ack_delete(self, parameters):
-        """I perform some post processing after deleting this resource.
-
-        This hook method is called in the end of the :meth:`delete` method;
-        calling it directly may *corrupt the service*.
-
-        :param parameters: the querystring parameters passed to `delete` if any
-        :type  parameters: dict or None
+        """I implement :meth:`.ILocalResource.ack_delete`.
 
         The default implementation does nothing.
-
-        Note to implementors: this method is actually called *just before* the
-        public and metadata graphs of this resource are emptied, so all the
-        information is still available to this method. Care should nonetheless
-        be taken not to call methods that might alter other resources as if
-        this one was to continue existing.
         """
         # unused arguments #pylint: disable=W0613
         pass
+
+    #
+    # private methods
+    #
+
+    @contextmanager
+    def _edit_trusted(self, parameters):
+        """I implement :meth:`edit` in the case it is trusted.
+        """
+        prepared = None
+        if self._edit_context:
+            if not self._edit_context[0]:
+                raise RdfRestException("Can not embed edit context in an "
+                                       "untrusted one")
+            ctx_param = self._edit_context[1]
+            if parameters is not None  and  parameters != ctx_param:
+                raise RdfRestException("Can not embed edit contexts with "
+                                       "different parameters")
+            outermost = False
+        else:
+            outermost = True
+            self._edit_context = (True, parameters)
+            prepared = self.prepare_edit(parameters)
+
+        with self.service:
+            try:
+                yield self._graph
+
+                # graph is trusted so it SHOULD verify asserts below
+                # NB: in the call to check_new_graph below, we force
+                # 'added' and 'removed' to empy graphs to save the time
+                # of computing them; indeed, they *will* be empty anyway
+                # since 'new_graph' is 'self._graph'.
+                # As a side effect, all tests that inspect 'added' and
+                # 'removed' rather than 'new_graph' will *not* be performed
+                # -- but again, this is only an assert for debug purposes,
+                # so this is deemed acceptable.
+                #
+                # Actually, WithReservedNamespacesMixin *relies* on this
+                # side effect; indeed, modifications done in a trusted edit
+                # context should be allowed to use reserved URIs; it happens
+                # that the constraints are checked against 'added' and
+                # 'removed' so they are not enforced on trusted edit
+                # contexts.
+                assert self.check_new_graph(self.service, self.uri, parameters,
+                                            self._graph, self,
+                                            Graph(), Graph()), \
+                       self.check_new_graph(self.service, self.uri, parameters,
+                                            self._graph, self,
+                                            Graph(), Graph())
+                if outermost:
+                    self.ack_edit(parameters, prepared)
+            finally:
+                if outermost:
+                    self._edit_context = None
+
+    @contextmanager
+    def _edit_untrusted(self, parameters, clear):
+        """I implement :meth:`edit` in the case it is untrusted.
+        """
+        if self._edit_context:
+            raise RdfRestException("Can not embed untrusted edit context")
+        self._edit_context = (False, parameters)
+        prepared = self.prepare_edit(parameters)
+        editable = Graph(identifier=self.uri)
+        if not clear:
+            editable_add = editable.add
+            for triple in self._graph: 
+                editable_add(triple)
+
+        with self.service:
+            try:
+                yield editable
+                self.complete_new_graph(self.service, self.uri, parameters,
+                                        editable, self)
+                diag = self.check_new_graph(self.service, self.uri, parameters,
+                                            editable, self)
+                if not diag:
+                    raise InvalidDataError(unicode(diag))
+
+                # we replace self._graph by editable
+                # We assume that
+                # * most triples between the two graphs are the same
+                # * testing that a graph contains a triple is less
+                #   costly than adding it or removing it (which involves
+                #   updating several indexes -- this is verified by
+                #   IOMemory, and roughly so by Sleepycat)
+                # so the following should more efficient than simply
+                # emptying self_graph and then filling it with
+                # editable_graph
+                g_add = self._graph.add
+                g_remove = self._graph.remove
+                g_contains = self._graph.__contains__
+                e_contains = editable.__contains__
+                for triple in self._graph:
+                    if not e_contains(triple):
+                        g_remove(triple)
+                for triple in editable:
+                    if not g_contains(triple):
+                        g_add(triple)
+                # alter _edit_context so that ack_edit can embed an edit ctxt:
+                self._edit_context = (True, parameters)
+                self.ack_edit(parameters, prepared)
+            finally:
+                self._edit_context = None
+
 
 
 def compute_added_and_removed(new_graph, old_graph, added=None, removed=None):
