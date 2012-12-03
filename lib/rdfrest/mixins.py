@@ -321,7 +321,8 @@ class GraphPostableMixin(FolderishMixin):
         """
         self_uri_str = str(self.uri)
         candidates = []
-        for node in new_graph.query(query):
+        for row in new_graph.query(query):
+            node = row[0]
             if isinstance(node, BNode):
                 candidates.append(node)
             elif isinstance(node, URIRef):
