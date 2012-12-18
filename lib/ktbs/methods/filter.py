@@ -59,7 +59,7 @@ class _FilterMethod(IMethod):
             origin = params.get("origin")  or  src.origin
             with computed_trace.edit(_trust=True) as editable:
                 editable.add((computed_trace.uri, KTBS.hasModel, model))
-                editable.add((computed_trace.uri, KTBS.hasOrigin, model))
+                editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
 
             converter = None
             if "beforeDT" in params  or  "afterDT" in params:
@@ -81,7 +81,8 @@ class _FilterMethod(IMethod):
             if after is None  and  "afterDT" in params:
                 after = converter(params.get("afterDT") - origin_dt)
             cstate["after"] = after
-        else:
+
+        if not diag:
             cstate["errors"] = list(diag)
 
 
@@ -167,16 +168,16 @@ class _FilterMethod(IMethod):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_obj = translate_node(obj, computed_trace, source_uri,
-                                               False)
-                    if new_obj != obj and check_new(source_state, new_obj):
+                                             False)
+                    if new_obj != obj and check_new(editable, new_obj):
                         continue # skip relations to node that are filtered out
                     target_add((new_obs_uri, pred, new_obj))
                 for subj, pred, _ in source_triples((None, None, obs.uri)):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_subj = translate_node(subj, computed_trace, source_uri,
-                                               False)
-                    if new_subj != subj and check_new(source_state, new_subj):
+                                              False)
+                    if new_subj != subj and check_new(editable, new_subj):
                         continue # skip relations to node that are filtered out
                     target_add((new_subj, pred, new_obs_uri))
 
