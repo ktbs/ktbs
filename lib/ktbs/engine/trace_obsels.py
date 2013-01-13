@@ -280,9 +280,11 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             results = sorted([ (int(i), j) for i, j in results ])[-1:]
             if results:
                 new_last_obsel = results[0][1]
+                self.metadata.set((self.uri,
+                                   METADATA.last_obsel,
+                                   new_last_obsel))
             else:
                 new_last_obsel = None
-            self.metadata.set((self.uri, METADATA.last_obsel, new_last_obsel))
         else:
             # last_obsel has already been set, more efficiently, by add_graph;
             # we only have to reset self._in_add_graph

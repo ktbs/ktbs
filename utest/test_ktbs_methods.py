@@ -18,13 +18,14 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from nose.tools import eq_
+from nose.tools import eq_, raises
+from unittest import skip
 
 from ktbs.methods.fusion import LOG as FUSION_LOG
 from ktbs.methods.filter import LOG as FILTER_LOG
-from ktbs.namespace import KTBS
+from ktbs.namespace import KTBS, KTBS_NS_URI
 
-from .test_ktbs_engine import KtbsTestCase
+from .test_ktbs_engine import KtbsTestCase, HttpKtbsTestCaseMixin
 
 
 class TestFilter(KtbsTestCase):
@@ -129,4 +130,74 @@ class TestFusion(KtbsTestCase):
         with src2.obsel_collection.edit() as editable:
             editable.remove((o21.uri, None, None))
         eq_(len(ctr.obsels), 4)
+        
+
+class TestExternal(KtbsTestCase):
+
+    def __init__(self):
+        KtbsTestCase.__init__(self)
+
+    def test_external_no_source(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        origin = "orig-abc"
+        cmdline = """cat <<EOF
+        @prefix : <http://liris.cnrs.fr/silex/2009/ktbs> .
+        @prefix m: <http://example.org/model#> .
+
+        [] a m:Event ; :hasTrace <> ;
+          :hasBegin 0 ; :hasEnd 0; :hasSubject "Alice" .\nEOF
+        """
+        ctr = base.create_computed_trace("ctr/", KTBS.external, {
+                                             "command-line": cmdline,
+                                             "model": model.uri,
+                                             "origin": origin,
+                                         }, [],)
+
+        eq_(ctr.model, model)
+        eq_(ctr.origin, origin)
+        eq_(len(ctr.obsels), 0)
+        
+    
+    def test_external_one_source(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        origin = "orig-abc"
+        src1 = base.create_stored_trace("s1/", model, origin=origin,
+                                        default_subject="alice")
+        cmdline = """sed 's|%(__sources__)s||'"""
+        ctr = base.create_computed_trace("ctr/", KTBS.external, {
+                                             "command-line": cmdline,
+                                             "feed-to-stdin": True,
+                                             "foo": "bar"
+                                         }, [src1],)
+
+        eq_(ctr.model, model)
+        eq_(ctr.origin, origin)
+        eq_(len(ctr.obsels), 0)
+
+        o10 = src1.create_obsel("o10", otype, 0)
+        eq_(len(ctr.obsels), 1)
+        o21 = src1.create_obsel("o21", otype, 10)
+        eq_(len(ctr.obsels), 2)
+        o12 = src1.create_obsel("o12", otype, 20)
+        eq_(len(ctr.obsels), 3)
+        o23 = src1.create_obsel("o23", otype, 30)
+        eq_(len(ctr.obsels), 4)
+        o11 = src1.create_obsel("o11", otype, 10)
+        eq_(len(ctr.obsels), 5)
+        o20 = src1.create_obsel("o20", otype, 0)
+        eq_(len(ctr.obsels), 6)
+
+        with src1.obsel_collection.edit() as editable:
+            editable.remove((o10.uri, None, None))
+        eq_(len(ctr.obsels), 5)
+
+        with src1.obsel_collection.edit() as editable:
+            editable.remove((o21.uri, None, None))
+        eq_(len(ctr.obsels), 4)
+
+        
         
