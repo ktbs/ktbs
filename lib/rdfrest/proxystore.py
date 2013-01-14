@@ -568,8 +568,8 @@ class ProxyStore(Store):
         """
         LOG.debug("******** destroy (%s) ", configuration)
 
-    def query(self, graph, query_object, 
-              initNs=None, initBindings=None, **kw): 
+    def query(self, query, initNs=None, initBindings=None, queryGraph=None, 
+              **kw): 
         """ I provide SPARQL query processing as a store.
 
         I simply pass through the query to the underlying graph. This prevents
@@ -578,13 +578,12 @@ class ProxyStore(Store):
         """
         # initNs and initBindings are invalid names for pylint (C0103), but
         # method `query` is specified by rdflib, so #pylint: disable=C0103
-        assert graph.store is self
         if initNs is None:
             initNs = {}
         if initBindings is None:
             initBindings = {}
         self._pull()
-        return self._graph.query(query_object, initNs=initNs,
+        return self._graph.query(query, initNs=initNs,
                                  initBindings=initBindings, **kw)
 
 class GraphChangedError(Exception):
