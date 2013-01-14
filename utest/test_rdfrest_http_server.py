@@ -401,7 +401,7 @@ class TestHttpFront(object):
         foo = self.service.get(URIRef(URL + "foo"))
         with foo.edit(_trust=True) as editable:
             for i in range(10):
-                editable.add((foo.uri, RDFS.label, "label%i" % i))
+                editable.add((foo.uri, RDFS.label, Literal("label%i" % i)))
         resp, content = self.request(URL + "foo")
         eq_(resp.status_int, 403)
 
