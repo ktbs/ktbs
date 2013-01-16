@@ -19,7 +19,7 @@ Resource
     resource; basically, this is short 'id' that could have been used
     to create this resource in the corresponding 'create_X' method
 
-    :rtype: sre
+    :rtype: str
 
 .. function:: get_uri()
 
@@ -27,12 +27,14 @@ Resource
 
     :rtype: uri
 
-.. function:: get_sync_status()
+.. function:: force_state_refresh()
 
-    Return "ok" if the resource is in sync with the data at its URI,
-    else any other string describing the reason why it is not.
+    Ensure this resource is up-to-date.
+    While remote resources are expected to perform best-effort to keep in sync
+    with the server, it may sometimes be required to strongly ensure they are
+    up-to-date.
 
-    :rtype: str
+    For local resources, this is has obviously no effect.
 
 .. function:: get_readonly()
 
