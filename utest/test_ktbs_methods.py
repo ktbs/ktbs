@@ -164,6 +164,7 @@ class TestExternal(KtbsTestCase):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
         otype = model.create_obsel_type("#ot")
+        atype = model.create_attribute_type("#at")
         origin = "orig-abc"
         src1 = base.create_stored_trace("s1/", model, origin=origin,
                                         default_subject="alice")
@@ -178,7 +179,9 @@ class TestExternal(KtbsTestCase):
         eq_(ctr.origin, origin)
         eq_(len(ctr.obsels), 0)
 
-        o10 = src1.create_obsel("o10", otype, 0)
+        o10 = src1.create_obsel("o10", otype, 0, attributes = {atype: "héhé"})
+        # above, we force some non-ascii output of the script,
+        # to check that UTF-8 is corectly decoded by the method
         eq_(len(ctr.obsels), 1)
         o21 = src1.create_obsel("o21", otype, 10)
         eq_(len(ctr.obsels), 2)

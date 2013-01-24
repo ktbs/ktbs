@@ -81,7 +81,7 @@ class _ExternalMethod(IMethod):
         if parameters.get("feed-to-stdin"):
             stdin = PIPE
             stdin_data = sources[0].obsel_collection.state \
-                .serialize(format=rdfformat).encode("utf-8")
+                .serialize(format=rdfformat, encoding="utf-8")
         else:
             stdin = None
             stdin_data = None
