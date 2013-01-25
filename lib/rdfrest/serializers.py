@@ -323,10 +323,11 @@ def _htmlize_node(bindings, node, base):
             ) % (prefix, suffix, node, prefix, suffix)
     elif isinstance(node, Literal):
         datatype = node.datatype
+        value = unicode(node).replace("<", "&lt;")
         if '"' in node or '\n' in node:
-            quoted = u'"""%s"""' % node
+            quoted = u'"""%s"""' % value
         else:
-            quoted = u'"%s"' % node
+            quoted = u'"%s"' % value
 
         if datatype:
             if str(datatype) == "http://www.w3.org/2001/XMLSchema#integer":
