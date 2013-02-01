@@ -423,6 +423,12 @@ _HTML_SCRIPT = r"""
         try {
             req.open("GET", document.title, true);
             req.setRequestHeader("Accept", ctype.value);
+            req.setRequestHeader("Cache-control", "no-cache,privaye,max-age=0");
+            if (req.channel != undefined) {
+                // Gecko specific way to bypass cache
+                req.channel.loadFlags !=
+                    Components.interfaces.nsIRequest.LOAD_BYPASS_CACHE;
+            }
             req.setRequestHeader("If-None-Match", "\"(force-reload)\"");
         }
         catch(err) {
