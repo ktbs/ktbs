@@ -43,7 +43,7 @@ def main():
 
     for plugin_name in OPTIONS.plugin or ():
         try:
-            plugin = __import__(plugin_name)
+            plugin = __import__(plugin_name, fromlist="start_plugin")
         except ImportError:
             plugin = __import__("ktbs.plugins." + plugin_name,
                                 fromlist="start_plugin")
