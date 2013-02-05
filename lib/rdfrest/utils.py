@@ -269,6 +269,24 @@ def wrap_exceptions(extype):
         return wrapped
     return wrap_exceptions_decorator
 
+def wrap_generator_exceptions(extype):
+    """I return a generator decorator wrapping all exceptions as `extype`.
+    """
+    assert issubclass(extype, BaseException), \
+        "Did you write @wrap_exception instead of @wrap_exception(extype)?"
+    def wrap_generator_exceptions_decorator(func):
+        """The decorator returned by wrap_generator_exceptions"""
+        @wraps(func)
+        def wrapped(*args, **kw):
+            """The decorated function"""
+            try:
+                for i in func(*args, **kw):
+                    yield i
+            except BaseException, ex:
+                raise extype(ex)
+        return wrapped
+    return wrap_generator_exceptions_decorator
+
 
     
 class Diagnosis(object):

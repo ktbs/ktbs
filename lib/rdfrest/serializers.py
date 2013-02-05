@@ -35,7 +35,7 @@ from rdflib.plugins.serializers.nt import _nt_row
 
 from .exceptions import SerializeError
 from .parsers import _FormatRegistry
-from .utils import coerce_to_uri, wrap_exceptions
+from .utils import coerce_to_uri, wrap_generator_exceptions
 
 ################################################################
 #
@@ -183,7 +183,7 @@ def serialize_turtle(graph, uri, bindings=None):
     bindings = bindings or dict(_NAMESPACES)
     return _serialize_with_rdflib("n3", graph, bindings, uri)
 
-@wrap_exceptions(SerializeError)
+@wrap_generator_exceptions(SerializeError)
 def _serialize_with_rdflib(rdflib_format, graph, bindings, base_uri):
     "Common implementation of all rdflib-based serialize functions."
     assert isinstance(rdflib_format, str)
@@ -198,13 +198,12 @@ def _serialize_with_rdflib(rdflib_format, graph, bindings, base_uri):
         ser.bind(prefix, nsuri)
     if base_uri is not None and not isinstance(base_uri, URIRef):
         base_uri = coerce_to_uri(base_uri)
-    # We return an iterable rather than implementing this as a generator,
-    # so that exceptions would be raised above are raised immediately 
-    return [ser.serialize(None, format=rdflib_format, base=base_uri)]
+    # We use yield to prevent the serialization to happen if a 304 is returned
+    yield ser.serialize(None, format=rdflib_format, base=base_uri)
 
 @register_serializer("text/nt",    "nt",  40)
 @register_serializer("text/plain", "txt", 20)
-@wrap_exceptions(SerializeError)
+@wrap_generator_exceptions(SerializeError)
 def serialize_ntriples(graph, uri, bindings=None):
     """I serialize an RDF graph as N-Triples.
 
@@ -215,13 +214,12 @@ def serialize_ntriples(graph, uri, bindings=None):
     # Also, we re-implement our own NT serializer in order to yield each triple
     # individually; this allows WSGI host to send chuncked content.
 
-    return ( _nt_row(triple).encode("ascii", "replace") for triple in graph )
-
-    # We use an iterator expansion rather than a generator, to ensure that
-    # exceptions are raised immediately
+    # We use yield to prevent the serialization to happen if a 304 is returned
+    for triple in graph:
+        yield _nt_row(triple).encode("ascii", "replace")
 
 @register_serializer("text/html", "html", 60)
-@wrap_exceptions(SerializeError)
+@wrap_generator_exceptions(SerializeError)
 def serialize_htmlized_turtle(graph, resource, bindings=None):
     """I serialize graph in a HTMLized simple turtle form.
     """
@@ -293,7 +291,8 @@ def serialize_htmlized_turtle(graph, resource, bindings=None):
         "footer": _HTML_FOOTER(ctypes),
     }
 
-    return [page.encode("utf-8")]
+    # We use yield to prevent the serialization to happen if a 304 is returned
+    yield page.encode("utf-8")
 
 
 def _htmlize_node(bindings, node, base):
