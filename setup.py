@@ -5,6 +5,7 @@ from distutils.core import setup
 
 from os.path import dirname, join
 from sys import argv
+from warnings import filterwarnings
 
 __version__ = "0.1"
 
@@ -14,6 +15,8 @@ long_description = open(readme_rst).read()
 requirements_txt = join(dirname(argv[0]), "requirements.txt")
 install_req = [ i[:-1] for i in open(requirements_txt) if i[0] != "#" ]
 requirements = [ "%s (==%s)" % tuple(i.split("==")) for i in install_req ]
+
+filterwarnings('ignore', message=".*Unknown distribution option: 'install_requires'.*")
 
 setup(name='kTBS',
       version = __version__,
@@ -32,6 +35,7 @@ setup(name='kTBS',
                 'ktbs.methods', 
                 'ktbs.plugins'],
       scripts=['bin/ktbs','bin/simple-collector'],
+      data_files = ['README.rst', 'requirements.txt',],
       requires=requirements,
       install_requires=install_req,
      )
