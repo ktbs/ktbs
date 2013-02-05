@@ -285,6 +285,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                                    new_last_obsel))
             else:
                 new_last_obsel = None
+                self.metadata.remove((self.uri,
+                                      METADATA.last_obsel,
+                                      None))
         else:
             # last_obsel has already been set, more efficiently, by add_graph;
             # we only have to reset self._in_add_graph
