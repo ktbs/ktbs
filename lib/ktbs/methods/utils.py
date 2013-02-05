@@ -19,6 +19,46 @@
 Utility functions for method implementations.
 """
 from rdflib import URIRef
+from rdfrest.utils import make_fresh_uri
+
+from ..namespace import KTBS
+
+def replace_obsels(computed_trace, raw_graph):
+    """
+    Replace the @obsels graph of computed_trace with raw_graph.
+
+    If raw_graph contains blank obsels, a URI will be generated for them.
+    Except for that, no processing or verification is done on raw_graph,
+    so it must be valid.
+    """
+    obsels = computed_trace.obsel_collection
+    bnodes = raw_graph.query("""
+        PREFIX ktbs: <%s>
+        SELECT DISTINCT ?b
+        WHERE {
+            ?b ktbs:hasBegin []
+            FILTER( isBlank(?b) )
+        }
+    """ % KTBS).result
+    if bnodes:
+        bnode_map = {}
+        ct_uri = computed_trace.uri
+        rg_add = raw_graph.add
+        for bnode in bnodes:
+            new_uri = make_fresh_uri(raw_graph, ct_uri)
+            bnode_map[bnode] = new_uri
+            rg_add(new_uri, KTBS.hasTrace, ct_uri)
+
+    with obsels.edit(_trust=True) as editable:
+        obsels._empty() # friend #pylint: disable=W0212
+        editable_add = editable.add
+        if bnodes:
+            bm_get = bnode_map.get
+            add_triple = lambda t: editable_add([ bm_get(x, x) for x in t])
+        else:
+            add_triple = editable_add
+        for triple in raw_graph:
+            add_triple(triple)
 
 def translate_node(node, transformed_trace, src_uri, multiple_sources):
     """

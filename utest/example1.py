@@ -236,8 +236,8 @@ class GroupMixin(ItemMixin):
         query = ("SELECT ?i WHERE { <%s> <%s> ?i. ?i a <%s>. }"
                  % (self.uri, EXAMPLE.contains, self.ITEM_TYPE))
         self_factory = self.factory
-        for item_uri in self.state.query(query):
-            yield self_factory(item_uri, self.ITEM_TYPE)
+        for result in self.state.query(query):
+            yield self_factory(result[0], self.ITEM_TYPE)
 
     @property
     def simple_items(self):

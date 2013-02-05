@@ -41,6 +41,8 @@ from ktbs.time import lit2datetime
 
 from .utils import StdoutHandler
 
+cmdline = "echo"
+
 class KtbsTestCase(object):
 
     my_ktbs = None
@@ -56,6 +58,29 @@ class KtbsTestCase(object):
             self.service = None
         if self.my_ktbs is not None:
             self.my_ktbs = None
+
+class HttpKtbsTestCaseMixin(object):
+    """A mixin class to be mixed to KtbsTestCase to publish as HTTP service.
+
+    Note that this adds an 'http' property to the object.
+    """
+
+    httpd = None
+
+    def setUp(self):
+        super(HttpKtbsTestCaseMixin, self).setUp()
+        app = HttpFrontend(self.service, cache_control="max-age=60")
+        httpd = make_server("localhost", 12345, app,
+                            handler_class=StdoutHandler)
+        thread = Thread(target=httpd.serve_forever)
+        thread.start()
+        self.httpd = httpd
+
+    def tearDown(self):
+        if self.httpd:
+            self.httpd.shutdown()
+        super(HttpKtbsTestCaseMixin, self).tearDown()
+
 
 class TestKtbs(KtbsTestCase):
 
@@ -265,7 +290,9 @@ class TestKtbsSynthetic(KtbsTestCase):
 
         assert_equal(base.methods, [])
         method1 = base.create_method("method1", KTBS.external,
-                                     {"command-line": "true"})
+                                     {"command-line": cmdline,
+                                      "model": "http://example.org/model",
+                                      "origin": "1970-01-01T00:00:00Z"})
         print "--- method1:", method1
         assert_equal(base.methods, [method1])
         with assert_raises(InvalidDataError):
@@ -275,7 +302,8 @@ class TestKtbsSynthetic(KtbsTestCase):
         with assert_raises(InvalidDataError):
             base.create_method("method2", "http://example.org/")
             # parent is neither in same base nor built-in
-        method2 = base.create_method(None, method1, {"bar": "BAR"}, label="m2")
+        method2 = base.create_method(None, method1, {"foo": "FOO"},
+                                     label="m2")
         if not isinstance(method2, HttpResource):
             ## the test above fails in TestHttpKtbs, because method2.parent
             ## returns a rdfrest.local.StandaloneResource -- this is a side
@@ -285,13 +313,16 @@ class TestKtbsSynthetic(KtbsTestCase):
         assert_equal(method2.parent.uri, method1.uri)
         assert_equal(method1.children, [method2])
         assert_equal(method2.parameters_as_dict,
-                     {"command-line":"true", "bar":"BAR"})
-        assert_equal(method2.get_parameter("bar"), "BAR")
-        assert_equal(method2.get_parameter("command-line"), "true") # inherited
-        method2.set_parameter("bar", "BAR2")
-        assert_equal(method2.get_parameter("bar"), "BAR2")
+                     {"command-line":cmdline,
+                      "model": "http://example.org/model",
+                      "origin": "1970-01-01T00:00:00Z",
+                      "foo":"FOO"})
+        assert_equal(method2.get_parameter("foo"), "FOO")
+        assert_equal(method2.get_parameter("command-line"), cmdline) # inherited
+        method2.set_parameter("foo", "BAR")
+        assert_equal(method2.get_parameter("foo"), "BAR")
         with assert_raises(ValueError):
-            method2.set_parameter("command-line", "foo") # cannot set inherited
+            method2.set_parameter("command-line", "456789") # cannot set inherited
         assert_equal(len(base.methods), 2)
         assert_equal(method1.used_by, [])
         assert_equal(method2.used_by, [])
@@ -368,14 +399,21 @@ class TestKtbsSynthetic(KtbsTestCase):
         assert_equal(ctr.method.uri, method1.uri)
         ctr.method = str(method2.uri)
         assert_equal(method2.used_by, [ctr])
-        assert_equal({"command-line":"true", "bar":"BAR2"},
+        assert_equal({"command-line":cmdline,
+                      "model": "http://example.org/model",
+                      "origin": "1970-01-01T00:00:00Z",
+                      "foo":"BAR"},
                      method2.parameters_as_dict) # inherited
         ctr.set_parameter("baz", "BAZ")
-        assert_equal({"command-line":"true", "bar":"BAR2", "baz": "BAZ"},
+        assert_equal({"command-line":cmdline,
+                      "model": "http://example.org/model",
+                      "origin": "1970-01-01T00:00:00Z",
+                      "foo":"BAR",
+                      "baz": "BAZ"},
                      ctr.parameters_as_dict)
         assert_equal(ctr.get_parameter("baz"), "BAZ")
-        assert_equal(ctr.get_parameter("bar"), "BAR2") # inherited
-        assert_equal(ctr.get_parameter("command-line"), "true") # doubly inher.
+        assert_equal(ctr.get_parameter("foo"), "BAR") # inherited
+        assert_equal(ctr.get_parameter("command-line"), cmdline) # doubly inher.
         assert_equal(ctr.source_traces, [])
         print "---", "adding source"
         ctr.add_source_trace(trace1.uri)
@@ -415,26 +453,12 @@ class TestKtbsSynthetic(KtbsTestCase):
         #print "--- OK"; assert 0 # force the prints to appear
 
 
-class TestHttpKtbsSynthetic(TestKtbsSynthetic):
+class TestHttpKtbsSynthetic(HttpKtbsTestCaseMixin, TestKtbsSynthetic):
     
-    httpd = None
-
     def setUp(self):
-        TestKtbsSynthetic.setUp(self)
-        app = HttpFrontend(self.service, cache_control="max-age=60")
-        httpd = make_server("localhost", 12345, app,
-                            handler_class=StdoutHandler)
-        thread = Thread(target=httpd.serve_forever)
-        thread.start()
-        self.httpd = httpd
+        super(TestHttpKtbsSynthetic, self).setUp()
         self.my_ktbs = HttpResource.factory("http://localhost:12345/")
         assert isinstance(self.my_ktbs, KtbsRootMixin)
-
-    def tearDown(self):
-        if self.httpd:
-            self.httpd.shutdown()
-        TestKtbsSynthetic.tearDown(self)
-
 
 
 def get_change_monotonicity(trace, prevtags):
