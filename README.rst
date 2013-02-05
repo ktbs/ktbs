@@ -38,9 +38,9 @@ If you are using `virtualenv`_, an easy way to get up and running is to run::
     $ virtualenv --no-site-packages ktbsenv
     $ cd ktbsenv
     $ source bin/activate
+    $ pip install -r requirements.txt
     $ git clone git://github.com/ktbs/ktbs.git
     $ cd ktbs/
-    $ pip install -r requirements.txt
     $ python setup.py install
 
 Note::
