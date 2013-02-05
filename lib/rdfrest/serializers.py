@@ -238,13 +238,13 @@ def serialize_htmlized_turtle(graph, resource, bindings=None):
     ret += u'<a href="%s">%s</a></h1>\n' % (uri, crumbs[-1])
 
     ret += "<div class='formats'>#\n"
-    seen_ext = set()
     rdf_types = list(graph.objects(uri, RDF.type)) + [None]
+    ctypes = {}
     for typ in rdf_types:
-        for _, _, ext in iter_serializers(typ):
-            if ext is not None  and  ext not in seen_ext:
+        for _, ctype, ext in iter_serializers(typ):
+            if ext is not None  and  ctype not in ctypes:
+                ctypes[ctype] = ext
                 ret += u'<a href="%s.%s">%s</a>\n' % (uri, ext, ext)
-                seen_ext.add(ext)
     ret += "</div>\n"
 
     ret += '<div class="prefixes">\n'
@@ -282,15 +282,15 @@ def serialize_htmlized_turtle(graph, resource, bindings=None):
     <style text="text/css">%(style)s</style>
     <script text="text/javascript">%(script)s</script>
     </head>
-    <body onload="init_page()">
+    <body onload="rdfrest_init_editor()">
     %(body)s
     %(footer)s
     </body>\n</html>""" % {
         "uri": uri,
         "style": _HTML_STYLE,
-        "script": _HTML_SCRIPT,
+        "script": _HTML_SCRIPT(ctypes),
         "body": ret,
-        "footer": _HTML_FOOTER,
+        "footer": _HTML_FOOTER(ctypes),
     }
 
     return [page.encode("utf-8")]
@@ -382,18 +382,12 @@ _HTML_STYLE = """
     #debug { font-size: 66%; color: blue }
     """
 
-_HTML_SCRIPT = r"""
+def _HTML_SCRIPT(ctypes):
+    return ("""var rdfrest_init_editor = function() {
 
-    metadata = {};
-
-    function init_page() {
-        if (document.referrer == document.location.href ||
-            document.referrer == document.title) {
-            // heuristic to detect we arrived here from the editor
-            // then automatically re-open the editor
-            toggle_editor();
-        }
-    }
+    var ctypes = """ + repr(ctypes) + """;
+    var metadata = {};
+    var strip_ctype = /^[a-zA-Z0-9-]*\\/[a-zA-Z0-9-]*/;
 
     function toggle_editor() {
         var editor = document.getElementById("editor");
@@ -420,16 +414,13 @@ _HTML_SCRIPT = r"""
         var ctype = document.getElementById("ctype");
         var debug = document.getElementById("debug");
         var req = make_req();
+        var ext = ctypes[ctype.value];
         try {
-            req.open("GET", document.title, true);
+            // we force the extension corresponding to the content-type,
+            // so that we are not bothered by content-negociated cache
+            req.open("GET", document.title + "." + ext, true);
             req.setRequestHeader("Accept", ctype.value);
-            req.setRequestHeader("Cache-control", "no-cache,privaye,max-age=0");
-            if (req.channel != undefined) {
-                // Gecko specific way to bypass cache
-                req.channel.loadFlags !=
-                    Components.interfaces.nsIRequest.LOAD_BYPASS_CACHE;
-            }
-            req.setRequestHeader("If-None-Match", "\"(force-reload)\"");
+            req.setRequestHeader("Cache-Control", "private");
         }
         catch(err) {
             error_message(textarea, "error while preparing request: " + err);
@@ -447,13 +438,15 @@ _HTML_SCRIPT = r"""
                 textarea.disabled = false;
                 if (req.status == 200) {
                     textarea.value = req.responseText;
-                    ctype.value    = req.getResponseHeader("Content-Type");
                     metadata.etag  = req.getResponseHeader("Etag");
                     debug.textContent = "etag: " + metadata.etag;
+                    ctype.value = strip_ctype.exec(
+                        req.getResponseHeader("Content-Type")
+                    )[0];
                 } else {
                     error_message(textarea,
                                   "error during GET: " + req.status +
-                                  "\n" + req.responseText);
+                                  "\\n" + req.responseText);
                 }
             }
         };
@@ -494,7 +487,7 @@ _HTML_SCRIPT = r"""
                 } else {
                     error_message(textarea,
                                   "error during PUT: " + req.status +
-                                  "\n" + req.responseText);
+                                  "\\n" + req.responseText);
                 }
             }
         };
@@ -530,7 +523,7 @@ _HTML_SCRIPT = r"""
                 } else {
                     error_message(textarea,
                                   "error while posting: " + req.status +
-                                  "\n" + req.responseText);
+                                  "\\n" + req.responseText);
                 }
             }
         };
@@ -565,7 +558,7 @@ _HTML_SCRIPT = r"""
                 } else {
                     error_message(textarea,
                                   "error while deleting: " + req.status +
-                                  "\n" + req.responseText);
+                                  "\\n" + req.responseText);
                 }
             }
         };
@@ -587,24 +580,39 @@ _HTML_SCRIPT = r"""
         }
         return req;
     }
-    """
 
-_HTML_FOOTER = """<br /><br /><hr />
-    <input type="button" value="edit"
-           id="toggle" onclick="toggle_editor()" />
+    document.getElementById("toggle").onclick = toggle_editor;
+    document.getElementById("ctype").value = "text/turtle";
+    document.getElementById("button_get").onclick = editor_get;
+    document.getElementById("button_put").onclick = editor_put;
+    document.getElementById("button_post").onclick = editor_post;
+    document.getElementById("button_delete").onclick = editor_delete;
+
+    if (document.referrer == document.location.href ||
+        document.referrer == document.title) {
+        // heuristic to detect we arrived here from the editor
+        // then automatically re-open the editor
+        toggle_editor();
+    };
+
+    };""")
+
+def _HTML_FOOTER(ctypes):
+    return (
+    """<br /><br /><hr />
+    <input type="button" value="edit" id="toggle"/>
     <div id="editor" hidden="">
       <textarea id="textarea" cols="80" rows="16"></textarea>
       <br />
-      <input id="ctype" value="*/*" />
-      <input type="button" value="GET"
-             id="button_get" onclick="editor_get()" />
-      <input type="button" value="PUT"
-             id="button_put" onclick="editor_put()" />
-      <input type="button" value="POST"
-             id="button_post" onclick="editor_post()" />
-      <input type="button" value="DELETE"
-             id="button_delete" onclick="editor_delete()" />
+      <select id="ctype">
+      """
+    + "".join("<option>%s</option>" % i for i in ctypes)
+    + """</select>
+      <input type="button" value="GET"    id="button_get" />
+      <input type="button" value="PUT"    id="button_put" />
+      <input type="button" value="POST"   id="button_post" />
+      <input type="button" value="DELETE" id="button_delete" />
       <div id="debug" style="color: blue" hidden=""></div>
     </div>
-    """
+    """)
        
