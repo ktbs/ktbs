@@ -18,6 +18,7 @@
 """
 Implementation of the external builtin methods.
 """
+from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.utils import Diagnosis
 from rdfrest.exceptions import ParseError
@@ -87,7 +88,9 @@ class _ExternalMethod(IMethod):
             stdin_data = None
             
         child = Popen(command_line, shell=True, stdin=stdin, stdout=PIPE,
-                      close_fds=True, env={})
+                      close_fds=True, env={"PATH": getenv("PATH"),
+                                           "PYTHONPATH": getenv("PYTHONPATH"),
+                                           })
         rdfdata, _ = child.communicate(stdin_data)
         if child.returncode != 0:
             diag.append("command-line ended with error: %s" % child.returncode)
