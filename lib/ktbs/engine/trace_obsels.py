@@ -20,7 +20,7 @@ I provide the implementation of kTBS obsel collections.
 """
 from itertools import chain
 from rdflib import Graph, Literal, RDF
-from rdfextras.sparql.parser import parse as parse_sparql
+from rdflib_sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.local import NS as RDFREST
@@ -258,13 +258,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # find the last obsel and store it in metadata
             query = _query_cache[0]
             if query is None:
-                query = _query_cache[0] = parse_sparql("""
+                query = _query_cache[0] = prepareQuery("""
                     PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
                     SELECT ?e ?o {
                         ?o :hasEnd ?e .
                         FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
                     }
-                    ORDER BY DESC(?e) #LIMIT 1 #uncomment when ORDER works
+                    ORDER BY DESC(?e) LIMIT 1
                 """)
             init_bindings = {}
             last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
@@ -274,10 +274,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 if last_end is not None:
                     init_bindings['last_end'] = last_end
             results = list(self.state.query(query, initBindings=init_bindings))
-            # TODO LATER remove hack below when rdflib supports full SPARQL
-            # We implement ORDER, as rdflib does not
-            # (and so we have to implement LIMIT as well)
-            results = sorted([ (int(i), j) for i, j in results ])[-1:]
             if results:
                 new_last_obsel = results[0][1]
                 self.metadata.set((self.uri,

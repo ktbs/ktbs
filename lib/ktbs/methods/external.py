@@ -39,7 +39,7 @@ class _ExternalMethod(IMethod):
         """
         diag = Diagnosis("external.compute_trace_description")
 
-        srcs, params =  self._prepare_source_and_params(computed_trace, diag)
+        srcs, params =  self._prepare_sources_and_params(computed_trace, diag)
         if srcs is not None:
 
             assert params is not None
@@ -102,10 +102,10 @@ class _ExternalMethod(IMethod):
         return diag
 
     @staticmethod
-    def _prepare_source_and_params(computed_trace, diag):
+    def _prepare_sources_and_params(computed_trace, diag):
         """I check and prepare the data required by the method.
 
-        I return the unique source of the computed trace, and a dict of
+        I return the sources of the computed trace, and a dict of
         useful parameters converted to the expected datatype. If this can not
         be done, I return ``(None, None)``.
 
@@ -124,7 +124,7 @@ class _ExternalMethod(IMethod):
             if datatype is None:
                 if ("%%(%s)s" % key) not in cmdline:
                     diag.append("WARN: Parameter %s is not used by "
-                                "ktbs:external not by the command line"
+                                "ktbs:external nor by the command line"
                                 % key)
             else:
                 try:

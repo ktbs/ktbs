@@ -47,7 +47,7 @@ def replace_obsels(computed_trace, raw_graph):
         for bnode in bnodes:
             new_uri = make_fresh_uri(raw_graph, ct_uri)
             bnode_map[bnode] = new_uri
-            rg_add(new_uri, KTBS.hasTrace, ct_uri)
+            rg_add((new_uri, KTBS.hasTrace, ct_uri))
 
     with obsels.edit(_trust=True) as editable:
         obsels._empty() # friend #pylint: disable=W0212

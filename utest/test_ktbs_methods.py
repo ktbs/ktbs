@@ -179,6 +179,68 @@ class TestExternal(KtbsTestCase):
         eq_(ctr.origin, origin)
         eq_(len(ctr.obsels), 0)
 
+        o10 = src1.create_obsel("o10", otype, 0)
+        eq_(len(ctr.obsels), 1)
+        o21 = src1.create_obsel("o21", otype, 10)
+        eq_(len(ctr.obsels), 2)
+        o12 = src1.create_obsel("o12", otype, 20)
+        eq_(len(ctr.obsels), 3)
+        o23 = src1.create_obsel("o23", otype, 30)
+        eq_(len(ctr.obsels), 4)
+        o11 = src1.create_obsel("o11", otype, 10)
+        eq_(len(ctr.obsels), 5)
+        o20 = src1.create_obsel("o20", otype, 0)
+        eq_(len(ctr.obsels), 6)
+
+        with src1.obsel_collection.edit() as editable:
+            editable.remove((o10.uri, None, None))
+        eq_(len(ctr.obsels), 5)
+
+        with src1.obsel_collection.edit() as editable:
+            editable.remove((o21.uri, None, None))
+        eq_(len(ctr.obsels), 4)
+
+
+class TestSparql(KtbsTestCase):
+
+    def __init__(self):
+        KtbsTestCase.__init__(self)
+    
+    def test_sparql_one_source(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        atype = model.create_attribute_type("#at")
+        origin = "orig-abc"
+        src1 = base.create_stored_trace("s1/", model, origin=origin,
+                                        default_subject="alice")
+        sparql = """
+        PREFIX : <http://example.org/model#>
+        PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+        CONSTRUCT {
+            [ k:hasTrace <%(__destination__)s> ;
+              a ?ot ;
+              k:hasBegin ?begin ;
+              k:hasEnd   ?begin ;
+              k:hasSubject "anonymous" ;
+              k:hasSourceObsel ?sobs ;
+              :at "%(foo)s"
+            ]
+        }
+        WHERE {
+            ?sobs a ?ot ; k:hasBegin ?begin .
+        }
+        """
+        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
+                                             "sparql": sparql,
+                                             "foo": "bar"
+                                         }, [src1],)
+
+        eq_(ctr.model, model)
+        eq_(ctr.origin, origin)
+        eq_(len(ctr.obsels), 0)
+
         o10 = src1.create_obsel("o10", otype, 0, attributes = {atype: "héhé"})
         # above, we force some non-ascii output of the script,
         # to check that UTF-8 is corectly decoded by the method

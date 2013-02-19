@@ -244,7 +244,7 @@ _PARAMETERS_TYPE = {
     "before": int,
     "after": int,
     "beforeDT": parse_date,
-    "endDT": parse_date,
+    "afterDT": parse_date,
 }
 
 

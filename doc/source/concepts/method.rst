@@ -7,88 +7,105 @@ Built-in methods
 ----------------
 
 Filter
-++++++
+``````
 
-This method copies the obsels of the source trace if they pass the filter. The model and origin of the trace are the same as the source.
-
-For temporal filters, note boundaries are inclusive, but obsels must be entirely contained in them.
+This method copies the obsels of the source trace if they pass the filter.
 
 :sources: 1
 :parameters:
-  :start: the integer timestamp below which obsels are filtered out 
-  :finish: the integer timestamp above which obsels are filtered out 
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
+  :after: the integer timestamp below which obsels are filtered out 
+  :before: the integer timestamp above which obsels are filtered out 
+  :afterDT: the datetime timestamp below which obsels are filtered out 
+  :beforeDT: the datetime timestamp above which obsels are filtered out 
 :extensible: no
 
+If parameter ``model`` (resp. ``origin``) is not provided,
+the model (resp. origin) of the source trace will be used instead.
+
+Datetime timestamps can only be used
+if the source origin is itself a datetime.
+If a temporal boundary is given both as an integer and a datetime timestamp,
+the datetime will be ignored.
+Note that temporal boundaries are *inclusive*,
+but obsels must be entirely contained in them.
+
+
 Fusion
-++++++
+``````
 
 This method merges the content of all its sources.
 
-The model of the fusionned trace can be provided as a parameter; if omitted, it will be expected that all sources have the same model, and that model will be the one of the fusionned trace.
-
-Likewise, if all sources have the same origin, this origin will be the one of the fusionned trace; else, an opaque origin will be created.
-
 :sources: any number
 :parameters:
-  :model: the URI of the model of the fusionned trace
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
 :extensible: no
 
-Note that this transformation guarantees the temporal :doc:`monotonicity` of the computed trace. This implies that obsels will appear in the computed trace with a delay. In the future, a parameter may be available to disable this behaviour.
+If all source traces have the same model (resp. origin),
+then parameter ``model`` (resp. ``origin``) is not required,
+and in that case the computed trace will have
+the same model (resp. origin) as its source(s).
 
-Sparql rule
-+++++++++++
 
-This method applies a SPARQL CONSTRUCT query to the source trace. TODO model and origin
+Sparql
+``````
+
+This method applies a SPARQL CONSTRUCT query to the source trace.
 
 :sources: 1
 :parameters:
-  :sparql: a SPARQL CONSTRUCT query
-  :model: the model URI of the computed trace (optional, see below)
-  :origin: the origin of the computed trace (optional, see below)
-:extensible: yes
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
+  :sparql: a SPARQL CONSTRUCT query (required)
+:extensible: yes (see below)
 
-If the parameter ``model`` (resp. ``origin``) is omitted, the model (resp. the origin) of the source trace is used.
+If parameter ``model`` (resp. ``origin``) is not provided,
+the model (resp. origin) of the source trace will be used instead.
 
-The SPARQL query can contain magic strings of the form ``%(param_name)s``, that will be replaced by the value of an additional parameter named ``param_name``. Note that the following special parameters are automatically provided:
+The SPARQL query can contain magic strings of the form ``%(param_name)s``,
+that will be replaced by the value of
+an additional parameter named ``param_name``.
+Note that the following special parameters are automatically provided:
 
 ======================== ======================================================
  special parameter name   replaced by
 ======================== ======================================================
  ``__destination__``      The URI of the computed trace.
+ ``__source__``           The URI of the source trace.
 ======================== ======================================================
 
 Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
 
-Super-method
-++++++++++++
-
-In many cases, one wants to apply several simple transformations to a single source trace, and fusion the result into a single transformed trace, without being interested in the several intermediate traces. The super-method lets the kTBS automatically manage those intermediate sources traces.
-
-Note that intermediate traces are not completely hidden: they appear in the metadata of the transformed trace (as ``ktbs:hasIntermediateSource``), and the computed obsels may have their source obsel located in the intermediate traces. This allows to trace back which one of the sub-transformation produced which obsel.
-
-:sources: 1
-:parameters:
-  :submethods: space-separated list of method URIs (relative to the *base*)
-  :model: the model URI of the computed trace (optional, see below)
-  :origin: the origin of the computed trace (optional, see below)
-  :(other): any parameter accepted by `Fusion`_ is also accepted
-:extensible: no
-
-If the parameter ``model`` (resp. ``origin``) is omitted, the model (resp. the origin) of the source trace is used.
-
 External
-++++++++
+````````
 
-This method allows to invoke an external program to compute a computed trace. The external program is given as a command line, expected to produce the obsels graph of the computed trace.
+This method invokes an external program to compute a computed trace.
+The external program is given as a command line,
+expected to produce the obsels graph of the computed trace.
 
 :sources: any number
 :parameters:
-  :command-line: the command line to execute
-  :model: the model URI of the computed trace (required)
-  :origin: the origin of the computed trace (required)
-:extensible: yes
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
+  :command-line: the command line to execute (required)
+  :format: the format expected and produced by the command line
+  :min-sources: the minimum number of sources expected by the command-line
+  :max-sources: the maximum number of sources expected by the command-line
+  :feed-to-stdin: whether to use the external command standard input
+                  (see below)
+       
+:extensible: yes (see below)
 
-The command line query can contain magic strings of the form ``%(param_name)s``, that will be replaced by the value of an additional parameter named ``param_name``. Note that the following special parameters are automatically provided:
+If parameter ``model`` (resp. ``origin``) is not provided,
+the model (resp. origin) of the source trace will be used instead.
+
+The command line query can contain magic strings
+of the form ``%(param_name)s``,
+that will be replaced by the value of
+an additional parameter named ``param_name``.
+Note that the following special parameters are automatically provided:
 
 ======================== ======================================================
  special parameter name   replaced by
@@ -97,22 +114,28 @@ The command line query can contain magic strings of the form ``%(param_name)s``,
  ``__sources__``          The space-separated list of the source traces' URIs.
 ======================== ======================================================
 
+Parameter ``format`` is used to inform the kTBS
+of the format produced by the command line. Default is ``turtle``.
+
+Parameters ``min-sources`` and ``max-sources`` are used to inform the kTBS
+of the minimum (resp. maximum) number of sources traces
+expected by the command line.
+This is especially useful in user-defined methods,
+to control that the computed traces using them
+are consistent with their expectations.
+
+In the general case, the command line is expected to receive
+the source trace(s) URI(s) as arguments,
+and query the kTBS to retrieve their obsels.
+As an alternative, parameter ``feed-to-stdin`` can be set
+to have the kTBS send the source trace obsels
+directly to the standard input of the external command process.
+Note that this is only possible when there is exactly one source,
+and the format used to serialize the obsels
+will be the same as parameter ``format``.
+
 Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
 
-
-Script/Python
-+++++++++++++
-
-.. warning::
-
-   This method is deprecated and will not be supported in the future.
-
-This method allows to override the code of the method with Python function provided in its parameters.
-
-:sources: 1
-:parameters:
-  :script: python functions
-:extensible: yes (additional parameters defined by the script)
 
 
 
@@ -124,4 +147,4 @@ A user defined method is described by:
 * an inherited method (either built-in or user-defined),
 * a number of parameters.
 
-For simple methods such as filter, this is merely a way to define a reusable set of parameters. However, for more generic method such as SPARQL or Script/Python, it provides a mean to encapsulate a complex transformation, possibly requiring its own parameters (for extensible methods). 
+For simple methods such as filter, this is merely a way to define a reusable set of parameters. However, for more generic method such as Sparql or External, it provides a mean to encapsulate a complex transformation, possibly requiring its own parameters (via extensibility). 
