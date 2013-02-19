@@ -34,7 +34,7 @@ class TestFilter(KtbsTestCase):
         KtbsTestCase.__init__(self)
         self.log = FILTER_LOG
     
-    def test_filter(self):
+    def test_filter_temporal(self):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
         otype = model.create_obsel_type("#ot")
@@ -87,6 +87,64 @@ class TestFilter(KtbsTestCase):
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         eq_(len(ctr.obsels), 3)
+
+    def test_filter_otypes(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype1 = model.create_obsel_type("#ot1")
+        otype2 = model.create_obsel_type("#ot2")
+        otype3 = model.create_obsel_type("#ot3")
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"otypes": "%s %s" % (
+                                              otype1.uri, otype2.uri,
+                                          )},
+                                         [src],)
+
+        self.log.info(">strictly temporally monotonic change: add o00")
+        o00 = src.create_obsel("o00", otype1, 0)
+        eq_(len(ctr.obsels), 1)
+        self.log.info(">strictly temporally monotonic change: add o05")
+        o05 = src.create_obsel("o05", otype2, 5)
+        eq_(len(ctr.obsels), 2)
+        self.log.info(">strictly temporally monotonic change: add o10")
+        o10 = src.create_obsel("o10", otype3, 10)
+        eq_(len(ctr.obsels), 2)
+        self.log.info(">strictly temporally monotonic change: add o15")
+        o15 = src.create_obsel("o15", otype1, 15)
+        eq_(len(ctr.obsels), 3)
+        self.log.info(">strictly temporally monotonic change: add o20")
+        o20 = src.create_obsel("o20", otype2, 20)
+        eq_(len(ctr.obsels), 4)
+        self.log.info(">strictly temporally monotonic change: add o25")
+        o25 = src.create_obsel("o25", otype3, 25)
+        eq_(len(ctr.obsels), 4)
+        self.log.info(">strictly temporally monotonic change: add o30")
+        o30 = src.create_obsel("o30", otype1, 30)
+        eq_(len(ctr.obsels), 5)
+
+        self.log.info(">non-temporally monotonic change: add o27")
+        o27 = src.create_obsel("o27", otype2, 27)
+        eq_(len(ctr.obsels), 6)
+        self.log.info(">non-temporally monotonic change: add o17")
+        o17 = src.create_obsel("o17", otype1, 17)
+        eq_(len(ctr.obsels), 7)
+        self.log.info(">non-temporally monotonic change: add o07")
+        o07 = src.create_obsel("o07", otype2, 7)
+        eq_(len(ctr.obsels), 8)
+
+        self.log.info(">strictly temporally monotonic change: add o35")
+        o35 = src.create_obsel("o35", otype1, 35)
+        eq_(len(ctr.obsels), 9)
+
+        self.log.info(">non-monotonic change: removing o15")
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o15.uri, None, None))
+        eq_(len(ctr.obsels), 8)
+        self.log.info(">non-monotonic change: removing o25")
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o25.uri, None, None))
+        eq_(len(ctr.obsels), 8)
         
           
 class TestFusion(KtbsTestCase):

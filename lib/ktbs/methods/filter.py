@@ -46,6 +46,7 @@ class _FilterMethod(IMethod):
         cstate = { "method": "filter",
                    "before": None,
                    "after": None,
+                   "otypes": None,
                    "finished": False,
                    "last_seen": None,
                    "log_mon_tag": None,
@@ -81,6 +82,7 @@ class _FilterMethod(IMethod):
             if after is None  and  "afterDT" in params:
                 after = converter(params.get("afterDT") - origin_dt)
             cstate["after"] = after
+            cstate["otypes"] = params.get("otypes")
 
         if not diag:
             cstate["errors"] = list(diag)
@@ -111,6 +113,9 @@ class _FilterMethod(IMethod):
         target_obsels = computed_trace.obsel_collection
         after = cstate["after"]
         before = cstate["before"]
+        otypes = cstate["otypes"]
+        if otypes:
+            otypes = set( URIRef(i) for i in otypes )
         old_log_mon_tag = cstate["log_mon_tag"]
         old_str_mon_tag = cstate["str_mon_tag"]
         last_seen = cstate["last_seen"]
@@ -153,6 +158,10 @@ class _FilterMethod(IMethod):
                     elif obs.end > before:
                         LOG.debug("--- dropping %s", obs)
                         continue
+                if otypes:
+                    if obs.obsel_type.uri not in otypes:
+                        LOG.debug("--- dropping %s", obs)
+                        continue                    
 
                 new_obs_uri = translate_node(obs.uri, computed_trace,
                                              source_uri, False)
@@ -245,6 +254,8 @@ _PARAMETERS_TYPE = {
     "after": int,
     "beforeDT": parse_date,
     "afterDT": parse_date,
+    "otypes":
+        lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
 }
 
 
