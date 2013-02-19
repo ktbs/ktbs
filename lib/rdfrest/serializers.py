@@ -30,7 +30,7 @@ Finally, a numer of default `namespace prefixes <bind_prefix>`:func` can be set.
 They will be shared with all registered serializers (but some third-party
 serializers may not honnor them).
 """
-from rdflib import Graph, Literal, RDF, RDFS, URIRef
+from rdflib import Graph, Literal, RDF, RDFS, URIRef, Variable
 from rdflib.plugins.serializers.nt import _nt_row
 
 from .exceptions import SerializeError
@@ -252,9 +252,15 @@ def serialize_htmlized_turtle(graph, resource, bindings=None):
     ret += "</div>\n"
 
     query = "SELECT ?s ?p ?o WHERE {?s ?p ?o} ORDER BY ?s ?p ?o"
+    svar = Variable("s")
+    pvar = Variable("p")
+    ovar = Variable("o")
     old_subj = None
     old_pred = None
-    for subj, pred, obj in graph.query(query):
+    for b in graph.query(query).bindings:
+        subj = b[svar]
+        pred = b[pvar]
+        obj  = b[ovar]
         if subj != old_subj:
             if old_subj is not None:
                 ret += ".</div></div></div>\n"
