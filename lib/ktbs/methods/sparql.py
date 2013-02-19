@@ -21,6 +21,8 @@ Implementation of the sparql builtin methods.
 from rdfrest.exceptions import ParseError
 from rdfrest.utils import Diagnosis
 from rdflib import Literal, URIRef
+from rdflib_sparql.algebra import _knownterms
+import rdflib_sparql.algebra
 
 from .interface import IMethod
 from .utils import replace_obsels
@@ -115,5 +117,15 @@ _PARAMETERS_TYPE = {
     "model": URIRef,
     "sparql": str,
 }
+
+# monkeypatch to fix a bug in rdflib_sparql
+def my_triples(l): 
+    l=reduce(lambda x,y: x+y, l)
+    #if (len(l) % 3) != 0: 
+    #    #import pdb ; pdb.set_trace()
+    #    raise Exception('these aint triples')
+    return sorted([(l[x],l[x+1],l[x+2]) for x in range(0,len(l)-2,3)], key=_knownterms)
+rdflib_sparql.algebra.triples = my_triples
+
 
 register_builtin_method_impl(_SparqlMethod())
