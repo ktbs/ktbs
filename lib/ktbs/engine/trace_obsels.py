@@ -443,6 +443,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
             impl = trace._method_impl # friend #pylint: disable=W0212
             diag = impl.compute_obsels(trace)
             if not diag:
+                self.metadata.set((self.uri, METADATA.dirty,
+                                      Literal("yes")))
                 raise CanNotProceedError(unicode(diag))
 
     def edit(self, parameters=None, clear=False, _trust=False):

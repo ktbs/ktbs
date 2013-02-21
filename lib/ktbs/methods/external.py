@@ -95,8 +95,11 @@ class _ExternalMethod(IMethod):
         if child.returncode != 0:
             diag.append("command-line ended with error: %s" % child.returncode)
         raw_graph = Graph()
-        raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
-                        format=rdfformat)
+        try:
+            raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
+                            format=rdfformat)
+        except Exception, exc:
+            diag.append(str(exc))
         replace_obsels(computed_trace, raw_graph)
 
         return diag
@@ -115,9 +118,10 @@ class _ExternalMethod(IMethod):
         params = computed_trace.parameters_as_dict
         critical = False
 
-        cmdline = params.get("command-line")
-        if "cmdline" not in params:
+        if "command-line" not in params:
             diag.append("Method ktbs:external requires parameter command-line")
+            critical = True
+        cmdline = params.get("command-line", "")
 
         for key, val in params.items():
             datatype = _PARAMETERS_TYPE.get(key)

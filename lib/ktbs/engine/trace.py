@@ -358,10 +358,11 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
             # get_state do not result in an infinite recursion
             self.metadata.remove((self.uri, METADATA.dirty, None))
             with self.edit(_trust=True) as editable:
+                editable.remove((self.uri, KTBS.hasDiagnosis, None))
                 editable.remove((self.uri, KTBS.hasModel, None))
                 editable.remove((self.uri, KTBS.hasOrigin, None))
                 diag = self._method_impl.compute_trace_description(self)
-                if diag:
+                if not diag:
                     editable.add((self.uri, KTBS.hasDiagnosis,
                                      Literal(str(diag))))
 

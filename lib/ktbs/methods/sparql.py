@@ -18,6 +18,7 @@
 """
 Implementation of the sparql builtin methods.
 """
+from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.utils import Diagnosis
 from rdflib import Literal, URIRef
@@ -60,9 +61,18 @@ class _SparqlMethod(IMethod):
         parameters["__destination__"] = computed_trace.uri
         parameters["__source__"] = source.uri
 
-        sparql = parameters["sparql"] % parameters
-        result = source.obsel_collection.state.query(sparql).graph
-        replace_obsels(computed_trace, result)
+        try:
+            sparql = parameters["sparql"] % parameters
+            result = source.obsel_collection.state.query(sparql).graph
+            replace_obsels(computed_trace, result)
+        except KeyError, exc:
+            diag.append(str(exc))
+        except TypeError, exc:
+            diag.append(str(exc))
+        except ParseException, exc:
+            diag.append(str(exc))
+        except AttributeError, exc:
+            diag.append(str(exc))
 
         return diag
 
@@ -84,9 +94,10 @@ class _SparqlMethod(IMethod):
             diag.append("Method ktbs:sparql expects exactly one source")
             critical = True
 
-        sparql = params.get("sparql")
         if "sparql" not in params:
             diag.append("Method ktbs:sparql requires parameter sparql")
+            critical = True
+        sparql = params.get("sparql", "")
 
         for key, val in params.items():
             datatype = _PARAMETERS_TYPE.get(key)
