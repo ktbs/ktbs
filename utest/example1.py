@@ -56,7 +56,7 @@ from rdfrest.http_client import HttpResource
 from rdfrest.http_server import HttpFrontend
 from rdfrest.interface import register_mixin, IResource
 from rdfrest.local import EditableResource, Service
-from rdfrest.mixins import GraphPostableMixin
+from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
 from rdfrest.utils import coerce_to_uri, parent_uri
 
@@ -345,7 +345,8 @@ class ItemImplementation(ItemMixin, EditableResource):
                 graph.remove((parent.uri, EXAMPLE.contains, self.uri))
                 graph.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
 
-class GroupImplementation(GroupMixin, GraphPostableMixin, ItemImplementation):
+class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
+                          ItemImplementation):
     """Implementation of Group resource"""
 
     BASENAME = "group"

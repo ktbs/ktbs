@@ -129,12 +129,12 @@ class FolderishMixin(ILocalResource):
             .mint_uri(target, new_graph, created, basename, suffix)
 
 
-class GraphPostableMixin(FolderishMixin):
+class GraphPostableMixin(ILocalResource):
     """I implement :meth:`.interface.IResource.post_graph`.
 
     This is a typical implementation where the posted graph represents a single
     resource that will be created as a "child" of this resource. This is why
-    this mix-in class inherits :class:`FolderishMixin`.
+    this mix-in class should usually be used with :class:`FolderishMixin`.
 
     In addition to the helper and hook methods defined by
     :class:`.local.ILocalResource`, this mixin class defines a few others that
