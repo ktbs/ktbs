@@ -1,5 +1,7 @@
+pyparsing==1.5.7
+# the above is only required because rdflib_sparql is not specific enough
 rdflib==3.2.3
-rdflib-sparql==0.1
+rdflib_sparql==0.1
 httplib2==0.7.6
 WebOb==1.2.3
 # For documentation purposes
