@@ -36,7 +36,7 @@ def serialize_html(graph, resource, bindings=None):
         bindings = get_prefix_bindings()
         for prefix in ( "", "m", "model"):
             if prefix not in bindings:
-                bindings[prefix] = resource.trace.model.uri
+                bindings[prefix] = resource.trace.model_uri
                 break
     ctypes = {}
     rdf_types = list(graph.objects(resource.uri, RDF.type)) + [None]
