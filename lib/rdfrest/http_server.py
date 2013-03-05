@@ -95,6 +95,9 @@ class HttpFrontend(object):
         self.cache_control = cache_control
         self.max_bytes = options.pop("max_bytes", None)
         self.max_triples = options.pop("max_triples", None)
+        self.cors_allow_origin = set(
+            options.pop("cors_allow_origin", "").split(" ")
+            )
         self._options = options or {}
 
     def __call__(self, environ, start_response):
@@ -176,6 +179,22 @@ class HttpFrontend(object):
         cache_control = self.cache_control(resource)
         if cache_control:
             response.cache_control = cache_control
+        if self.cors_allow_origin:
+            origin = request.headers.get("origin")
+            if origin and (origin in self.cors_allow_origin
+                           or "*" in self.cors_allow_origin):
+                response.headerlist.append(
+                    ("access-control-allow-origin", origin)
+                    ),
+                response.headerlist.append(
+                    ("access-control-allow-methods",
+                     "GET HEAD PUT POST DELETE"),
+                    )
+                acrh = request.headers.get("access-control-request-headers")
+                if acrh:
+                    response.headerlist.append(
+                        ("access-control-allow-headers", acrh),
+                        )
             
         return response
 
@@ -266,8 +285,17 @@ class HttpFrontend(object):
         return MyResponse(status=response.status,
                            headerlist=response.headerlist, request=request)
 
+    def http_options(self, request, resource):
+        """Process an OPTIONS request on the given resource.
+        """
+        # 
+        headerlist = [
+            ("allow", "GET, HEAD, PUT, POST, DELETE"),
+            ]
+        return MyResponse(headerlist=headerlist, request=request)
+
     def http_post(self, request, resource):
-        """Process a GET request on the given resource.
+        """Process a POST request on the given resource.
         """
         parser, _ = get_parser_by_content_type(request.content_type
                                                or "text/turtle")
