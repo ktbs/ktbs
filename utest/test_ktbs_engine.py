@@ -20,7 +20,7 @@
 
 from datetime import datetime, timedelta
 from nose.tools import assert_equal, assert_raises, eq_
-from rdflib import BNode, Graph, RDF, RDFS, URIRef
+from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
     MethodNotAllowedError, RdfRestException
 from rdfrest.factory import unregister_service
@@ -176,6 +176,83 @@ class TestKtbs(KtbsTestCase):
 
         trace.pseudomon_range = 200
         eq_(get_change_monotonicity(trace, tags), 0)
+
+    def test_post_multiple_obsels(self):
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        otype3 = model.create_obsel_type("#MyObsel3")
+        otypeN = model.create_obsel_type("#MyObselN")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        # purposefully mix obsel order,
+        # to check whether batch post is enforcing the monotonic order
+        graph = Graph()
+        obsN = BNode()
+        graph.add((obsN, KTBS.hasTrace, trace.uri))
+        graph.add((obsN, RDF.type, otypeN.uri))
+        obs1 = BNode()
+        graph.add((obs1, KTBS.hasTrace, trace.uri))
+        graph.add((obs1, RDF.type, otype1.uri))
+        graph.add((obs1, KTBS.hasBegin, Literal(1)))
+        graph.add((obs1, RDF.value, Literal("obs1")))
+        obs3 = BNode()
+        graph.add((obs3, KTBS.hasTrace, trace.uri))
+        graph.add((obs3, RDF.type, otype3.uri))
+        graph.add((obs3, KTBS.hasBegin, Literal(3)))
+        graph.add((obs3, KTBS.hasSubject, Literal("bob")))
+        obs2 = BNode()
+        graph.add((obs2, KTBS.hasTrace, trace.uri))
+        graph.add((obs2, RDF.type, otype2.uri))
+        graph.add((obs2, KTBS.hasBegin, Literal(2)))
+        graph.add((obs2, KTBS.hasEnd, Literal(3)))
+        graph.add((obs2, RDF.value, Literal("obs2")))
+        obs0 = BNode()
+        graph.add((obs0, KTBS.hasTrace, trace.uri))
+        graph.add((obs0, RDF.type, otype0.uri))
+        graph.add((obs0, KTBS.hasBegin, Literal(0)))
+
+        old_tag = trace.obsel_collection.str_mon_tag
+        created = trace.post_graph(graph)
+        new_tag = trace.obsel_collection.str_mon_tag
+
+        eq_(len(created), 5)
+        eq_(old_tag, new_tag)
+
+        obs0 = trace.get_obsel(created[0])
+        eq_(obs0.begin, 0)
+        eq_(obs0.end, 0)
+        eq_(obs0.subject, "alice")
+        eq_(obs0.obsel_type, otype0)
+        
+        obs1 = trace.get_obsel(created[1])
+        eq_(obs1.begin, 1)
+        eq_(obs1.end, 1)
+        eq_(obs1.subject, "alice")
+        eq_(obs1.obsel_type, otype1)
+        eq_(obs1.get_attribute_value(RDF.value), "obs1")
+
+        obs2 = trace.get_obsel(created[2])
+        eq_(obs2.begin, 2)
+        eq_(obs2.end, 3)
+        eq_(obs2.subject, "alice")
+        eq_(obs2.obsel_type, otype2)
+        eq_(obs2.get_attribute_value(RDF.value), "obs2")
+
+        obs3 = trace.get_obsel(created[3])
+        eq_(obs3.begin, 3)
+        eq_(obs3.end, 3)
+        eq_(obs3.subject, "bob")
+        eq_(obs3.obsel_type, otype3)
+
+        obsN = trace.get_obsel(created[4])
+        assert obsN.begin > 4 # set to current date, which is *much* higher
+        eq_(obsN.end, obsN.begin)
+        eq_(obsN.subject, "alice")
+        eq_(obsN.obsel_type, otypeN)
+
 
     def test_lineage(self):
         b = self.my_ktbs.create_base()

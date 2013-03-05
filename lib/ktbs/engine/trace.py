@@ -19,7 +19,8 @@
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
-from rdflib import Graph, Literal, URIRef, XSD
+from rdflib import Graph, Literal, URIRef, Variable, XSD
+from rdflib_sparql.processor import prepareQuery
 from rdfrest.mixins import FolderishMixin
 from rdfrest.utils import cache_result, random_token
 
@@ -29,7 +30,7 @@ from .obsel import Obsel
 from .resource import KtbsPostableMixin, METADATA
 from .trace_obsels import ComputedTraceObsels, StoredTraceObsels
 from ..api.trace import AbstractTraceMixin, StoredTraceMixin, ComputedTraceMixin
-from ..namespace import KTBS
+from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api
 
 LOG = getLogger(__name__)
@@ -236,34 +237,53 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
 
-    def find_created(self, new_graph):
-        """I override :meth:`rdfrest.util.GraphPostableMixin.find_created`.
+    def post_graph(self, graph, parameters=None,
+                   _trust=False, _created=None, _rdf_type=None):
+        """I override :meth:`rdfrest.util.GraphPostableMixin.post_graph`.
 
-        I look for the ktbs:hasTrace property. If not present, I look for the
-        only `rdf:type`'ed node (except for `rdf:List`'s).
+        I allow for multiple obsels to be posted at the same time.
         """
-        candidates = list(new_graph.subjects(KTBS.hasTrace, self.uri))
-        if not candidates:
-            query = """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-                       SELECT DISTINCT ?cand
-                       WHERE { ?cand rdf:type ?typ . FILTER (?typ != rdf:List) }
-                    """
-            candidates = list(new_graph.query(query))
-        if len(candidates) > 1:
-            # TODO SOON accept multiple candidates?
-            LOG.debug("find_created: do not support batch post yet")
-            candidates = []
-        return candidates[0]
-
+        post_single_obsel = super(StoredTrace, self).post_graph
+        binding = { "trace": self.uri }
+        ret = []
+        candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
+                                 initBindings=binding).bindings
+        for candidate in candidates:
+            candidate = candidate[_OBS]
+            ret1 = post_single_obsel(graph, parameters, _trust, candidate,
+                                     KTBS.Obsel)
+            if ret1:
+                assert len(ret1) == 1
+                ret.append(ret1[0])
+        return ret
+                
     def get_created_class(self, rdf_type):
         """I override
         :class:`rdfrest.mixins.GraphPostableMixin.get_created_class`
-
         Only obsels can be posted to a trace.
         """
         # unused arguments #pylint: disable=W0613
         # self is not used #pylint: disable=R0201
         return Obsel
+
+# the following query gets all the candidate obsels in a POSTed graph,
+# and orders them correctly, guessing implicit values
+_SELECT_CANDIDATE_OBSELS = ("""
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#float>
+    PREFIX : <%s#>
+    SELECT ?obs
+           (IF(bound(?b), ?b, "INF"^^xsd:float) as ?begin)
+           (IF(bound(?e), ?e, ?begin) as ?end)
+    WHERE {
+        ?obs :hasTrace ?trace
+        OPTIONAL { ?obs :hasBegin ?b }
+        OPTIONAL { ?obs :hasEnd   ?e }
+    }
+    ORDER BY ?begin ?end
+""" % KTBS_NS_URI)
+
+_OBS = Variable("obs")
+# TODO remove this once rdflib-sparql handles variable order correctly
 
 
 class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):

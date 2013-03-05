@@ -268,11 +268,9 @@ class _ObselImpl(ILocalResource):
         """
         # Do NOT call super method, as this is the base implementation.
 
-        # we remobe here the hack introduced by StoredTrace.find_created
-        new_graph.remove((uri, RDF.type, KTBS.Obsel))
-
+        bdesc = bounded_description(uri, new_graph)
         trace = cls._get_trace_from_uri(service, uri)
-        trace.obsel_collection.add_graph(new_graph, True)
+        trace.obsel_collection.add_graph(bdesc, True)
 
     ######## Private methods ########
 
