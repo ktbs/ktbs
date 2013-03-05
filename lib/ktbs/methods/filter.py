@@ -20,7 +20,7 @@ Implementation of the filter builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, URIRef
+from rdflib import Literal, RDF, URIRef
 from rdfrest.iso8601 import parse_date, ParseError
 from rdfrest.utils import check_new, Diagnosis
 
@@ -159,9 +159,14 @@ class _FilterMethod(IMethod):
                         LOG.debug("--- dropping %s", obs)
                         continue
                 if otypes:
-                    if obs.obsel_type.uri not in otypes:
+                    obs_uri = obs.uri
+                    obs_state = obs.state
+                    for otype in otypes:
+                        if (obs_uri, RDF.type, otype) in obs_state:
+                            break
+                    else: # goes with the for (NOT the if)
                         LOG.debug("--- dropping %s", obs)
-                        continue                    
+                        continue
 
                 new_obs_uri = translate_node(obs.uri, computed_trace,
                                              source_uri, False)

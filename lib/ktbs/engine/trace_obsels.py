@@ -19,6 +19,7 @@
 I provide the implementation of kTBS obsel collections.
 """
 from itertools import chain
+from logging import getLogger
 from rdflib import Graph, Literal, RDF
 from rdflib_sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
@@ -28,6 +29,8 @@ from rdfrest.local import NS as RDFREST
 from .resource import KtbsResource, METADATA
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
+
+LOG = getLogger(__name__)
 
 class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
@@ -436,6 +439,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
         super(ComputedTraceObsels, self).force_state_refresh(parameters)
         trace = self.trace
         if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+            LOG.info("recomputing <%s>", self.uri)
             # we *first* unset the dirty bit, so that recursive calls to
             # get_state do not result in an infinite recursion
             self.metadata.remove((self.uri, METADATA.dirty, None))
