@@ -23,7 +23,7 @@ from rdfrest.utils import make_fresh_uri
 
 from ..namespace import KTBS
 
-def replace_obsels(computed_trace, raw_graph):
+def replace_obsels(computed_trace, raw_graph, inherit=False):
     """
     Replace the @obsels graph of computed_trace with raw_graph.
 
@@ -32,12 +32,26 @@ def replace_obsels(computed_trace, raw_graph):
     so it must be valid.
     """
     obsels = computed_trace.obsel_collection
+    rg_add = raw_graph.add
+    ct_uri = computed_trace.uri
+
+    if inherit:
+        rg_val = raw_graph.value
+        getobs = computed_trace.service.get
+        triples = raw_graph.triples((None, KTBS.hasSourceObsel, None))
+        for newnode, _, olduri in triples:
+            # if ktbs:hasTrace is not specified,
+            # it must be smartly set and *not* inherited:
+            rg_add((newnode, KTBS.hasTrace, ct_uri))
+            oldobs = getobs(olduri)
+            for _, prop, val in oldobs.state.triples((olduri, None, None)):
+                if rg_val(newnode, prop) is None:
+                    rg_add((newnode, prop, val))
+
     bnodes = [ i for i in raw_graph.subjects(KTBS.hasBegin, None)
                if isinstance(i, BNode) ]
     if bnodes:
         bnode_map = {}
-        ct_uri = computed_trace.uri
-        rg_add = raw_graph.add
         for bnode in bnodes:
             new_uri = make_fresh_uri(raw_graph, ct_uri + "o-")
             bnode_map[bnode] = new_uri

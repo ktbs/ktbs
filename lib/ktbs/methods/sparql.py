@@ -64,7 +64,9 @@ class _SparqlMethod(IMethod):
         try:
             sparql = parameters["sparql"] % parameters
             result = source.obsel_collection.state.query(sparql).graph
-            replace_obsels(computed_trace, result)
+            print "=== OUTPUT\n", result.serialize(format="nt")
+            replace_obsels(computed_trace, result, ("inherit" in parameters))
+            print "=== RESULT\n", computed_trace.obsel_collection.state.serialize(format="nt")
         except KeyError, exc:
             diag.append(str(exc))
         except TypeError, exc:
@@ -127,6 +129,7 @@ _PARAMETERS_TYPE = {
     "origin": Literal,
     "model": URIRef,
     "sparql": str,
+    "inherit": str,
 }
 
 # monkeypatch to fix a bug in rdflib_sparql

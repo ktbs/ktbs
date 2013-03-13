@@ -471,6 +471,17 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
         self.force_state_refresh()
         self.obsel_collection.force_state_refresh()
 
+    ######## Extension to the abstract kTBS API ########
+
+    def get_diagnosis(self, force_refresh=False):
+        """I return the diagnosis of the last execution of this computed trace.
+
+        Note that the diagnosis is None iff the execution succeeded.
+        """
+        ret = self.state.value(self.uri, KTBS.hasDiagnosis)
+        if ret is not None:
+            ret = unicode(ret)
+        return ret
 
     ######## Private methods ########
 

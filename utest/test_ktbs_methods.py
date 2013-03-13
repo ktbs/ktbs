@@ -302,6 +302,9 @@ class TestSparql(KtbsTestCase):
         o10 = src1.create_obsel("o10", otype, 0, attributes = {atype: "héhé"})
         # above, we force some non-ascii output of the script,
         # to check that UTF-8 is corectly decoded by the method
+        ctr.obsel_collection.force_state_refresh()
+        eq_(ctr.diagnosis, None)
+
         eq_(len(ctr.obsels), 1)
         o21 = src1.create_obsel("o21", otype, 10)
         eq_(len(ctr.obsels), 2)
@@ -322,5 +325,92 @@ class TestSparql(KtbsTestCase):
             editable.remove((o21.uri, None, None))
         eq_(len(ctr.obsels), 4)
 
+    def test_sparql_inherit_all(self):
         
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype1 = model.create_obsel_type("#ot1")
+        otype2 = model.create_obsel_type("#ot2")
+        atype = model.create_attribute_type("#at")
+        origin = "orig-abc"
+        src1 = base.create_stored_trace("s1/", model, origin=origin,
+                                        default_subject="alice")
+        sparql = """
+          PREFIX : <%s#>
+          PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+          CONSTRUCT {
+              [ k:hasSourceObsel ?sobs ] .
+          }
+          WHERE {
+              ?sobs a :ot1 .
+          }
+        """ % model.uri
+        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
+                                             "sparql": sparql,
+                                             "inherit": "yes"
+                                         }, [src1],)
+
+        eq_(ctr.model, model)
+        eq_(ctr.origin, origin)
+        eq_(len(ctr.obsels), 0)
+        ctr.obsel_collection.force_state_refresh()
+        eq_(ctr.diagnosis, None)
+
+        o1 = src1.create_obsel("o1", otype1, 0, attributes = {atype: "héhé"})
+        eq_(len(src1.obsels), 1)
+        eq_(len(ctr.obsels), 1)
+        eq_(ctr.obsels[0].obsel_type, o1.obsel_type)
+        eq_(ctr.obsels[0].begin, o1.begin)
+        eq_(ctr.obsels[0].end, o1.end)
+        eq_(ctr.obsels[0].subject, o1.subject)
+        eq_(ctr.obsels[0].get_attribute_value(atype),
+            o1.get_attribute_value(atype))
+
+    def test_sparql_inherit_some(self):
         
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype1 = model.create_obsel_type("#ot1")
+        otype2 = model.create_obsel_type("#ot2")
+        atype = model.create_attribute_type("#at")
+        origin = "orig-abc"
+        src1 = base.create_stored_trace("s1/", model, origin=origin,
+                                        default_subject="alice")
+        sparql = """
+          PREFIX : <%s#>
+          PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+          CONSTRUCT {
+              [ k:hasSourceObsel ?sobs ;
+                a :ot2 ;
+                :at "overridden" ;
+                k:hasEnd ?end ;
+              ] .
+          }
+          WHERE {
+              SELECT ?sobs ((?b + 1) as ?end) {
+                  ?sobs a :ot1 ; k:hasBegin ?b .
+              }
+          }
+        """ % model.uri
+        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
+                                             "sparql": sparql,
+                                             "inherit": "yes"
+                                         }, [src1],)
+
+        eq_(ctr.model, model)
+        eq_(ctr.origin, origin)
+        eq_(len(ctr.obsels), 0)
+        ctr.obsel_collection.force_state_refresh()
+        eq_(ctr.diagnosis, None)
+
+        o1 = src1.create_obsel("o1", otype1, 0, attributes = {atype: "héhé"})
+        eq_(len(src1.obsels), 1)
+        eq_(len(ctr.obsels), 1)
+        eq_(ctr.obsels[0].obsel_type, otype2)
+        eq_(ctr.obsels[0].begin, o1.begin)
+        eq_(ctr.obsels[0].end, o1.begin + 1)
+        eq_(ctr.obsels[0].subject, o1.subject)
+        eq_(ctr.obsels[0].get_attribute_value(atype), "overridden")
+

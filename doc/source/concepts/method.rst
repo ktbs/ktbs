@@ -70,10 +70,20 @@ This method applies a SPARQL CONSTRUCT query to the source trace.
   :model: the model of the computed trace
   :origin: the origin of the computed trace
   :sparql: a SPARQL CONSTRUCT query (required)
+  :inherit: inherit properties from source obsel (see below)
 :extensible: yes (see below)
 
 If parameter ``model`` (resp. ``origin``) is not provided,
 the model (resp. origin) of the source trace will be used instead.
+
+If ``inherit`` is set (with any value),
+then the produced obsels will inherit from their source obsel
+all the properties that are not explicitly set by the CONSTRUCT.
+That includes properties in the ``ktbs`` namespace.
+This allows to greatly simplify SPARQL queries that are mostly
+filtering and or augmenting obsels, rather than synthetizing new ones.
+Note however that if the obsel has several source obsels,
+the behabiour is unspecified.
 
 The SPARQL query can contain magic strings of the form ``%(param_name)s``,
 that will be replaced by the value of
