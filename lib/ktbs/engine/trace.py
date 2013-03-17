@@ -21,6 +21,7 @@ I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 from logging import getLogger
 from rdflib import Graph, Literal, URIRef, Variable, XSD
 from rdflib_sparql.processor import prepareQuery
+from rdfrest.local import compute_added_and_removed
 from rdfrest.mixins import FolderishMixin
 from rdfrest.utils import cache_result, random_token
 
@@ -75,6 +76,34 @@ class AbstractTrace(AbstractTraceMixin, InBase):
 
 
     ######## ILocalResource (and mixins) implementation  ########
+
+    @classmethod
+    def check_new_graph(cls, service, uri, parameters, new_graph,
+                        resource=None, added=None, removed=None):
+        """I implement :meth:`~rdfrest.local.ILocalResource.check_new_graph`
+
+        I check that the sources exist and are in the same base.
+        """
+        diag = super(AbstractTrace, cls).check_new_graph(
+            service, uri, parameters, new_graph, resource, added, removed)
+
+        if resource is not None:
+            old_graph = resource.get_state()
+            added, removed = compute_added_and_removed(new_graph, old_graph,
+                                                       added, removed)
+            src_graph = added
+        else:
+            src_graph = new_graph
+
+        base_uri = new_graph.value(None, KTBS.contains, uri)
+        factory = service.get
+        for src_uri in src_graph.objects(uri, KTBS.hasSource):
+            if not src_uri.startswith(base_uri) \
+            or not isinstance(factory(src_uri), AbstractTrace):
+                diag.append("Source <%s> is not a trace from the same base"
+                            % src_uri)
+
+        return diag
 
     @classmethod
     def create(cls, service, uri, new_graph):

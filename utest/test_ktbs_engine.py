@@ -76,9 +76,13 @@ class HttpKtbsTestCaseMixin(object):
         thread.start()
         self.httpd = httpd
 
+        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
+        assert isinstance(self.my_ktbs, KtbsRootMixin)
+
     def tearDown(self):
         if self.httpd:
             self.httpd.shutdown()
+            self.httpd = None
         super(HttpKtbsTestCaseMixin, self).tearDown()
 
 
@@ -115,6 +119,51 @@ class TestKtbs(KtbsTestCase):
         graph.add((created, RDF.type, KTBS.hasModel)) # in correct NS
         with assert_raises(RdfRestException):
             self.my_ktbs.post_graph(graph)
+
+    def test_post_bad_source1a(self):
+        base1 = self.my_ktbs.create_base()
+        base2 = self.my_ktbs.create_base()
+        model = base1.create_model()
+        trace1 = base1.create_stored_trace(None, model)
+        g = Graph()
+        with assert_raises(InvalidDataError):
+            # forcing untrusted content with parameter Graph
+            # so we get an InvalidDataError from engine.base
+            trace2 = base2.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1], graph=g)
+
+    def test_post_bad_source1b(self):
+        base1 = self.my_ktbs.create_base()
+        base2 = self.my_ktbs.create_base()
+        model = base1.create_model()
+        trace1 = base1.create_stored_trace(None, model)
+        with assert_raises(ValueError):
+            # content will be trusted, so we get a ValueError from api.ase
+            trace2 = base2.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1])
+
+    def test_post_bad_source2a(self):
+        # testing with URI in same base
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        trace1 = base.create_stored_trace(None, model)
+        g = Graph()
+        with assert_raises(InvalidDataError):
+            # forcing untrusted content with parameter Graph
+            # so we get an InvalidDataError from engine.base
+            trace2 = base.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1.uri[:-1]], graph=g)
+
+    def test_post_bad_source2a(self):
+        # testing with URI in same base
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        trace1 = base.create_stored_trace(None, model)
+        with assert_raises(ValueError):
+            # content will be trusted, so we get a ValueError from api.ase
+            trace2 = base.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1.uri[:-1]])
+        
 
     def test_blank_obsels(self):
         base = self.my_ktbs.create_base()
@@ -277,7 +326,6 @@ class TestKtbs(KtbsTestCase):
         FILTER_LOG.info("getting t2")
         t2 = b.get("t2/")
         eq_(len(t2.obsels), 4)
-        
 
 
 class TestKtbsSynthetic(KtbsTestCase):
@@ -531,11 +579,7 @@ class TestKtbsSynthetic(KtbsTestCase):
 
 
 class TestHttpKtbsSynthetic(HttpKtbsTestCaseMixin, TestKtbsSynthetic):
-    
-    def setUp(self):
-        super(TestHttpKtbsSynthetic, self).setUp()
-        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
-        assert isinstance(self.my_ktbs, KtbsRootMixin)
+    """Reusing TestKtbsSynthetic with an HTTP kTBS"""
 
 
 def get_change_monotonicity(trace, prevtags):

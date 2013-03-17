@@ -282,7 +282,8 @@ class BaseMixin(KtbsResourceMixin):
             for src in sources:
                 if self.state.value(src, RDF.type) not in (KTBS.StoredTrace,
                                                            KTBS.ComputedTrace):
-                    raise ValueError("Source <%s> is not a trace")
+                    raise ValueError("Source <%s> is not a trace of this base"
+                                     % src)
         if graph is None:
             graph = Graph()
         graph.add((self.uri, KTBS.contains, node))
