@@ -120,7 +120,7 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
-    ogr.add_option("--init-repo", action="store_true", default=False,
+    ogr.add_option("--init-repo", action="store_true", default=None,
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
