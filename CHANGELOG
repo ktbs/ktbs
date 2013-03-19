@@ -1,0 +1,16 @@
+0.2 2013-03-19
+
+    * methods for computed traces
+      * implemented SPARQL method
+      * Filter method now can filter on Obsel types
+
+    * new features for collecting obsels
+      * support multiple obsels in a single POST
+      * support obsel creation via GET (via a plugin)
+      * support Cross Origin Resource Servicve (http://www.w3.org/TR/cors/)
+
+    * HTML serializer
+      * code is now more modular
+      * obsels are now displayed in chronological order
+
+    * various bug fixes
