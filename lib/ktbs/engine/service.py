@@ -136,3 +136,7 @@ class KtbsService(Service):
         for bim in iter_builtin_method_impl():
             graph.add((root_uri, KTBS.hasBuiltinMethod, bim.uri))
         KtbsRoot.create(service, root_uri, graph)
+
+# unused import #pylint: disable=W0611
+# ensures registration of parsers/serializers 
+import ktbs.engine.serpar

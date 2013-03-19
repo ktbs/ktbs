@@ -19,7 +19,8 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 from rdfrest.utils import add_uri_params, bounded_description, cache_result, \
-    coerce_to_uri, Diagnosis, urisplit, uriunsplit
+    coerce_to_uri, Diagnosis, urisplit, uriunsplit, wrap_exceptions, \
+    wrap_generator_exceptions
 
 from nose.tools import eq_
 from rdflib import Graph, Namespace, URIRef
@@ -241,3 +242,31 @@ class TestCacheResult():
         eq_(self.B.get_class_counter(), 42) # second time
         eq_(self.B.class_counter, 42) # second time
             
+
+class MyException(Exception):
+    def __init__(self, ex):
+        Exception.__init__(self, "MyException\nwrapped: %s" % ex)
+
+def test_wrap_exceptions():
+    @wrap_exceptions(MyException)
+    def f():
+        1/0
+
+    try:
+        f()
+        assert 0, "a MyException was expected, but nothing was raised"
+    except Exception, ex:
+        assert isinstance(ex, MyException), \
+            "a MyException was expected, got %s" % ex
+
+def test_wrap_generator_exceptions():
+    @wrap_generator_exceptions(MyException)
+    def g():
+        yield 1/0
+
+    try:
+        list(g())
+        assert 0, "a MyException was expected, but nothing was raised"
+    except Exception, ex:
+        assert isinstance(ex, MyException), \
+            "a MyException was expected, got %s" % ex

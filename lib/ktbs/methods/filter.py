@@ -20,7 +20,7 @@ Implementation of the filter builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, URIRef
+from rdflib import Literal, RDF, URIRef
 from rdfrest.iso8601 import parse_date, ParseError
 from rdfrest.utils import check_new, Diagnosis
 
@@ -46,6 +46,7 @@ class _FilterMethod(IMethod):
         cstate = { "method": "filter",
                    "before": None,
                    "after": None,
+                   "otypes": None,
                    "finished": False,
                    "last_seen": None,
                    "log_mon_tag": None,
@@ -81,6 +82,7 @@ class _FilterMethod(IMethod):
             if after is None  and  "afterDT" in params:
                 after = converter(params.get("afterDT") - origin_dt)
             cstate["after"] = after
+            cstate["otypes"] = params.get("otypes")
 
         if not diag:
             cstate["errors"] = list(diag)
@@ -111,6 +113,9 @@ class _FilterMethod(IMethod):
         target_obsels = computed_trace.obsel_collection
         after = cstate["after"]
         before = cstate["before"]
+        otypes = cstate["otypes"]
+        if otypes:
+            otypes = set( URIRef(i) for i in otypes )
         old_log_mon_tag = cstate["log_mon_tag"]
         old_str_mon_tag = cstate["str_mon_tag"]
         last_seen = cstate["last_seen"]
@@ -151,6 +156,15 @@ class _FilterMethod(IMethod):
                         cstate["finished"] = True
                         break
                     elif obs.end > before:
+                        LOG.debug("--- dropping %s", obs)
+                        continue
+                if otypes:
+                    obs_uri = obs.uri
+                    obs_state = obs.state
+                    for otype in otypes:
+                        if (obs_uri, RDF.type, otype) in obs_state:
+                            break
+                    else: # goes with the for (NOT the if)
                         LOG.debug("--- dropping %s", obs)
                         continue
 
@@ -244,7 +258,9 @@ _PARAMETERS_TYPE = {
     "before": int,
     "after": int,
     "beforeDT": parse_date,
-    "endDT": parse_date,
+    "afterDT": parse_date,
+    "otypes":
+        lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
 }
 
 

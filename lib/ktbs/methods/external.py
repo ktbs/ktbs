@@ -18,6 +18,7 @@
 """
 Implementation of the external builtin methods.
 """
+from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.utils import Diagnosis
 from rdfrest.exceptions import ParseError
@@ -38,7 +39,7 @@ class _ExternalMethod(IMethod):
         """
         diag = Diagnosis("external.compute_trace_description")
 
-        srcs, params =  self._prepare_source_and_params(computed_trace, diag)
+        srcs, params =  self._prepare_sources_and_params(computed_trace, diag)
         if srcs is not None:
 
             assert params is not None
@@ -87,22 +88,27 @@ class _ExternalMethod(IMethod):
             stdin_data = None
             
         child = Popen(command_line, shell=True, stdin=stdin, stdout=PIPE,
-                      close_fds=True, env={})
+                      close_fds=True, env={"PATH": getenv("PATH"),
+                                           "PYTHONPATH": getenv("PYTHONPATH"),
+                                           })
         rdfdata, _ = child.communicate(stdin_data)
         if child.returncode != 0:
             diag.append("command-line ended with error: %s" % child.returncode)
         raw_graph = Graph()
-        raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
-                        format=rdfformat)
+        try:
+            raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
+                            format=rdfformat)
+        except Exception, exc:
+            diag.append(str(exc))
         replace_obsels(computed_trace, raw_graph)
 
         return diag
 
     @staticmethod
-    def _prepare_source_and_params(computed_trace, diag):
+    def _prepare_sources_and_params(computed_trace, diag):
         """I check and prepare the data required by the method.
 
-        I return the unique source of the computed trace, and a dict of
+        I return the sources of the computed trace, and a dict of
         useful parameters converted to the expected datatype. If this can not
         be done, I return ``(None, None)``.
 
@@ -112,16 +118,17 @@ class _ExternalMethod(IMethod):
         params = computed_trace.parameters_as_dict
         critical = False
 
-        cmdline = params.get("command-line")
-        if "cmdline" not in params:
+        if "command-line" not in params:
             diag.append("Method ktbs:external requires parameter command-line")
+            critical = True
+        cmdline = params.get("command-line", "")
 
         for key, val in params.items():
             datatype = _PARAMETERS_TYPE.get(key)
             if datatype is None:
                 if ("%%(%s)s" % key) not in cmdline:
                     diag.append("WARN: Parameter %s is not used by "
-                                "ktbs:external not by the command line"
+                                "ktbs:external nor by the command line"
                                 % key)
             else:
                 try:

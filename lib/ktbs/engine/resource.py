@@ -20,8 +20,9 @@ I provide the common implementation of all local KTBS resources.
 """
 from rdflib import Namespace, URIRef
 from rdfrest.local import EditableResource
-from rdfrest.mixins import BookkeepingMixin, GraphPostableMixin, \
-    WithCardinalityMixin, WithReservedNamespacesMixin, WithTypedPropertiesMixin
+from rdfrest.mixins import BookkeepingMixin, FolderishMixin, \
+    GraphPostableMixin, WithCardinalityMixin, WithReservedNamespacesMixin, \
+    WithTypedPropertiesMixin
 from re import compile as RegExp, UNICODE
 
 from ..api.resource import KtbsResourceMixin
@@ -53,7 +54,7 @@ class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                  or cls.__name__)
         return mint_uri_from_label(label, target, suffix=suffix)
 
-class KtbsPostableMixin(GraphPostableMixin, KtbsResource):
+class KtbsPostableMixin(FolderishMixin, GraphPostableMixin, KtbsResource):
     """I implement the common post-related functionalities for KtbsResources.
     """
 

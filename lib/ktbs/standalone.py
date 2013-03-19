@@ -52,7 +52,7 @@ def main():
 
     if OPTIONS.resource_cache is not None:
         LOG.warning("option --resource-cache is deprecated; it has no effect")
-    ktbs_service = make_ktbs(uri, OPTIONS.repository).service
+    ktbs_service = make_ktbs(uri, OPTIONS.repository, OPTIONS.init_repo).service
 
     wsgifront_options = {}
     if OPTIONS.max_age:
@@ -60,6 +60,8 @@ def main():
         wsgifront_options["cache_control"] = "max-age=%s" % OPTIONS.max_age
     if OPTIONS.no_cache:
         wsgifront_options["cache_control"] = (lambda x: None)
+    if OPTIONS.cors_allow_origin:
+        wsgifront_options["cors_allow_origin"] = OPTIONS.cors_allow_origin
     application = HttpFrontend(ktbs_service, **wsgifront_options)
     if OPTIONS.flash_allow:
         application = FlashAllower(application)
@@ -116,6 +118,10 @@ def parse_options():
     ogr.add_option("-T", "--max-triples",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
+    ogr.add_option("--cors-allow-origin",
+                   help="space separated list of allowed origins")
+    ogr.add_option("--init-repo", action="store_true", default=None,
+                   help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
     ogr = OptionGroup(opt, "Deprecated options")

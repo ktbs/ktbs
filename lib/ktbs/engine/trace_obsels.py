@@ -19,8 +19,9 @@
 I provide the implementation of kTBS obsel collections.
 """
 from itertools import chain
+from logging import getLogger
 from rdflib import Graph, Literal, RDF
-from rdfextras.sparql.parser import parse as parse_sparql
+from rdflib_sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.local import NS as RDFREST
@@ -28,6 +29,8 @@ from rdfrest.local import NS as RDFREST
 from .resource import KtbsResource, METADATA
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
+
+LOG = getLogger(__name__)
 
 class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
@@ -258,13 +261,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # find the last obsel and store it in metadata
             query = _query_cache[0]
             if query is None:
-                query = _query_cache[0] = parse_sparql("""
+                query = _query_cache[0] = prepareQuery("""
                     PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
                     SELECT ?e ?o {
                         ?o :hasEnd ?e .
                         FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
                     }
-                    ORDER BY DESC(?e) #LIMIT 1 #uncomment when ORDER works
+                    ORDER BY DESC(?e) LIMIT 1
                 """)
             init_bindings = {}
             last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
@@ -274,10 +277,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 if last_end is not None:
                     init_bindings['last_end'] = last_end
             results = list(self.state.query(query, initBindings=init_bindings))
-            # TODO LATER remove hack below when rdflib supports full SPARQL
-            # We implement ORDER, as rdflib does not
-            # (and so we have to implement LIMIT as well)
-            results = sorted([ (int(i), j) for i, j in results ])[-1:]
             if results:
                 new_last_obsel = results[0][1]
                 self.metadata.set((self.uri,
@@ -285,6 +284,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                                    new_last_obsel))
             else:
                 new_last_obsel = None
+                self.metadata.remove((self.uri,
+                                      METADATA.last_obsel,
+                                      None))
         else:
             # last_obsel has already been set, more efficiently, by add_graph;
             # we only have to reset self._in_add_graph
@@ -437,6 +439,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
         super(ComputedTraceObsels, self).force_state_refresh(parameters)
         trace = self.trace
         if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+            LOG.info("recomputing <%s>", self.uri)
             # we *first* unset the dirty bit, so that recursive calls to
             # get_state do not result in an infinite recursion
             self.metadata.remove((self.uri, METADATA.dirty, None))
@@ -444,6 +447,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
             impl = trace._method_impl # friend #pylint: disable=W0212
             diag = impl.compute_obsels(trace)
             if not diag:
+                self.metadata.set((self.uri, METADATA.dirty,
+                                      Literal("yes")))
                 raise CanNotProceedError(unicode(diag))
 
     def edit(self, parameters=None, clear=False, _trust=False):

@@ -7,7 +7,7 @@ from os.path import dirname, join
 from sys import argv
 from warnings import filterwarnings
 
-__version__ = "0.1"
+__version__ = "0.2"
 
 readme_rst = join(dirname(argv[0]), "README.rst")
 long_description = open(readme_rst).read()

@@ -190,7 +190,7 @@ if pyld:
 
     def serialize_json(graph, resource, _binding=None):
         """I serialize an RDF graph as JSON-LD.
-           I serialize 'graph' in plain and ugly JSON-LD.
+           I serialize 'graph' in JSON-LD, using a frame if available.
 
         See :func:`rdfrest.serializer.serialize_rdf_xml` for prototype
         documentation.
@@ -335,7 +335,6 @@ if pyld:
         "traceEnd": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEnd", "@type": "xsd:integer" },
         "traceEndDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEndDT", "@type": "xsd:dateTime" },
         "unit": "http://liris.cnrs.fr/silex/2009/ktbs#hasUnit",
-        "parallel": "http://liris.cnrs.fr/silex/2009/ktbs#parallel",
         "sparql": "http://liris.cnrs.fr/silex/2009/ktbs#sparql",
 
         "inRoot": { "@id": "x-rev:http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
@@ -367,7 +366,7 @@ if pyld:
 def start_plugin():
     """Start the JSON-LD plugin for kTBS."""
     if pyld is None:
-        LOG.error("Can not plugin: pyld package is not available")
+        LOG.error("Can not load plugin: pyld package is not available")
         return
     register_parser("application/json")(parse_jsonld)
     register_serializer("application/json", "json")(serialize_json)

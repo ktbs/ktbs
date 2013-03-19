@@ -20,7 +20,7 @@
 
 from datetime import datetime, timedelta
 from nose.tools import assert_equal, assert_raises, eq_
-from rdflib import BNode, Graph, RDF, RDFS, URIRef
+from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
     MethodNotAllowedError, RdfRestException
 from rdfrest.factory import unregister_service
@@ -76,9 +76,13 @@ class HttpKtbsTestCaseMixin(object):
         thread.start()
         self.httpd = httpd
 
+        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
+        assert isinstance(self.my_ktbs, KtbsRootMixin)
+
     def tearDown(self):
         if self.httpd:
             self.httpd.shutdown()
+            self.httpd = None
         super(HttpKtbsTestCaseMixin, self).tearDown()
 
 
@@ -115,6 +119,51 @@ class TestKtbs(KtbsTestCase):
         graph.add((created, RDF.type, KTBS.hasModel)) # in correct NS
         with assert_raises(RdfRestException):
             self.my_ktbs.post_graph(graph)
+
+    def test_post_bad_source1a(self):
+        base1 = self.my_ktbs.create_base()
+        base2 = self.my_ktbs.create_base()
+        model = base1.create_model()
+        trace1 = base1.create_stored_trace(None, model)
+        g = Graph()
+        with assert_raises(InvalidDataError):
+            # forcing untrusted content with parameter Graph
+            # so we get an InvalidDataError from engine.base
+            trace2 = base2.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1], graph=g)
+
+    def test_post_bad_source1b(self):
+        base1 = self.my_ktbs.create_base()
+        base2 = self.my_ktbs.create_base()
+        model = base1.create_model()
+        trace1 = base1.create_stored_trace(None, model)
+        with assert_raises(ValueError):
+            # content will be trusted, so we get a ValueError from api.ase
+            trace2 = base2.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1])
+
+    def test_post_bad_source2a(self):
+        # testing with URI in same base
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        trace1 = base.create_stored_trace(None, model)
+        g = Graph()
+        with assert_raises(InvalidDataError):
+            # forcing untrusted content with parameter Graph
+            # so we get an InvalidDataError from engine.base
+            trace2 = base.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1.uri[:-1]], graph=g)
+
+    def test_post_bad_source2a(self):
+        # testing with URI in same base
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        trace1 = base.create_stored_trace(None, model)
+        with assert_raises(ValueError):
+            # content will be trusted, so we get a ValueError from api.ase
+            trace2 = base.create_computed_trace(None, KTBS.filter, {},
+                                                 [trace1.uri[:-1]])
+        
 
     def test_blank_obsels(self):
         base = self.my_ktbs.create_base()
@@ -177,6 +226,83 @@ class TestKtbs(KtbsTestCase):
         trace.pseudomon_range = 200
         eq_(get_change_monotonicity(trace, tags), 0)
 
+    def test_post_multiple_obsels(self):
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        otype3 = model.create_obsel_type("#MyObsel3")
+        otypeN = model.create_obsel_type("#MyObselN")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        # purposefully mix obsel order,
+        # to check whether batch post is enforcing the monotonic order
+        graph = Graph()
+        obsN = BNode()
+        graph.add((obsN, KTBS.hasTrace, trace.uri))
+        graph.add((obsN, RDF.type, otypeN.uri))
+        obs1 = BNode()
+        graph.add((obs1, KTBS.hasTrace, trace.uri))
+        graph.add((obs1, RDF.type, otype1.uri))
+        graph.add((obs1, KTBS.hasBegin, Literal(1)))
+        graph.add((obs1, RDF.value, Literal("obs1")))
+        obs3 = BNode()
+        graph.add((obs3, KTBS.hasTrace, trace.uri))
+        graph.add((obs3, RDF.type, otype3.uri))
+        graph.add((obs3, KTBS.hasBegin, Literal(3)))
+        graph.add((obs3, KTBS.hasSubject, Literal("bob")))
+        obs2 = BNode()
+        graph.add((obs2, KTBS.hasTrace, trace.uri))
+        graph.add((obs2, RDF.type, otype2.uri))
+        graph.add((obs2, KTBS.hasBegin, Literal(2)))
+        graph.add((obs2, KTBS.hasEnd, Literal(3)))
+        graph.add((obs2, RDF.value, Literal("obs2")))
+        obs0 = BNode()
+        graph.add((obs0, KTBS.hasTrace, trace.uri))
+        graph.add((obs0, RDF.type, otype0.uri))
+        graph.add((obs0, KTBS.hasBegin, Literal(0)))
+
+        old_tag = trace.obsel_collection.str_mon_tag
+        created = trace.post_graph(graph)
+        new_tag = trace.obsel_collection.str_mon_tag
+
+        eq_(len(created), 5)
+        eq_(old_tag, new_tag)
+
+        obs0 = trace.get_obsel(created[0])
+        eq_(obs0.begin, 0)
+        eq_(obs0.end, 0)
+        eq_(obs0.subject, "alice")
+        eq_(obs0.obsel_type, otype0)
+        
+        obs1 = trace.get_obsel(created[1])
+        eq_(obs1.begin, 1)
+        eq_(obs1.end, 1)
+        eq_(obs1.subject, "alice")
+        eq_(obs1.obsel_type, otype1)
+        eq_(obs1.get_attribute_value(RDF.value), "obs1")
+
+        obs2 = trace.get_obsel(created[2])
+        eq_(obs2.begin, 2)
+        eq_(obs2.end, 3)
+        eq_(obs2.subject, "alice")
+        eq_(obs2.obsel_type, otype2)
+        eq_(obs2.get_attribute_value(RDF.value), "obs2")
+
+        obs3 = trace.get_obsel(created[3])
+        eq_(obs3.begin, 3)
+        eq_(obs3.end, 3)
+        eq_(obs3.subject, "bob")
+        eq_(obs3.obsel_type, otype3)
+
+        obsN = trace.get_obsel(created[4])
+        assert obsN.begin > 4 # set to current date, which is *much* higher
+        eq_(obsN.end, obsN.begin)
+        eq_(obsN.subject, "alice")
+        eq_(obsN.obsel_type, otypeN)
+
+
     def test_lineage(self):
         b = self.my_ktbs.create_base()
         model = b.create_model()
@@ -200,7 +326,6 @@ class TestKtbs(KtbsTestCase):
         FILTER_LOG.info("getting t2")
         t2 = b.get("t2/")
         eq_(len(t2.obsels), 4)
-        
 
 
 class TestKtbsSynthetic(KtbsTestCase):
@@ -209,7 +334,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         my_ktbs = self.my_ktbs
         with assert_raises(MethodNotAllowedError):
             my_ktbs.delete()
-        assert_equal(len(my_ktbs.builtin_methods), 8)
+        assert_equal(len(my_ktbs.builtin_methods), 4)
         assert_equal(my_ktbs.bases, [])
         base = my_ktbs.create_base(label="My new base")
         print "--- base:", base
@@ -454,11 +579,7 @@ class TestKtbsSynthetic(KtbsTestCase):
 
 
 class TestHttpKtbsSynthetic(HttpKtbsTestCaseMixin, TestKtbsSynthetic):
-    
-    def setUp(self):
-        super(TestHttpKtbsSynthetic, self).setUp()
-        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
-        assert isinstance(self.my_ktbs, KtbsRootMixin)
+    """Reusing TestKtbsSynthetic with an HTTP kTBS"""
 
 
 def get_change_monotonicity(trace, prevtags):

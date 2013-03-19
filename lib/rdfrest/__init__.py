@@ -47,9 +47,4 @@ More precisely, in RDF-REST:
 import rdflib
 assert rdflib.__version__[0] == "3"
 
-rdflib.plugin.register('sparql', rdflib.query.Processor,
-                       'rdfextras.sparql.processor', 'Processor')
-rdflib.plugin.register('sparql', rdflib.query.Result,
-                       'rdfextras.sparql.query', 'SPARQLQueryResult')
-
 import rdfrest.compat
