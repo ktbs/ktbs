@@ -52,7 +52,7 @@ def main():
 
     if OPTIONS.resource_cache is not None:
         LOG.warning("option --resource-cache is deprecated; it has no effect")
-    ktbs_service = make_ktbs(uri, OPTIONS.repository).service
+    ktbs_service = make_ktbs(uri, OPTIONS.repository, OPTIONS.init_repo).service
 
     wsgifront_options = {}
     if OPTIONS.max_age:
@@ -120,6 +120,8 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
+    ogr.add_option("--init-repo", action="store_true", default=False,
+                   help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
     ogr = OptionGroup(opt, "Deprecated options")
