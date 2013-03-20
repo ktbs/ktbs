@@ -16,7 +16,7 @@ Dependencies
 * rdflib 3.x (*Warning:* the appropriate 3.x version may not be
   available as a standard package in some linux distributions, see
   below for instructions on how to install it in this case.)
-* rdfextras
+* rdflib_sparql
 * httplib2
 * webob (>=1.2, server part only)
 
