@@ -188,7 +188,7 @@ class HttpFrontend(object):
                     ),
                 response.headerlist.append(
                     ("access-control-allow-methods",
-                     "GET HEAD PUT POST DELETE"),
+                     "GET, HEAD, PUT, POST, DELETE"),
                     )
                 acrh = request.headers.get("access-control-request-headers")
                 if acrh:
