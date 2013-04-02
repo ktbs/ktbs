@@ -62,17 +62,20 @@ class HttpFrontend(object):
 
     Additionally, the following keyword arguments are recognized:
 
-    :param cache_control: either a string to be used as the cache-control header
-                          field, or a callable accepting a resource and
-                          returning either None or the value of the
-                          cache-control header field.
-                          Defaults to :func:`cache_half_last_modified`.
-    :param max_bytes:     the maximum number of bytes that this server accepts
-                          to serve or to consume.
-    :type  max_bytes:     int
-    :param max_triples:   the maximum number of triples that this server accepts
-                          to serve or to consume.
-    :type  max_triples:   int
+    :param cache_control:     either a string to be used as the cache-control
+                              header field, or a callable accepting a resource
+                              and returning either None or the value of the
+                              cache-control header field.
+                              Defaults to :func:`cache_half_last_modified`.
+    :param cors_allow_origin: if provided, cross-domain requests will be
+                              allowed from the given domains, by implementing
+                              http://www.w3.org/TR/cors/ .
+    :param max_bytes:         the maximum number of bytes that this server
+                              accepts to serve or to consume.
+    :type  max_bytes:         int
+    :param max_triples:       the maximum number of triples that this server
+                              accepts to serve or to consume.
+    :type  max_triples:       int
 
     .. warning::
     
