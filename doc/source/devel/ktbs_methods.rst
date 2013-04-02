@@ -27,18 +27,6 @@ Fusion
 .. automodule:: ktbs.methods.fusion
     :members:
 
-Parallel
---------
-
-.. automodule:: ktbs.methods.parallel
-    :members:
-
-Serial
-------
-
-.. automodule:: ktbs.methods.serial
-    :members:
-
 SPARQL
 ------
 

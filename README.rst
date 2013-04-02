@@ -33,25 +33,9 @@ For developpers
 Install
 =======
 
-If you are using `virtualenv`_, an easy way to get up and running is to run::
+See the tutorial_.
 
-    $ virtualenv --no-site-packages ktbsenv
-    $ cd ktbsenv
-    $ source bin/activate
-    $ pip install -r requirements.txt
-    $ git clone git://github.com/ktbs/ktbs.git
-    $ cd ktbs/
-    $ python setup.py install
-
-Note::
-
-    If you want to run the test suite, you must uncomment the "developper's part" in requirements.txt
-
-To run the test suite::
-
-    $ make unit-tests
-
-.. _virtualenv: http://pypi.python.org/pypi/virtualenv 
+.. _tutorial: https://kernel-for-trace-based-systems.readthedocs.org/en/latest/tutorials/install.html
 
 
 Licence
