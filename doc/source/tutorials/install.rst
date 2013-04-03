@@ -127,7 +127,7 @@ Then, you need to change the apache configuration file; this would typically be 
 Just before the line ``</VirtualHost>`` add the following lines::
 
     <IfModule mod_wsgi.c>
-        WSGIScriptAlias /ktbs/ /home/user/ktbs-env/application.wsgi
+        WSGIScriptAliasMatch ^/ktbs/.* /home/user/ktbs-env/application.wsgi
         WSGIDaemonProcess myktbs processes=1 threads=1 python-path=/home/user/ktbs-env/ktbs/lib
         WSGIProcessGroup myktbs
     </IfModule>
