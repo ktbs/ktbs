@@ -32,7 +32,8 @@ and `git <#installing-from-github>`_.
 Installing from PyPI
 ~~~~~~~~~~~~~~~~~~~~
 
-kTBS is available on the PyPI_, the Python Package Index.
+kTBS is available on the `PyPI <https://pypi.python.org/pypi/kTBS>`_,
+the Python Package Index.
 This allows you to easily install the latest stable version::
 
   pip install ktbs
@@ -49,7 +50,8 @@ Installing from GitHub
 
 The source code of kTBS is hosted on GitHub_.
 This allows you to get the latest developer version.
-For this, you need to have Git_ installed; if you don't, type::
+For this, you need to have `Git <http://git-scm.com/>`_ installed;
+if you don't, type::
 
   sudo apt-get install git
 
@@ -118,14 +120,14 @@ To communicate with Apache, kTBS uses the WSGI_ protocol, so you need to install
 
   sudo apt-get install libapache2-mod-wsgi
 
-You also need to write a dedicated WSGI script that Apache will be able to call (this is nothing but a Python script, declaring a function called ``application`` complying with the WSGI interface). An example of such a script is provided in the kTBS source tree at ``example/application.wsgi``. It is also available `online <https://raw.github.com/ktbs/ktbs/develop/examples/application.wsgi>`_. At the top of the file are a few constants that you have to adapt to your own configuration.
+You also need to write a dedicated WSGI script that Apache will be able to call (this is nothing but a Python script, declaring a function called ``application`` complying with the WSGI interface). An example of such a script is provided in the kTBS source tree at ``examples/wsgi/application.wsgi``. It is also available `online <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi>`_. At the top of the file are a few constants that you have to adapt to your own configuration.
 
 Then, you need to change the apache configuration file; this would typically be ``/etc/apache2/sites-available/default`` or ``/etc/apache2/sites-available/default-ssl``. Those changes are twofold.
 
 Just before the line ``</VirtualHost>`` add the following lines::
 
     <IfModule mod_wsgi.c>
-        WSGIScriptAlias /urlpath/to/ktbs/ /filepath/to/application.wsgi
+        WSGIScriptAlias /ktbs/ /home/user/ktbs-env/application.wsgi
         WSGIDaemonProcess myktbs processes=1 threads=1 python-path=/home/user/ktbs-env/ktbs/lib
         WSGIProcessGroup myktbs
     </IfModule>
@@ -137,11 +139,14 @@ and at the end of the file, add the following lines::
         WSGIPythonPath /home/user/ktbs-env/ktbs/lib
     </IfModule>
 
-where you replaced:
+The configuration above may require some adaptation.
+Specifically, it assumes that:
 
-*  ``/urlpath/to/ktbs/`` by the URL path where you want your kTBS to live,
-*  ``/filepath/to/application.wsgi`` by the file path where you stored the WSGI script,
-* ``/home/user/ktbs-env`` (all occurences) by the path set to the ``DEST`` variable during installation.
+* you want the URL of your kTBS look like ``http://your.server.name/ktbs/``\ ; if you want to publish it at a different URL path [#]_, change the first argument of ``WSGIScriptAlias`` accordingly;
+
+* you WSGI script is named ``/home/user/ktbs-env/application.wsgi``; if you named it otherwised and/or stored it elsewhere, change the second argument of ``WSGIScriptAlias`` accordingly;
+
+* your Python virtual environment is in ``/home/user/ktbs-env``; if it has a different name, change all occurences of that path accordingly.
 
 .. note::
 
@@ -162,13 +167,15 @@ see the `mod_wsgi documentation <https://code.google.com/p/modwsgi/wiki/Configur
     * configure give different permissions to differenc trace bases,
     * configure several kTBS in the same VirtualHost.
 
+.. rubric:: Notes
+
+.. [#] the protocol, server name and port number depend on the enclosing ``VirtualHost`` directive
+
 
 .. _Apache: http://httpd.apache.org/
 .. _Ubuntu server: http://www.ubuntu.com/download/server
 .. _Python: http://python.org/
 .. _Virtualenv: http://www.virtualenv.org/
-.. _PyPI: https://pypi.python.org/pypi/kTBS
 .. _GitHub: https://github.com/ktbs/ktbs
-.. _Git: http://git-scm.com/
 .. _WSGI: http://wsgi.org/
 
