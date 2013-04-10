@@ -76,8 +76,12 @@ class HttpKtbsTestCaseMixin(object):
         thread.start()
         self.httpd = httpd
 
-        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
-        assert isinstance(self.my_ktbs, KtbsRootMixin)
+        try:
+            self.my_ktbs = HttpResource.factory("http://localhost:12345/")
+            assert isinstance(self.my_ktbs, KtbsRootMixin)
+        except:
+            self.tearDown()
+            raise
 
     def tearDown(self):
         if self.httpd:
