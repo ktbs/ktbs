@@ -18,9 +18,13 @@
 """
 I implement :class:`.interface.IResource` over HTTP.
 """
+import atexit
 from contextlib import contextmanager
 from httplib2 import Http
+from os import listdir, rmdir, unlink
+from os.path import isdir, join
 from rdflib import Graph, RDF
+from tempfile import mkdtemp 
 from weakref import WeakValueDictionary
 
 from .exceptions import CanNotProceedError, InvalidDataError, \
@@ -31,7 +35,51 @@ from .hosted import HostedResource
 from .proxystore import ProxyStore, ResourceAccessError
 from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph
 
+# HTTPLIB2_OPTIONS can be customized 
+_HTTPLIB2_OPTIONS = {}
+_HTTPLIB2_CREDENTIALS = []
+_HTTPLIB2_CERTIFICATES = []
+
+def set_http_option(key, value):
+    """I set an option for future HTTP connexions.
+
+    Those options will be passed to httplib2.Http for all future HttpResources.
+    Note that resources can be cached, so it is only safe to call this function
+    before any resource is created.
+    """
+    _HTTPLIB2_OPTIONS[key] = value
+
+def add_http_credentials(username, password):
+    """I add credentials to future HTTP connexions.
+
+    Those credentials will be added to the underlying httplib2.Http
+    of all future HttpResources.
+    Note that resources can be cached, so it is only safe to call this function
+    before any resource is created.
+    """
+    _HTTPLIB2_CREDENTIALS.append((username, password))
+
+def add_http_certificate(key, cert, domain):
+    """I add a certificate to future HTTP connexions.
+
+    Those credentials will be added to the underlying httplib2.Http
+    of all future HttpResources.
+    Note that resources can be cached, so it is only safe to call this function
+    before any resource is created.
+    """
+    _HTTPLIB2_CREDENTIALS.append((key, cert, domain))
+    
+def _http():
+    """Shortcut for httplib2.Http with module-specific options."""
+    ret = Http(**_HTTPLIB2_OPTIONS)
+    for username, password in _HTTPLIB2_CREDENTIALS:
+        ret.add_credentials(username, password)
+    for key, cert, domain in _HTTPLIB2_CERTIFICATES:
+        ret.add_certificate(key, cert, credentials)
+    return ret
+
 @register_implementation("http://")
+@register_implementation("https://")
 class HttpResource(IResource):
     """
     A RESTful resource over HTTP
@@ -67,7 +115,9 @@ class HttpResource(IResource):
         if resource is None  and  not _no_spawn:
             graph = types = py_class = None
             try:
-                graph = Graph(ProxyStore(identifier=uri), identifier=uri)
+                graph = Graph(ProxyStore(identifier=uri,
+                                         configuration={"httpcx" : _http()}),
+                              identifier=uri)
                 types = list(graph.objects(uri, RDF.type))
             except ResourceAccessError:
                 return None
@@ -91,10 +141,13 @@ class HttpResource(IResource):
                 )), "unexpected provided graph"
 
         if graph is None:
-            graph = Graph(ProxyStore(identifier=uri), identifier=uri)
+            graph = Graph(ProxyStore(identifier=uri,
+                                     configuration={"httpcx" : _http()}),
+                          identifier=uri)
             # TODO LATER implement a module-level keyring system,
             # so that credentials can be passed to ProxyStore
         self.uri = coerce_to_uri(uri)
+        self._http = graph.store.httpserver
         self._state = graph
         if __debug__:
             self._readonly_state = ReadOnlyGraph(graph)
@@ -104,6 +157,7 @@ class HttpResource(IResource):
         # Imagine a mix-in class using the _graph attribute instead of the
         # uniform interface; it will work with StandaloneResource, but fail
         # with HttpResource -- and conversely if it uses _state.
+
 
     def __str__(self):
         return "<%s>" % self.uri
@@ -146,8 +200,8 @@ class HttpResource(IResource):
                 'content-type': content_type,
                 }
             
-            rheaders, rcontent = Http().request(str(self.uri), 'POST', data,
-                                                headers=headers)
+            rheaders, rcontent = self._http.request(str(self.uri), 'POST',
+                                                    data, headers=headers)
             self._http_to_exception(rheaders, rcontent)
             
             self._state.store.force_refresh()
@@ -162,7 +216,7 @@ class HttpResource(IResource):
         """I implement :meth:`.interface.IResource.delete`.
         """
         if parameters is None:
-            rheaders, rcontent = Http().request(str(self.uri), 'DELETE')
+            rheaders, rcontent = self._http.request(str(self.uri), 'DELETE')
             self._http_to_exception(rheaders, rcontent)
         else:
             return self.get_subresource(parameters).delete(None, _trust)
@@ -232,3 +286,21 @@ _RESOURCE_CACHE = WeakValueDictionary()
 # instances for the same resource; this limits the risk of having a resource
 # becoming stale because another instance with the same URI has made changes.
 # Note that the risk still exists if the changes are made by another process.
+
+
+
+# HTTP cache
+
+CACHE_DIR = mkdtemp("http_cache")
+
+def rm_rf(dirname):
+    """Recursively remove directory `dirname`.
+    """
+    for path in (join(dirname, i) for i in listdir(dirname)):
+        if isdir(path):
+            rm_rf(path)
+        else:
+            unlink(path)
+    rmdir(dirname)
+
+atexit.register(rm_rf, CACHE_DIR)

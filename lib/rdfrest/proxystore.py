@@ -21,13 +21,9 @@
 I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 """
 
-import atexit
 import httplib
 import httplib2
-from os import listdir, rmdir, unlink
-from os.path import isdir, join
 from StringIO import StringIO
-from tempfile import mkdtemp 
 import types
 
 #http://docs.python.org/howto/logging-cookbook.html
@@ -54,8 +50,6 @@ from rdflib.graph import Graph
 #from rdflib.serializer import Serializer
 #from rdflib.plugin import plugins
 
-CACHE_DIR = mkdtemp("http_cache")
-
 _CONTENT_TYPE_PARSERS = {}
 _CONTENT_TYPE_SERIALIZERS = {}
 
@@ -66,9 +60,7 @@ FORMAT_NT   = "nt"
 FORMAT_TRIX = "trix"
 
 PS_CONFIG_URI = "uri"
-PS_CONFIG_USER = "username"
-PS_CONFIG_PWD = "password"
-PS_CONFIG_HTTP_CACHE = "path"
+PS_CONFIG_HTTP_CX = "httpcx"
 PS_CONFIG_HTTP_RESPONSE = "httpresponse"
 PS_CONFIG_DEBUG_HTTP = "debughttp"
 
@@ -130,7 +122,8 @@ class ProxyStore(Store):
         serialized graph already posted with HTTPLIB2 and the header
         of the response). If the parameters are in a string, the
         format should be "key1:value1;key2:value2".  May be passed to
-        __init__() or to open().  Optionnal.  :param identifier:
+        __init__() or to open().  Optionnal.
+    :param identifier:
         URIRef identifying the graph to cache in the store.
 
     See http://www.rdflib.net/store/ for the detail of a store.
@@ -179,13 +172,13 @@ class ProxyStore(Store):
         if PS_CONFIG_DEBUG_HTTP in configuration.keys():
             httplib2.debuglevel = 1
 
-        # File path for HTTPLIB2 cache
-        # As it is a file cache, it is conserved between two executions
-        # Should we delete the directory on application end (i.e close()) ?
-        if PS_CONFIG_HTTP_CACHE in configuration.keys():
-            self.httpserver = httplib2.Http(configuration[PS_CONFIG_HTTP_CACHE])
+        # Use provided Http connection if any
+        http_cx = configuration.get(PS_CONFIG_HTTP_CX)
+        if http_cx is None:
+            http_cx = httplib2.Http()
         else:
-            self.httpserver = httplib2.Http(CACHE_DIR)
+            assert isinstance(http_cx, httplib2.Http)
+        self.httpserver = http_cx
 
         # Store will call open() if configuration is not None
         Store.__init__(self, configuration)
@@ -230,11 +223,6 @@ class ProxyStore(Store):
             if (PS_CONFIG_URI in self.configuration.keys()) and \
                (self._identifier != self.configuration[PS_CONFIG_URI]):
                 raise StoreIdentifierError(identifier=self._identifier)
-
-        if PS_CONFIG_USER in self.configuration.keys() and \
-           PS_CONFIG_PWD  in self.configuration.keys():
-            self.httpserver.add_credentials(self.configuration[PS_CONFIG_USER],
-                                            self.configuration[PS_CONFIG_PWD])
 
         if PS_CONFIG_HTTP_RESPONSE in self.configuration.keys():
             # Serialized graph already sent by the client to the server
@@ -614,7 +602,7 @@ class StoreIdentifierError(Exception):
 
 class ResourceAccessError(Exception):
     """ Exception to be raised when the user tries to create a ProxyStore
-        but the URI (identifier) is not valid ot the configuration 
+        but the URI (identifier) is not valid or the configuration 
         (e.g credentials) is not valid.
     """
     def __init__(self, retcode=None, identifier=None, configuration=None):
@@ -625,16 +613,3 @@ class ResourceAccessError(Exception):
                                                             identifier,
                                                             configuration)
         Exception.__init__(self, message)
-
-
-def rm_rf(dirname):
-    """Recursively remove directory `dirname`.
-    """
-    for path in (join(dirname, i) for i in listdir(dirname)):
-        if isdir(path):
-            rm_rf(path)
-        else:
-            unlink(path)
-    rmdir(dirname)
-
-atexit.register(rm_rf, CACHE_DIR)
