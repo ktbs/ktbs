@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from timeit import timeit
 
+from rdfrest.http_client import set_http_option
 from ktbs.client import get_ktbs
 from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
@@ -14,10 +15,12 @@ def parse_args():
     parser.add_argument("-k", "--ktbs",
                         help="the URI of the kTBS to stress (a local "
                              "in-memory kTBS will be used if none is giveb)")
-    parser.add_argument("-n", "--nbobs", type=int, default=100,
-                        help="the number of obsels to send at each iteration")
     parser.add_argument("-i", "--iterations", type=int, default=10,
                         help="the number of iterations to run")
+    parser.add_argument("-p", "--nbpost", type=int, default=100,
+                        help="the number of post to perform at each iteration")
+    parser.add_argument("-o", "--nbobs", type=int, default=1,
+                        help="the number of obsels to send per post")
     parser.add_argument("--no-clean", action="store_true",
                         help="if set, do not clean kTBS after stressing")
     ARGS = parser.parse_args()
@@ -45,7 +48,9 @@ def task():
         ARGS.ktbs, ARGS.iterations, ARGS.nbobs)
     for i in xrange(ARGS.iterations):
         def create_P_obsels():
-            for j in xrange(ARGS.nbobs):
+            for j in xrange(ARGS.nbpost):
+                if ARGS.nbobs > 1:
+                    raise NotImplementedError("batch post not supported yet")
                 trace.create_obsel(None, "#obsel", no_return=True)
         print "%ss" % timeit(create_P_obsels, number=1)
 
@@ -56,6 +61,7 @@ def tearDown():
         BASE.delete()
 
 def main(argv):
+    set_http_option("disable_ssl_certificate_validation", True)
     parse_args()
     setUp()
     task()
