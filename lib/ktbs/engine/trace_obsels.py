@@ -198,20 +198,30 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
+            query_epilogue = ""
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
+            maxb = parameters.get("maxb")
+            if maxb is not None:
+                query_filter.append("?b <= %s" % maxb)
+            mine = parameters.get("mine")
+            if mine is not None:
+                query_filter.append("?e >= %s" % mine)
             maxe = parameters.get("maxe")
             if maxe is not None:
                 query_filter.append("?e <= %s" % maxe)
+            limit = parameters.get("limit")
+            if limit is not None:
+                query_epilogue = "ORDER BY ?b LIMIT %s" % limit
             if query_filter:
                 query_filter = "FILTER(%s)" % (" && ".join(query_filter))
             else:
                 query_filter = ""
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s }
-            """ % query_filter
-            matching_obsels = self.state.query(query_str)
+            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
+            """ % (query_filter, query_epilogue)
+            matching_obsels = ( i[0] for i in self.state.query(query_str) )
 
             # add description of all matching obsels
             # TODO LATER include bounded description of obsels
@@ -232,7 +242,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 
         I also convert parameters values from strings to usable datatypes.
         """
-        if parameters is not None and method == "get_state":
+        if parameters is not None \
+        and method in ("get_state", "force_state_refresh"):
             for key, val in parameters.items():
                 if key in ("minb", "maxb", "mine", "maxe", "limit"):
                     try:
@@ -242,9 +253,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                                                      "(got %s" % (key, val))
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
-                                                 % key)
-                if key in ("maxb", "mine", "limit"):
-                    raise InvalidParametersError("%s not implemented yet"
                                                  % key)
             parameters = None # hide all parameters for super call below
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
