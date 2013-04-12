@@ -18,6 +18,7 @@
 """
 Implementation of the external builtin methods.
 """
+import logging
 from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.utils import Diagnosis
@@ -28,6 +29,8 @@ from .interface import IMethod
 from .utils import replace_obsels
 from ..engine.builtin_method import register_builtin_method_impl
 from ..namespace import KTBS
+
+LOG = logging.getLogger(__name__)
 
 class _ExternalMethod(IMethod):
     """I implement the external builtin method.
@@ -86,11 +89,14 @@ class _ExternalMethod(IMethod):
         else:
             stdin = None
             stdin_data = None
-            
+
+        popen_env = {
+            "PATH": getenv("PATH", ""),
+            "PYTHONPATH": getenv("PYTHONPATH", ""),
+            }
+        LOG.info("Running: %s" % command_line)
         child = Popen(command_line, shell=True, stdin=stdin, stdout=PIPE,
-                      close_fds=True, env={"PATH": getenv("PATH"),
-                                           "PYTHONPATH": getenv("PYTHONPATH"),
-                                           })
+                      close_fds=True, env=popen_env)
         rdfdata, _ = child.communicate(stdin_data)
         if child.returncode != 0:
             diag.append("command-line ended with error: %s" % child.returncode)
