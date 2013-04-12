@@ -23,6 +23,12 @@ You can just as well use any HTTP client,
 either interactive (such as `curl <http://curl.haxx.se/>`_)
 or programmatic.
 
+Note also that the Turtle code displayed by the editor
+might differ from the one presented in those examples;
+this is because the namespace declarations
+may not be used in the exact same way.
+However, they represent the same data.
+
 
 
 Create and populate a Stored Trace

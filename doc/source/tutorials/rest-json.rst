@@ -1,5 +1,9 @@
 .. _ktbs-rest-jsonld-tutorial:
 
+.. warning::
+   JSON support is tempotarily broken in the current implementation,
+   so this tutorial does not work with recent versions of kTBS.
+
 Using kTBS with REST and JSON
 =============================
 
