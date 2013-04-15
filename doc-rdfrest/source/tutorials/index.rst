@@ -1,5 +1,5 @@
-RdfRest Tutorials
-=================
+RdfRest Tutorials (coming soon)
+===============================
 
 Contents:
 

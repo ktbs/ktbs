@@ -18,17 +18,18 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-"""RDF-based REST framework.
-
-RDF-REST is a framework for building applications that
+"""RDF-REST is a framework for building applications that
 
 * expose their functionalities in a RESTful way, and/or
 * use RESTful services.
 
-It provides a python abstraction of REST resources, so that client code can
-handle and mix local and remote resources in a completely transparent way.
+For a high-level descripription, refer to [Champin2013]_.
 
-In a nutshell, a RESTful application is made of a set of *resource*, which:
+RDF-REST provides a python abstraction of REST resources,
+so that client code can handle and mix local and remote resources
+in a completely transparent way.
+
+In a nutshell, a RESTful application is made of a set of *resources*, which:
 
 * are identified by a URI,
 * expose a uniform interface,
@@ -37,11 +38,13 @@ In a nutshell, a RESTful application is made of a set of *resource*, which:
 
 More precisely, in RDF-REST:
 
-* the uniform interface of resources is defined in :mod:`.interface`;
+* the uniform interface of resources is defined by :class:`.cores.ICore`;
 * RDF is used as a unifying model to represent resource's states (with the
-  :mod:`rdflib` library);
+  RDFLib_ library);
 * :mod:`.serializers` and :mod:`.parsers` provide an extensible framework for
   supporting multiple formats.
+
+.. _RDFLib: http://rdflib.readthedocs.org/en/latest/
 """
 
 import rdflib
