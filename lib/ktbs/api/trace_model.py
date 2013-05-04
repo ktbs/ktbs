@@ -97,7 +97,7 @@ class TraceModelMixin(InBaseMixin):
             yield model
         if include_indirect:
             for model in list(cache):
-                for i in model.iter_indirect(True):
+                for i in model.iter_parents(include_indirect=True):
                     if i not in cache:
                         cache.add(i)
                         yield i

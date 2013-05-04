@@ -111,7 +111,7 @@ The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS sup
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#OnChannel> ;
+       :hasAttributeDomain <#ChannelEvent> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
@@ -121,12 +121,12 @@ The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS sup
 
    <#MsgReveiced/message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#MsgReveiced/from> a :AttributeType ;
        skos:prefLabel "from" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
 Adding relations
@@ -152,7 +152,7 @@ In our example above, as the relation ``onChannel`` can originate from different
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#OnChannel> ;
+       :hasAttributeDomain <#ChannelEvent> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
@@ -162,12 +162,12 @@ In our example above, as the relation ``onChannel`` can originate from different
 
    <#MsgReveiced/message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#MsgReveiced/from> a :AttributeType ;
        skos:prefLabel "from" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#onChannel> a :RelationType ;
@@ -203,7 +203,7 @@ Then, we can set the domain of ``onChannel`` to this new type.
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#OnChannel> ;
+       :hasAttributeDomain <#ChannelEvent> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
@@ -213,12 +213,12 @@ Then, we can set the domain of ``onChannel`` to this new type.
 
    <#MsgReveiced/message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#MsgReveiced/from> a :AttributeType ;
        skos:prefLabel "from" ;
-       :hasAttributeDomain <#MessageReceived> ;
+       :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#onChannel> a :RelationType ;

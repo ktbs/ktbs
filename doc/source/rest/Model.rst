@@ -9,7 +9,7 @@ Creation
 A model is created by a POST query to a `Base`. It must have the following properties:
 
 * http://liris.cnrs.fr/silex/2009/ktbs#contains linking from the Base
-* http://liris.cnrs.fr/silex/2009/ktbs#inherits
+* http://liris.cnrs.fr/silex/2009/ktbs#hasParentModel
 
 It can optionally have the following properties:
 
