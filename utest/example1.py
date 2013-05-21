@@ -586,35 +586,35 @@ def test_label_and_tags(item):
     # label
     assert item.label is None
     item.label = "hello world"
-    assert item.label == "hello world"
+    assert item.label == Literal("hello world")
     item.label = "bonjour le monde"
-    assert item.label == "bonjour le monde"
+    assert item.label == Literal("bonjour le monde")
     item.label = None
     assert item.label is None
     item.label = "Halo Welt"
-    assert item.label == "Halo Welt"
+    assert item.label == Literal("Halo Welt")
     del item.label
     assert item.label is None
     # adding tags
     eq_(item.tags, set([]))
     item.add_tag(u"tag1")
-    eq_(item.tags, set([u"tag1"]))
+    eq_(item.tags, set([Literal("tag1")]))
     item.add_tag(u"tag1")
-    eq_(list(item.iter_tags()), [u"tag1"]) # tags do not duplicate
+    eq_(list(item.iter_tags()), [Literal("tag1")]) # tags do not duplicate
     item.add_tag(u"tag2")
-    eq_(item.tags, set([u"tag1", u"tag2"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag2")]))
     item.add_tag(u"tag3")
-    eq_(item.tags, set([u"tag1", u"tag2", u"tag3"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag2"), Literal("tag3")]))
     # removing tags
     item.rem_tag(u"tag2")
-    eq_(item.tags, set([u"tag1", u"tag3"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")]))
     item.rem_tag(u"tag2") # removing tag twice has no effect
-    eq_(item.tags, set([u"tag1", u"tag3"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
     item.rem_tag(u"tag4") # removing inexisting tag has no effect
-    eq_(item.tags, set([u"tag1", u"tag3"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
     # unicode tags
     item.add_tag(u"tagué")
-    eq_(item.tags, set([u"tag1", u"tag3", u"tagué"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3"), Literal(u"tagué")])) 
 
 
 if __name__ == "__main__":
