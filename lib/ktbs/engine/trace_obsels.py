@@ -21,7 +21,7 @@ I provide the implementation of kTBS obsel collections.
 from itertools import chain
 from logging import getLogger
 from rdflib import Graph, Literal, RDF
-from rdflib_sparql.processor import prepareQuery
+from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.local import NS as RDFREST

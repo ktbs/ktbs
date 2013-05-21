@@ -56,8 +56,12 @@ class _FilterMethod(IMethod):
         src, params =  self._prepare_source_and_params(computed_trace, diag)
         if src is not None:
             assert params is not None
-            model = params.get("model")  or  src.model_uri
-            origin = params.get("origin")  or  src.origin
+            model = params.get("model")
+            if model is None:
+                model = src.model_uri
+            else:
+                model = URIRef(model)
+            origin = Literal(params.get("origin")  or  src.origin)
             with computed_trace.edit(_trust=True) as editable:
                 editable.add((computed_trace.uri, KTBS.hasModel, model))
                 editable.add((computed_trace.uri, KTBS.hasOrigin, origin))

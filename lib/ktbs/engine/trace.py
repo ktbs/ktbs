@@ -20,7 +20,7 @@ I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
 from rdflib import Graph, Literal, URIRef, Variable, XSD
-from rdflib_sparql.processor import prepareQuery
+from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.local import compute_added_and_removed
 from rdfrest.mixins import FolderishMixin
 from rdfrest.utils import cache_result, random_token
