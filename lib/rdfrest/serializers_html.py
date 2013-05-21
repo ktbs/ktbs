@@ -17,7 +17,7 @@
 
 """I provide functionalities to serialize RDF-REST resource in HTML.
 """
-from rdflib import Literal, RDF, URIRef, Variable
+from rdflib import Literal, RDF, URIRef
 
 def htmlize_node(bindings, node, base):
     """
@@ -146,15 +146,9 @@ def generate_htmlized_turtle(graph, resource, bindings, ctypes,
     """
     ret = ""
     uri = resource.uri
-    svar = Variable("s")
-    pvar = Variable("p")
-    ovar = Variable("o")
     old_subj = None
     old_pred = None
-    for b in graph.query(query).bindings:
-        subj = b[svar]
-        pred = b[pvar]
-        obj  = b[ovar]
+    for subj, pred, obj in graph.query(query):
         if subj != old_subj:
             if old_subj is not None:
                 ret += ".</div></div></div>\n"
