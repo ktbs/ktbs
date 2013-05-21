@@ -22,8 +22,7 @@ from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.utils import Diagnosis
 from rdflib import Literal, URIRef
-from rdflib_sparql.algebra import _knownterms
-import rdflib_sparql.algebra
+import rdflib.plugins.sparql.algebra
 
 from .interface import IMethod
 from .utils import replace_obsels
@@ -43,8 +42,12 @@ class _SparqlMethod(IMethod):
         src, params =  self._prepare_source_and_params(computed_trace, diag)
         if src is not None:
             assert params is not None
-            model = params.get("model")  or  src.model_uri
-            origin = params.get("origin")  or  src.origin
+            model = params.get("model")
+            if model is None:
+                model = src.model_uri
+            else:
+                model = URIRef(model)
+            origin = Literal(params.get("origin")  or  src.origin)
             with computed_trace.edit(_trust=True) as editable:
                 editable.add((computed_trace.uri, KTBS.hasModel, model))
                 editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
@@ -132,14 +135,14 @@ _PARAMETERS_TYPE = {
     "inherit": str,
 }
 
-# monkeypatch to fix a bug in rdflib_sparql
+# monkeypatch to fix a bug in rdflib.plugins.sparql
 def my_triples(l): 
     l=reduce(lambda x,y: x+y, l)
     #if (len(l) % 3) != 0: 
     #    #import pdb ; pdb.set_trace()
     #    raise Exception('these aint triples')
-    return sorted([(l[x],l[x+1],l[x+2]) for x in range(0,len(l)-2,3)], key=_knownterms)
-rdflib_sparql.algebra.triples = my_triples
+    return sorted([(l[x],l[x+1],l[x+2]) for x in range(0,len(l)-2,3)])
+rdflib.plugins.sparql.algebra.triples = my_triples
 
 
 register_builtin_method_impl(_SparqlMethod())

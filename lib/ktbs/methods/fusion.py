@@ -51,13 +51,16 @@ class _FusionMethod(IMethod):
         if srcs is not None:
             assert params is not None
             model = params.get("model")
-            if model is None:
+            if model is not None:
+                model = URIRef(model)
+            else:
                 models = set( src.model_uri for src in srcs )
                 if len(models) > 1:
                     diag.append("Sources have different models and no target "
                                 "model is explicitly specified")
                 else:
                     model = models.pop()
+                
             origin = params.get("origin")
             if origin is None:
                 origins = set( src.origin for src in srcs )
@@ -66,6 +69,8 @@ class _FusionMethod(IMethod):
                                 "origin is explicitly specified")
                 else:
                     origin = origins.pop()
+            origin = Literal(origin)
+
             with computed_trace.edit(_trust=True) as editable:
                 if model:
                     editable.add((computed_trace.uri, KTBS.hasModel, model))

@@ -45,6 +45,6 @@ More precisely, in RDF-REST:
 """
 
 import rdflib
-assert rdflib.__version__[0] == "3"
+assert rdflib.__version__[0] == "4"
 
 import rdfrest.compat

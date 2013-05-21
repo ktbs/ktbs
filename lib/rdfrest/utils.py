@@ -193,7 +193,8 @@ def replace_node(graph, old_node, new_node):
     add_triple = graph.add
     rem_triple = graph.remove
     subst = lambda x: (x == old_node) and new_node or x
-    for triple in graph:
+    all_triples = list(graph) # required as we will modify the graph
+    for triple in all_triples:
         # heuristics: most triple will involve old_node,
         # (this method is used with posted graphs to name the created resource)
         # so we transform all triples,

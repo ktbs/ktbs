@@ -83,6 +83,8 @@ class AbstractTraceMixin(InBaseMixin):
                 origin = parse_date(origin)
             except ParseError:
                 pass
+        elif origin is not None:
+            origin = unicode(origin)
         return origin
 
     def iter_obsels(self, begin=None, end=None, reverse=False):
@@ -280,7 +282,10 @@ class StoredTraceMixin(AbstractTraceMixin):
         """
         I return the default subject of this trace.
         """
-        return self.state.value(self.uri, KTBS.hasDefaultSubject)
+        ret = self.state.value(self.uri, KTBS.hasDefaultSubject)
+        if ret is not None:
+            ret = unicode(ret)
+        return ret
 
     def set_default_subject(self, subject):
         """I set the default subject of this trace.
