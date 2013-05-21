@@ -19,7 +19,7 @@
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
-from rdflib import Graph, Literal, URIRef, Variable, XSD
+from rdflib import Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.local import compute_added_and_removed
 from rdfrest.mixins import FolderishMixin
@@ -276,9 +276,8 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         binding = { "trace": self.uri }
         ret = []
         candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
-                                 initBindings=binding).bindings
-        for candidate in candidates:
-            candidate = candidate[_OBS]
+                                 initBindings=binding)
+        for candidate, _, _ in candidates:
             ret1 = post_single_obsel(graph, parameters, _trust, candidate,
                                      KTBS.Obsel)
             if ret1:
@@ -310,9 +309,6 @@ _SELECT_CANDIDATE_OBSELS = ("""
     }
     ORDER BY ?begin ?end
 """ % KTBS_NS_URI)
-
-_OBS = Variable("obs")
-# TODO remove this once rdflib-sparql handles variable order correctly
 
 
 class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
