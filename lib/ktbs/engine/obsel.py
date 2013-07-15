@@ -20,6 +20,7 @@ I provide the implementation of ktbs:Obsel .
 """
 from datetime import datetime
 from rdflib import Literal, RDF, URIRef, XSD
+from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.iso8601 import UTC
 from rdfrest.local import ILocalResource
@@ -77,8 +78,11 @@ class _ObselImpl(ILocalResource):
         self.check_parameters(parameters, "get_state")
         ret = self._state
         if ret is None:
-            ret = self._state = bounded_description(self.uri,
-                                                    self.home.get_state())
+            ret = self._state = get_obsel_bounded_description(
+                self.uri,
+                self.home.get_state()
+                )
+            
         return ret
 
     def force_state_refresh(self, parameters=None):
@@ -296,6 +300,35 @@ class Obsel(ObselMixin, WithCardinalityMixin, WithReservedNamespacesMixin,
     # so it must be *after* all mix-in classes in the MRO.
     pass
 
+
+def get_obsel_bounded_description(node, graph, fill=None):
+    """I override :function:`rdfrest.util.bounded_description` for obsels.
+
+    In order to clearly differenciate attributes from relations,
+    related obsels must be linked to the trace by the ktbs:hasTrace.
+
+    :param node: the node (uri or blank) to return a description of
+    :param graph: the graph from which to retrieve the description
+    :param fill: if provided, fill this graph rather than a fresh one, and return it
+    """
+    ret = bounded_description(node, graph, fill)
+    trace_uri = ret.value(node, KTBS.hasTrace)
+    add = ret.add
+    for other, in graph.query(_RELATED_OBSELS, initBindings = { "obs": node }):
+        add((other, KTBS.hasTrace, trace_uri))
+    return ret
+
+
+_RELATED_OBSELS = prepareQuery("""
+    SELECT DISTINCT ?other
+    {
+        { ?obs ?pred ?other . }
+        UNION
+        { ?other ?pred ?obs . }
+        ?obs <%s> ?trace .
+        ?other <%s> ?trace .
+    }
+    """ % (KTBS.hasTrace, KTBS.hasTrace))
 
 _NON_ALPHA = re.compile(r'[^\w]+')
 _NOW = datetime.now

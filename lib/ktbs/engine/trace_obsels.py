@@ -27,6 +27,7 @@ from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
 from rdfrest.local import NS as RDFREST
 
 from .resource import KtbsResource, METADATA
+from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 
@@ -221,16 +222,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
             SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
             """ % (query_filter, query_epilogue)
-            matching_obsels = ( i[0] for i in self.state.query(query_str) )
 
             # add description of all matching obsels
             # TODO LATER include bounded description of obsels
             # rather than just adjacent arcs
-            for obs in matching_obsels:
-                for triple in self.state.triples((obs, None, None)):
-                    graph_add(triple)
-                for triple in self.state.triples((None, None, obs)):
-                    graph_add(triple)
+            self_state = self.state
+            for obs, in self.state.query(query_str): #/!\ returns 1-uples
+                get_obsel_bounded_description(obs, self_state, graph)
 
             return graph
 
