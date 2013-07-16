@@ -4,8 +4,13 @@
 from distutils.core import setup
 
 from os.path import dirname, join
-from sys import argv
+from sys import argv, platform
 from warnings import filterwarnings
+
+try:
+    import py2exe
+except ImportError:
+    pass
 
 __version__ = "0.2"
 
@@ -38,4 +43,12 @@ setup(name='kTBS',
       data_files = ['README.rst', 'requirements.txt',],
       requires=requirements,
       install_requires=install_req,
-     )
+
+      # py2exe
+      console = ['bin/ktbs',],
+      options = {
+          "py2exe": {
+	      "packages": [ "rdflib.plugins", "ktbs.plugins", ],
+	  },
+      },
+    )
