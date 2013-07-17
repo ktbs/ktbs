@@ -21,6 +21,7 @@ I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 from logging import getLogger
 from rdflib import Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
+from rdfrest.exceptions import InvalidDataError
 from rdfrest.local import compute_added_and_removed
 from rdfrest.mixins import FolderishMixin
 from rdfrest.utils import cache_result, random_token
@@ -283,6 +284,8 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
             if ret1:
                 assert len(ret1) == 1
                 ret.append(ret1[0])
+        if not ret:
+            raise InvalidDataError("No obsel found in posted graph")
         return ret
                 
     def get_created_class(self, rdf_type):

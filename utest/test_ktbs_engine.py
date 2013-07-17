@@ -306,6 +306,23 @@ class TestKtbs(KtbsTestCase):
         eq_(obsN.subject, "alice")
         eq_(obsN.obsel_type, otypeN)
 
+    def test_post_no_obsels(self):
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        otype3 = model.create_obsel_type("#MyObsel3")
+        otypeN = model.create_obsel_type("#MyObselN")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        graph = Graph()
+
+        old_tag = trace.obsel_collection.str_mon_tag
+        with assert_raises(InvalidDataError):
+            created = trace.post_graph(graph)
+        new_tag = trace.obsel_collection.str_mon_tag
+        eq_(old_tag, new_tag)
 
     def test_lineage(self):
         b = self.my_ktbs.create_base()
