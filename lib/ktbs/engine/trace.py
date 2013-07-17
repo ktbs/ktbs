@@ -296,7 +296,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 
 # the following query gets all the candidate obsels in a POSTed graph,
 # and orders them correctly, guessing implicit values
-_SELECT_CANDIDATE_OBSELS = ("""
+_SELECT_CANDIDATE_OBSELS = prepareQuery("""
     PREFIX xsd: <http://www.w3.org/2001/XMLSchema#float>
     PREFIX : <%s#>
     SELECT ?obs
@@ -312,7 +312,7 @@ _SELECT_CANDIDATE_OBSELS = ("""
 
 
 class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
-    """I provide the implementation of ktbs:StoredTrace .
+    """I provide the implementation of ktbs:ComputedTrace .
     """
 
     ######## ILocalResource (and mixins) implementation  ########
