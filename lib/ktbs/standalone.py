@@ -135,7 +135,7 @@ def parse_options():
     ogr = OptionGroup(opt, "Debug options")
     ogr.add_option("-l", "--log-level", default="info",
                    choices=["debug", "info", "warning", "error", "critical"],
-                   help="serve only the given number of requests")
+                   help="specify the debug level (debug, info, warning, error, critical)")
     ogr.add_option("-R", "--requests", type=int, default=-1,
                    help="serve only the given number of requests")
     ogr.add_option("-1", "--once", action="callback", callback=number_callback,
