@@ -1,7 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from distutils.core import setup
+try:
+    from setuptools import setup
+except:
+    print "You may need to manually install the dependencies, "\
+          "e.g. by running 'pip install -r requirements.txt'" 
+    from distutils.core import setup
 
 from os.path import dirname, join
 from sys import argv, platform
