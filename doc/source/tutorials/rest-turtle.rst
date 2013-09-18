@@ -205,9 +205,11 @@ and POST the following content to it:
 
 
 If we follow the `hasObselCollection <http://liris.cnrs.fr/silex/2009/ktbs#hasObselCollection>`_ link from `our trace <http://localhost:8001/base1/t01/>`_,
-to the `obsel collection <http://localhost:8001/base1/t01/@obsels>`_,
+to the `obsel collection`__,
 we can see the three obsels we have created so far
 (your timestamps will obviously differ):
+
+__ http://localhost:8001/base1/t01/@obsels
 
 .. code-block:: turtle
 
@@ -275,13 +277,13 @@ You may notice that we did not provide
 any model nor origin for the computed trace;
 those are automatically computed.
 
-If you go and check the `obsel collection <http://localhost:8001/base1/filtered1/@obsels>`_ of this computed trace,
+If you go and check the `obsel collection`__ of this computed trace,
 you will find two obsels.
 More precisely, all obsels from ``t01`` have been copied,
 except for ``obs0`` which has been filtered out,
 as it is not entierly after timestamp 1361462641000.
 
-
+__ http://localhost:8001/base1/filtered1/@obsels
 
 Create a Computed Trace with a SPARQL query
 -------------------------------------------

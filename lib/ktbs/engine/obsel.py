@@ -302,7 +302,7 @@ class Obsel(ObselMixin, WithCardinalityMixin, WithReservedNamespacesMixin,
 
 
 def get_obsel_bounded_description(node, graph, fill=None):
-    """I override :function:`rdfrest.util.bounded_description` for obsels.
+    """I override :func:`rdfrest.util.bounded_description` for obsels.
 
     In order to clearly differenciate attributes from relations,
     related obsels must be linked to the trace by the ktbs:hasTrace.

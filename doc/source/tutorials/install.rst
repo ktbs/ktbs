@@ -6,7 +6,7 @@ either as a standalone service or behind an Apache_ HTTP server.
 It has been written using `Ubuntu server`_ 12.10,
 but should be applicable
 with only minor changes (if any) to other flavours of Linux,
-and a few adaptation on MacOS or MS Windows.
+and a few adaptation on MacOS or MS Windows [#]_.
 
 
 Installing kTBS
@@ -16,7 +16,7 @@ kTBS is a Python_ application, so you need python installed; more precisely, you
 
 We also advise you to use Virtualenv_; this tool creates an autonomous environment for Python programs, so that kTBS and its dependencies can be installed without interference with Python packages installed in your system. To install Virtualenv, type::
 
-  sudo apt-get install python-virtualenv
+  sudo apt-get install python-virtualenv 
 
 Let us now create an environment for kTBS::
 
@@ -26,8 +26,10 @@ Let us now create an environment for kTBS::
 
 The last line "activates" the environment, meaning that all commands related to Python packages will take effect in the ``ktbs-env`` environment rather than at the system level.
 
-You now have two choices to install kTBS: `PyPI <#installing-from-pypi>`_
-and `git <#installing-from-github>`_.
+You now have two choices to install kTBS: `PyPI`__ and `git`__.
+
+__ #installing-from-pypi
+__ #installing-from-github
 
 Installing from PyPI
 ~~~~~~~~~~~~~~~~~~~~
@@ -168,6 +170,9 @@ see the `mod_wsgi documentation <https://code.google.com/p/modwsgi/wiki/Configur
     * configure several kTBS in the same VirtualHost.
 
 .. rubric:: Notes
+
+.. [#] a tutorial for installing Python and Virtualenv on Windows is available
+       at http://www.tylerbutler.com/2012/05/how-to-install-python-pip-and-virtualenv-on-windows-with-powershell/
 
 .. [#] the protocol, server name and port number depend on the enclosing ``VirtualHost`` directive
 
