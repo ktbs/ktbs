@@ -29,6 +29,7 @@ from rdfrest.utils import coerce_to_uri
 from re import compile as Regex
 
 from ..namespace import KTBS, KTBS_NS_URI
+from ..utils import SKOS
 
 def encode_unicodes(func):
     """I decorate a generator of unicodes to make it a generator of UTF8 str"""
@@ -84,7 +85,7 @@ def serialize_json_base(graph, base, bindings=None):
     "@id": "%s",
     "@type": "Base" """ % base.uri
 
-    label = base.state.value(base.uri, RDFS.label)
+    label = base.state.value(base.uri, SKOS.prefLabel)
     if label:
         yield u""",\n    "label": %s """% val2json(label)
 
@@ -112,10 +113,10 @@ def serialize_json_base(graph, base, bindings=None):
             comma = ", "
 
         yield """
-    ] """
+    ],"""
 
 
-    yield u"""\n}\n"""
+    yield u"""\n    "inRoot": ".."\n}\n"""
 
 @register_serializer(JSONLD, "json", 85, KTBS.TraceModel)
 @register_serializer("application/json", None, 60, KTBS.TraceModel)
@@ -212,7 +213,14 @@ def serialize_json_model(graph, tmodel, bindings=None):
 
     yield u"""
         }
-    ]\n}\n"""
+    ],"""
+
+    if tmodel.uri[-1] == "/":
+        base_rel_uri = ".."
+    else:
+        base_rel_uri = "."
+    
+    yield """\n    "inBase":"%s"}\n""" % base_rel_uri
 
 
 @register_serializer(JSONLD, "json", 85, KTBS.ComputedTrace)
@@ -235,7 +243,7 @@ def serialize_json_trace(graph, trace, bindings=None):
     yield u""",
     "hasModel": "%s",
     "origin": "%s",
-    "hasObselList": "%s/@obsels" """ % (
+    "hasObselList": "%s@obsels" """ % (
         trace.model_uri,
         trace.origin,
         trace.uri,
@@ -258,8 +266,7 @@ def serialize_json_trace(graph, trace, bindings=None):
     for i in iter_other_arcs(graph, trace.uri):
         yield i
 
-
-    yield u"""\n}\n"""
+    yield u"""\n,   "inBase": "%s"\n}\n""" % trace.base.uri
 
 
 @register_serializer(JSONLD, "json", 85, KTBS.ComputedTraceObsels)
