@@ -94,7 +94,8 @@ if pyld:
             normalizedJson = pyld.jsonld.normalize(json_data, 
                                                    {'base': base_uri,
                                                     'format': 'application/nquads'})
-            graph.parse(data=normalizedJson, format="nt")
+            # Do not use "nt" as format as it works only with latin-1
+            graph.parse(data=normalizedJson, format="n3")
 
         except Exception, ex:
             raise ParseError(ex.message or str(ex))
@@ -106,6 +107,7 @@ if pyld:
 
     CONTEXT_JSON = """{
         "xsd": "http://www.w3.org/2001/XMLSchema#",
+        "skos": "http://www.w3.org/2004/02/skos/core#",
 
         "AttributeType": "http://liris.cnrs.fr/silex/2009/ktbs#AttributeType",
         "Base": "http://liris.cnrs.fr/silex/2009/ktbs#Base",
@@ -158,15 +160,7 @@ if pyld:
         "inBase": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
         "obsels": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#hasTrace", "@type": "@id" },
 
-        "label": "http://www.w3.org/2004/02/skos/core#prefLabel"
-    }"""
-
-    CONTEXT_JSON_SIMPLIFIE = """{
-        "Base": "http://liris.cnrs.fr/silex/2009/ktbs#Base",
-        "StoredTrace": "http://liris.cnrs.fr/silex/2009/ktbs#StoredTrace",
-        "contains": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
-        "inRoot": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
-        "label": "http://www.w3.org/2004/02/skos/core#prefLabel"
+        "label": "skos:prefLabel"
     }"""
 
     CONTEXT = loads(CONTEXT_JSON)

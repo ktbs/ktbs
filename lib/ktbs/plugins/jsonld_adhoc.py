@@ -22,10 +22,10 @@ from itertools import chain
 from json import dumps
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
-from rdfrest.parsers import wrap_exceptions
+#from rdfrest.parsers import wrap_exceptions
 from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
     register_serializer, SerializeError
-from rdfrest.utils import coerce_to_uri
+from rdfrest.utils import coerce_to_uri, wrap_exceptions
 from re import compile as Regex
 
 from ..namespace import KTBS, KTBS_NS_URI
@@ -85,11 +85,6 @@ def serialize_json_base(graph, base, bindings=None):
     "@id": "%s",
     "@type": "Base" """ % base.uri
 
-    label = base.state.value(base.uri, SKOS.prefLabel)
-
-    if label:
-        yield u""",\n    "label": %s """% val2json(label)
-
     contained = list(chain(
         base.iter_traces(),
         base.iter_models(),
@@ -114,10 +109,13 @@ def serialize_json_base(graph, base, bindings=None):
             comma = ", "
 
         yield """
-    ],"""
+    ]"""
 
+    # At least for skos:prefLabel
+    for i in iter_other_arcs(graph, base.uri):
+        yield i
 
-    yield u"""\n    "inRoot": ".."\n}\n"""
+    yield u""",\n    "inRoot": ".."\n}\n"""
 
 @register_serializer(JSONLD, "json", 85, KTBS.TraceModel)
 @register_serializer("application/json", None, 60, KTBS.TraceModel)
@@ -132,10 +130,6 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "",
             "@type": "TraceModel" """
     
-    tlabel = tmodel.state.value(tmodel.uri, SKOS.prefLabel)
-    if tlabel:
-        yield u""",\n            "label": %s """% val2json(tlabel)
-
     if tmodel.unit is not None:
         yield u""",\n            "unit": "%s" """ % str(tmodel.unit)
 
@@ -154,10 +148,6 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "ObselType" """ % str(otype.uri)
 
-        olabel = otype.state.value(otype.uri, SKOS.prefLabel)
-        if olabel:
-            yield u""",\n            "label": %s """% val2json(olabel)
-
         stypes = list(otype.supertypes)
         if stypes:
             stypes = ",".join( u'"%s"' % coerce_to_uri(i) for i in stypes )
@@ -172,10 +162,6 @@ def serialize_json_model(graph, tmodel, bindings=None):
         {
             "@id": "%s" ,
             "@type": "AttributeType" """ % str(atype.uri)
-
-        alabel = atype.state.value(atype.uri, SKOS.prefLabel)
-        if alabel:
-            yield u""",\n            "label": %s """% val2json(alabel)
 
         if atype.obsel_type:
             yield u""",\n            "hasAttributeObselType": "%s" """ \
@@ -195,10 +181,6 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "RelationType" """ % str(rtype.uri)
 
-        rlabel = rtype.state.value(rtype.uri, SKOS.prefLabel)
-        if rlabel:
-            yield u""",\n            "label": %s """% val2json(rlabel)
-
         stypes = list(rtype.supertypes)
         if stypes:
             stypes = ",".join( u'"%s"' % coerce_to_uri(i) for i in stypes )
@@ -217,8 +199,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
 
 
     yield u"""
-        }
-    ],"""
+        } ],"""
 
     if tmodel.uri[-1] == "/":
         base_rel_uri = ".."
@@ -244,9 +225,6 @@ def serialize_json_trace(graph, trace, bindings=None):
         trace.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
         )
 
-    label = trace.state.value(trace.uri, SKOS.prefLabel)
-    if label:
-        yield u""",\n    "label": %s """% val2json(label)
     yield u""",
     "hasModel": "%s",
     "origin": "%s",
@@ -274,7 +252,7 @@ def serialize_json_trace(graph, trace, bindings=None):
     for i in iter_other_arcs(graph, trace.uri):
         yield i
 
-    yield u"""\n,   "inBase": "%s"\n}\n""" % trace.base.uri
+    yield u""",\n    "inBase": "%s"\n}\n""" % trace.base.uri
 
 
 @register_serializer(JSONLD, "json", 85, KTBS.ComputedTraceObsels)
