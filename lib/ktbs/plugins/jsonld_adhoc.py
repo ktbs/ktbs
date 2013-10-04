@@ -86,6 +86,7 @@ def serialize_json_base(graph, base, bindings=None):
     "@type": "Base" """ % base.uri
 
     label = base.state.value(base.uri, SKOS.prefLabel)
+
     if label:
         yield u""",\n    "label": %s """% val2json(label)
 
@@ -131,8 +132,9 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "",
             "@type": "TraceModel" """
     
-    if tmodel.label:
-        yield u""",\n            "label": %s """% val2json(tmodel.label)
+    tlabel = tmodel.state.value(tmodel.uri, SKOS.prefLabel)
+    if tlabel:
+        yield u""",\n            "label": %s """% val2json(tlabel)
 
     if tmodel.unit is not None:
         yield u""",\n            "unit": "%s" """ % str(tmodel.unit)
@@ -152,8 +154,9 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "ObselType" """ % str(otype.uri)
 
-        if otype.label:
-            yield u""",\n            "label": %s """% val2json(otype.label)
+        olabel = otype.state.value(otype.uri, SKOS.prefLabel)
+        if olabel:
+            yield u""",\n            "label": %s """% val2json(olabel)
 
         stypes = list(otype.supertypes)
         if stypes:
@@ -170,8 +173,9 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "AttributeType" """ % str(atype.uri)
 
-        if atype.label:
-            yield u""",\n            "label": %s """% val2json(atype.label)
+        alabel = atype.state.value(atype.uri, SKOS.prefLabel)
+        if alabel:
+            yield u""",\n            "label": %s """% val2json(alabel)
 
         if atype.obsel_type:
             yield u""",\n            "hasAttributeObselType": "%s" """ \
@@ -191,8 +195,9 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "RelationType" """ % str(rtype.uri)
 
-        if rtype.label:
-            yield u""",\n            "label": %s """% val2json(rtype.label)
+        rlabel = rtype.state.value(rtype.uri, SKOS.prefLabel)
+        if rlabel:
+            yield u""",\n            "label": %s """% val2json(rlabel)
 
         stypes = list(rtype.supertypes)
         if stypes:
@@ -238,8 +243,10 @@ def serialize_json_trace(graph, trace, bindings=None):
         trace.uri,
         trace.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
         )
-    if trace.label:
-        yield u""",\n    "label": %s """% val2json(trace.label)
+
+    label = trace.state.value(trace.uri, SKOS.prefLabel)
+    if label:
+        yield u""",\n    "label": %s """% val2json(label)
     yield u""",
     "hasModel": "%s",
     "origin": "%s",
@@ -249,15 +256,16 @@ def serialize_json_trace(graph, trace, bindings=None):
         trace.uri,
         )
 
-    if hasattr(trace, "default_subject"):
+    defsubject = trace.state.value(trace.uri, KTBS.hasDefaultSubject)
+    if defsubject:
         yield u""",\n    "hasDefaultSubject": %s """ % \
-            val2json(trace.default_subject)
+            val2json(defsubject)
     if trace.source_traces:
         sources = u", ".join( u'"%s"' % coerce_to_uri(i)
                               for i in trace.source_traces )
         yield u""",\n    "hasSource": [%s]""" % sources
     if hasattr(trace, "method"):
-        yield u""",\n    "method": "%s" """% coerce_to_uri(trace.label)
+        yield u""",\n    "method": "%s" """% coerce_to_uri(trace.method)
         pad = trace.parameters_as_dict
         if pad:
             params = u", ".join( "%s=%s" % i for i in pad.items() )
