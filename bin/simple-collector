@@ -209,16 +209,9 @@ class ObselCollector(object):
             return None
 
         attributes = {}
+        attributes[MODEL_PREFIX.Text] = value
 
-        # as the model may not be available, do not use it
-        # model = trace.get_model()
-        # if model is not None:
-        #     self.display("----- %s model uri: %s" % (trace.label, model.uri))
-        #     atypes = model.attribute_types
-        #     if len(atypes) > 0:
-        #         attributes[atypes[0]] = value
-
-        obsel = trace.create_obsel(type=MODEL_URI + OBSEL_TYPE,
+        obsel = trace.create_obsel(type=MODEL_PREFIX.SimpleObsel,
                                    #begin=datetime.now(),
                                    #end=datetime.now(),
                                    subject="me",
