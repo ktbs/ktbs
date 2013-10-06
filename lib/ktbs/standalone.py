@@ -18,6 +18,7 @@
 """
 This is a standalone version of an HTTP-based KTBS.
 """
+import atexit
 import logging
 from optparse import OptionParser, OptionGroup
 from rdfrest.http_server import HttpFrontend
@@ -53,6 +54,7 @@ def main():
     if OPTIONS.resource_cache is not None:
         LOG.warning("option --resource-cache is deprecated; it has no effect")
     ktbs_service = make_ktbs(uri, OPTIONS.repository, OPTIONS.init_repo).service
+    atexit.register(lambda: ktbs_service.store.close())
 
     wsgifront_options = {}
     if OPTIONS.max_age:

@@ -16,7 +16,7 @@ OPTIONS = {  # see rdfrest.http_server.HttpFrontend for available options
 }
 
 ####
-
+import atexit
 from os.path import join
 
 from rdflib import URIRef
@@ -33,5 +33,6 @@ for prefix in ["", "k", "ktbs", "ktbsns"]:
         break
 
 ktbs_service = make_ktbs(URIRef(ROOT_URI), RDF_STORE).service
+atexit.register(lambda: ktbs_service.store.close())
 application = HttpFrontend(ktbs_service, **OPTIONS)
 
