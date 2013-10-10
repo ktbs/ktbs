@@ -73,6 +73,34 @@ OTHER_ARCS = prepareQuery("""
 
 JSONLD = "application/ld+json"
 
+@register_serializer(JSONLD, "json", 85, KTBS.KtbsRoot)
+@register_serializer("application/json", None, 60, KTBS.KtbsRoot)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_root(graph, root, bindings=None):
+
+    yield u"""\n{\n
+    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@id": "%s",
+    "@type": "KtbsRoot",
+    """ % root.uri
+
+    yield """
+    "hasBuiltinMethod" : %s
+    """ % dumps([ "%s" % default_compact(bm.uri) for bm in root.iter_builtin_methods()])
+
+    bases = [ "%s" % b.uri[len(root.uri):] for b in root.iter_bases()]
+    if len(bases):
+        yield """,
+    "hasBase" : %s
+    """ % dumps(bases)
+
+
+    # At least for skos:prefLabel
+    for i in iter_other_arcs(graph, root.uri):
+        yield i
+
+    yield u"""\n}\n"""
 
 @register_serializer(JSONLD, "json", 85, KTBS.Base)
 @register_serializer("application/json", None, 60, KTBS.Base)
@@ -254,7 +282,6 @@ def serialize_json_trace(graph, trace, bindings=None):
 
     yield u""",\n    "inBase": "%s"\n}\n""" % trace.base.uri
 
-
 @register_serializer(JSONLD, "json", 85, KTBS.ComputedTraceObsels)
 @register_serializer(JSONLD, "json", 85, KTBS.StoredTraceObsels)
 @register_serializer("application/json", None, 60, KTBS.ComputedTraceObsels)
@@ -328,6 +355,63 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     yield """
     ]\n}\n"""
 
+
+@register_serializer(JSONLD, "json", 85, KTBS.Obsel)
+@register_serializer("application/json", None, 60, KTBS.Obsel)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_obsels(graph, obsel, bindings=None):
+    trace_uri = obsel.trace.uri
+    model_uri = obsel.trace.model_uri
+    if model_uri[-1] not in { "/", "#" }:
+        model_uri += "#"
+
+    def compact(uri):
+        uri = str(uri)
+        if uri.startswith(model_uri):
+            ret = "m:%s" % uri[len(model_uri):]
+        elif uri.startswith(trace_uri):
+            ret = "./%s" % uri[len(trace_uri):]
+        elif uri.startswith(KTBS_NS_URI):
+            ret = uri[len(KTBS_NS_URI)+1:]
+        else:
+            ret = uri
+        return ret
+
+    def myval2json(node):
+        return val2json(node, compact)
+
+    #   obsel.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
+    yield u"""\n{\n
+    "@context": [
+        "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+        { "m": "%s" }
+    ],
+    "@id": "%s",
+    "@type": "%s", 
+    "hasTrace": "%s",
+    "subject": "%s",
+    "begin": %s,
+    "beginDT": %s,
+    "end": %s,
+    "endDT": %s
+    """ % (
+        model_uri,
+        compact(obsel.uri),
+        compact(obsel.get_obsel_type().uri),
+        compact(trace_uri),
+        obsel.get_subject(),
+        obsel.get_begin(),
+        myval2json(obsel.get_begin_dt()),
+        obsel.get_end(),
+        myval2json(obsel.get_end_dt())
+        )
+
+    for i in iter_other_arcs(graph, obsel.uri, predfunc=compact, 
+                             objfunc=myval2json):
+        yield i
+
+    yield u"""\n}\n"""
 
 def start_plugin():
     pass

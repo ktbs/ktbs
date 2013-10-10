@@ -36,15 +36,12 @@ except ImportError:
     pyld = None # invalid name # pylint: disable=C0103
 
 if pyld:
-    from json import loads, dumps
+    from json import loads
 
-    from rdflib import BNode, Graph, Literal, URIRef
+    from rdflib import Graph
 
     from rdfrest.parsers import register_parser
-    from rdfrest.serializers import register_serializer
     from rdfrest.exceptions import ParseError
-
-    from ktbs.namespace import KTBS
 
     def parse_jsonld(content, base_uri=None, encoding="utf-8", graph=None):
         """I parse RDF content from JSON-LD.
@@ -78,7 +75,7 @@ if pyld:
 
                 # Insert kTBS global context
                 # TODO Manage the case where a user will give a context
-                context[i] = CONTEXT
+                context[0] = CONTEXT
 
             # add implicit arc for POSTed data so that we don't loose
             # the json root once converted to an RDF graph
@@ -91,11 +88,11 @@ if pyld:
                 json_data.setdefault("inBase", "../")
 
             # ... then parse!
-            normalizedJson = pyld.jsonld.normalize(json_data, 
-                                                   {'base': base_uri,
-                                                    'format': 'application/nquads'})
+            normalized_json = pyld.jsonld.normalize(json_data, 
+                                             {'base': base_uri,
+                                              'format': 'application/nquads'})
             # Do not use "nt" as format as it works only with latin-1
-            graph.parse(data=normalizedJson, format="n3")
+            graph.parse(data=normalized_json, format="n3")
 
         except Exception, ex:
             raise ParseError(ex.message or str(ex))
@@ -108,6 +105,7 @@ if pyld:
     CONTEXT_JSON = """{
         "xsd": "http://www.w3.org/2001/XMLSchema#",
         "skos": "http://www.w3.org/2004/02/skos/core#",
+        "k": "http://liris.cnrs.fr/silex/2009/ktbs#",
 
         "AttributeType": "http://liris.cnrs.fr/silex/2009/ktbs#AttributeType",
         "Base": "http://liris.cnrs.fr/silex/2009/ktbs#Base",
@@ -125,12 +123,13 @@ if pyld:
         "external": "http://liris.cnrs.fr/silex/2009/ktbs#external",
         "filter": "http://liris.cnrs.fr/silex/2009/ktbs#filter",
         "fusion": "http://liris.cnrs.fr/silex/2009/ktbs#fusion",
+        "sparql": "http://liris.cnrs.fr/silex/2009/ktbs#sparql",
         "hasAttributeObselType": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasAttributeDomain", "@type": "@id" },
         "hasAttributeDatatype": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasAttributeRange", "@type": "@id" },
         "hasBase": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
         "begin": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBegin", "@type": "xsd:integer" },
         "beginDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBeginDT", "@type": "xsd:dateTime" },
-        "hasBuiltinMethod": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBuiltinMethod", "@type": "@id" },
+        "hasBuiltinMethod": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasBuiltinMethod", "@type": "@vocab" },
         "hasDefaultSubject": "http://liris.cnrs.fr/silex/2009/ktbs#hasDefaultSubject",
         "end": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasEnd", "@type": "xsd:integer" },
         "endDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasEndDT", "@type": "xsd:dateTime" },
@@ -154,7 +153,6 @@ if pyld:
         "traceEnd": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEnd", "@type": "xsd:integer" },
         "traceEndDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEndDT", "@type": "xsd:dateTime" },
         "unit": "http://liris.cnrs.fr/silex/2009/ktbs#hasUnit",
-        "sparql": "http://liris.cnrs.fr/silex/2009/ktbs#sparql",
 
         "inRoot": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
         "inBase": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
@@ -171,8 +169,8 @@ def start_plugin():
     if pyld is None:
         LOG.error("Can not load plugin: pyld package is not available")
         return
-    register_parser("application/ld+json","json",85)(parse_jsonld)
-    register_parser("application/json",None,60)(parse_jsonld)
+    register_parser("application/ld+json", "json", 85)(parse_jsonld)
+    register_parser("application/json", None, 60)(parse_jsonld)
     LOG.info("JSON-LD parser and serializer registered succesfully")
 
 # TODO LATER split this plugin into a customizable generic version for rdfrest,
