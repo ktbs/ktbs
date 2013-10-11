@@ -314,8 +314,8 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }
     ],
-    "@id": ".",
-    "hasObselList": "@obsels",
+    "@id": "./",
+    "hasObselList": {"@id":"", "@type": "StoredTraceObsels" },
     "obsels": [""" % model_uri
 
     obsels = graph.query("""

@@ -65,26 +65,27 @@ if pyld:
                     raise Exception("invalid context URI: %s" % context)
                 json_data["@context"] = CONTEXT
             else:
-                #if not isinstance(context, list):
-                #    raise Exception("invalid context: %s" % context)
-                #try:
-                #    i = context.index(CONTEXT_URI)
-                #except ValueError:
-                #    raise Exception("invalid context, "
-                #                    "does not contains ktbs-jsonld-context")
+                if not isinstance(context, list):
+                    raise Exception("invalid context: %s" % context)
+                try:
+                    i = context.index(CONTEXT_URI)
+                except ValueError:
+                    raise Exception("invalid context, "
+                                    "does not contains ktbs-jsonld-context")
 
                 # Insert kTBS global context
                 # TODO Manage the case where a user will give a context
-                context[0] = CONTEXT
+                context[i] = CONTEXT
 
             # add implicit arc for POSTed data so that we don't loose
             # the json root once converted to an RDF graph
-            if json_data["@type"] == "Base":
+            if json_data.get("@type") == "Base":
                 json_data.setdefault("inRoot", "")
-            elif json_data["@type"] in ("StoredTrace",
-                                        "ComputedTrace",
-                                        "TraceModel",
-                                        "Method"): 
+
+            if json_data.get("@type") in ("StoredTrace",
+                                          "ComputedTrace",
+                                          "TraceModel",
+                                          "Method"): 
                 json_data.setdefault("inBase", "../")
 
             # ... then parse!
@@ -117,6 +118,7 @@ if pyld:
         "ObselType": "http://liris.cnrs.fr/silex/2009/ktbs#ObselType",
         "RelationType": "http://liris.cnrs.fr/silex/2009/ktbs#RelationType",
         "StoredTrace": "http://liris.cnrs.fr/silex/2009/ktbs#StoredTrace",
+        "StoredTraceObsels": "http://liris.cnrs.fr/silex/2009/ktbs#StoredTraceObsels",
         "TraceModel": "http://liris.cnrs.fr/silex/2009/ktbs#TraceModel",
 
         "contains": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },
