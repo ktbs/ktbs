@@ -154,7 +154,7 @@ if pyld:
         "traceBeginDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceBeginDT", "@type": "xsd:dateTime" },
         "traceEnd": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEnd", "@type": "xsd:integer" },
         "traceEndDT": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasTraceEndDT", "@type": "xsd:dateTime" },
-        "unit": "http://liris.cnrs.fr/silex/2009/ktbs#hasUnit",
+        "hasUnit": { "@id": "http://liris.cnrs.fr/silex/2009/ktbs#hasUnit", "@type": "@vocab" },
 
         "inRoot": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#hasBase", "@type": "@id" },
         "inBase": { "@reverse": "http://liris.cnrs.fr/silex/2009/ktbs#contains", "@type": "@id" },

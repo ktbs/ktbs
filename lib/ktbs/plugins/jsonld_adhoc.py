@@ -151,15 +151,21 @@ def serialize_json_base(graph, base, bindings=None):
 @encode_unicodes
 def serialize_json_model(graph, tmodel, bindings=None):
 
+    if tmodel.uri[-1] == "/":
+        base_rel_uri = ".."
+    else:
+        base_rel_uri = "./"
+    
     yield u"""\n{\n
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
-    "@id": [
+    "@graph": [
         {
             "@id": "",
-            "@type": "TraceModel" """
+            "@type": "TraceModel",
+            "inBase": "%s" """ % base_rel_uri
     
     if tmodel.unit is not None:
-        yield u""",\n            "unit": "%s" """ % str(tmodel.unit)
+        yield u""",\n            "hasUnit": "%s" """ % str(tmodel.unit)
 
     parents = list(tmodel.parents)
     if parents:
@@ -227,14 +233,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
 
 
     yield u"""
-        } ],"""
-
-    if tmodel.uri[-1] == "/":
-        base_rel_uri = ".."
-    else:
-        base_rel_uri = "."
-    
-    yield """\n    "inBase":"%s"}\n""" % base_rel_uri
+        } ]\n}\n"""
 
 
 @register_serializer(JSONLD, "json", 85, KTBS.ComputedTrace)
