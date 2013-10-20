@@ -80,14 +80,18 @@ if pyld:
             # add implicit arc for POSTed data so that we don't loose
             # the json root once converted to an RDF graph
             if json_data.get("@type") == "Base":
-                json_data.setdefault("inRoot", str(base_uri or "../"))
-                print "===", json_data
+                json_data.setdefault("inRoot", str(base_uri))
 
-            if json_data.get("@type") in ("StoredTrace",
+            elif json_data.get("@type") in ("StoredTrace",
                                           "ComputedTrace",
                                           "TraceModel",
                                           "Method"):
-                json_data.setdefault("inBase", str(base_uri or "../"))
+                json_data.setdefault("inBase", str(base_uri))
+
+            elif json_data.get("@type") not in ("StoredTraceObsels",
+                                                "ComputedTraceObsels"):
+                # must be an obsel
+                json_data.setdefault("hasTrace", str(base_uri))
 
             # ... then parse!
             normalized_json = pyld.jsonld.normalize(json_data, 
