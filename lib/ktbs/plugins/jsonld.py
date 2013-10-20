@@ -59,7 +59,7 @@ if pyld:
         try:
             json_data = loads(content)
             # expand KTBS context
-            context = json_data["@context"]
+            context = json_data.get("@context", CONTEXT_URI)
             if isinstance(context, basestring):
                 if context != CONTEXT_URI:
                     raise Exception("invalid context URI: %s" % context)
