@@ -88,8 +88,9 @@ if pyld:
                                           "Method"):
                 json_data.setdefault("inBase", str(base_uri))
 
-            elif json_data.get("@type") not in ("StoredTraceObsels",
-                                                "ComputedTraceObsels"):
+            elif ((json_data.get("hasObselList") is None)
+                  and 
+                  (json_data.get("hasBuiltinMethod") is None)):
                 # must be an obsel
                 json_data.setdefault("hasTrace", str(base_uri))
 
