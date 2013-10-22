@@ -60,13 +60,13 @@ which should look as follows:
 .. code-block:: turtle
 
     @prefix : <http://liris.cnrs.fr/silex/2009/ktbs#> .
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
     <> :hasBase <base1/>.
 
     <base1/>
         a :Base ;
-        rdfs:label "My new base" .
+        skos:prefLabel "My new base" .
 
 
 then ensure that the content-type ``text/turtle`` is selected,
