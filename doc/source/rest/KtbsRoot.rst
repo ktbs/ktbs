@@ -22,4 +22,4 @@ Creates a new `Base`:doc:.
 Description constraints
 -----------------------
 
-The descrtiption of a kTBS root must be `star shaped <star-shaped>`:ref:.
+The description of a kTBS root must be `star shaped <star-shaped>`:ref:.

@@ -3,9 +3,8 @@ Trace
 
 This class is the base class of `StoredTrace`:doc: and `ComputedTrace`:doc:. It has no direct instances (only the two subclasses above can be instantiated), but everything described here is valid for any indirect instance.
 
-Traces have two :ref:`aspect resources <rest-aspect-resource>`:
+Traces have one :ref:`aspect resource <rest-aspect-resource>`:
 
-* `@about`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#descriptionOf
 * `@obsels`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#hasObselCollection
 
 Original resource
@@ -14,38 +13,27 @@ Original resource
 GET
 ---
 
-Redirects (with a 303 HTTP status) to the `@about`_ aspect resource.
-
-DELETE
-------
-
-Not implemented yet. Deletes the trace and its aspect resources.
-
-TODO: what happens if the trace is the source of a computed trace?
-
-
-@about
-++++++
-
-This aspect resource stands for the metadata about the trace.
-
-GET
----
-
-Retrieve the decription of the trace, augemnted with the following generated properties:
+Retrieve the description of the trace, augmented with the following generated properties:
 
 * http://liris.cnrs.fr/silex/2009/ktbs#compliesWithModel can be either "yes", "no" or "?" (if the model is not available)
-* links to the @about and @obsel aspect resources.
+* links to the @obsel aspect resource.
 
 PUT
 ---
 
 This allows to change the description of the trace itself.
 
+DELETE
+------
+
+Deletes the trace and its aspect resources.
+
+TODO: what happens if the trace is the source of a computed trace?
+
 Description Constraints
 -----------------------
 
-The descrtiption of a trace must be `star shaped <star-shaped>`:ref:.
+The description of a trace must be `star shaped <star-shaped>`:ref:.
 
 
 @obsels
