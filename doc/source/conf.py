@@ -233,3 +233,7 @@ autodoc_member_order='bysource'
 
 # this is work in progress; let the TODOs show
 todo_include_todos=True
+
+# -- ReadTheDocs specific ------------------------------------------------------
+
+RTD_NEW_THEME = True
