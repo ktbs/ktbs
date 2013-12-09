@@ -23,6 +23,7 @@ I provide the pythonic interface of ktbs:Base .
 """
 
 from datetime import datetime
+from numbers import Real
 from rdflib import Graph, Literal, RDF, URIRef
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.interface import register_mixin
@@ -218,7 +219,7 @@ class BaseMixin(KtbsResourceMixin):
             origin = "o"+random_token(32)
             # start origin with a letter because if it starts with 4 digits,
             # it will be misinterpreted for a year
-        elif isinstance(origin, int):
+        elif isinstance(origin, Real):
             origin = datetime.fromtimestamp(origin, UTC)
 
         if graph is None:

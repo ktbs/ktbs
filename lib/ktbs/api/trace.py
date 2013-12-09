@@ -22,6 +22,7 @@
 I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
 from datetime import datetime
+from numbers import Integral, Real
 from rdflib import Graph, Literal, RDF, RDFS
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
@@ -112,7 +113,7 @@ class AbstractTraceMixin(InBaseMixin):
         filters = []
         postface = ""
         if begin is not None:
-            if isinstance(begin, int):
+            if isinstance(begin, Real):
                 pass # nothing else to do
             elif isinstance(begin, datetime):
                 raise NotImplementedError(
@@ -124,7 +125,7 @@ class AbstractTraceMixin(InBaseMixin):
             filters.append("?b >= %s" % begin)
             parameters["minb"] = begin
         if end is not None:
-            if isinstance(end, int):
+            if isinstance(end, Real):
                 pass # nothing else to do
             elif isinstance(end, datetime):
                 raise NotImplementedError(
@@ -242,7 +243,7 @@ class AbstractTraceMixin(InBaseMixin):
 
         TODO DOC reference to a detailed explaination about monotonicity.
         """
-        assert isinstance(val, int)
+        assert isinstance(val, Real)
         assert val >= 0
         if val == 0:
             val = None
@@ -346,8 +347,8 @@ class StoredTraceMixin(AbstractTraceMixin):
         graph.add((obs, RDF.type, type_uri))
         graph.add((obs, KTBS.hasTrace, self.uri))
 
-        if isinstance(begin, int):
-            graph.add((obs, KTBS.hasBegin, Literal(begin)))
+        if isinstance(begin, Integral):
+            graph.add((obs, KTBS.hasBegin, Literal(int(begin))))
         else: # will use KTBS.hasBeginDT
             begin_dt = begin
             if isinstance(begin, basestring):
@@ -359,8 +360,8 @@ class StoredTraceMixin(AbstractTraceMixin):
                 raise ValueError("Could not interpret begin %s", begin)
             graph.add((obs, KTBS.hasBeginDT, Literal(begin_dt)))
 
-        if isinstance(end, int):
-            graph.add((obs, KTBS.hasEnd, Literal(end)))
+        if isinstance(end, Integral):
+            graph.add((obs, KTBS.hasEnd, Literal(int(end))))
         else: # will use KTBS.hasEndDT
             end_dt = end
             if isinstance(end_dt, basestring):
