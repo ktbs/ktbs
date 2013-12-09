@@ -48,7 +48,7 @@ def htmlize_node(bindings, node, base):
         datatype = node.datatype
         value = unicode(node).replace("<", "&lt;")
         if '"' in node or '\n' in node:
-            quoted = u'"""%s"""' % value
+            quoted = u'"""<pre style="display: inline">%s</pre>"""' % value
         else:
             quoted = u'"%s"' % value
 
