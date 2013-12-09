@@ -433,8 +433,10 @@ class ComputedTraceObsels(AbstractTraceObsels):
             parameters.pop("quick", None)
         elif not self.__forcing_state_refresh:
             self.__forcing_state_refresh = True
-            self.force_state_refresh(parameters)
-            del self.__forcing_state_refresh
+            try:
+                self.force_state_refresh(parameters)
+            finally:
+                del self.__forcing_state_refresh
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
