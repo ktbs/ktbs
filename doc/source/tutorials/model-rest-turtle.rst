@@ -36,7 +36,7 @@ Here is a UML representation of the Trace Model we will create. This is a minima
 Creating the model
 ------------------
 
-On the page of your base, open the embeded editor,
+On the page of your base, open the embedded editor,
 and *replace* the content with the following data:
 
 .. code-block:: turtle
@@ -89,7 +89,7 @@ Adding attributes
 
 Unlike in UML, attributes in kTBS a first-level elements, linked to their corresponding obsel type by the ``:hasAttributeDomain`` property. A consequence of this is that each attribute is identified by a URI, which has to be globally unique, while in UML, attributes in different classes may have the same (local) name.
 
-A good practice is therefore to include the name of the obsel type in the URI of every attribute. A label can still be attached to the attribute to speficy its shorter user-friendly name.
+A good practice is therefore to include the name of the obsel type in the URI of every attribute. A label can still be attached to the attribute to specify its shorter user-friendly name.
 
 The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS supports a subset of the primitive datatypes defined in  XML-Schema_, including the most usual datatypes such as ``xsd:string``, ``xsd:integer``, ``xsd:boolean`` and ``xsd:float``.
 
@@ -111,7 +111,7 @@ The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS sup
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#ChannelEvent> ;
+       :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
@@ -152,7 +152,7 @@ In our example above, as the relation ``onChannel`` can originate from different
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#ChannelEvent> ;
+       :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
@@ -203,7 +203,7 @@ Then, we can set the domain of ``onChannel`` to this new type.
 
    <#OpenChannel/channel> a :AttributeType ;
        skos:prefLabel "channel" ;
-       :hasAttributeDomain <#ChannelEvent> ;
+       :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
    <#SendMsg/message> a :AttributeType ;
