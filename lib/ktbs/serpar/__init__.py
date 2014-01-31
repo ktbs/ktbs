@@ -16,12 +16,8 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-Transition plugin -- now JSON-LD support is integrated in kTBS
+Serializers and parsers for kTBS
 """
-import logging
 
-LOG = logging.getLogger(__name__)
-
-def start_plugin():
-    LOG.warn("Plugin jsonld_adhoc DEPRECATED. "
-             "You should remove it from your configuration")
+import jsonld_parser
+import jsonld_serializers

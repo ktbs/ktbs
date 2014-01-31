@@ -34,6 +34,7 @@ from .trace import StoredTrace, ComputedTrace
 from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
+from ..serpar import *
 
 # make ktbs:/ URIs use relative, query, fragments
 urlparse.uses_fragment.append("ktbs")
