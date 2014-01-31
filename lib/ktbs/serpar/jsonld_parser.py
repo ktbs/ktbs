@@ -34,6 +34,8 @@ from json import loads
 
 from rdflib import Graph
 
+import pyld
+
 from rdfrest.parsers import register_parser
 from rdfrest.exceptions import ParseError
 
