@@ -300,7 +300,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 # the following query gets all the candidate obsels in a POSTed graph,
 # and orders them correctly, guessing implicit values
 _SELECT_CANDIDATE_OBSELS = prepareQuery("""
-    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#float>
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     PREFIX : <%s#>
     SELECT ?obs
            (IF(bound(?b), ?b, "INF"^^xsd:float) as ?begin)
