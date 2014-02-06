@@ -44,8 +44,8 @@ def setUp():
 
 def task():
     trace = BASE.get("t/")
-    print "Stressing %s %s times with %s obsels" % (
-        ARGS.ktbs, ARGS.iterations, ARGS.nbobs)
+    print "Stressing %s %s times with %sx%s obsels" % (
+        ARGS.ktbs, ARGS.iterations, ARGS.nbpost, ARGS.nbobs)
     for i in xrange(ARGS.iterations):
         def create_P_obsels():
             for j in xrange(ARGS.nbpost):
