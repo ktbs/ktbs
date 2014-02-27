@@ -365,6 +365,13 @@ def serialize_json_obsels(graph, obsel, bindings=None):
     model_uri = obsel.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
+    otype = obsel.get_obsel_type()
+    if otype is not None:
+        otype_uri = otype.uri
+    else:
+        # may happen if the trace model is unavailable,
+        # then take any type -- and hope for the best...
+        otype_uri = obsel.state.value(obsel.uri, RDF.type)
 
     def compact(uri):
         uri = str(uri)
@@ -398,7 +405,7 @@ def serialize_json_obsels(graph, obsel, bindings=None):
     """ % (
         model_uri,
         compact(obsel.uri),
-        compact(obsel.get_obsel_type().uri),
+        compact(otype_uri),
         compact(trace_uri),
         obsel.get_subject(),
         obsel.get_begin(),
