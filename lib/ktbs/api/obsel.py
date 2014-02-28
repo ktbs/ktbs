@@ -61,7 +61,7 @@ class ObselMixin(KtbsResourceMixin):
         I return the obsel type of this obsel.
         """
         tmodel = self.trace.model
-        if tmodel:
+        if tmodel and hasattr(tmodel, 'get'):
             for typ in self.state.objects(self.uri, RDF.type):
                 ret = tmodel.get(typ)
                 # must be a .trace_model.ObselTypeMixin
