@@ -593,7 +593,7 @@ class WithCardinalityMixin(ILocalResource):
             if maxc is not None and nbp > maxc:
                 diag.append("Property <%s> to <%s> should have at most "
                               "%s subjects; it has %s"
-                              % (p, uri, minc, nbp))
+                              % (p, uri, maxc, nbp))
 
         new_graph_objects = new_graph.objects
         for p, minc, maxc in cls.__get_cardinality_out():
@@ -605,7 +605,7 @@ class WithCardinalityMixin(ILocalResource):
             if maxc is not None and nbp > maxc:
                 diag.append("Property <%s> of <%s> should have at most "
                               "%s objects; it has %s"
-                              % (p, uri, minc, nbp))
+                              % (p, uri, maxc, nbp))
 
         return diag
 

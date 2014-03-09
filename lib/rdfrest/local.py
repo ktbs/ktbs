@@ -501,6 +501,12 @@ class StandaloneResource(ILocalResource):
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
         """I implement :meth:`.interface.IResource.factory`.
         """
+        # while it is not technically an error to violate the assertion below
+        # (factory should simply return None in that case)
+        # this is usually a design error, and rdfrest.factory.factory should
+        # be used instead
+        assert uri.startswith(self.service.root_uri), uri
+
         # we do not use rdfrest.get_subclasses
         # (see comment at the top of the file for explainations)
         return self.service.get(coerce_to_uri(uri), _rdf_type, _no_spawn)
