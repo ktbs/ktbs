@@ -18,7 +18,7 @@
 """
 I provide kTBS JSON-LD serializers.
 """
-from itertools import chain
+from itertools import chain, groupby
 from json import dumps
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
@@ -31,6 +31,8 @@ from re import compile as Regex
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
 
+LEN_KTBS = len(KTBS_NS_URI)+1
+
 def encode_unicodes(func):
     """I decorate a generator of unicodes to make it a generator of UTF8 str"""
     def wrapped(*args, **kw):
@@ -38,47 +40,167 @@ def encode_unicodes(func):
             yield i.encode("utf-8")
     return wrapped
 
-def default_compact(uri):
-    """I compact a URI using KTBS_NS_URI as the default vocabulary"""
-    uri = str(uri)
-    if uri.startswith(KTBS_NS_URI):
-        ret = uri[len(KTBS_NS_URI)+1:]
-    else:
-        ret = uri
-    return ret
-    
-def val2json(val, compact=default_compact):    
-    """I convert a value into a JSON value"""
-    if isinstance(val, BNode):
-        return u"{}" # TODO recurse?
-    elif isinstance(val, URIRef):
-        return u"""{ "@id": "%s" }""" % compact(val)
-    elif isinstance(val, Literal):
-       if val.datatype in (XSD.integer, XSD.double, XSD.decimal, XSD.bool):
-            return unicode(val)
-    return dumps(unicode(val), ensure_ascii=False)
+class ValueConverter(object):
+    """
+    I convert values to JSON-LD strings.
+    """
+    def __init__(self, base_uri=None, prefixes=None):
+        self._base = base_uri
+        if base_uri is not None:
+            self._len_base = len(base_uri)
+            self._base_hash = base_uri + "#"
+            self._len_dir = len_dir = base_uri.rfind("/") + 1
+            self._dir = base_uri[:len_dir]
+            self._len_parent = len_par = base_uri.rfind("/", 0, len_dir-1) + 1
+            self._parent = parent = base_uri[:len_par]
+            if self._parent.endswith("//"):
+                self._parent = None
+        if prefixes:
+            self._prefixes = [
+                (ns, prefix, len(ns)) for ns, prefix in prefixes.items()
+            ]
+        else:
+            self._prefixes = ()
 
-def iter_other_arcs(graph, uri, indent="    ",
-                    predfunc=lambda x: x, objfunc=val2json ):
+    def uri(self, uri, _len_ktbs=LEN_KTBS):
+        """Convert URI"""
+        if uri.startswith(KTBS_NS_URI):
+            return uri[_len_ktbs:]
+        for ns, prefix, len_ns in self._prefixes:
+            if uri.startswith(ns):
+                return "%s:%s" % (prefix, uri[len_ns:])
+        if self._base is not None:
+            if uri.startswith(self._base_hash):
+                return uri[self._len_base:]
+            if uri.startswith(self._dir):
+                ret = uri[self._len_dir:]
+                return ret or "./"
+            elif self._parent and uri.startswith(self._parent):
+                return "../%s" % uri[self._len_parent:]
+        return uri
+
+    def val2json(self, val, indent=""):
+        """I convert a value into a JSON value.
+
+        val can be an RDF node or a list of RDF nodes
+        """
+        if isinstance(val, BNode):
+            return u"{}" # TODO recurse?
+        elif isinstance(val, URIRef):
+            return u"""{ "@id": "%s" }""" % self.uri(val)
+        elif isinstance(val, Literal):
+           if val.datatype in (XSD.integer, XSD.double, XSD.decimal,
+                               XSD.boolean):
+               return unicode(val)
+           # TODO other datatypes?
+           else:
+               return dumps(unicode(val), ensure_ascii=False)
+        elif isinstance(val, list):
+            return "[%s%s]" % (
+                ", ".join(( "%s  %s" % (indent,
+                                        self.val2json(i, indent+"    "))
+                            for i in val )),
+                indent
+            )
+        elif isinstance(val, dict):
+            # special case of obsel relations
+            return dumps(val)
+        assert False, "unexpected value type %s" % type(val)
+
+
+def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
     "Yield JSON properties for all predicates outside the ktbs namespace."
-    for pred, obj in graph.query(OTHER_ARCS, initBindings={"subj": uri}):
-        yield u""",\n%s"%s": %s""" % (indent, predfunc(pred), objfunc(obj))
+
+    val2json = valconv.val2json
+    valconv_uri = valconv.uri
+    if obsel:
+        pred_conv = valconv_uri
+    else:
+        pred_conv = lambda x: x
+
+    if not obsel:
+        types = [ i for i in graph.objects(uri, RDF.type)
+                  if not i.startswith(KTBS_NS_URI) ]
+        if types:
+            types = [ valconv_uri(i) for i in types ]
+            yield u""",%s "additionalType": %s""" % (indent, dumps(types))
+
+    labels = list(graph.objects(uri, SKOS.prefLabel))
+    if labels:
+        yield u""",%s"label": %s""" % (indent,
+                                       val2json(labels[0], indent))
+        if len(labels) > 1:
+            # for the sake of regularity, we keep a single value for "label",
+            # and set the other values to the full URI
+            yield u""",%s"%s": %s""" \
+              % (indent, SKOS.prefLabel,
+                 val2json(labels[1:], indent))
+
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"subj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if obsel:
+            # include k:hasTrace property of related obsels
+            obj = [ i[2]  if i[3] is None
+                    else { u"@id": valconv_uri(i[2]), u"hasTrace": u"./" }
+                    for i in tuples ]
+        else:
+            obj = [ i[2] for i in tuples ]
+        if len(obj) == 1:
+            obj = obj[0]
+        yield u""",%s"%s": %s""" % (indent, pred_conv(pred),
+                                      val2json(obj, indent))
+
+    comma = None
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"obj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if comma is None:
+            yield u""",%s"@reverse": {""" % indent
+            comma = ""
+        if obsel:
+            # include k:hasTrace property of related obsels
+            subj = [ i[0]  if i[3] is None
+                     else { u"@id": valconv_uri(i[0]), u"hasTrace": u"./" }
+                     for i in tuples ]
+        else:
+            subj = [ i[0] for i in tuples ]
+        if len(subj) == 1:
+            subj = subj[0]
+        yield u"""%s%s    "%s": %s""" % (comma, indent, pred_conv(pred),
+                                         val2json(subj, indent))
+        comma = ","
+    if comma is not None:
+        yield u"%s}" % indent
 
 OTHER_ARCS = prepareQuery("""
-    SELECT ?pred ?obj
+    PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+    PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+    PREFIX : <%s#>
+
+    SELECT ?subj ?pred ?obj ?trc
     {
         ?subj ?pred ?obj .
-        FILTER( substr(str(?pred), 1, %s) != "%s#" && ?pred != <%s>)
-    } ORDER BY ?pred ?obj """ % (len(KTBS_NS_URI)+1, KTBS_NS_URI, RDF.type))
+        OPTIONAL { ?obj :hasTrace ?trc. ?subj :hasTrace ?trc. }
+        FILTER( substr(str(?pred), 1, %s) != "%s#" &&
+                ?pred NOT IN (rdf:type, skos:prefLabel) )
+    } ORDER BY ?pred ?obj """
+    % (KTBS_NS_URI, LEN_KTBS, KTBS_NS_URI))
 
 JSONLD = "application/ld+json"
 JSON = "application/json"
 
-@register_serializer(JSONLD, "json", 85, KTBS.KtbsRoot)
-@register_serializer(JSON, None, 60, KTBS.KtbsRoot)
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.KtbsRoot)
+@register_serializer(JSON, "json", 60, KTBS.KtbsRoot)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
 def serialize_json_root(graph, root, bindings=None):
+
+    valconv = ValueConverter(root.uri)
+    valconv_uri = valconv.uri
 
     yield u"""\n{\n
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
@@ -88,26 +210,28 @@ def serialize_json_root(graph, root, bindings=None):
 
     yield """
     "hasBuiltinMethod" : %s
-    """ % dumps([ "%s" % default_compact(bm.uri) for bm in root.iter_builtin_methods()])
+    """ % dumps([ "%s" % valconv_uri(bm.uri)
+                  for bm in root.iter_builtin_methods()])
 
-    bases = [ "%s" % b.uri[len(root.uri):] for b in root.iter_bases()]
+    len_root_uri = len(root.uri)
+    bases = [ "%s" % b.uri[len_root_uri:] for b in root.iter_bases()]
     if len(bases):
         yield """,
     "hasBase" : %s
     """ % dumps(bases)
 
-
-    # At least for skos:prefLabel
-    for i in iter_other_arcs(graph, root.uri):
+    for i in iter_other_arcs(graph, root.uri, valconv):
         yield i
 
     yield u"""\n}\n"""
 
-@register_serializer(JSONLD, "json", 85, KTBS.Base)
-@register_serializer(JSON, None, 60, KTBS.Base)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.Base)
+@register_serializer(JSON, "json", 60, KTBS.Base)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
 def serialize_json_base(graph, base, bindings=None):
+
+    valconv = ValueConverter(base.uri)
 
     yield u"""\n{\n
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
@@ -125,6 +249,7 @@ def serialize_json_base(graph, base, bindings=None):
     "contains": ["""
 
         comma =""
+        len_base_uri = len(base.uri)
         for i in contained:
             yield """%s
         {
@@ -132,104 +257,145 @@ def serialize_json_base(graph, base, bindings=None):
             "@type": "%s"
         } """ % (
                 comma,
-                i.uri[len(base.uri):],
-                i.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
+                i.uri[len_base_uri:],
+                i.RDF_MAIN_TYPE[LEN_KTBS:],
                 )
             comma = ", "
 
         yield """
     ]"""
 
-    # At least for skos:prefLabel
-    for i in iter_other_arcs(graph, base.uri):
+    for i in iter_other_arcs(graph, base.uri, valconv):
         yield i
 
     yield u""",\n    "inRoot": ".."\n}\n"""
 
-@register_serializer(JSONLD, "json", 85, KTBS.TraceModel)
-@register_serializer(JSON, None, 60, KTBS.TraceModel)
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.Method)
+@register_serializer(JSON, "json", 60, KTBS.Method)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_method(graph, method, bindings=None):
+
+    valconv = ValueConverter(method.uri)
+    valconv_uri = valconv.uri
+
+    yield u"""\n{\n
+    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@id": "%s",
+    "@type": "Method",
+    "hasParentMethod": "%s",
+    "parameter": [""" % (
+        method.uri, valconv_uri(coerce_to_uri(method.parent))
+    )
+
+    own_params = method.iter_parameters(False)
+    yield u",".join(
+        u"\n        %s" % dumps("%s=%s" % (key, method.get_parameter(key)))
+        for key in own_params
+    ) + "]"
+
+    used_by = list(method.state.subjects(KTBS.hasMethod, method.uri))
+    if used_by:
+        yield  u""",\n        "isMethodOf": %s""" \
+          % dumps([ valconv_uri(i) for i in used_by ])
+
+    children = list(method.state.subjects(KTBS.hasParentMethod, method.uri))
+    if children:
+        yield  u""",\n        "isParentMethodOf": %s""" \
+          % dumps([ valconv_uri(i) for i in children])
+
+    for i in iter_other_arcs(graph, method.uri, valconv):
+        yield i
+
+    yield u""",\n    "inBase": "%s"\n}\n""" % valconv_uri(method.base.uri)
+
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.TraceModel)
+@register_serializer(JSON, "json", 60, KTBS.TraceModel)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
 def serialize_json_model(graph, tmodel, bindings=None):
 
-    if tmodel.uri[-1] == "/":
-        base_rel_uri = ".."
-    else:
-        base_rel_uri = "./"
-    
+    valconv = ValueConverter(tmodel.uri, { XSD: "xsd" })
+    valconv_uri = valconv.uri
+
     yield u"""\n{\n
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@graph": [
         {
-            "@id": "",
+            "@id": "%s",
             "@type": "TraceModel",
-            "inBase": "%s" """ % base_rel_uri
-    
+            "inBase": "%s" """ % (tmodel.uri, valconv_uri(tmodel.base.uri))
+
     if tmodel.unit is not None:
-        yield u""",\n            "hasUnit": "%s" """ % str(tmodel.unit)
+        yield u""",\n            "hasUnit": "%s" """ \
+          % valconv_uri(tmodel.unit)
 
     parents = list(tmodel.parents)
     if parents:
-        parents = ",".join( u'"%s"' % coerce_to_uri(i) for i in parents )
-        yield u""",\n            "hasParentModel": [%s] """ % parents
+        parents = [ valconv_uri(coerce_to_uri(i)) for i in parents ]
+        yield u""",\n            "hasParentModel": %s""" % dumps(parents)
 
-    for i in iter_other_arcs(graph, tmodel.uri, "            ",):
+    for i in iter_other_arcs(graph, tmodel.uri, valconv, "            "):
         yield i
 
-    for otype in tmodel.obsel_types:
+    for otype in tmodel.iter_obsel_types(False):
         yield u"""
         },
         {
             "@id": "%s" ,
-            "@type": "ObselType" """ % str(otype.uri)
+            "@type": "ObselType" """ % valconv_uri(otype.uri)
 
-        stypes = list(otype.supertypes)
+        stypes = [ valconv_uri(coerce_to_uri(i))
+                   for i in otype.iter_supertypes(False) ]
         if stypes:
-            stypes = ",".join( u'"%s"' % coerce_to_uri(i) for i in stypes )
-            yield u""",\n            "hasSuperObselType": [%s] """ % stypes
+            yield u""",\n            "hasSuperObselType": %s """ \
+              % dumps(stypes)
 
-        for i in iter_other_arcs(graph, otype.uri, "            ",):
+        for i in iter_other_arcs(graph, otype.uri, valconv, "            "):
             yield i
-        
-    for atype in tmodel.attribute_types:
+
+    for atype in tmodel.iter_attribute_types(False):
         yield u"""
         },
         {
             "@id": "%s" ,
-            "@type": "AttributeType" """ % str(atype.uri)
+            "@type": "AttributeType" """ % valconv_uri(atype.uri)
 
         if atype.obsel_type:
             yield u""",\n            "hasAttributeObselType": "%s" """ \
-                % coerce_to_uri(atype.obsel_type)
+                % valconv_uri(coerce_to_uri(atype.obsel_type))
 
         if atype.data_type:
             yield u""",\n            "hasAttributeDatatype": "%s" """ \
-                % atype.data_type
+                % valconv_uri(atype.data_type)
 
-        for i in iter_other_arcs(graph, atype.uri, "            ",):
+        for i in iter_other_arcs(graph, atype.uri, valconv, "            "):
             yield i
 
-    for rtype in tmodel.relation_types:
+    for rtype in tmodel.iter_relation_types(False):
         yield u"""
         },
         {
             "@id": "%s" ,
-            "@type": "RelationType" """ % str(rtype.uri)
+            "@type": "RelationType" """ % valconv_uri(rtype.uri)
 
-        stypes = list(rtype.supertypes)
+        stypes = [ valconv_uri(coerce_to_uri(i))
+                   for i in rtype.iter_supertypes(False) ]
         if stypes:
-            stypes = ",".join( u'"%s"' % coerce_to_uri(i) for i in stypes )
-            yield u""",\n            "hasSuperRelationType": [%s] """ % stypes
+            yield u""",\n            "hasSuperRelationType": %s """ \
+              % dumps(stypes)
 
         if rtype.origin:
             yield u""",\n            "hasRelationOrigin": "%s" """ \
-                % coerce_to_uri(rtype.origin)
+                % valconv_uri(coerce_to_uri(rtype.origin),)
 
         if rtype.destination:
             yield u""",\n            "hasRelationDestination": "%s" """ \
-                % coerce_to_uri(rtype.destination)
+                % valconv_uri(coerce_to_uri(rtype.destination),)
 
-        for i in iter_other_arcs(graph, rtype.uri, "            ",):
+        for i in iter_other_arcs(graph, rtype.uri, valconv, "            "):
             yield i
 
 
@@ -237,77 +403,100 @@ def serialize_json_model(graph, tmodel, bindings=None):
         } ]\n}\n"""
 
 
-@register_serializer(JSONLD, "json", 85, KTBS.ComputedTrace)
-@register_serializer(JSONLD, "json", 85, KTBS.StoredTrace)
-@register_serializer(JSON, None, 60, KTBS.ComputedTrace)
-@register_serializer(JSON, None, 60, KTBS.StoredTrace)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.ComputedTrace)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.StoredTrace)
+@register_serializer(JSON, "json", 60, KTBS.ComputedTrace)
+@register_serializer(JSON, "json", 60, KTBS.StoredTrace)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
 def serialize_json_trace(graph, trace, bindings=None):
-    
+
+    valconv = ValueConverter(trace.uri)
+    val2json = valconv.val2json
+    valconv_uri = valconv.uri
+
     yield u"""\n{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "%s" """ % (
         trace.uri,
-        trace.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
+        trace.RDF_MAIN_TYPE[LEN_KTBS:],
         )
 
     yield u""",
     "hasModel": "%s",
     "origin": "%s",
-    "hasObselList": "%s@obsels" """ % (
-        trace.model_uri,
+    "hasObselList": "@obsels" """ % (
+        valconv_uri(trace.model_uri),
         trace.origin,
-        trace.uri,
         )
 
     defsubject = trace.state.value(trace.uri, KTBS.hasDefaultSubject)
     if defsubject:
-        yield u""",\n    "hasDefaultSubject": %s """ % \
+        yield u""",\n    "defaultSubject": %s """ % \
             val2json(defsubject)
     if trace.source_traces:
-        sources = u", ".join( u'"%s"' % coerce_to_uri(i)
-                              for i in trace.source_traces )
-        yield u""",\n    "hasSource": [%s]""" % sources
+        sources = [ valconv_uri(coerce_to_uri(i))
+                    for i in trace.source_traces ]
+        yield u""",\n    "hasSource": %s""" % dumps(sources)
     if hasattr(trace, "method"):
-        yield u""",\n    "method": "%s" """% coerce_to_uri(trace.method)
-        pad = trace.parameters_as_dict
-        if pad:
-            params = u", ".join( "%s=%s" % i for i in pad.items() )
-            yield u""",\n    "parameter": [%s] """ % val2json(params)
-            
-    for i in iter_other_arcs(graph, trace.uri):
+        yield u""",\n    "hasMethod": "%s" """ \
+          % valconv_uri(coerce_to_uri(trace.method))
+        own_params = trace.list_parameters(False)
+        if own_params:
+            yield u""",\n    "parameter": [%s\n    ]""" % (
+                ",".join(
+                    u"\n        %s"
+                    % dumps("%s=%s" % (key, trace.get_parameter(key)))
+                    for key in own_params
+                )
+            )
+
+    transformed = [ valconv_uri(i)
+                    for i in trace.state.subjects(KTBS.hasSource, trace.uri) ]
+    if transformed:
+        yield u""",\n    "isSourceOf": %s""" % dumps(transformed)
+
+    for i in iter_other_arcs(graph, trace.uri, valconv):
         yield i
 
-    yield u""",\n    "inBase": "%s"\n}\n""" % trace.base.uri
+    yield u""",\n    "inBase": "../"\n}\n"""
 
-@register_serializer(JSONLD, "json", 85, KTBS.ComputedTraceObsels)
-@register_serializer(JSONLD, "json", 85, KTBS.StoredTraceObsels)
-@register_serializer(JSON, None, 60, KTBS.ComputedTraceObsels)
-@register_serializer(JSON, None, 60, KTBS.StoredTraceObsels)
+
+def iter_obsel_arcs(graph, obs, valconv, indent=""):
+    """
+    I iter over the JSON-LD representation
+    of optional properties of obsels in the ktbs namespace.
+    """
+    valconv_uri = valconv.uri
+    val2json = valconv.val2json
+
+    source_obsels = [ valconv_uri(i) for i in graph.objects(obs, KTBS.hasSourceObsel) ]
+    if source_obsels:
+            yield u""",\n%s"hasSourceObsel": %s""" \
+              % (indent, dumps(source_obsels))
+    beginDT = graph.value(obs, KTBS.hasBeginDT)
+    if beginDT:
+            yield u""",\n%s"beginDT": %s """ % (indent, val2json(beginDT))
+    endDT = graph.value(obs, KTBS.hasEndDT)
+    if endDT:
+        yield u""",\n%s"endDT": %s """ % (indent, val2json(endDT))
+
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.ComputedTraceObsels)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.StoredTraceObsels)
+@register_serializer(JSON, "json", 60, KTBS.ComputedTraceObsels)
+@register_serializer(JSON, "json", 60, KTBS.StoredTraceObsels)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
 def serialize_json_trace_obsels(graph, tobsels, bindings=None):
+
     trace_uri = tobsels.trace.uri
     model_uri = tobsels.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
-
-    def compact(uri):
-        uri = str(uri)
-        if uri.startswith(model_uri):
-            ret = "m:%s" % uri[len(model_uri):]
-        elif uri.startswith(trace_uri):
-            ret = "./%s" % uri[len(trace_uri):]
-        elif uri.startswith(KTBS_NS_URI):
-            ret = uri[len(KTBS_NS_URI)+1:]
-        else:
-            ret = uri
-        return ret
-    
-    def myval2json(node):
-        return val2json(node, compact)
+    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv_uri = valconv.uri
 
     yield u"""\n{\n
     "@context": [
@@ -336,16 +525,13 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
             "@type": "%s",
             "subject": "%s",
             "begin": %s,
-            "end": %s""" % (compact(obs), compact(otype), subject, begin, end)
+            "end": %s""" % (valconv_uri(obs), valconv_uri(otype),
+                            subject, begin, end)
 
-        source_obsels = list(graph.objects(obs, KTBS.hasSourceObsel))
-        if source_obsels:
-            source_obsels = ", ".join( '"%s"' % compact(i)
-                                       for i in source_obsels )
-            yield u""",\n            "hasSourceObsel": [%s]""" % source_obsels
+        for i in iter_obsel_arcs(graph, obs, valconv, "            "):
+            yield i
 
-        for i in iter_other_arcs(graph, obs, "            ",
-                                 compact, myval2json):
+        for i in iter_other_arcs(graph, obs, valconv, "            ", True):
             yield i
 
         yield u"""
@@ -356,66 +542,50 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     ]\n}\n"""
 
 
-@register_serializer(JSONLD, "json", 85, KTBS.Obsel)
-@register_serializer(JSON, None, 60, KTBS.Obsel)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.Obsel)
+@register_serializer(JSON, "json", 60, KTBS.Obsel)
 @wrap_exceptions(SerializeError)
 @encode_unicodes
-def serialize_json_obsels(graph, obsel, bindings=None):
+def serialize_json_obsel(graph, obsel, bindings=None):
     trace_uri = obsel.trace.uri
     model_uri = obsel.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
-    otype = obsel.get_obsel_type()
-    if otype is not None:
-        otype_uri = otype.uri
-    else:
-        # may happen if the trace model is unavailable,
-        # then take any type -- and hope for the best...
-        otype_uri = obsel.state.value(obsel.uri, RDF.type)
+    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv_uri = valconv.uri
+    val2json = valconv.val2json
 
-    def compact(uri):
-        uri = str(uri)
-        if uri.startswith(model_uri):
-            ret = "m:%s" % uri[len(model_uri):]
-        elif uri.startswith(trace_uri):
-            ret = "./%s" % uri[len(trace_uri):]
-        elif uri.startswith(KTBS_NS_URI):
-            ret = uri[len(KTBS_NS_URI)+1:]
-        else:
-            ret = uri
-        return ret
 
-    def myval2json(node):
-        return val2json(node, compact)
+    otypes = [ valconv_uri(i)
+               for i in obsel.state.objects(obsel.uri, RDF.type) ]
+    if len(otypes) == 1:
+        otypes = otypes[0]
 
-    #   obsel.RDF_MAIN_TYPE[len(KTBS_NS_URI)+1:],
     yield u"""\n{\n
     "@context": [
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }
     ],
     "@id": "%s",
-    "@type": "%s", 
+    "@type": %s, 
     "hasTrace": "%s",
-    "subject": "%s",
     "begin": %s,
-    "beginDT": %s,
     "end": %s,
-    "endDT": %s
+    "subject": "%s"
     """ % (
         model_uri,
-        compact(obsel.uri),
-        compact(otype_uri),
-        compact(trace_uri),
-        obsel.get_subject(),
+        obsel.uri,
+        dumps(otypes),
+        valconv_uri(trace_uri),
         obsel.get_begin(),
-        myval2json(obsel.get_begin_dt()),
         obsel.get_end(),
-        myval2json(obsel.get_end_dt())
+        obsel.get_subject(),
         )
 
-    for i in iter_other_arcs(graph, obsel.uri, predfunc=compact, 
-                             objfunc=myval2json):
+    for i in iter_obsel_arcs(graph, obsel.uri, valconv, "            "):
+        yield i
+
+    for i in iter_other_arcs(graph, obsel.uri, valconv, obsel=True):
         yield i
 
     yield u"""\n}\n"""
