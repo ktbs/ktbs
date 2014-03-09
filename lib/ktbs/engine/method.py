@@ -53,8 +53,10 @@ class Method(MethodMixin, InBase):
         """
         super(Method, cls).create(service, uri, new_graph)
         parent_method_uri = new_graph.value(uri, KTBS.hasParentMethod)
-        parent = service.get(parent_method_uri)
-        if parent is not None: # it is not a built-in method
+        my_base = parent_uri(uri)
+        parent_base = parent_uri(parent_method_uri)
+        if my_base == parent_base: # parent is not a built-in method
+            parent = service.get(parent_method_uri)
             with parent.edit(_trust=True) as editable:
                 editable.add((uri, KTBS.hasParentMethod, parent_method_uri))
 

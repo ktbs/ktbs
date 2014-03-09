@@ -195,7 +195,7 @@ class _ObselImpl(ILocalResource):
         delta2unit = None
         origin = None
         begin_dt = lit2datetime(new_graph.value(uri, KTBS.hasBeginDT))
-        end_dt = lit2datetime(new_graph.value(uri, KTBS.hasBeginDT))
+        end_dt = lit2datetime(new_graph.value(uri, KTBS.hasEndDT))
         if begin_dt or end_dt:
             delta2unit = get_converter_to_unit(trace.unit)
             origin = lit2datetime(trace.origin)
