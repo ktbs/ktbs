@@ -18,7 +18,7 @@ It can optionally have the following properties:
 GET
 ---
 
-Return the conten of the graph.
+Return the content of the graph.
 
 PUT
 ---

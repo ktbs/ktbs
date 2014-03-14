@@ -6,7 +6,7 @@ This tutorial explains how to describe a trace model for kTBS.
 Preparation
 -----------
 
-First, you have to create a new base as described in the :ref:`REST tutorial<ktbs-rest-tutorial>`. We will assume that this base is named ``http://localhost:8001/base01/``.
+First, you have to create a new base as described in the :ref:`REST tutorial<ktbs-rest-turtle-tutorial>`. We will assume that this base is named ``http://localhost:8001/base01/``.
 
 
 Running example

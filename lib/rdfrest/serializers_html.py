@@ -386,8 +386,20 @@ def generate_ajax_client_js(graph, resource, bindings, ctypes):
         return req;
     }
 
+    function ctype_change(evt) {
+        var ctype = encodeURIComponent(evt.target.value);
+        document.cookie = "rdfrest.ctype=" + ctype + ";path=/";
+    }
+
+    function get_prefered_ctype() {
+        var ret = document.cookie.replace(/(?:(?:^|.*;\s*)rdfrest.ctype\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+        ret = decodeURIComponent(ret);
+        return ret || "text/turtle" ;
+    }
+
     document.getElementById("toggle").onclick = toggle_editor;
-    document.getElementById("ctype").value = "text/turtle";
+    document.getElementById("ctype").value = get_prefered_ctype();
+    document.getElementById("ctype").onchange = ctype_change;
     document.getElementById("button_get").onclick = editor_get;
     document.getElementById("button_put").onclick = editor_put;
     document.getElementById("button_post").onclick = editor_post;

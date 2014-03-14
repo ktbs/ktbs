@@ -1,9 +1,12 @@
-.. _ktbs-rest-tutorial:
+.. _ktbs-rest-turtle-tutorial:
 
 Using kTBS with REST and Turtle
 ===============================
 
-This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>` directly through the REST_ API with Turtle_ descriptions. If you are not familiar with Turtle or RDF_, you might prefer the :ref:`JSON <ktbs-rest-jsonld-tutorial>` version of that tutorial.
+This tutorial aims at showing how to create :ref:`kTBS elements <restful-api>`
+directly through the REST_ API with Turtle_ descriptions.
+If you are not familiar with Turtle or RDF_, you might prefer
+the :ref:`JSON <ktbs-rest-json-tutorial>` version of that tutorial.
 
 .. _REST: http://en.wikipedia.org/wiki/Representational_state_transfer
 .. _Turtle: http://www.w3.org/2007/02/turtle/primer/
@@ -41,7 +44,8 @@ The kTBS Root
 -------------
 
 The kTBS root is where all bases live.
-It is automatically created when the kTBS is first launched. Its URI is that of the kTBS server, in our case: http://localhost:8001/ .
+It is automatically created when the kTBS is first launched.
+Its URI is that of the kTBS server, in our case: http://localhost:8001/ .
 
 Create a new base
 -----------------
@@ -60,13 +64,13 @@ which should look as follows:
 .. code-block:: turtle
 
     @prefix : <http://liris.cnrs.fr/silex/2009/ktbs#> .
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
     <> :hasBase <base1/>.
 
     <base1/>
         a :Base ;
-        rdfs:label "My new base" .
+        skos:prefLabel "My new base" .
 
 
 then ensure that the content-type ``text/turtle`` is selected,
@@ -79,7 +83,7 @@ and displays a description of your base.
 .. note::
 
    All URIs in the example above
-   are relative to the URI of the resource to which we post it;
+   are relative to the URI of the resource *to which we post it*;
    for example:
 
    * ``<>`` is interpreted as ``<http://localhost:8001/>``,
@@ -361,4 +365,5 @@ and create a new computed trace by POSTing the following:
         :hasMethod :fusion ;
         :hasSource <filtered1/>, <joinRelated1/> .
 
-This creates a computed trace named ``fusioned1`` which is a merge of the ``filtered1`` and the ``joinRelated1`` traces.
+This creates a computed trace named ``fusioned1`` which is
+a merge of the ``filtered1`` and the ``joinRelated1`` traces.

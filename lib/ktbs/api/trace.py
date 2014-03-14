@@ -24,6 +24,7 @@ I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 from datetime import datetime
 from numbers import Integral, Real
 from rdflib import Graph, Literal, RDF, RDFS
+from rdflib.term import Node
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
 from rdfrest.interface import get_subclass, register_mixin
@@ -379,9 +380,12 @@ class StoredTraceMixin(AbstractTraceMixin):
         if attributes is not None:
             for key, val in attributes.items():
                 k_uri = coerce_to_uri(key)
-                v_lit = Literal(val)
-                # TODO LATER do something if val is a list
-                graph.add((obs, k_uri, v_lit))
+                if isinstance(val, Node):
+                    v_node = val
+                else:
+                    v_node = Literal(val)
+                    # TODO LATER do something if val is a list
+                graph.add((obs, k_uri, v_node))
 
         if relations is not None:
             for rtype, other in relations:

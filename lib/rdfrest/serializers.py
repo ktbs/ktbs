@@ -225,7 +225,15 @@ def serialize_html(graph, resource, bindings=None):
     """I serialize graph in a HTMLized simple turtle form.
     """
     ctypes = {}
-    rdf_types = list(graph.objects(resource.uri, RDF.type)) + [None]
+    #rdf_types = list(graph.objects(resource.uri, RDF.type)) + [None]
+    # Obsels may have another type than the RDF_MAIN_TYPE of the class
+    # and the serializer may be registered with this type
+    rdf_types = list(graph.objects(resource.uri, RDF.type))
+    main_type = getattr(resource, "RDF_MAIN_TYPE")
+    if main_type and main_type not in rdf_types:
+        rdf_types.append(main_type)
+    rdf_types.append(None)
+
     for typ in rdf_types:
         for _, ctype, ext in iter_serializers(typ):
             if ext is not None  and  ctype not in ctypes:

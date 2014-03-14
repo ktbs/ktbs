@@ -36,3 +36,17 @@ class TraceModel(TraceModelMixin, InBase):
     RDF_TYPED_PROP = [ (KTBS.hasParentModel, "uri"),
                        (KTBS.hasUnit,        "uri"),
                        ]
+    @classmethod
+    def complete_new_graph(cls, service, uri, parameters, new_graph,
+                           resource=None):
+        """I implement :meth:`ILocalResource.complete_new_graph`.
+
+        At create time, I add default values for missing information about the
+        trace model.
+        """
+        super(TraceModel, cls).complete_new_graph(service, uri, parameters,
+                                                  new_graph, resource)
+        if resource is None:
+            unit = new_graph.value(uri, KTBS.hasUnit)
+            if unit is None:
+                new_graph.add((uri, KTBS.hasUnit, KTBS.millisecond))
