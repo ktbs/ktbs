@@ -13,12 +13,14 @@ kTBS:
 Dependencies
 ============
 
-* rdflib 3.x (*Warning:* the appropriate 3.x version may not be
+* rdflib 4 (*Warning:* the appropriate version may not be
   available as a standard package in some linux distributions, see
   below for instructions on how to install it in this case.)
-* rdfextras
 * httplib2
-* webob (>=1.2, server part only)
+* webob
+* pyld (for JSON support)
+
+See ``requirements.txt`` for the required versions. 
 
 To build the documentation
 --------------------------
@@ -26,9 +28,8 @@ To build the documentation
 
 For developpers
 ---------------
-* pyld (for the jsonld plugin -- https://github.com/digitalbazaar/pyld/tree/master/lib )
-* nose (developers)
-* pylint (developers)
+* nose (for testing)
+* pylint (for checking code quality)
 
 Install
 =======
