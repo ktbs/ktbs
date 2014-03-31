@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 from ast import literal_eval
 
-def get_version(source='lib/__init__.py'):
+def get_version(source='lib/ktbs/__init__.py'):
     with open(source) as f:
         for line in f:
             if line.startswith('__version__'):
@@ -34,7 +34,7 @@ setup(name = 'kTBS',
       include_package_data=True,
       requires=requirements,
       install_requires=install_req,
-      scripts=['bin/ktbs','bin/simple-collector'],
+      scripts=['bin/ktbs','bin/simple-collector','bin/ktbs-infos'],
 
       # py2exe
       console = ['bin/ktbs',],

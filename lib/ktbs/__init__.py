@@ -19,3 +19,4 @@
 KTBS: Kernel for Trace-Based Systems.
 """
 
+__version__ = "1.0.a1"
