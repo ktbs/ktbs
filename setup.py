@@ -1,53 +1,40 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-try:
-    from setuptools import setup
-except:
-    print "You may need to manually install the dependencies, "\
-          "e.g. by running 'pip install -r requirements.txt'" 
-    from distutils.core import setup
+from setuptools import setup, find_packages
 
-from os.path import dirname, join
-from sys import argv, platform
-from warnings import filterwarnings
+from ast import literal_eval
 
-try:
-    import py2exe
-except ImportError:
-    pass
+def get_version(source='lib/__init__.py'):
+    with open(source) as f:
+        for line in f:
+            if line.startswith('__version__'):
+                return literal_eval(line.partition('=')[2].lstrip())
+    raise ValueError("VERSION not found")
 
-__version__ = "0.2"
+with open('README.rst', 'r') as f:
+    README = f.read()
 
-readme_rst = join(dirname(argv[0]), "README.rst")
-long_description = open(readme_rst).read()
+with open('requirements.txt', 'r') as f:
+    install_req = [ i[:-1] for i in f if i[0] != "#" ]
+    # Not robust if we use something different from '==' for requirements
+    requirements = [ "%s (==%s)" % tuple(i.split("==")) for i in install_req ]
 
-requirements_txt = join(dirname(argv[0]), "requirements.txt")
-install_req = [ i[:-1] for i in open(requirements_txt) if i[0] != "#" ]
-requirements = [ "%s (==%s)" % tuple(i.split("==")) for i in install_req ]
-
-filterwarnings('ignore', message=".*Unknown distribution option: 'install_requires'.*")
-
-setup(name='kTBS',
-      version = __version__,
-      description='A kernel for trace-based systems',
-      long_description=long_description,
+setup(name = 'kTBS',
+      version = get_version(),
+      package_dir = {'': 'lib'},
+      packages = find_packages(where='lib'),
+      description = 'A kernel for trace-based systems',
+      long_description = README,
       author='Pierre-Antoine Champin, Françoise Conil',
       author_email='sbt-dev@liris.cnrs.fr',
       license='LGPL v3',
       platforms='OS Independant',
       url='http://github.com/ktbs/ktbs',
-      package_dir = {'': 'lib'},
-      packages=['rdfrest', 
-                'ktbs', 
-                'ktbs.api', 
-                'ktbs.engine', 
-                'ktbs.methods', 
-                'ktbs.plugins'],
-      scripts=['bin/ktbs','bin/simple-collector'],
-      data_files = ['README.rst', 'requirements.txt',],
+      include_package_data=True,
       requires=requirements,
       install_requires=install_req,
+      scripts=['bin/ktbs','bin/simple-collector'],
 
       # py2exe
       console = ['bin/ktbs',],
