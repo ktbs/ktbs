@@ -19,10 +19,32 @@
 I provide the implementation of ktbs:Base .
 """
 from rdflib import RDF
+from contextlib import contextmanager
+import posix_ipc
 
 from .resource import KtbsPostableMixin, KtbsResource
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
+
+
+@contextmanager
+def get_lock(base_name, timeout=30):
+    """Acquire a token from a semaphore for working on a base.
+
+    :param base_name: name of the base, can be an URIRef.
+    :param timeout: maximum time to wait on acquire() until a BusyError is raised.
+    :type timeout: int or float
+    """
+    sem_name = str('/' + base_name.replace('/', '-'))
+    # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist
+    base_semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+    base_semaphore.acquire(timeout)  # TODO remove the default timeout? NOTE that OS X doesn't support timeout
+    try:  # catch exceptions
+        yield
+    finally:  # make sure we exit properly
+        base_semaphore.release()
+        # TODO close() the semaphore?
+
 
 class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
@@ -32,6 +54,12 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     RDF_MAIN_TYPE = KTBS.Base
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
+
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """
+        with get_lock(self.uri):
+            super(Base, self).delete(parameters, _trust)
 
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
@@ -83,6 +111,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
                          }
         """ % (KTBS, self.uri)
         return self._find_created_default(new_graph, query)
+
 
 class InBase(InBaseMixin, KtbsResource):
     """I provide common implementation of all elements contained in a base.
