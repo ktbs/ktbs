@@ -61,6 +61,21 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         with get_lock(self.uri):
             super(Base, self).delete(parameters, _trust)
 
+    @contextmanager
+    def edit(self, parameters=None, clear=False, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.edit`.
+        """
+        with get_lock(self.uri), super(Base, self).edit(parameters, clear, _trust) as editable:
+            yield editable
+
+    def post_graph(self, graph, parameters=None,
+                   _trust=False, _created=None, _rdf_type=None):
+        """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
+        """
+        with get_lock(self.uri):
+            return super(Base, self).post_graph(graph, parameters,
+                                                _trust, _created, _rdf_type)
+
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
         """
