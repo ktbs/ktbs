@@ -144,3 +144,17 @@ class InBase(InBaseMixin, KtbsResource):
             editable.remove((base.uri, KTBS.contains, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
 
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """
+        base_uri = self.get_base().get_uri()
+        with get_lock(base_uri):
+            super(InBase, self).delete(parameters, _trust)
+
+    @contextmanager
+    def edit(self, parameters=None, clear=False, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.edit`.
+        """
+        base_uri = self.get_base().get_uri()
+        with get_lock(base_uri), super(InBase, self).edit(parameters, clear, _trust) as editable:
+            yield editable
