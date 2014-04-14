@@ -67,8 +67,17 @@ def get_git_infos(path=None):
     print "--------------------------------------------------------------------------------"
     try:
         repo = git.Repo(path)
-        print "git branch: ", repo.active_branch.name
-        print "commit: ", repo.active_branch.commit.hexsha
+        if git.__version__ > '0.1.7':
+            print "git branch: ", repo.active_branch.name
+            print "commit: ", repo.active_branch.commit.hexsha
+        else:
+            print "git branch: ", repo.active_branch
+            lcommits = repo.commits(start=repo.active_branch, max_count=1)
+            if len(lcommits) > 0:
+                print "commit: ", lcommits[0].id
+            else:
+                print "No commit information"
+
         # remote ?
     except git.InvalidGitRepositoryError:
         # This is not a git repository
