@@ -79,6 +79,13 @@ KTBS_NS_TTL = """
         rdfs:range :BuiltinMethod ;
     .
 
+    :hasVersion
+        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        rdfs:label "has version"@en, "a pour numéro de version"@fr;
+        rdfs:domain :KtbsRoot ;
+    .
+
+
 :Base
     a owl:Class ;
     rdfs:label "Trace base"@en, "Base de trace"@fr;

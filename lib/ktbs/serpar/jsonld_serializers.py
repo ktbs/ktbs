@@ -202,11 +202,17 @@ def serialize_json_root(graph, root, bindings=None):
     valconv = ValueConverter(root.uri)
     valconv_uri = valconv.uri
 
+    try:
+        ktbs_version = graph.objects(root.uri, KTBS.hasVersion).next()
+    except StopIteration:
+        ktbs_version = "Unknwown"
+
     yield u"""\n{\n
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "KtbsRoot",
-    """ % root.uri
+    "version": "%s",
+    """ % (root.uri, ktbs_version)
 
     yield """
     "hasBuiltinMethod" : %s

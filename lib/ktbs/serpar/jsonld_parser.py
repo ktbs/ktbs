@@ -173,6 +173,7 @@ CONTEXT_JSON = """{"@context":{
     "begin": { "@id": "k:hasBegin", "@type": "xsd:integer" },
     "beginDT": { "@id": "k:hasBeginDT", "@type": "xsd:dateTime" },
     "hasBuiltinMethod": { "@id": "k:hasBuiltinMethod", "@type": "@vocab" },
+    "version": "k:hasVersion",
     "defaultSubject": "k:hasDefaultSubject",
     "end": { "@id": "k:hasEnd", "@type": "xsd:integer" },
     "endDT": { "@id": "k:hasEndDT", "@type": "xsd:dateTime" },
