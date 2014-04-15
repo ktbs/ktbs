@@ -36,6 +36,7 @@ from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
 from ..serpar import *
 from .. import __version__ as ktbs_version
+from .. import __commitno__ as ktbs_commit
 
 # make ktbs:/ URIs use relative, query, fragments
 urlparse.uses_fragment.append("ktbs")
@@ -112,7 +113,9 @@ class KtbsService(Service):
             if not get_builtin_method_impl(uri):
                 raise Exception("No implementation for built-in method <%s>"
                                 % uri)
-        graph.set((self.root_uri, KTBS.hasVersion, Literal(ktbs_version)))
+        graph.set((self.root_uri, KTBS.hasVersion, Literal("%s:%s" % 
+                                                               (ktbs_version,
+                                                                ktbs_commit))))
 
     def get(self, uri, _rdf_type=None, _no_spawn=False):
         """I override :meth:`rdfrest.local.Service.get`
