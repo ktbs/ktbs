@@ -52,6 +52,13 @@ class TestKtbsInBaseLocking(KtbsTraceTestCase):
     """Test InBase locking in a kTBS context."""
 
     def test_delete_trace(self):
-        with assert_raises(posix_ipc.BusyError):
-            with self.base.lock(timeout=5):
+        sem_name = str('/' + self.base.get_uri().replace('/', '-'))
+        sem = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+        sem.acquire()
+        try:
+            assert sem.value == 0
+            with assert_raises(posix_ipc.BusyError):
                 self.trace.delete()
+        finally:
+            sem.release()
+            sem.close()
