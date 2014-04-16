@@ -27,25 +27,6 @@ from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
 
 
-@contextmanager
-def get_lock(base_name, timeout=30):
-    """Acquire a token from a semaphore for working on a base.
-
-    :param base_name: name of the base, can be an URIRef.
-    :param timeout: maximum time to wait on acquire() until a BusyError is raised.
-    :type timeout: int or float
-    """
-    sem_name = str('/' + base_name.replace('/', '-'))
-    # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist
-    base_semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
-    base_semaphore.acquire(timeout)  # TODO remove the default timeout? NOTE that OS X doesn't support timeout
-    try:  # catch exceptions
-        yield
-    finally:  # make sure we exit properly
-        base_semaphore.release()
-        # TODO close() the semaphore?
-
-
 class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
@@ -55,24 +36,46 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
 
+    def __init__(self, service, uri):
+        super(Base, self).__init__(service, uri)
+        self.semaphore = None
+
+    @contextmanager
+    def lock(self, timeout=30):
+        """Lock the current base with a semaphore.
+
+        :param timeout: maximum time to wait on acquire() until a BusyError is raised.
+        :type timeout: int or float
+        """
+        sem_name = str('/' + self.uri.replace('/', '-'))
+        # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist
+        self.semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+        # TODO Catch BusyError if sem.value == 0
+        self.semaphore.acquire(timeout)
+        try:  # catch exceptions
+            yield
+        finally:  # make sure we exit properly
+            self.semaphore.release()
+            self.semaphore.close()
+
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
         """
-        with get_lock(self.uri):
+        with self.lock():
             super(Base, self).delete(parameters, _trust)
 
     @contextmanager
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.edit`.
         """
-        with get_lock(self.uri), super(Base, self).edit(parameters, clear, _trust) as editable:
+        with self.lock(), super(Base, self).edit(parameters, clear, _trust) as editable:
             yield editable
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
         """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
         """
-        with get_lock(self.uri):
+        with self.lock():
             return super(Base, self).post_graph(graph, parameters,
                                                 _trust, _created, _rdf_type)
 
@@ -147,14 +150,14 @@ class InBase(InBaseMixin, KtbsResource):
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
         """
-        base_uri = self.get_base().get_uri()
-        with get_lock(base_uri):
+        base = self.get_base()
+        with base.lock():
             super(InBase, self).delete(parameters, _trust)
 
     @contextmanager
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.edit`.
         """
-        base_uri = self.get_base().get_uri()
-        with get_lock(base_uri), super(InBase, self).edit(parameters, clear, _trust) as editable:
+        base = self.get_base()
+        with base.lock(), super(InBase, self).edit(parameters, clear, _trust) as editable:
             yield editable

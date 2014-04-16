@@ -1,31 +1,7 @@
 from test_ktbs_engine import KtbsTestCase
 from ktbs.engine.base import Base
-from ktbs.engine.base import get_lock
 from nose.tools import assert_raises
 import posix_ipc
-
-
-class TestLocking(object):
-    """Test locking without being in a kTBS context."""
-
-    def test_concurrence(self):
-        """Test locking implementation.
-
-        A semaphore is opened with an initial value of 1 and acquired immediately,
-        leading the number of semaphore value to 0.
-        Then, we test get_lock() by expecting it to fail to acquire the same semaphore.
-        """
-        semaphore = posix_ipc.Semaphore(name='/pseudo_base', flags=posix_ipc.O_CREAT, initial_value=1)
-        assert semaphore.value == 1
-        semaphore.acquire()
-
-        pseudo_base_name = 'pseudo_base'
-        with assert_raises(posix_ipc.BusyError):
-            with get_lock(pseudo_base_name, timeout=1):
-                pass
-
-        semaphore.release()
-        semaphore.close()
 
 
 class TestKtbsBaseLocking(KtbsTestCase):
@@ -77,5 +53,5 @@ class TestKtbsInBaseLocking(KtbsTraceTestCase):
 
     def test_delete_trace(self):
         with assert_raises(posix_ipc.BusyError):
-            with get_lock(self.base.get_uri(), timeout=5):
+            with self.base.lock(timeout=5):
                 self.trace.delete()
