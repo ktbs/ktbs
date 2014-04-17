@@ -107,15 +107,17 @@ class KtbsService(Service):
 
         Service.__init__(self, root_uri, store, classes, init_with)
 
+        root = self.get(URIRef(root_uri))
         # testing that all built-in methods are still supported
-        graph = Graph(self.store, self.root_uri)
-        for uri in graph.objects(self.root_uri, KTBS.hasBuiltinMethod):
+        for uri in root.state.objects(self.root_uri, KTBS.hasBuiltinMethod):
             if not get_builtin_method_impl(uri):
                 raise Exception("No implementation for built-in method <%s>"
                                 % uri)
-        graph.set((self.root_uri, KTBS.hasVersion, Literal("%s:%s" % 
-                                                               (ktbs_version,
-                                                                ktbs_commit))))
+        # updating version number
+        with root.edit(_trust=True) as graph:
+            graph.set((self.root_uri,
+                       KTBS.hasVersion,
+                       Literal("%s:%s" % (ktbs_version, ktbs_commit))))
 
     def get(self, uri, _rdf_type=None, _no_spawn=False):
         """I override :meth:`rdfrest.local.Service.get`
