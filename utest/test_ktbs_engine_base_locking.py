@@ -1,6 +1,11 @@
+from ktbs.namespace import KTBS
 from test_ktbs_engine import KtbsTestCase
 from ktbs.engine.base import Base
 from nose.tools import assert_raises
+
+from rdflib.graph import Graph
+from rdflib import URIRef, RDF, BNode, Literal
+
 import posix_ipc
 
 
@@ -62,3 +67,42 @@ class TestKtbsInBaseLocking(KtbsTraceTestCase):
         finally:
             sem.release()
             sem.close()
+
+    def test_post_graph(self):
+        model = self.base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        otype3 = model.create_obsel_type("#MyObsel3")
+        otypeN = model.create_obsel_type("#MyObselN")
+        self.trace = self.base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        # purposefully mix obsel order,
+        # to check whether batch post is enforcing the monotonic order
+        graph = Graph()
+        obsN = BNode()
+        graph.add((obsN, KTBS.hasTrace, self.trace.uri))
+        graph.add((obsN, RDF.type, otypeN.uri))
+        obs1 = BNode()
+        graph.add((obs1, KTBS.hasTrace, self.trace.uri))
+        graph.add((obs1, RDF.type, otype1.uri))
+        graph.add((obs1, KTBS.hasBegin, Literal(1)))
+        graph.add((obs1, RDF.value, Literal("obs1")))
+        obs3 = BNode()
+        graph.add((obs3, KTBS.hasTrace, self.trace.uri))
+        graph.add((obs3, RDF.type, otype3.uri))
+        graph.add((obs3, KTBS.hasBegin, Literal(3)))
+        graph.add((obs3, KTBS.hasSubject, Literal("bob")))
+        obs2 = BNode()
+        graph.add((obs2, KTBS.hasTrace, self.trace.uri))
+        graph.add((obs2, RDF.type, otype2.uri))
+        graph.add((obs2, KTBS.hasBegin, Literal(2)))
+        graph.add((obs2, KTBS.hasEnd, Literal(3)))
+        graph.add((obs2, RDF.value, Literal("obs2")))
+        obs0 = BNode()
+        graph.add((obs0, KTBS.hasTrace, self.trace.uri))
+        graph.add((obs0, RDF.type, otype0.uri))
+        graph.add((obs0, KTBS.hasBegin, Literal(0)))
+
+        old_tag = self.trace.obsel_collection.str_mon_tag
+        created = self.trace.post_graph(graph)

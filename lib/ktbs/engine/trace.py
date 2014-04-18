@@ -273,17 +273,19 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 
         I allow for multiple obsels to be posted at the same time.
         """
+        base = self.get_base()
         post_single_obsel = super(StoredTrace, self).post_graph
         binding = { "trace": self.uri }
         ret = []
         candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
                                  initBindings=binding)
-        for candidate, _, _ in candidates:
-            ret1 = post_single_obsel(graph, parameters, _trust, candidate,
-                                     KTBS.Obsel)
-            if ret1:
-                assert len(ret1) == 1
-                ret.append(ret1[0])
+        with base.lock():
+            for candidate, _, _ in candidates:
+                ret1 = post_single_obsel(graph, parameters, _trust, candidate,
+                                         KTBS.Obsel)
+                if ret1:
+                    assert len(ret1) == 1
+                    ret.append(ret1[0])
         if not ret:
             raise InvalidDataError("No obsel found in posted graph")
         return ret
