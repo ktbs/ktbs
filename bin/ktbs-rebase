@@ -7,7 +7,7 @@ http://rdflib.readthedocs.org/en/latest/persistence.html
 import os
 
 from rdflib import Graph
-from rdflib.graph import Dataset
+from rdflib.graph import ConjunctiveGraph, URIRef, Literal
 from rdflib.store import VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
 
 from argparse import ArgumentParser
@@ -25,11 +25,11 @@ def parse_options():
     """
     parser = ArgumentParser(description="Creates a new database with a kTBS base URI modified.")
     parser.add_argument("currentdb", nargs=1,
-                        help="Enter the full path of the current database \
-                              (path and database name)")
+                        help="Enter the full path of the current database "
+                             "(path and database name)")
     parser.add_argument("newdb", nargs=1,
-                        help="Enter the full path of the new database \
-                              (path and database name)")
+                        help="Enter the full path of the new database "
+                             "(path and database name)")
     parser.add_argument("oldURI", nargs=1,
                         help="Enter the old kTBS base URI (the one you want to change)")
     parser.add_argument("newURI", nargs=1,
@@ -53,12 +53,12 @@ def check_arguments(options=None):
     :param options: The Namespace object returned by parse_arg.
     """
     if not os.path.isdir(options.currentdb[0]):
-        LOG.info("%s is not a valid original database path" % options.currentdb[0])
+        LOG.info("%s is not a valid original database path." % options.currentdb[0])
         return False
 
     if not os.path.exists(options.newdb[0]):
         if not os.path.isdir(os.path.dirname(options.newdb[0])):
-            LOG.info("%s is not a valid destination database path" % options.newdb[0])
+            LOG.info("%s is not a valid destination database path." % options.newdb[0])
             return False
 
     # TODO : Add a control on valid URI ?
@@ -82,25 +82,103 @@ def show_graph(gpath=None, gid=None):
     graph = Graph(store=STORE_TYPE, identifier=gid)
 
     # first time create the store:
-    etat = graph.open(gpath, create=False)
+    gstate = graph.open(gpath, create=False)
 
-    if etat == VALID_STORE:
-        print "Le store Sleepycat {sp} est valide".format(sp=gpath)
+    if gstate == VALID_STORE:
+        print "The Sleepycat store {sp} is valid.".format(sp=gpath)
 
-        print "Nb éléments du graphe : ", len(graph)
+        print "{sp} graph contains {nb:d} items.".format(sp=gpath, nb=len(graph))
+
         for subj, pred, obj in graph:
             print subj, pred, obj
 
     graph.close()
 
-def show_all_graphs():
+def show_all_graphs(gpath=None):
     """
     http://rdflib.readthedocs.org/en/latest/apidocs/rdflib.html#rdflib.graph.Dataset
     """
-    graph = Graph(store=STORE_TYPE, identifier=gid)
+    all_graphs = ConjunctiveGraph(store=STORE_TYPE)
+
+    gstate = all_graphs.open(gpath, create=False)
+
+    if gstate == VALID_STORE:
+        print "The Sleepycat store {sp} is valid.".format(sp=gpath)
+        print "{sp} graph contains {nb:d} items.".format(sp=gpath, nb=len(all_graphs))
+
+        #for c in all_graphs.contexts():
+        #    print "--- {ctx}".format(ctx=c)
+
+        for subj, pred, obj, ctx in all_graphs.quads():
+            print u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
+                                    pred=pred, obj=obj, ctxid=ctx.identifier)
+
+    all_graphs.close()
+
+def build_new_database(options=None):
+    """Build the new database given the user parameters.
+    :param options: The Namespace object returned by parse_arg.
+    """
+    old_uri = options.oldURI[0]
+
+    old_db = ConjunctiveGraph(store=STORE_TYPE)
+    ogs = old_db.open(options.currentdb[0], create=False)
+
+    new_uri = options.newURI[0]
+
+    #new_db = Graph(store=STORE_TYPE, identifier=new_uri)
+    #ngs = new_db.open(options.newdb[0], create=True)
+    #new_db.close()
+
+    new_db = ConjunctiveGraph(store=STORE_TYPE)
+    ngs = new_db.open(options.newdb[0], create=True)
+
+    if (ogs == VALID_STORE) and (ngs == VALID_STORE):
+        print ("The Sleepycat current store '{osp}' and '{nsp}' new store "
+               "are valid.".format(osp=options.currentdb[0],
+                                   nsp=options.newdb[0]))
+
+        print ("Changing '{olduri}' for '{newuri}'".format(olduri=old_uri,
+                                                           newuri=new_uri))
+
+        for subj, pred, obj, ctx in old_db.quads():
+            # Should we convert everything to lowercase ?
+            if subj.find(old_uri) != -1:
+                nsubj = URIRef(subj.replace(old_uri, new_uri))
+            else:
+                nsubj = subj
+
+            if pred.find(old_uri) != -1:
+                npred = URIRef(pred.replace(old_uri, new_uri))
+            else:
+                npred = pred
+
+            if isinstance(obj, URIRef) and obj.find(old_uri) != -1:
+                nobj = URIRef(obj.replace(old_uri, new_uri))
+            else:
+                nobj = obj
+
+            if isinstance(obj, Literal) and \
+               obj.lower().startswith("sparql") and obj.find(old_uri) != -1:
+                LOG.warning("The '{obj:s}' literal contains the old URI '{olduri} !".format(obj=obj, olduri=old_uri))
+
+            if ctx.identifier.find(old_uri) != -1:
+                ctxid = ctx.identifier.replace(old_uri, new_uri)
+            else:
+                ctxid = ctx.identifier
+
+            print u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
+                                    pred=npred, obj=nobj, ctxid=ctxid)
+
+            new_db.addN([(nsubj, npred, nobj, ctxid),])
+
+    new_db.close()
+    old_db.close()
 
 if __name__ == '__main__':
     logging.basicConfig()
     args = parse_options()
     if check_arguments(args):
-        show_graph(args.currentdb[0], gid=args.oldURI[0])
+        #show_graph(args.currentdb[0], gid=args.oldURI[0])
+        #show_all_graphs(args.currentdb[0])
+        build_new_database(args)
