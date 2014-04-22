@@ -4,7 +4,8 @@
 """
 http://rdflib.readthedocs.org/en/latest/persistence.html
 """
-import os
+from os.path import abspath, dirname, join, isdir, exists
+from sys import path
 
 from rdflib import Graph
 from rdflib.graph import ConjunctiveGraph, URIRef, Literal
@@ -14,8 +15,17 @@ from argparse import ArgumentParser
 
 import logging
 
-STORE_TYPE = 'Sleepycat'
+from ktbs.namespace import KTBS
 
+try:
+    SOURCE_DIR = dirname(dirname(abspath(__file__)))
+    LIB_DIR = join(SOURCE_DIR, "lib")
+    path.append(LIB_DIR)
+except NameError:
+    # __file__ is not define in py2exe
+    pass
+
+STORE_TYPE = 'Sleepycat'
 LOG = logging.getLogger("ktbs-rebase")
 
 def parse_options():
@@ -41,7 +51,7 @@ def parse_options():
     options = parser.parse_args()
 
     if options.verbose:
-        LOG.setLevel(logging.DEBUG)
+        LOG.setLevel(logging.INFO)
 
     # In case of parsing errors, the program execution is stopped
     LOG.info("Parsed with argparse: %s" % str(options))
@@ -52,16 +62,16 @@ def check_arguments(options=None):
     """Check that we have valid parameters.
     :param options: The Namespace object returned by parse_arg.
     """
-    if not os.path.isdir(options.currentdb[0]):
-        LOG.info("%s is not a valid original database path." % options.currentdb[0])
+    if not isdir(options.currentdb[0]):
+        LOG.info(u'{0:s} is not a valid original database path.'.format(options.currentdb[0]))
         return False
 
-    if not os.path.exists(options.newdb[0]):
-        if not os.path.isdir(os.path.dirname(options.newdb[0])):
-            LOG.info("%s is not a valid destination database path." % options.newdb[0])
+    if not exists(options.newdb[0]):
+        if not isdir(dirname(options.newdb[0])):
+            LOG.info(u'{0:s} is not a valid destination database path.'.format(options.newdb[0]))
             return False
 
-    # TODO : Add a control on valid URI ?
+        # TODO : Add a control on valid URI ?
     # options.oldURI[0]
     # options.newURI[0]
 
@@ -85,12 +95,11 @@ def show_graph(gpath=None, gid=None):
     gstate = graph.open(gpath, create=False)
 
     if gstate == VALID_STORE:
-        print "The Sleepycat store {sp} is valid.".format(sp=gpath)
-
-        print "{sp} graph contains {nb:d} items.".format(sp=gpath, nb=len(graph))
+        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath, nb=len(graph)))
 
         for subj, pred, obj in graph:
-            print subj, pred, obj
+            LOG.info("{subj}, {pred}, {obj}".format(subj=subj, pred=pred, obj=obj))
 
     graph.close()
 
@@ -103,15 +112,13 @@ def show_all_graphs(gpath=None):
     gstate = all_graphs.open(gpath, create=False)
 
     if gstate == VALID_STORE:
-        print "The Sleepycat store {sp} is valid.".format(sp=gpath)
-        print "{sp} graph contains {nb:d} items.".format(sp=gpath, nb=len(all_graphs))
-
-        #for c in all_graphs.contexts():
-        #    print "--- {ctx}".format(ctx=c)
+        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath,
+                                                            nb=len(all_graphs)))
 
         for subj, pred, obj, ctx in all_graphs.quads():
-            print u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
-                                    pred=pred, obj=obj, ctxid=ctx.identifier)
+            LOG.info(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
+                                    pred=pred, obj=obj, ctxid=ctx.identifier))
 
     all_graphs.close()
 
@@ -126,29 +133,24 @@ def build_new_database(options=None):
 
     new_uri = options.newURI[0]
 
-    #new_db = Graph(store=STORE_TYPE, identifier=new_uri)
-    #ngs = new_db.open(options.newdb[0], create=True)
-    #new_db.close()
-
     new_db = ConjunctiveGraph(store=STORE_TYPE)
     ngs = new_db.open(options.newdb[0], create=True)
 
     if (ogs == VALID_STORE) and (ngs == VALID_STORE):
-        print ("The Sleepycat current store '{osp}' and '{nsp}' new store "
-               "are valid.".format(osp=options.currentdb[0],
-                                   nsp=options.newdb[0]))
+        LOG.info('The Sleepycat current store \'{osp}\' and \'{nsp}\' new store '
+                 'are valid.'.format(osp=options.currentdb[0],
+                                     nsp=options.newdb[0]))
 
-        print ("Changing '{olduri}' for '{newuri}'".format(olduri=old_uri,
-                                                           newuri=new_uri))
+        LOG.info("Changing '{olduri}' for '{newuri}'".format(olduri=old_uri,
+                                                             newuri=new_uri))
 
         for subj, pred, obj, ctx in old_db.quads():
-            # Should we convert everything to lowercase ?
-            if subj.find(old_uri) != -1:
+            if isinstance(subj, URIRef) and subj.find(old_uri) != -1:
                 nsubj = URIRef(subj.replace(old_uri, new_uri))
             else:
                 nsubj = subj
 
-            if pred.find(old_uri) != -1:
+            if isinstance(pred, URIRef) and pred.find(old_uri) != -1:
                 npred = URIRef(pred.replace(old_uri, new_uri))
             else:
                 npred = pred
@@ -158,17 +160,38 @@ def build_new_database(options=None):
             else:
                 nobj = obj
 
-            if isinstance(obj, Literal) and \
-               obj.lower().startswith("sparql") and obj.find(old_uri) != -1:
-                LOG.warning("The '{obj:s}' literal contains the old URI '{olduri} !".format(obj=obj, olduri=old_uri))
+            if isinstance(obj, Literal) and obj.find(old_uri) != -1:
+                if (pred == KTBS.hasParameter) and obj.startswith("sparql="):
+                    if obj.find('<' + old_uri):
+                        nobj = URIRef(obj.replace('<' + old_uri, '<' + new_uri))
+
+                        LOG.warning('The old uri \'{olduri}\' has been replaced '
+                                    'with new uri \'{newuri}\' in '
+                                    '{obj:s}'.format(olduri=old_uri,
+                                                     newuri=new_uri, obj=obj))
+                    else:
+                        LOG.warning('The \'{obj:s}\' literal contains the old URI '
+                                    '\'{olduri}\' but not enclosed in angle brackets '
+                                    '(\'<>\'). Thus it has not been changed and this '
+                                    'could cause some problems. '
+                                    'Please check this statement'.format(obj=obj,
+                                                                     olduri=old_uri))
+                else:
+                    LOG.warning('The \'{obj:s}\' literal contains the old URI '
+                                '\'{olduri}\' but not in a {ktbspred:s} predicate '
+                                'or a \'sparql=\' statement. Thus it has not been '
+                                'changed and this could cause some problems. '
+                                'Please check this statement'.format(obj=obj,
+                                                                     olduri=old_uri,
+                                                                     ktbspred=KTBS.hasParameter))
 
             if ctx.identifier.find(old_uri) != -1:
                 ctxid = ctx.identifier.replace(old_uri, new_uri)
             else:
                 ctxid = ctx.identifier
 
-            print u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
-                                    pred=npred, obj=nobj, ctxid=ctxid)
+            LOG.debug(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
+                                    pred=npred, obj=nobj, ctxid=ctxid))
 
             new_db.addN([(nsubj, npred, nobj, ctxid),])
 
