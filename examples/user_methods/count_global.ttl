@@ -3,8 +3,8 @@
 <> :contains <count_global> .
 
 <count_global> a :Method;
-    :hasParentMethod :sparql .
-    :hasParameter "origin=http://liris.cnrs.fr/silex/2013/stat#",
+    :hasParentMethod :sparql ;
+    :hasParameter "model=http://liris.cnrs.fr/silex/2013/stat#",
         """sparql=
 PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
 PREFIX m: <http://liris.cnrs.fr/silex/2013/stat#>
