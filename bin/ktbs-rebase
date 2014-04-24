@@ -15,8 +15,6 @@ from argparse import ArgumentParser
 
 import logging
 
-from ktbs.namespace import KTBS
-
 try:
     SOURCE_DIR = dirname(dirname(abspath(__file__)))
     LIB_DIR = join(SOURCE_DIR, "lib")
@@ -24,6 +22,8 @@ try:
 except NameError:
     # __file__ is not define in py2exe
     pass
+
+from ktbs.namespace import KTBS
 
 STORE_TYPE = 'Sleepycat'
 LOG = logging.getLogger("ktbs-rebase")
@@ -186,7 +186,7 @@ def build_new_database(options=None):
                                 'statement\n'.format(obj=obj, olduri=old_uri))
 
             if ctx.identifier.find(old_uri) != -1:
-                ctxid = ctx.identifier.replace(old_uri, new_uri)
+                ctxid = URIRef(ctx.identifier.replace(old_uri, new_uri))
             else:
                 ctxid = ctx.identifier
 
