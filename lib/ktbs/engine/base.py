@@ -58,25 +58,28 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         # or the current thread wants to access the base and it is not locked yet.
         else:
             sem_name = str('/' + self.uri.replace('/', '-'))
-            # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist
-            self.semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+            # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist.
+            # We create an object independent from self, because self can become a _DeletedResource
+            # and lose its attributes.
+            semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+            self.semaphore = semaphore
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
-                self.semaphore.acquire(timeout)
+                semaphore.acquire(timeout)
                 self.current_thread_id = current_thread().ident
 
                 try:  # catch exceptions occurring after the lock has been acquired
                     yield
                 finally:  # make sure we exit properly by releasing the lock
                     self.current_thread_id = None
-                    self.semaphore.release()
-                    self.semaphore.close()
+                    semaphore.release()
+                    semaphore.close()
 
             except posix_ipc.BusyError:
                 thread_id = current_thread().ident
-                error = 'The base <{base_uri}> is locked by thread {thread_id}.'.format(base_uri=self.uri,
-                                                                                        thread_id=thread_id)
-                raise posix_ipc.BusyError(error)
+                error_msg = 'The base <{base_uri}> is locked by thread {thread_id}.'.format(base_uri=self.uri,
+                                                                                            thread_id=thread_id)
+                raise posix_ipc.BusyError(error_msg)
 
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
