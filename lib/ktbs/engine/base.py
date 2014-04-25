@@ -42,6 +42,17 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         self.semaphore = None
         self.current_thread_id = None
 
+    def get_semaphore_name(self):
+        """Return the semaphore name, create it if it doesn't exist.
+
+        :return: this base semaphore name
+        :rtype: str
+        """
+        if self.semaphore is None:
+            return str('/' + self.uri.replace('/', '-'))
+        else:
+            return self.semaphore.name
+
     @contextmanager
     def lock(self, timeout=30):
         """Lock the current base with a semaphore.
@@ -57,11 +68,10 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         # Else, either another thread wants to access the base (and he will wait until the lock is released),
         # or the current thread wants to access the base and it is not locked yet.
         else:
-            sem_name = str('/' + self.uri.replace('/', '-'))
             # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist.
             # We create an object independent from self, because self can become a _DeletedResource
             # and lose its attributes.
-            semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+            semaphore = posix_ipc.Semaphore(name=self.get_semaphore_name(), flags=posix_ipc.O_CREAT, initial_value=1)
             self.semaphore = semaphore
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
