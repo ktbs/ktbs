@@ -21,7 +21,7 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
-from rdfrest.http_server import HttpFrontend
+from rdfrest.http_server import SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
@@ -64,7 +64,7 @@ def main():
         wsgifront_options["cache_control"] = (lambda x: None)
     if OPTIONS.cors_allow_origin:
         wsgifront_options["cors_allow_origin"] = OPTIONS.cors_allow_origin
-    application = HttpFrontend(ktbs_service, **wsgifront_options)
+    application = SparqlHttpFrontend(ktbs_service, **wsgifront_options)
     if OPTIONS.flash_allow:
         application = FlashAllower(application)
 

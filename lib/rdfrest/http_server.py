@@ -19,6 +19,7 @@
 I implement a WSGI-based HTTP server wrapping a given :class:`.local.Service`.
 """
 from datetime import datetime
+from pyparsing import ParseException
 from rdflib import URIRef
 from time import time
 from webob import Request, Response
@@ -165,6 +166,14 @@ class HttpFrontend(object):
             status = "400 Bad Request"
             response = MyResponse("%s - Parse error\n%s"
                                   % (status, ex.message),
+                                  status=status,
+                                  request=request)
+        except ParseException, ex:
+            status = "400 Bad Request"
+            message = "%s at line %s col %s\n\n%s" % \
+                      (ex.msg, ex.lineno, ex.column, ex.markInputline())
+            response = MyResponse("%s - Parse exception\n%s"
+                                  % (status, message),
                                   status=status,
                                   request=request)
         except SerializeError, ex:
@@ -412,6 +421,66 @@ class HttpFrontend(object):
             body = "%s\n%s" % (body, message)
         res = MyResponse(body, status, kw.items())
         return res
+
+class SparqlHttpFrontend(HttpFrontend):
+    """
+    I derive :class:`HttpFrontend` by adding support for the SPARQL protocol.
+    """
+
+    POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
+
+    def http_get(self, request, resource):
+        if request.GET.getall("query"):
+            return self.handle_sparql(request, resource)
+        else:
+            return super(SparqlHttpFrontend, self).http_get(request, resource)
+
+    def http_post(self, request, resource):
+        if request.content_type in self.POST_CTYPES:
+            return self.handle_sparql(request, resource)
+        else:
+            return super(SparqlHttpFrontend, self).http_post(request, resource)
+
+    def handle_sparql(self, request, resource):
+        """
+        I handle a SPARQL request
+        """
+        if request.method == "GET" \
+        or request.content_type == "application/sparql-query":
+            params = request.GET
+        else:
+            params = request.POST
+        default_graph_uri = params.getall("default-graph-uri")
+        named_graph_uri = params.getall("named-graph-uri")
+
+        if request.content_type != "application/sparql-query":
+            lst = params.getall("query")
+            if len(lst) == 0:
+                # NB: not rejecting several queries, because some services
+                # provide the same query several times (YASGUI)
+                return MyResponse("400 Bad Request\nQuery not provided",
+                                  status="400 Bad Request",
+                                  request=request)
+            query = lst[0]
+        else:
+            query = request.body
+
+        # TODO LATER do something with default_graph_uri and named_graph_uri ?
+
+        result = resource.get_state().query(query)
+        # TODO LATER use content negociation to decide on the output format
+        if result.graph is not None:
+            serfmt = "xml"
+            ctype = "application/rdf+xml"
+        else:
+            serfmt = "json"
+            ctype = "application/sparql-results+json"
+        return MyResponse(result.serialize(format=serfmt),
+                          status="200 Ok",
+                          content_type=ctype,
+                          request=request)
+
+
 
 def taint_etag(etag, ctype):
     """I taint etag with the given content-type.

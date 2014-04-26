@@ -23,7 +23,7 @@ from rdflib import URIRef
 
 from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
-from rdfrest.http_server import HttpFrontend
+from rdfrest.http_server import HttpFrontend, SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
 
 prefix_bindings = get_prefix_bindings()
@@ -34,5 +34,7 @@ for prefix in ["", "k", "ktbs", "ktbsns"]:
 
 ktbs_service = make_ktbs(URIRef(ROOT_URI), RDF_STORE).service
 atexit.register(lambda: ktbs_service.store.close())
-application = HttpFrontend(ktbs_service, **OPTIONS)
+application = SparqlHttpFrontend(ktbs_service, **OPTIONS)
+# or, if you don't want SPARQL support:
+# application = HttpFrontend(ktbs_service, **OPTIONS)
 
