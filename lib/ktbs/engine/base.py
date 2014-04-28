@@ -28,6 +28,9 @@ from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
 
 
+LOCK_DEFAULT_TIMEOUT = 60  # how many seconds to wait for acquiring a lock on the base
+
+
 class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
@@ -64,12 +67,16 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         return str('/' + self.uri.replace('/', '-'))
 
     @contextmanager
-    def lock(self, timeout=30):
+    def lock(self, timeout=None):
         """Lock the current base with a semaphore.
 
         :param timeout: maximum time to wait on acquire() until a BusyError is raised.
         :type timeout: int or float
         """
+        # Set the timeout for acquiring the semaphore
+        if timeout is None:
+            timeout = LOCK_DEFAULT_TIMEOUT
+
         # If the current thread wants to access the base he is good to go.
         # This should only happen when the thread wants to lock the base further down the call stack.
         if self.current_thread_id == current_thread().ident:

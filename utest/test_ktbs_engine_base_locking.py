@@ -1,5 +1,6 @@
 from ktbs.namespace import KTBS
 from test_ktbs_engine import KtbsTestCase
+from ktbs.engine import base
 from ktbs.engine.base import Base
 from nose.tools import assert_raises
 
@@ -8,6 +9,10 @@ from rdflib import RDF, BNode, Literal
 from uuid import uuid4
 
 import posix_ipc
+
+
+# Set the lock timeout to 2 s in order to speed up the tests
+base.LOCK_DEFAULT_TIMEOUT = 2
 
 
 def get_random_uri():
