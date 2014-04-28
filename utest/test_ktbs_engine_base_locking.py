@@ -4,23 +4,51 @@ from ktbs.engine.base import Base
 from nose.tools import assert_raises
 
 from rdflib.graph import Graph
-from rdflib import URIRef, RDF, BNode, Literal
+from rdflib import RDF, BNode, Literal
+from uuid import uuid4
 
 import posix_ipc
+
+
+def get_random_uri():
+    return str(uuid4()) + '/'
 
 
 class TestKtbsBaseLocking(KtbsTestCase):
     """Test locking in the kTBS context."""
 
+    def test_lock_has_semaphore(self):
+        """Test if Base.lock() really acquires the semaphore."""
+        new_base = self.my_ktbs.create_base(get_random_uri())
+        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREX,
+                                        initial_value=1)
+        with new_base.lock(timeout=2):
+            assert new_base._get_semaphore().value == 0
+
+            with assert_raises(posix_ipc.BusyError):
+                semaphore.acquire(2)  # try to acquire the semaphore, fail if not available after 2 seconds
+
+    def test_lock_cant_get_semaphore(self):
+        """Make sure Base.lock() get stuck if the semaphore is already in use."""
+        new_base = self.my_ktbs.create_base(get_random_uri())
+        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREX,
+                                        initial_value=0)
+        assert semaphore.value == 0
+        with assert_raises(posix_ipc.BusyError):
+            with new_base.lock(timeout=2):
+                pass
+
     def test_concurrent_delete(self):
         """Tries to delete a base that is currently being locked."""
-        new_base = self.my_ktbs.create_base()
+        new_base = self.my_ktbs.create_base(get_random_uri())
 
         # Make a semaphore to lock the previously created base
-        sem_name = str('/' + new_base.uri.replace('/', '-'))
-        semaphore = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
-        assert semaphore.value == 1
-        semaphore.acquire()  # Bring the semaphore value to 0, blocking any other acquire() before any release()
+        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREX,
+                                        initial_value=0)
+        assert semaphore.value == 0
 
         # Tries to get a semaphore and delete a base,
         # it should block on the acquire() and raise a BusyError because a timeout is set.
@@ -33,9 +61,25 @@ class TestKtbsBaseLocking(KtbsTestCase):
         semaphore.release()
         semaphore.close()
 
+    def test_concurrent_edit(self):
+        new_base = self.my_ktbs.create_base(get_random_uri())
+
+        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREX,
+                                        initial_value=1)
+
+        new_model = new_base.create_model()
+        new_trace = new_base.create_stored_trace(None, new_model)
+
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            with new_base.edit() as editable:
+                pass
+
 
 class KtbsTraceTestCase(KtbsTestCase):
-
     base = None
     model = None
     trace = None
@@ -57,8 +101,7 @@ class TestKtbsInBaseLocking(KtbsTraceTestCase):
     """Test InBase locking in a kTBS context."""
 
     def test_delete_trace(self):
-        sem_name = str('/' + self.base.get_uri().replace('/', '-'))
-        sem = posix_ipc.Semaphore(name=sem_name, flags=posix_ipc.O_CREAT, initial_value=1)
+        sem = self.base._get_semaphore()
         sem.acquire()
         try:
             assert sem.value == 0
@@ -75,8 +118,7 @@ class TestKtbsInBaseLocking(KtbsTraceTestCase):
         otype2 = model.create_obsel_type("#MyObsel2")
         otype3 = model.create_obsel_type("#MyObsel3")
         otypeN = model.create_obsel_type("#MyObselN")
-        self.trace = self.base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
-                                         "alice")
+        self.trace = self.base.create_stored_trace(None, model, "1970-01-01T00:00:00Z", "alice")
         # purposefully mix obsel order,
         # to check whether batch post is enforcing the monotonic order
         graph = Graph()

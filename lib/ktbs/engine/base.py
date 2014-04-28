@@ -39,19 +39,29 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
     def __init__(self, service, uri):
         super(Base, self).__init__(service, uri)
-        self.semaphore = None
         self.current_thread_id = None
 
-    def get_semaphore_name(self):
-        """Return the semaphore name, create it if it doesn't exist.
+    def _get_semaphore(self):
+        """Return the semaphore for this Base.
 
-        :return: this base semaphore name
+        Opens the semaphore if it already exists (keeping its value to what it is),
+        or create it with an initial value of 1 if it doesn't exist.
+
+        :return: semaphore for this Base.
+        :rtype: posix_ipc.Semaphore
+        """
+        semaphore = posix_ipc.Semaphore(name=self._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        return semaphore
+
+    def _get_semaphore_name(self):
+        """Return this Base semaphore name.
+
+        :return: semaphore name
         :rtype: str
         """
-        if self.semaphore is None:
-            return str('/' + self.uri.replace('/', '-'))
-        else:
-            return self.semaphore.name
+        return str('/' + self.uri.replace('/', '-'))
 
     @contextmanager
     def lock(self, timeout=30):
@@ -68,11 +78,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         # Else, either another thread wants to access the base (and he will wait until the lock is released),
         # or the current thread wants to access the base and it is not locked yet.
         else:
-            # Opens the semaphore if it already exists, or create it with an initial value of 1 if it doesn't exist.
-            # We create an object independent from self, because self can become a _DeletedResource
-            # and lose its attributes.
-            semaphore = posix_ipc.Semaphore(name=self.get_semaphore_name(), flags=posix_ipc.O_CREAT, initial_value=1)
-            self.semaphore = semaphore
+            semaphore = self._get_semaphore()
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
                 semaphore.acquire(timeout)
@@ -120,7 +126,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         with root.edit(_trust=True) as editable:
             editable.remove((root.uri, KTBS.hasBase, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
-        self.semaphore.unlink()  # remove the semaphore from this Base as it no longer exists
+        self._get_semaphore().unlink()  # remove the semaphore from this Base as it no longer exists
 
     def ack_post(self, parameters, created, new_graph):
         """I override :meth:`rdfrest.util.GraphPostableMixin.ack_post`.
