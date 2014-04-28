@@ -1,12 +1,10 @@
 from ktbs.namespace import KTBS
 from test_ktbs_engine import KtbsTestCase
 from ktbs.engine import base
-from ktbs.engine.base import Base
 from nose.tools import assert_raises
 
 from rdflib.graph import Graph
 from rdflib import RDF, BNode, Literal
-from uuid import uuid4
 
 import posix_ipc
 
@@ -15,73 +13,117 @@ import posix_ipc
 base.LOCK_DEFAULT_TIMEOUT = 1
 
 
-def get_random_uri():
-    return str(uuid4()) + '/'
+class KtbsBaseTestCase(KtbsTestCase):
+
+    tmp_base = None
+
+    def setUp(self):
+        super(KtbsBaseTestCase, self).setUp()
+        self.tmp_base = self.my_ktbs.create_base()
+
+    def tearDown(self):
+        super(KtbsBaseTestCase, self).tearDown()
+        self.tmp_base.delete()
 
 
-class TestKtbsBaseLocking(KtbsTestCase):
+class TestKtbsBaseLocking(KtbsBaseTestCase):
     """Test locking in the kTBS context."""
 
     def test_lock_has_semaphore(self):
         """Test if Base.lock() really acquires the semaphore."""
-        new_base = self.my_ktbs.create_base(get_random_uri())
-        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREX,
+        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREAT,
                                         initial_value=1)
-        with new_base.lock(new_base):
-            assert new_base._get_semaphore().value == 0
+        with self.tmp_base.lock(self.tmp_base):
+            assert self.tmp_base._get_semaphore().value == 0
 
             with assert_raises(posix_ipc.BusyError):
-                semaphore.acquire(2)  # try to acquire the semaphore, fail if not available after 2 seconds
+                semaphore.acquire(base.LOCK_DEFAULT_TIMEOUT)
 
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""
-        new_base = self.my_ktbs.create_base(get_random_uri())
-        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREX,
+        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREAT,
                                         initial_value=0)
         assert semaphore.value == 0
         with assert_raises(posix_ipc.BusyError):
-            with new_base.lock(new_base):
+            with self.tmp_base.lock(self.tmp_base):
                 pass
+        semaphore.release()
 
-    def test_concurrent_delete(self):
+    def test_delete_locked_base(self):
         """Tries to delete a base that is currently being locked."""
-        new_base = self.my_ktbs.create_base(get_random_uri())
-
         # Make a semaphore to lock the previously created base
-        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREX,
+        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+                                        flags=posix_ipc.O_CREAT,
                                         initial_value=0)
         assert semaphore.value == 0
 
         # Tries to get a semaphore and delete a base,
         # it should block on the acquire() and raise a BusyError because a timeout is set.
-        # NOTE this takes several seconds (default timeout) to do.
         with assert_raises(posix_ipc.BusyError):
-            base = Base(self.service, new_base.uri)
-            base.delete()
+            self.tmp_base.delete()
 
         # Finally closing the semaphore we created for testing purpose.
         semaphore.release()
-        semaphore.close()
+        semaphore.unlink()
 
-    def test_concurrent_edit(self):
-        new_base = self.my_ktbs.create_base(get_random_uri())
+    def test_delete_successful(self):
+        """Test that a semaphore related to base no longer exists after the base has been deleted."""
+        new_base = self.my_ktbs.create_base('new_base/')
+        semaphore = new_base._get_semaphore()
 
-        semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
+        new_base.delete()
+
+        # This will raise a posix_ipc.ExistancialError if the semaphore already exists.
+        posix_ipc.Semaphore(name=semaphore.name, flags=posix_ipc.O_CREX)
+
+        semaphore.unlink()
+
+    def test_edit_locked_base(self):
+        """Test that an base.edit() fails if the base is already locked."""
+        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
                                         flags=posix_ipc.O_CREX,
-                                        initial_value=1)
-
-        new_model = new_base.create_model()
-        new_trace = new_base.create_stored_trace(None, new_model)
-
-        semaphore.acquire()
-        assert semaphore.value == 0
+                                        initial_value=0)
 
         with assert_raises(posix_ipc.BusyError):
-            with new_base.edit() as editable:
-                pass
+            self.tmp_base.label += '_test_change_label'
+
+        semaphore.release()
+        semaphore.unlink()
+
+    def test_edit_successful(self):
+        """Test that after a successful edit, the base semaphore exists and its value is 1."""
+        self.tmp_base.label += '_test_change_label'
+
+        with assert_raises(posix_ipc.ExistentialError):
+            posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+                                flags=posix_ipc.O_CREX)
+
+        assert self.tmp_base._get_semaphore().value == 1
+
+    def test_post_locked_base(self):
+        """Test that a base post fails if the base is already locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+
+        with assert_raises(posix_ipc.BusyError):
+            self.tmp_base.create_model()
+
+        semaphore.release()
+        semaphore.unlink()
+
+    def test_post_successful(self):
+        """Test that after a successful post, the base semaphore exists and its value is 1."""
+        model = self.tmp_base.create_model()
+
+        with assert_raises(posix_ipc.ExistentialError):
+            posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+                                flags=posix_ipc.O_CREX)
+
+        assert self.tmp_base._get_semaphore().value == 1
+
+        model.delete()
 
 
 class KtbsTraceTestCase(KtbsTestCase):
