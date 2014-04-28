@@ -279,7 +279,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         ret = []
         candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
                                  initBindings=binding)
-        with base.lock():
+        with base.lock(self):
             for candidate, _, _ in candidates:
                 ret1 = post_single_obsel(graph, parameters, _trust, candidate,
                                          KTBS.Obsel)

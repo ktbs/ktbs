@@ -26,6 +26,7 @@ import posix_ipc
 from .resource import KtbsPostableMixin, KtbsResource
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
+from rdfrest.local import _mark_as_deleted
 
 
 LOCK_DEFAULT_TIMEOUT = 60  # how many seconds to wait for acquiring a lock on the base
@@ -67,13 +68,22 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         return str('/' + self.uri.replace('/', '-'))
 
     @contextmanager
-    def lock(self, timeout=None):
+    def lock(self, resource, timeout=None):
         """Lock the current base with a semaphore.
 
+        :param resource: the resource that asks to lock the base.
         :param timeout: maximum time to wait on acquire() until a BusyError is raised.
         :type timeout: int or float
+        :raise TypeError: if `resource` no longer exists.
+        :raise posix_ipc.BusyError: if we fail to acquire the semaphore until timeout.
         """
-        # Set the timeout for acquiring the semaphore
+        # Make sure the resource still exists (it could have deleted by a concurrent process).
+        if not len(resource.state) > 0:
+            resource_label = resource.get_label()
+            _mark_as_deleted(resource)
+            raise TypeError('The resource <{label}> no longer exists.'.format(label=resource_label))
+
+        # Set the timeout for acquiring the semaphore.
         if timeout is None:
             timeout = LOCK_DEFAULT_TIMEOUT
 
@@ -107,21 +117,21 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
         """
-        with self.lock():
+        with self.lock(self):
             super(Base, self).delete(parameters, _trust)
 
     @contextmanager
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.edit`.
         """
-        with self.lock(), super(Base, self).edit(parameters, clear, _trust) as editable:
+        with self.lock(self), super(Base, self).edit(parameters, clear, _trust) as editable:
             yield editable
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
         """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
         """
-        with self.lock():
+        with self.lock(self):
             return super(Base, self).post_graph(graph, parameters,
                                                 _trust, _created, _rdf_type)
 
@@ -198,7 +208,7 @@ class InBase(InBaseMixin, KtbsResource):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
         """
         base = self.get_base()
-        with base.lock():
+        with base.lock(self):
             super(InBase, self).delete(parameters, _trust)
 
     @contextmanager
@@ -206,5 +216,5 @@ class InBase(InBaseMixin, KtbsResource):
         """I override :meth:`rdfrest.local.EditableResource.edit`.
         """
         base = self.get_base()
-        with base.lock(), super(InBase, self).edit(parameters, clear, _trust) as editable:
+        with base.lock(self), super(InBase, self).edit(parameters, clear, _trust) as editable:
             yield editable

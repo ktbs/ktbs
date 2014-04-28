@@ -11,8 +11,8 @@ from uuid import uuid4
 import posix_ipc
 
 
-# Set the lock timeout to 2 s in order to speed up the tests
-base.LOCK_DEFAULT_TIMEOUT = 2
+# Set the lock timeout to 1 s in order to speed up the tests
+base.LOCK_DEFAULT_TIMEOUT = 1
 
 
 def get_random_uri():
@@ -28,7 +28,7 @@ class TestKtbsBaseLocking(KtbsTestCase):
         semaphore = posix_ipc.Semaphore(name=new_base._get_semaphore_name(),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=1)
-        with new_base.lock(timeout=2):
+        with new_base.lock(new_base):
             assert new_base._get_semaphore().value == 0
 
             with assert_raises(posix_ipc.BusyError):
@@ -42,7 +42,7 @@ class TestKtbsBaseLocking(KtbsTestCase):
                                         initial_value=0)
         assert semaphore.value == 0
         with assert_raises(posix_ipc.BusyError):
-            with new_base.lock(timeout=2):
+            with new_base.lock(new_base):
                 pass
 
     def test_concurrent_delete(self):
