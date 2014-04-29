@@ -1,6 +1,8 @@
 from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
+
 from ktbs.engine import base
+from ktbs.namespace import KTBS
 
 import posix_ipc
 
@@ -179,8 +181,143 @@ class TestKtbsModelLocking(KtbsModelTestCase):
         semaphore.release()
 
     def test_delete_successful(self):
-        """Test that the semaphore has been released after a Model delete()"""
+        """Test that the semaphore has been released after a Model delete()."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
         new_model = self.tmp_base.create_model()
         new_model.delete()
 
+        assert semaphore.value == 1
+
+
+# Tests for METHOD
+
+class KtbsMethodTestCase(KtbsBaseTestCase):
+
+    method = None
+
+    def setUp(self):
+        super(KtbsMethodTestCase, self).setUp()
+        self.method = self.tmp_base.create_method(parent=KTBS.filter)
+
+    def tearDown(self):
+        self.method.delete()
+        super(KtbsMethodTestCase, self).tearDown()
+
+
+class TestKtbsMethodLocking(KtbsMethodTestCase):
+    def test_edit_locked_base(self):
+        """Test that we can't edit a method is the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.method.label += '_test_edit_label'
+
+        semaphore.release()
+
+    def test_edit_successful(self):
+        """Test that the semaphore is released after a successful edit."""
+        self.method.label += '_test_edit_label'
+
         assert self.tmp_base._get_semaphore().value == 1
+
+    def test_delete_locked_base(self):
+        """Test that a method can't be deleted if the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.method.delete()
+
+        semaphore.release()
+
+    def test_delete_successful(self):
+        """Test that the semaphore has been released after a successful Method delete."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
+        new_method = self.tmp_base.create_method(parent=KTBS.filter)
+        new_method.delete()
+
+        assert semaphore.value == 1
+
+
+# Tests Trace
+
+class KtbsTraceTestCase(KtbsModelTestCase):
+
+    trace = None
+
+    def setUp(self):
+        super(KtbsTraceTestCase, self).setUp()
+        self.trace = self.tmp_base.create_stored_trace(model=self.model)
+
+    def tearDown(self):
+        self.trace.delete()
+        super(KtbsTraceTestCase, self).tearDown()
+
+
+class TestKtbsTraceLocking(KtbsTraceTestCase):
+    def test_edit_locked_base(self):
+        """Test that we can't edit a Trace if the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.trace.label += '_test_edit_label'
+
+        semaphore.release()
+
+    def test_edit_successful(self):
+        """Test that the semaphore is released after a successful Trace edit."""
+        self.trace.label += '_test_edit_label'
+
+        assert self.tmp_base._get_semaphore().value == 1
+
+    def test_post_locked_base(self):
+        """Test that we can't post on a Trace if the base is locked."""
+        # Create a temporary obsel type so we can use create_obsel()
+        otype = self.model.create_obsel_type('#tmp_otype')
+
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.trace.create_obsel(type=otype, subject='tmp_subject', begin=0)
+
+        semaphore.release()
+
+    def test_post_successful(self):
+        """Test that the semaphore is released after a successful Trace post."""
+        # Create a temporary obsel type so we can use create_obsel()
+        otype = self.model.create_obsel_type('#tmp_otype')
+        self.trace.create_obsel(type=otype, subject='tmp_subject', begin=0)
+
+        assert self.tmp_base._get_semaphore().value == 1
+
+    def test_delete_locked_base(self):
+        """Test that we can't delete a Trace if the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.trace.delete()
+
+        semaphore.release()
+
+    def test_delete_successful(self):
+        """Test that the semaphore is released after a successful Trace delete."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
+        new_trace = self.tmp_base.create_stored_trace(model=self.model)
+        new_trace.delete()
+
+        assert semaphore.value == 1
