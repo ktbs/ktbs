@@ -162,12 +162,15 @@ class TestKtbsModelLocking(KtbsModelTestCase):
 
     def test_edit_successful(self):
         """Test that after an Model edit(), the semaphore has been released, i.e. its value is 1."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
         self.model.label += '_test_edit_label'
 
         # Here, unlike in TestKtbsBASELocking.test_edit_successful, we don't check for semaphore existency.
         # The semaphore has already been created during the setup, when create_model() was called.
 
-        assert self.tmp_base._get_semaphore().value == 1
+        assert semaphore.value == 1
 
     def test_delete_locked_base(self):
         """Test that a Model can't be deleted if the base is locked."""
@@ -220,9 +223,12 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
 
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful edit."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
         self.method.label += '_test_edit_label'
 
-        assert self.tmp_base._get_semaphore().value == 1
+        assert semaphore.value == 1
 
     def test_delete_locked_base(self):
         """Test that a method can't be deleted if the base is locked."""
@@ -275,9 +281,12 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful Trace edit."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
         self.trace.label += '_test_edit_label'
 
-        assert self.tmp_base._get_semaphore().value == 1
+        assert semaphore.value == 1
 
     def test_post_locked_base(self):
         """Test that we can't post on a Trace if the base is locked."""
@@ -295,11 +304,14 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
     def test_post_successful(self):
         """Test that the semaphore is released after a successful Trace post."""
+        semaphore = self.tmp_base._get_semaphore()
+        assert semaphore.value == 1
+
         # Create a temporary obsel type so we can use create_obsel()
         otype = self.model.create_obsel_type('#tmp_otype')
         self.trace.create_obsel(type=otype, subject='tmp_subject', begin=0)
 
-        assert self.tmp_base._get_semaphore().value == 1
+        assert semaphore.value == 1
 
     def test_delete_locked_base(self):
         """Test that we can't delete a Trace if the base is locked."""
