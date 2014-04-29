@@ -43,7 +43,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
     def __init__(self, service, uri):
         super(Base, self).__init__(service, uri)
-        self.current_thread_id = None
+        self.locking_thread_id = None
 
     def _get_semaphore(self):
         """Return the semaphore for this Base.
@@ -89,7 +89,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
         # If the current thread wants to access the base he is good to go.
         # This should only happen when the thread wants to lock the base further down the call stack.
-        if self.current_thread_id == current_thread().ident:
+        if self.locking_thread_id == current_thread().ident:
             yield
 
         # Else, either another thread wants to access the base (and he will wait until the lock is released),
@@ -99,17 +99,17 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
                 semaphore.acquire(timeout)
-                self.current_thread_id = current_thread().ident
+                self.locking_thread_id = current_thread().ident
 
                 try:  # catch exceptions occurring after the lock has been acquired
                     yield
                 finally:  # make sure we exit properly by releasing the lock
-                    self.current_thread_id = None
+                    self.locking_thread_id = None
                     semaphore.release()
                     semaphore.close()
 
             except posix_ipc.BusyError:
-                thread_id = current_thread().ident
+                thread_id = getattr(self, 'locking_thread_id', 'unknown')
                 error_msg = 'The base <{base_uri}> is locked by thread {thread_id}.'.format(base_uri=self.uri,
                                                                                             thread_id=thread_id)
                 raise posix_ipc.BusyError(error_msg)
