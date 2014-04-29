@@ -108,7 +108,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
                     semaphore.close()
 
             except posix_ipc.BusyError:
-                thread_id = getattr(self, 'locking_thread_id', 'unknown')
+                thread_id = self.locking_thread_id if self.locking_thread_id else 'Unknown'
                 error_msg = 'The base <{base_uri}> is locked by thread {thread_id}.'.format(base_uri=self.uri,
                                                                                             thread_id=thread_id)
                 raise posix_ipc.BusyError(error_msg)
