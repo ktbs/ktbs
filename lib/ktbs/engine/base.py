@@ -78,10 +78,9 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         :raise posix_ipc.BusyError: if we fail to acquire the semaphore until timeout.
         """
         # Make sure the resource still exists (it could have deleted by a concurrent process).
-        if not len(resource.state) > 0:
-            resource_label = resource.get_label()
+        if len(resource.state) == 0:
             _mark_as_deleted(resource)
-            raise TypeError('The resource <{label}> no longer exists.'.format(label=resource_label))
+            raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
 
         # Set the timeout for acquiring the semaphore.
         if timeout is None:
