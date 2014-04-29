@@ -1,10 +1,6 @@
-from ktbs.namespace import KTBS
 from test_ktbs_engine import KtbsTestCase
-from ktbs.engine import base
 from nose.tools import assert_raises
-
-from rdflib.graph import Graph
-from rdflib import RDF, BNode, Literal
+from ktbs.engine import base
 
 import posix_ipc
 
@@ -13,13 +9,16 @@ import posix_ipc
 base.LOCK_DEFAULT_TIMEOUT = 1
 
 
+# Tests for BASE
+
 class KtbsBaseTestCase(KtbsTestCase):
 
     tmp_base = None
+    tmp_base_name = 'tmp_base/'
 
     def setUp(self):
         super(KtbsBaseTestCase, self).setUp()
-        self.tmp_base = self.my_ktbs.create_base()
+        self.tmp_base = self.my_ktbs.create_base(self.tmp_base_name)
 
     def tearDown(self):
         super(KtbsBaseTestCase, self).tearDown()
@@ -32,8 +31,10 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_lock_has_semaphore(self):
         """Test if Base.lock() really acquires the semaphore."""
         semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREAT,
+                                        flags=posix_ipc.O_CREX,
                                         initial_value=1)
+        assert semaphore.value == 1
+
         with self.tmp_base.lock(self.tmp_base):
             assert self.tmp_base._get_semaphore().value == 0
 
@@ -43,19 +44,21 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""
         semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREAT,
+                                        flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
+
         with assert_raises(posix_ipc.BusyError):
             with self.tmp_base.lock(self.tmp_base):
                 pass
+
         semaphore.release()
 
     def test_delete_locked_base(self):
         """Tries to delete a base that is currently being locked."""
         # Make a semaphore to lock the previously created base
         semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREAT,
+                                        flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
 
@@ -66,14 +69,13 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
         # Finally closing the semaphore we created for testing purpose.
         semaphore.release()
-        semaphore.unlink()
 
     def test_delete_successful(self):
         """Test that a semaphore related to base no longer exists after the base has been deleted."""
         new_base = self.my_ktbs.create_base('new_base/')
         semaphore = new_base._get_semaphore()
 
-        new_base.delete()
+        new_base.delete()  # should remove the semaphore related to this base
 
         # This will raise a posix_ipc.ExistancialError if the semaphore already exists.
         posix_ipc.Semaphore(name=semaphore.name, flags=posix_ipc.O_CREX)
@@ -81,21 +83,24 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         semaphore.unlink()
 
     def test_edit_locked_base(self):
-        """Test that an base.edit() fails if the base is already locked."""
+        """Test that a base.edit() fails if the base is already locked."""
         semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
+        assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):
-            self.tmp_base.label += '_test_change_label'
+            self.tmp_base.label += '_test_edit_label'
 
         semaphore.release()
-        semaphore.unlink()
 
     def test_edit_successful(self):
         """Test that after a successful edit, the base semaphore exists and its value is 1."""
-        self.tmp_base.label += '_test_change_label'
+        self.tmp_base.label += '_test_edit_label'
 
+        # Check that the semaphore already exists, meaning that edit() used it.
+        # If we don't check that, the semaphore value could still be 1 because we use _get_semaphore()
+        # and initialize the semaphore value at 1.
         with assert_raises(posix_ipc.ExistentialError):
             posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
                                 flags=posix_ipc.O_CREX)
@@ -111,7 +116,6 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
             self.tmp_base.create_model()
 
         semaphore.release()
-        semaphore.unlink()
 
     def test_post_successful(self):
         """Test that after a successful post, the base semaphore exists and its value is 1."""
@@ -126,72 +130,57 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         model.delete()
 
 
-class KtbsTraceTestCase(KtbsTestCase):
-    base = None
+# Tests for MODEL
+
+class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
-    trace = None
 
     def setUp(self):
-        super(KtbsTraceTestCase, self).setUp()
-        self.base = self.my_ktbs.create_base()
-        self.model = self.base.create_model()
-        self.trace = self.base.create_stored_trace(None, self.model)
+        super(KtbsModelTestCase, self).setUp()
+        self.model = self.tmp_base.create_model()
 
     def tearDown(self):
-        super(KtbsTraceTestCase, self).tearDown()
-        self.base = None
-        self.model = None
-        self.trace = None
+        self.model.delete()
+        super(KtbsModelTestCase, self).tearDown()
 
 
-class TestKtbsInBaseLocking(KtbsTraceTestCase):
-    """Test InBase locking in a kTBS context."""
+class TestKtbsModelLocking(KtbsModelTestCase):
+    # NOTE we can't use the flag O_CREX anymore when instantiating a semaphore.
+    # A semaphore already exists, because we use create_model() during setup.
+    def test_edit_locked_base(self):
+        """Test that a Model can't be edited if the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
 
-    def test_delete_trace(self):
-        sem = self.base._get_semaphore()
-        sem.acquire()
-        try:
-            assert sem.value == 0
-            with assert_raises(posix_ipc.BusyError):
-                self.trace.delete()
-        finally:
-            sem.release()
-            sem.close()
+        with assert_raises(posix_ipc.BusyError):
+            self.model.label += '_test_edit_label'
 
-    def test_post_graph(self):
-        model = self.base.create_model()
-        otype0 = model.create_obsel_type("#MyObsel0")
-        otype1 = model.create_obsel_type("#MyObsel1")
-        otype2 = model.create_obsel_type("#MyObsel2")
-        otype3 = model.create_obsel_type("#MyObsel3")
-        otypeN = model.create_obsel_type("#MyObselN")
-        self.trace = self.base.create_stored_trace(None, model, "1970-01-01T00:00:00Z", "alice")
-        # purposefully mix obsel order,
-        # to check whether batch post is enforcing the monotonic order
-        graph = Graph()
-        obsN = BNode()
-        graph.add((obsN, KTBS.hasTrace, self.trace.uri))
-        graph.add((obsN, RDF.type, otypeN.uri))
-        obs1 = BNode()
-        graph.add((obs1, KTBS.hasTrace, self.trace.uri))
-        graph.add((obs1, RDF.type, otype1.uri))
-        graph.add((obs1, KTBS.hasBegin, Literal(1)))
-        graph.add((obs1, RDF.value, Literal("obs1")))
-        obs3 = BNode()
-        graph.add((obs3, KTBS.hasTrace, self.trace.uri))
-        graph.add((obs3, RDF.type, otype3.uri))
-        graph.add((obs3, KTBS.hasBegin, Literal(3)))
-        graph.add((obs3, KTBS.hasSubject, Literal("bob")))
-        obs2 = BNode()
-        graph.add((obs2, KTBS.hasTrace, self.trace.uri))
-        graph.add((obs2, RDF.type, otype2.uri))
-        graph.add((obs2, KTBS.hasBegin, Literal(2)))
-        graph.add((obs2, KTBS.hasEnd, Literal(3)))
-        graph.add((obs2, RDF.value, Literal("obs2")))
-        obs0 = BNode()
-        graph.add((obs0, KTBS.hasTrace, self.trace.uri))
-        graph.add((obs0, RDF.type, otype0.uri))
-        graph.add((obs0, KTBS.hasBegin, Literal(0)))
+        semaphore.release()
 
-        old_tag = self.trace.obsel_collection.str_mon_tag
-        created = self.trace.post_graph(graph)
+    def test_edit_successful(self):
+        """Test that after an Model edit(), the semaphore has been released, i.e. its value is 1."""
+        self.model.label += '_test_edit_label'
+
+        # Here, unlike in TestKtbsBASELocking.test_edit_successful, we don't check for semaphore existency.
+        # The semaphore has already been created during the setup, when create_model() was called.
+
+        assert self.tmp_base._get_semaphore().value == 1
+
+    def test_delete_locked_base(self):
+        """Test that a Model can't be deleted if the base is locked."""
+        semaphore = self.tmp_base._get_semaphore()
+        semaphore.acquire()
+        assert semaphore.value == 0
+
+        with assert_raises(posix_ipc.BusyError):
+            self.model.delete()
+
+        semaphore.release()
+
+    def test_delete_successful(self):
+        """Test that the semaphore has been released after a Model delete()"""
+        new_model = self.tmp_base.create_model()
+        new_model.delete()
+
+        assert self.tmp_base._get_semaphore().value == 1
