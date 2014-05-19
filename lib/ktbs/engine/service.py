@@ -41,7 +41,7 @@ urlparse.uses_fragment.append("ktbs")
 urlparse.uses_query.append("ktbs")
 urlparse.uses_relative.append("ktbs")
     
-def make_ktbs(root_uri="ktbs:/", repository=None, create=None):
+def make_ktbs(root_uri="ktbs:/", repository=None, create="auto"):
     """I create a kTBS engine conforming with the `abstract-ktbs-api`:ref:.
 
     :param root_uri:    the URI to use as the root of this kTBS
@@ -59,20 +59,23 @@ def make_ktbs(root_uri="ktbs:/", repository=None, create=None):
     If `repository` is omitted or None, a volatile in-memory repository will be
     created.
 
-    Parameter `create` defaults to True if `repository` is None or if it is an
-    non-existing path; in other cases, it defaults to False.
+    Parameter `create` defaults to "auto", if the user does not explicitely
+    configure it to "no", the repository will be created if `repository` is None
+    or if it is an non-existing path; in other cases, a new repository will no
+    be created.
     """
-    if repository is None:
-        if create is None:
-            create = True
+    create_repo = False
+    if not repository:
+        if create in ("auto", "yes"):
+            create_repo = True
         repository = ":IOMemory:"
     elif repository[0] != ":":
-        if create is None:
-            create = not exists(repository)
+        if create in ("auto", "yes"):
+            create_repo = not exists(repository)
         repository = ":Sleepycat:%s" % repository
     _, store_type, config_str = repository.split(":", 2)
     store = rdflib_plugin.get(store_type, Store)(config_str)
-    service = KtbsService(root_uri, store, create)
+    service = KtbsService(root_uri, store, create_repo)
     ret = service.get(service.root_uri, _rdf_type=KTBS.KtbsRoot)
     assert isinstance(ret, KtbsRoot)
     return ret

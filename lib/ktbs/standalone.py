@@ -21,6 +21,7 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
+from ConfigParser import SafeConfigParser
 from rdfrest.http_server import SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
@@ -39,37 +40,52 @@ def main():
     global OPTIONS # global statement #pylint: disable=W0603
     OPTIONS = parse_options()
 
-    log_level = getattr(logging, OPTIONS.log_level.upper())
+    # Get default configuration possibly overriden by a user configuration file
+    # OPTIONS is a global variable, no parameter is necessary
+    ktbs_config = parse_configuration_file()
+
+    log_level = ktbs_config.get('debug', 'log-level', 1).upper()
     logging.basicConfig(level=log_level) # configure logging
 
-    for plugin_name in OPTIONS.plugin or ():
-        try:
-            plugin = __import__(plugin_name, fromlist="start_plugin")
-        except ImportError:
-            plugin = __import__("ktbs.plugins." + plugin_name,
-                                fromlist="start_plugin")
-        plugin.start_plugin()
-    uri = "http://%(host_name)s:%(port)s%(base_path)s/" % OPTIONS.__dict__
+    for plugin_name in ktbs_config.options('plugins'):
+        if ktbs_config.getboolean('plugins', plugin_name):
+            try:
+                plugin = __import__(plugin_name, fromlist="start_plugin")
+            except ImportError:
+                plugin = __import__("ktbs.plugins." + plugin_name,
+                                    fromlist="start_plugin")
+            plugin.start_plugin()
 
-    if OPTIONS.resource_cache is not None:
+    uri = "http://{hostname}:{port}{basepath}/".format(
+            hostname = ktbs_config.get('server', 'host-name', 1),
+            port = ktbs_config.getint('server', 'port'),
+            basepath = ktbs_config.get('server', 'base-path', 1))
+
+    # TODO : remove this option ?
+    if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
-    ktbs_service = make_ktbs(uri, OPTIONS.repository, OPTIONS.init_repo).service
+
+    ktbs_service = make_ktbs(uri,
+                             ktbs_config.get('rdf_database', 'repository', 1),
+                             ktbs_config.get('rdf_database', 'init-repo', 1)
+                             ).service
     atexit.register(lambda: ktbs_service.store.close())
 
     wsgifront_options = {}
-    if OPTIONS.max_age:
+    # TODO : remove this option ?
+    if ktbs_config.getint('server', 'max-age'):
         LOG.warning("option --max-age is deprecated")
         wsgifront_options["cache_control"] = "max-age=%s" % OPTIONS.max_age
-    if OPTIONS.no_cache:
+    if ktbs_config.getboolean('server', 'no-cache'):
         wsgifront_options["cache_control"] = (lambda x: None)
-    if OPTIONS.cors_allow_origin:
+    if ktbs_config.get('server', 'cors-allow-origin', 1):
         wsgifront_options["cors_allow_origin"] = OPTIONS.cors_allow_origin
     application = SparqlHttpFrontend(ktbs_service, **wsgifront_options)
-    if OPTIONS.flash_allow:
+
+    if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
 
-    for nsprefix in OPTIONS.ns_prefix or ():
-        prefix, uri = nsprefix.split(1)
+    for prefix, uri in ktbs_config.items('ns_prefix'):
         bind_prefix(prefix, uri)
     prefix_bindings = get_prefix_bindings()
     for prefix in ["", "k", "ktbs", "ktbsns"]:
@@ -79,11 +95,12 @@ def main():
     if str(SKOS) not in prefix_bindings.values():
         bind_prefix("skos", SKOS)
 
-
-    httpd = make_server(OPTIONS.host_name, OPTIONS.port, application,
+    httpd = make_server(ktbs_config.get('server', 'host-name', 1),
+                        ktbs_config.getint('server', 'port'),
+                        application,
                         MyWSGIServer)
     LOG.info("KTBS server at %s" % uri)
-    requests = OPTIONS.requests
+    requests = ktbs_config.getint('debug', 'requests')
     if requests == -1:
         httpd.serve_forever()
     else:
@@ -91,29 +108,140 @@ def main():
             httpd.handle_request()
             requests -= 1
 
+def parse_configuration_file():
+    """I parse a kTBS configuration file.
+
+    Command line options are stored in a global variable.
+    If this changes, it should be passed as a parameter to this function.
+
+    :return: Configuration object.
+    """
+    # When allow_no_value=True is passed, options without values return None
+    # The value must be used as flags i.e
+    # [rdf_database]
+    # repository
+    # and not :
+    # repository =
+    # which will return an empty string whatever 'allow_no_value' value is set
+    config = SafeConfigParser()
+
+    # Setting default values
+    config.add_section('server')
+    config.set('server', 'host-name', 'localhost')
+    config.set('server', 'port', '8001')
+    config.set('server', 'base-path', '')
+    config.set('server', 'ns-prefix', '')
+    config.set('server', 'ipv4', 'false')
+    config.set('server', 'max-bytes', '0')
+    config.set('server', 'no-cache', 'false')
+    config.set('server', 'flash-allow', 'false')
+    config.set('server', 'max-triples', '0')
+    config.set('server', 'cors-allow-origin', '')
+    config.set('server', 'max-age', '0')
+    config.set('server', 'resource-cache', 'false')
+
+    config.add_section('plugins')
+    config.set('plugins', 'post_via_get', 'false')
+
+    # TODO : optional plugin specific configuration
+    #config.add_section('post_via_get')
+
+    config.add_section('rdf_database')
+    config.set('rdf_database', 'repository', '')
+    config.set('rdf_database', 'init-repo', 'auto')
+
+    config.add_section('debug')
+    config.set('debug', 'log-level', 'info')
+    config.set('debug', 'requests', '-1')
+
+    # Loading from config file
+    if OPTIONS.configfile is not None:
+        with open(OPTIONS.configfile) as f:
+            config.readfp(f)
+
+    # Override default / config file parameters with command line parameters
+    if OPTIONS.host_name is not None:
+        config.set('server', 'host-name', OPTIONS.host_name)
+
+    if OPTIONS.port is not None:
+        config.set('server', 'port', str(OPTIONS.port))
+
+    if OPTIONS.base_path is not None:
+        config.set('server', 'base-path', OPTIONS.base_path)
+
+    if OPTIONS.repository is not None:
+        config.set('rdf_database', 'repository', OPTIONS.repository)
+
+    if OPTIONS.ns_prefix is not None:
+        config.set('server', 'ns-prefix', str(OPTIONS.ns_prefix))
+
+    if OPTIONS.plugin is not None:
+        for plugin in  OPTIONS.plugin:
+            # TODO - do we code an else (third party plugins possible) ?
+            if config.has_option('plugins', plugin):
+                config.set('plugins', plugin, 'true')
+
+    if OPTIONS.ipv4 is not None:
+        config.set('server', 'ipv4', 'true')
+
+    if OPTIONS.max_bytes is not None:
+        # TODO max_bytes us not defined as an int value in OptionParser ?
+        config.set('server', 'max-bytes', OPTIONS.max_bytes)
+
+    if OPTIONS.no_cache is not None:
+        config.set('server', 'no-cache', 'true')
+
+    if OPTIONS.flash_allow is not None:
+        config.set('server', 'flash-allow', 'true')
+
+    if OPTIONS.max_triples is not None:
+        config.set('server', 'max-triples', str(OPTIONS.max_triples))
+
+    if OPTIONS.cors_allow_origin is not None:
+        config.set('server', 'cors-allow-origin', str(OPTIONS.cors_allow_origin))
+
+    if OPTIONS.init_repo is not None:
+        config.set('rdf_database', 'init-repo', 'yes')
+
+    if OPTIONS.max_age is not None:
+        config.set('server', 'max-age', str(OPTIONS.max_age))
+
+    if OPTIONS.resource_cache is not None:
+        #config.set('server', 'resource-cache', OPTIONS.resource_cache)
+        config.set('server', 'resource-cache', 'true')
+
+    if OPTIONS.log_level is not None:
+        config.set('debug', 'log-level', str(OPTIONS.log_level))
+
+    if OPTIONS.requests is not None:
+        # TODO How to manage -1 = -R1, -2 = -R2
+        config.set('debug', 'requests', str(OPTIONS.requests))
+
+    return config
 
 def parse_options():
     """I parse sys.argv for the main.
     """
     opt = OptionParser(description="HTTP-based Kernel for Trace-Based Systems")
-    opt.add_option("-H", "--host-name", default="localhost")
-    opt.add_option("-p", "--port", default=8001, type=int)
-    opt.add_option("-b", "--base-path", default="")
+    opt.add_option("-H", "--host-name") #, default="localhost")
+    opt.add_option("-p", "--port", type=int) #default=8001, type=int)
+    opt.add_option("-b", "--base-path") #, default="")
     opt.add_option("-r", "--repository",
                   help="the filename/identifier of the RDF database (default: "
                        "in memory)")
+    opt.add_option("-c", "--configfile")
     opt.add_option("-n", "--ns-prefix", action="append",
                   help="a namespace prefix declaration as 'prefix:uri'")
     opt.add_option("-P", "--plugin", action="append",
                   help="loads the given plugin")
 
     ogr = OptionGroup(opt, "Advanced options")
-    ogr.add_option("-4", "--ipv4", action="store_true", default=False,
+    ogr.add_option("-4", "--ipv4", action="store_true", #default=False,
                    help="Force IPv4")
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
-    ogr.add_option("-N", "--no-cache", default=0, type=int,
+    ogr.add_option("-N", "--no-cache", type=int, #default=0,
                    help="prevent kTBS to send cache-control directives")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
@@ -122,12 +250,12 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
-    ogr.add_option("--init-repo", action="store_true", default=None,
+    ogr.add_option("--init-repo", action="store_true", #default=None,
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
     ogr = OptionGroup(opt, "Deprecated options")
-    ogr.add_option("-A", "--max-age", default=0, type=int,
+    ogr.add_option("-A", "--max-age", type=int, #default=0, type=int,
                    help="the cache duration (in seconds) of contents served by "
                    " the kTBS (now better implemented by default)")
     ogr.add_option("--resource-cache", action="store",
@@ -135,10 +263,10 @@ def parse_options():
     opt.add_option_group(ogr)
     
     ogr = OptionGroup(opt, "Debug options")
-    ogr.add_option("-l", "--log-level", default="info",
+    ogr.add_option("-l", "--log-level", #default="info",
                    choices=["debug", "info", "warning", "error", "critical"],
                    help="specify the debug level (debug, info, warning, error, critical)")
-    ogr.add_option("-R", "--requests", type=int, default=-1,
+    ogr.add_option("-R", "--requests", type=int, #default=-1,
                    help="serve only the given number of requests")
     ogr.add_option("-1", "--once", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R1)")
