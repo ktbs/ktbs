@@ -24,12 +24,19 @@ from rdfrest.mixins import BookkeepingMixin, FolderishMixin, \
     GraphPostableMixin, WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
 from re import compile as RegExp, UNICODE
+from contextlib import contextmanager
+from threading import current_thread
+import posix_ipc
 
 from ..api.resource import KtbsResourceMixin
 from ..namespace import KTBS
 from ..utils import mint_uri_from_label, SKOS
 
 METADATA = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.ktbs.metadata:")
+
+# TODO take this variable from the global kTBS conf file
+LOCK_DEFAULT_TIMEOUT = 60  # how many seconds to wait for acquiring a lock on the base
+
 
 class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                    WithReservedNamespacesMixin, WithTypedPropertiesMixin,
@@ -42,6 +49,10 @@ class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
 
     RDF_RESERVED_NS = [KTBS]
 
+    def __init__(self, service, uri):
+        super(KtbsResource, self).__init__(service, uri)
+        self.locking_thread_id = None
+
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
         """I override :meth:`rdfrest.local.ILocalResource.mint_uri`.
@@ -53,6 +64,47 @@ class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                  or basename
                  or cls.__name__)
         return mint_uri_from_label(label, target, suffix=suffix)
+
+    @contextmanager
+    def lock(self, timeout=None):
+        # Set the timeout for acquiring the semaphore.
+        if timeout is None:
+            timeout = LOCK_DEFAULT_TIMEOUT
+
+        # If the current thread wants to access the base he is good to go.
+        # This should only happen when the thread wants to lock the base further down the call stack.
+        if self.locking_thread_id == current_thread().ident:
+            yield
+
+        # Else, either another thread wants to access the base (and he will wait until the lock is released),
+        # or the current thread wants to access the base and it is not locked yet.
+        else:
+            semaphore = self._get_semaphore()
+
+            try:  # acquire the lock, re-raise BusyError with info if it fails
+                semaphore.acquire(timeout)
+                self.locking_thread_id = current_thread().ident
+
+                try:  # catch exceptions occurring after the lock has been acquired
+                    yield
+                finally:  # make sure we exit properly by releasing the lock
+                    self.locking_thread_id = None
+                    semaphore.release()
+                    semaphore.close()
+
+            except posix_ipc.BusyError:
+                thread_id = self.locking_thread_id if self.locking_thread_id else 'Unknown'
+                error_msg = 'The resource <{res_uri}> is locked by thread {thread_id}.'.format(res_uri=self.uri,
+                                                                                               thread_id=thread_id)
+                raise posix_ipc.BusyError(error_msg)
+
+    def _get_semaphore(self):
+        return posix_ipc.Semaphore(name=self._get_semaphore_name(),
+                                   flags=posix_ipc.O_CREAT,
+                                   initial_value=1)
+
+    def _get_semaphore_name(self):
+        raise NotImplementedError
 
 class KtbsPostableMixin(FolderishMixin, GraphPostableMixin, KtbsResource):
     """I implement the common post-related functionalities for KtbsResources.

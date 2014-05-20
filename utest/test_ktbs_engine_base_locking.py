@@ -1,14 +1,14 @@
 from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
 
-from ktbs.engine import base
+from ktbs.engine import resource
 from ktbs.namespace import KTBS
 
 import posix_ipc
 
 
 # Set the lock timeout to 1 s in order to speed up the tests
-base.LOCK_DEFAULT_TIMEOUT = 1
+resource.LOCK_DEFAULT_TIMEOUT = 1
 
 
 # Tests for BASE
@@ -41,7 +41,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
             assert self.tmp_base._get_semaphore().value == 0
 
             with assert_raises(posix_ipc.BusyError):
-                semaphore.acquire(base.LOCK_DEFAULT_TIMEOUT)
+                semaphore.acquire(resource.LOCK_DEFAULT_TIMEOUT)
 
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""

@@ -21,8 +21,6 @@ I provide the implementation of ktbs:KtbsRoot .
 
 from rdfrest.exceptions import MethodNotAllowedError
 from contextlib import contextmanager
-from threading import current_thread
-import posix_ipc
 
 from .resource import KtbsPostableMixin, KtbsResource
 from ..api.ktbs_root import KtbsRootMixin
@@ -39,59 +37,9 @@ class KtbsRoot(KtbsRootMixin, KtbsPostableMixin, KtbsResource):
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
 
-    def __init__(self, service, uri):
-        super(KtbsRootMixin, self).__init__(service, uri)
-        self.locking_thread_id = None
-
     def _get_semaphore_name(self):
         """Return the name of the semaphore for the kTBS root."""
         return '/ktbs_root'
-
-    def _get_semaphore(self):
-        """Return the semaphore for the kTBS Root
-
-        :return: global semaphore for the kTBS Root.
-        :rtype: posix_ipc.Semaphore
-        """
-        return posix_ipc.Semaphore(name=self._get_semaphore_name(),
-                                   flags=posix_ipc.O_CREAT,
-                                   initial_value=1)
-
-    @contextmanager
-    def lock(self, timeout=None):
-        """Lock the kTBS Root using a semaphore.
-
-        :param timeout: maximum to wait to acquire the semaphore until a BusyError is raised.
-        :type timeout: int or float
-        :raise posix_ipc.BusyError: if we fail to acquire the semaphore until timeout.
-        """
-        if timeout is None:
-            timeout = LOCK_DEFAULT_TIMEOUT
-
-        # Allow re-entering threads to continue.
-        if self.locking_thread_id == current_thread().ident:
-            yield
-
-        # If another thread wants to lock, or if the lock has not been acquired yet.
-        else:
-            semaphore = self._get_semaphore()
-
-            try:
-                semaphore.acquire(timeout)
-                self.locking_thread_id = current_thread().ident
-
-                try:
-                    yield
-                finally:
-                    self.locking_thread_id = None
-                    semaphore.release()
-                    semaphore.close()
-
-            except posix_ipc.BusyError:
-                thread_id = self.locking_thread_id if self.locking_thread_id else 'Unknown'
-                error_msg = 'The kTBS root <{root_uri}> is locked by thread {thread_id}.'.format(root_uri=self.uri,
-                                                                                                 thread_id=thread_id)
-                raise posix_ipc.BusyError(error_msg)
 
     @contextmanager
     def edit(self, parameters=None, clear=None, _trust=False):

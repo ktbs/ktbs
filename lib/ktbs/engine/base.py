@@ -20,8 +20,6 @@ I provide the implementation of ktbs:Base .
 """
 from rdflib import RDF
 from contextlib import contextmanager
-from threading import current_thread
-import posix_ipc
 
 from .resource import KtbsPostableMixin, KtbsResource
 from ..api.base import BaseMixin, InBaseMixin
@@ -41,24 +39,6 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
     RDF_MAIN_TYPE = KTBS.Base
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
-
-    def __init__(self, service, uri):
-        super(Base, self).__init__(service, uri)
-        self.locking_thread_id = None
-
-    def _get_semaphore(self):
-        """Return the semaphore for this Base.
-
-        Opens the semaphore if it already exists (keeping its value to what it is),
-        or create it with an initial value of 1 if it doesn't exist.
-
-        :return: semaphore for this Base.
-        :rtype: posix_ipc.Semaphore
-        """
-        semaphore = posix_ipc.Semaphore(name=self._get_semaphore_name(),
-                                        flags=posix_ipc.O_CREAT,
-                                        initial_value=1)
-        return semaphore
 
     def _get_semaphore_name(self):
         """Return this Base semaphore name.
@@ -83,36 +63,8 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
             _mark_as_deleted(resource)
             raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
 
-        # Set the timeout for acquiring the semaphore.
-        if timeout is None:
-            timeout = LOCK_DEFAULT_TIMEOUT
-
-        # If the current thread wants to access the base he is good to go.
-        # This should only happen when the thread wants to lock the base further down the call stack.
-        if self.locking_thread_id == current_thread().ident:
-            yield
-
-        # Else, either another thread wants to access the base (and he will wait until the lock is released),
-        # or the current thread wants to access the base and it is not locked yet.
-        else:
-            semaphore = self._get_semaphore()
-
-            try:  # acquire the lock, re-raise BusyError with info if it fails
-                semaphore.acquire(timeout)
-                self.locking_thread_id = current_thread().ident
-
-                try:  # catch exceptions occurring after the lock has been acquired
-                    yield
-                finally:  # make sure we exit properly by releasing the lock
-                    self.locking_thread_id = None
-                    semaphore.release()
-                    semaphore.close()
-
-            except posix_ipc.BusyError:
-                thread_id = self.locking_thread_id if self.locking_thread_id else 'Unknown'
-                error_msg = 'The base <{base_uri}> is locked by thread {thread_id}.'.format(base_uri=self.uri,
-                                                                                            thread_id=thread_id)
-                raise posix_ipc.BusyError(error_msg)
+        with super(Base, self).lock(timeout) as editable:
+            yield editable
 
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
