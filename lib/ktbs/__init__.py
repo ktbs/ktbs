@@ -42,6 +42,9 @@ try:
                 if len(lcommits) > 0:
                     commit_no = lcommits[0].id
 
+            # Add a separation here to avoid managing it everywhere
+            commit_no = ":%s" % commit_no
+
         except git.InvalidGitRepositoryError:
             # This is not a git repository
             pass

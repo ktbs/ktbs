@@ -117,7 +117,7 @@ class KtbsService(Service):
         with root.edit(_trust=True) as graph:
             graph.set((self.root_uri,
                        KTBS.hasVersion,
-                       Literal("%s:%s" % (ktbs_version, ktbs_commit))))
+                       Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
     def get(self, uri, _rdf_type=None, _no_spawn=False):
         """I override :meth:`rdfrest.local.Service.get`

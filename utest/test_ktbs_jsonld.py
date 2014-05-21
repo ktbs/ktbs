@@ -95,7 +95,7 @@ class TestJsonRoot(KtbsTestCase):
             '@type': 'KtbsRoot',
             'hasBuiltinMethod':
                 ['filter', 'external', 'fusion', 'sparql'],
-                'version': '%s:%s' % (ktbs_version, ktbs_commit),
+                'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
 
@@ -139,7 +139,7 @@ class TestJsonRoot(KtbsTestCase):
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
             'label': 'My customized ktbs root',
-            'version': '%s:%s' % (ktbs_version, ktbs_commit),
+            'version': '%s%s' % (ktbs_version, ktbs_commit),
             'http://example.org/ns/strprop': 'Hello world',
             'http://example.org/ns/numberprop': 42,
             'http://example.org/ns/boolprop': True,
@@ -168,7 +168,7 @@ class TestJsonRoot(KtbsTestCase):
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],
-            'version': '%s:%s' % (ktbs_version, ktbs_commit),
+            'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
 

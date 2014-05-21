@@ -40,6 +40,7 @@ try:
 except :
     print "Please install GitPython in your virtual environment with :"
     print "pip install --pre GitPython"
+    print "(system packages python-dev and zlib2g-dev required by depencies)"
     GIT_LIBRARY = False
 
 def get_platform_infos():
