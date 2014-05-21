@@ -104,7 +104,7 @@ def generate_crumbs(graph, resource, bindings, ctypes):
     for i in xrange(len(crumbs)-1):
         link = "/".join(crumbs[:i+1]) + "/"
         ret += u'<a href="%s">%s</a>' % (link, crumbs[i] + "/",)
-    ret += u'<a href="%s">%s</a></h1>\n' % (resource.uri, crumbs[-1])
+    ret += u'<a href="%s">%s</a>\n' % (resource.uri, crumbs[-1])
     return ret
 
 def generate_formats(graph, resource, bindings, ctypes):
@@ -448,11 +448,14 @@ def serialize_htmlized_turtle(graph, resource, bindings, ctypes,
     #pylint: disable=R0914
     #    too many local variables
 
-    page = u"""<html>
+    page = u"""<!DOCTYPE html>
+    <html>
     <head>
+    <meta name="robots" content="noindex,nofollow">
+    <meta charset="utf-8">
     <title>%(uri)s</title>
-    <style text="text/css">%(style)s</style>
-    <script text="text/javascript">%(script)s</script>
+    <style type="text/css">%(style)s</style>
+    <script type="text/javascript">%(script)s</script>
     </head>
     <body onload="rdfrest_init_editor()">
     %(header)s
