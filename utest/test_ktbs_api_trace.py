@@ -116,6 +116,13 @@ class TestIterObsels(KtbsTestCase):
         assert_list_equal([self.o0, self.o3],
                           self.t.list_obsels(bgp=bgp))
 
+    def test_bgp_timestamps(self):
+        bgp = """
+            FILTER(?e < (?b+10))
+        """
+        assert_list_equal(self.obsels,
+                          self.t.list_obsels(bgp=bgp))
+
     def test_multiple_params(self):
         bgp = """
             ?obs a m:OT2.

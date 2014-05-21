@@ -149,7 +149,7 @@ class AbstractTraceMixin(InBaseMixin):
         if bgp is None:
             bgp = ""
         else:
-            bgp = "{%s}" % bgp
+            bgp = "%s" % bgp
         if not parameters:
             parameters = None
         if filters:
@@ -168,7 +168,7 @@ class AbstractTraceMixin(InBaseMixin):
             SELECT ?b ?e ?obs WHERE {
                 ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e
+                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e .
                 %s
                 %s
             } %s
