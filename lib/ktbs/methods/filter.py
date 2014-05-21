@@ -87,6 +87,7 @@ class _FilterMethod(IMethod):
                 after = converter(params.get("afterDT") - origin_dt)
             cstate["after"] = after
             cstate["otypes"] = params.get("otypes")
+            cstate["bgp"] = params.get("bgp")
 
         if not diag:
             cstate["errors"] = list(diag)
@@ -118,6 +119,7 @@ class _FilterMethod(IMethod):
         after = cstate["after"]
         before = cstate["before"]
         otypes = cstate["otypes"]
+        bgp = cstate["bgp"]
         if otypes:
             otypes = set( URIRef(i) for i in otypes )
         old_log_mon_tag = cstate["log_mon_tag"]
@@ -149,7 +151,7 @@ class _FilterMethod(IMethod):
             target_contains = editable.__contains__
             target_add = editable.add
 
-            for obs in source.iter_obsels(begin=begin):
+            for obs in source.iter_obsels(begin=begin, bgp=bgp):
                 cstate["last_seen"] = obs.begin
                 if after  and  obs.begin < after:
                     LOG.debug("--- dropping %s", obs)
@@ -263,6 +265,7 @@ _PARAMETERS_TYPE = {
     "after": int,
     "beforeDT": parse_date,
     "afterDT": parse_date,
+    "bgp": unicode,
     "otypes":
         lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
 }

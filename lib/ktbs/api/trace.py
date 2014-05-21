@@ -23,7 +23,7 @@ I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
 from datetime import datetime
 from numbers import Integral, Real
-from rdflib import Graph, Literal, RDF, RDFS
+from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.term import Node
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
@@ -89,7 +89,7 @@ class AbstractTraceMixin(InBaseMixin):
             origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, reverse=False):
+    def iter_obsels(self, begin=None, end=None, reverse=False, bgp=None):
         """
         Iter over the obsels of this trace.
 
@@ -104,12 +104,17 @@ class AbstractTraceMixin(InBaseMixin):
         * begin: an int, datetime or Obsel
         * end: an int, datetime or Obsel
         * reverse: an object with a truth value
+        * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
+
+        In the `bgp` parameter, notice that:
+
+        * the variable `?obs` is bound each obsel
+        * the `m:` prefix is bound to the trace model
 
         NB: the order of "recent" obsels may vary even if the trace is not
         amended, since collectors are not bound to respect the order in begin
         timestamps and identifiers.
         """
-        # TODO SOON implement missing parameters of iter_obsels
         parameters = {}
         filters = []
         postface = ""
@@ -138,8 +143,13 @@ class AbstractTraceMixin(InBaseMixin):
             filters.append("?e <= %s" % end)
             parameters["maxe"] = end
         if reverse:
-            raise NotImplementedError(
-                "iter_obsels parameters not implemented yet")
+            postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
+        else:
+            postface += "ORDER BY ?b ?e ?obs"
+        if bgp is None:
+            bgp = ""
+        else:
+            bgp = "{%s}" % bgp
         if not parameters:
             parameters = None
         if filters:
@@ -154,18 +164,16 @@ class AbstractTraceMixin(InBaseMixin):
             # we have the raw resource instead, so we access the whole graph
             # (pylint does not know that, hence the directive below)
             obsels_graph = collection.state #pylint: disable=E1101
-        # TODO LATER when rdflib supports ORDER BY, make SPARQL do the sorting
-        # then remove the line 'tuples.sort()' below
         query_str = """
             SELECT ?b ?e ?obs WHERE {
                 ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e
                 %s
+                %s
             } %s
-        """ % (self.uri, filters, postface)
-        tuples = list(obsels_graph.query(query_str))
-        tuples.sort()
+        """ % (self.uri, filters, bgp, postface)
+        tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for _, _, obs_uri in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
             cls = get_subclass(ObselProxy, types)
@@ -217,6 +225,15 @@ class AbstractTraceMixin(InBaseMixin):
         """
         tmodel_uri = self.state.value(self.uri, KTBS.hasModel)
         return tmodel_uri
+
+    def get_model_prefix(self, _NICE_SUFFIX={"#", "/"}):
+        """
+        I return a prefix-friendly version of the model URI for this trace.
+        """
+        prefix_uri = self.state.value(self.uri, KTBS.hasModel)
+        if prefix_uri[-1] not in _NICE_SUFFIX:
+            prefix_uri = URIRef(prefix_uri + "#")
+        return prefix_uri
 
     @property
     @cache_result
