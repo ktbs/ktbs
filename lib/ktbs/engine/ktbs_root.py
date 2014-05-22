@@ -23,38 +23,32 @@ from rdfrest.exceptions import MethodNotAllowedError
 from contextlib import contextmanager
 
 from .resource import KtbsPostableMixin, KtbsResource
+from .lock import WithLockMixin
 from ..api.ktbs_root import KtbsRootMixin
 from ..namespace import KTBS
 
 
-LOCK_DEFAULT_TIMEOUT = 60  # TODO take this variable from the global kTBS conf file
-
-
-class KtbsRoot(KtbsRootMixin, KtbsPostableMixin, KtbsResource):
+class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:KtbsRoot .
     """
     ######## ILocalResource (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
 
-    def _get_semaphore_name(self):
-        """Return the name of the semaphore for the kTBS root."""
-        return '/ktbs_root'
-
     @contextmanager
     def edit(self, parameters=None, clear=None, _trust=False):
         """I override :meth:`rdfrest.interface.IResource.edit`.
         """
-        with self.lock(), super(KtbsRootMixin, self).edit(parameters, clear, _trust) as editable:
+        with self.lock(self), super(KtbsRoot, self).edit(parameters, clear, _trust) as editable:
             yield editable
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
         """I override :meth:`rdfrest.interface.IResource.post_graph`.
         """
-        with self.lock():
-            return super(KtbsRootMixin, self).post_graph(graph, parameters,
-                                                         _trust, _created, _rdf_type)
+        with self.lock(self):
+            return super(KtbsRoot, self).post_graph(graph, parameters,
+                                                    _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=True):
         """I override :meth:`rdfrest.util.EditableResource.delete`.

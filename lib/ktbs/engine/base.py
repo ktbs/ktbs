@@ -22,16 +22,13 @@ from rdflib import RDF
 from contextlib import contextmanager
 
 from .resource import KtbsPostableMixin, KtbsResource
+from .lock import WithLockMixin
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from rdfrest.local import _mark_as_deleted
 
 
-# TODO take this variable from the global kTBS conf file
-LOCK_DEFAULT_TIMEOUT = 60  # how many seconds to wait for acquiring a lock on the base
-
-
-class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
+class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
     ######## ILocalResource (and mixins) implementation  ########
@@ -40,37 +37,23 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
 
-    def _get_semaphore_name(self):
-        """Return this Base semaphore name.
-
-        :return: semaphore name
-        :rtype: str
-        """
-        return str('/' + self.uri.replace('/', '-'))
-
     @contextmanager
     def lock(self, resource, timeout=None):
-        """Lock the current base with a semaphore.
-
-        :param resource: the resource that asks to lock the base.
-        :param timeout: maximum time to wait on acquire() until a BusyError is raised.
-        :type timeout: int or float
-        :raise TypeError: if `resource` no longer exists.
-        :raise posix_ipc.BusyError: if we fail to acquire the semaphore until timeout.
+        """I override :meth:`.lock.WithLockMixin.lock`.
         """
         # Make sure the resource still exists (it could have been deleted by a concurrent process).
         if len(resource.state) == 0:
             _mark_as_deleted(resource)
             raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
 
-        with super(Base, self).lock(timeout) as editable:
-            yield editable
+        with super(Base, self).lock(self, timeout):
+            yield
 
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.local.EditableResource.delete`.
         """
         root = self.get_root()
-        with root.lock(), self.lock(self):
+        with root.lock(self), self.lock(self):
             super(Base, self).delete(parameters, _trust)
 
     @contextmanager
