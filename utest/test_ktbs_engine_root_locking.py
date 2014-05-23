@@ -2,6 +2,7 @@ from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
 
 from ktbs.engine.lock import WithLockMixin
+from ktbs.engine.service import make_ktbs
 
 import posix_ipc
 
@@ -10,6 +11,12 @@ WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
 
 
 class KtbsRootTestCase(KtbsTestCase):
+
+    def setUp(self):
+        # Run the kTBS on another from the other tests to prevent reusing existing semaphores
+        self.my_ktbs = make_ktbs("http://localhost:54321/")
+        self.service = self.my_ktbs.service
+
     def tearDown(self):
         """Override :meth:`KtbsTestCase.tearDown`
 
