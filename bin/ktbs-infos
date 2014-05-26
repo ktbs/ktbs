@@ -34,6 +34,8 @@ from os.path import dirname, abspath, join
 
 import pkg_resources
 
+from argparse import ArgumentParser
+
 try:
     import git
     GIT_LIBRARY = True
@@ -87,12 +89,22 @@ def get_git_infos(path=None):
 KTBS_WD = dirname(dirname(abspath(__file__)))
 
 if __name__ == '__main__':
+    parser = ArgumentParser(description="Get kTBS software information")
+    parser.add_argument("-s", "--from-source-file", action="store_true",
+                        help="Display information about the source tree located to which the ktbs-info file belongs")
+    options = {}
+    options = parser.parse_args()
+
     get_platform_infos()
 
     print "--------------------------------------------------------------------------------"
     print "kTBS general information"
     print "--------------------------------------------------------------------------------"
     try:
+        if options.from_source_file:
+            # Override with local source tree
+            raise pkg_resources.DistributionNotFound
+
         kp = pkg_resources.get_distribution('kTBS')
         KTBS_WD = kp.location
         if KTBS_WD.endswith('lib'):

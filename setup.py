@@ -13,8 +13,14 @@ def get_version(source='lib/ktbs/__init__.py'):
                 return literal_eval(line.partition('=')[2].lstrip())
     raise ValueError("VERSION not found")
 
+README = ''
 with open('README.rst', 'r') as f:
     README = f.read()
+
+install_req = []
+with open('requirements.txt', 'r') as f:
+    # Get requirements depencies as written in the file
+    install_req = [ i[:-1] for i in f if i[0] != "#" ]
 
 setup(name = 'kTBS',
       version = get_version(),
@@ -28,10 +34,7 @@ setup(name = 'kTBS',
       platforms='OS Independant',
       url='http://github.com/ktbs/ktbs',
       include_package_data=True,
-      install_requires=['rdflib==4.1.1', 
-                        'httplib2==0.8',
-                        'WebOb==1.3.1',
-                        'PyLD==0.4.10'],
+      install_requires=install_req,
       scripts=['bin/ktbs','bin/simple-collector','bin/ktbs-infos'],
 
       # py2exe
