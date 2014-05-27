@@ -63,16 +63,26 @@ Then, to retrieve kTBS, type::
   git clone https://github.com/ktbs/ktbs.git
 
 You now have the source tree in ``$DEST/ktbs``.
-You need to install the dependencies of kTBS; this is done with
 
-  pip install -r "$DEST/ktbs/requirements.txt"
+Being in ``$DEST/ktbs``, you install the kTBS with::
 
-If you plan to be `Running a standalone kTBS`_,
-you also need to add the executable in your PATH::
+  pip install .
 
-  export PATH="$PATH:$DEST/ktbs/bin"
+But you could make a **developper installation** instead with::
 
-This is not necessary if you're going for `Configuring Apache`_.
+  pip install -e .
+
+that will enable you to **simply get further changes** with::
+
+  git pull
+
+You can get information on the installed ktbs with the following command::
+
+  ktbs-infos
+
+.. note::
+
+  pip -e : Make pip install the current project in editable mode (i.e. setuptools "develop mode")
 
 
 

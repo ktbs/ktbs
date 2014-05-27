@@ -5,10 +5,3 @@ Sphinx==1.2.2
 # For developpers only
 nose==1.3.3
 pylint==1.2.1
-
-# Make pip install the current project in editable mode (i.e. setuptools 
-# "develop mode")
-# That means that the files used are those of the cloned repository and 
-# files retrived by further "git pull" will be used directly without any 
-# install procedure. 
--e .

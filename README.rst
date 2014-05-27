@@ -22,14 +22,18 @@ Dependencies
 
 See ``requirements.txt`` for the required versions. 
 
-To build the documentation
---------------------------
-* sphinx (for building the documentation)
-
 For developpers
 ---------------
+
 * nose (for testing)
 * pylint (for checking code quality)
+
+See ``requirements-dev.txt``.
+
+To build the documentation locally
+----------------------------------
+
+* sphinx (for building the documentation)
 
 Install
 =======
