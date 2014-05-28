@@ -66,23 +66,22 @@ You now have the source tree in ``$DEST/ktbs``.
 
 Being in ``$DEST/ktbs``, you install the kTBS with::
 
-  pip install .
-
-But you could make a **developper installation** instead with::
-
+  cd ktbs
   pip install -e .
-
-that will enable you to **simply get further changes** with::
-
-  git pull
-
-You can get information on the installed ktbs with the following command::
-
-  ktbs-infos
 
 .. note::
 
-  pip -e : Make pip install the current project in editable mode (i.e. setuptools "develop mode")
+  The ``-e`` option makes pip install the current project in editable mode (i.e. setuptools "develop mode").
+
+  It means that whenever you update the repository with ``git pull``, of if you edit the code, the changes will be automatically taken into account.
+
+If you plan to work on the source code, you might want to install developer dependencies as well::
+
+  pip install -r requirements-dev.txt
+
+You can get information on the currently installed version of ktbs with the following command::
+
+  ktbs-infos
 
 
 
