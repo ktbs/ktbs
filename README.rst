@@ -20,11 +20,6 @@ For developpers
 
 See ``requirements-dev.txt``.
 
-To build the documentation locally
-----------------------------------
-
-* sphinx (for building the documentation)
-
 Install
 =======
 

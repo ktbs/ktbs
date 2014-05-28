@@ -63,8 +63,7 @@ Then, to retrieve kTBS, type::
   git clone https://github.com/ktbs/ktbs.git
 
 You now have the source tree in ``$DEST/ktbs``.
-
-Being in ``$DEST/ktbs``, you install the kTBS with::
+You install the kTBS with::
 
   cd ktbs
   pip install -e .
