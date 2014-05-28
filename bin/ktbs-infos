@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
+#    Copyright (C) 2011-2014 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
+#    Universite de Lyon <http://www.universite-lyon.fr>
+#
+#    KTBS is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    KTBS is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
+# invalid module name #pylint: disable=C0103
+
+"""
+A simple program to get informations (especially for development packages) i
+on the kTBS installed.
+"""
+
+import platform
+import sys
+import os
+
+from os.path import dirname, abspath, join
+
+import pkg_resources
+
+from argparse import ArgumentParser
+
+try:
+    import git
+    GIT_LIBRARY = True
+except :
+    print "Please install GitPython in your virtual environment with :"
+    print "pip install --pre GitPython"
+    print "(system packages python-dev and zlib2g-dev required by depencies)"
+    GIT_LIBRARY = False
+
+def get_platform_infos():
+    """
+    Get system information.
+
+    platform.version() # => '#91-Ubuntu SMP Wed Feb 19 03:54:44 UTC 2014' / '6.x.xxxx'
+    platform.node() # => 'fconil-E6520' / 'xxx'
+    """
+    print "--------------------------------------------------------------------------------"
+    print "Platform information"
+    print "--------------------------------------------------------------------------------"
+    print "System: ", platform.system() # => 'Linux' / 'Windows'
+    print "Release: ", platform.release() # => '3.2.0-60-generic' / '7'
+    print "Machine: ", platform.machine() # => 'x86_64' / 'AMD64'
+
+    print "sys.platform: ", sys.platform # => 'linux2' / 'win32'
+
+def get_git_infos(path=None):
+    """
+    Get git repository information if available.
+    """
+    print "--------------------------------------------------------------------------------"
+    print "kTBS repository information"
+    print "--------------------------------------------------------------------------------"
+    try:
+        repo = git.Repo(path)
+        if git.__version__ > '0.1.7':
+            print "git branch: ", repo.active_branch.name
+            print "commit: ", repo.active_branch.commit.hexsha
+        else:
+            print "git branch: ", repo.active_branch
+            lcommits = repo.commits(start=repo.active_branch, max_count=1)
+            if len(lcommits) > 0:
+                print "commit: ", lcommits[0].id
+            else:
+                print "No commit information"
+
+        # remote ?
+    except git.InvalidGitRepositoryError:
+        # This is not a git repository
+        print "%s kTBS directory is not a git directory" % path
+
+KTBS_WD = dirname(dirname(abspath(__file__)))
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description="Get kTBS software information")
+    parser.add_argument("-s", "--from-source-file", action="store_true",
+                        help="Display information about the source tree located to which the ktbs-info file belongs")
+    options = {}
+    options = parser.parse_args()
+
+    get_platform_infos()
+
+    print "--------------------------------------------------------------------------------"
+    print "kTBS general information"
+    print "--------------------------------------------------------------------------------"
+    try:
+        if options.from_source_file:
+            # Override with local source tree
+            raise pkg_resources.DistributionNotFound
+
+        kp = pkg_resources.get_distribution('kTBS')
+        KTBS_WD = kp.location
+        if KTBS_WD.endswith('lib'):
+            KTBS_WD = dirname(KTBS_WD)
+        print "kTBS version: ", kp.version
+
+    except pkg_resources.DistributionNotFound:
+        # kTBS is not installed as a Package, take default built path
+        LIB_DIR = join(KTBS_WD, "lib")
+        sys.path.append(LIB_DIR)
+        from ktbs import __version__ as ktbs_version
+        print "kTBS version: ", ktbs_version
+
+    print "kTBS directory: ", KTBS_WD
+
+    if GIT_LIBRARY:
+        get_git_infos(KTBS_WD)

@@ -19,7 +19,7 @@
 """
 
 from os.path import exists
-from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef
+from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef, Literal
 from rdflib.store import Store
 from rdfrest.local import Service
 from rdfrest.utils import parent_uri
@@ -35,6 +35,8 @@ from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
 from ..serpar import *
+from .. import __version__ as ktbs_version
+from .. import __commitno__ as ktbs_commit
 
 # make ktbs:/ URIs use relative, query, fragments
 urlparse.uses_fragment.append("ktbs")
@@ -105,12 +107,17 @@ class KtbsService(Service):
 
         Service.__init__(self, root_uri, store, classes, init_with)
 
+        root = self.get(URIRef(root_uri))
         # testing that all built-in methods are still supported
-        graph = Graph(self.store, self.root_uri)
-        for uri in graph.objects(self.root_uri, KTBS.hasBuiltinMethod):
+        for uri in root.state.objects(self.root_uri, KTBS.hasBuiltinMethod):
             if not get_builtin_method_impl(uri):
                 raise Exception("No implementation for built-in method <%s>"
                                 % uri)
+        # updating version number
+        with root.edit(_trust=True) as graph:
+            graph.set((self.root_uri,
+                       KTBS.hasVersion,
+                       Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
     def get(self, uri, _rdf_type=None, _no_spawn=False):
         """I override :meth:`rdfrest.local.Service.get`

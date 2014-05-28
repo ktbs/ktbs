@@ -13,23 +13,12 @@ kTBS:
 Dependencies
 ============
 
-* rdflib 4 (*Warning:* the appropriate version may not be
-  available as a standard package in some linux distributions, see
-  below for instructions on how to install it in this case.)
-* httplib2
-* webob
-* pyld (for JSON support)
-
 See ``requirements.txt`` for the required versions. 
-
-To build the documentation
---------------------------
-* sphinx (for building the documentation)
 
 For developpers
 ---------------
-* nose (for testing)
-* pylint (for checking code quality)
+
+See ``requirements-dev.txt``.
 
 Install
 =======
