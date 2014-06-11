@@ -2,6 +2,7 @@ from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
 
 from ktbs.engine.lock import WithLockMixin
+from ktbs.engine.lock import get_semaphore_name
 from ktbs.namespace import KTBS
 
 import posix_ipc
@@ -32,7 +33,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
     def test_lock_has_semaphore(self):
         """Test if Base.lock() really acquires the semaphore."""
-        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=1)
         assert semaphore.value == 1
@@ -45,7 +46,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""
-        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
@@ -59,7 +60,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_delete_locked_base(self):
         """Tries to delete a base that is currently being locked."""
         # Make a semaphore to lock the previously created base
-        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
@@ -86,7 +87,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
     def test_edit_locked_base(self):
         """Test that a base.edit() fails if the base is already locked."""
-        semaphore = posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
@@ -104,7 +105,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         # If we don't check that, the semaphore value could still be 1 because we use _get_semaphore()
         # and initialize the semaphore value at 1.
         with assert_raises(posix_ipc.ExistentialError):
-            posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+            posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                 flags=posix_ipc.O_CREX)
 
         assert self.tmp_base._get_semaphore().value == 1
@@ -124,7 +125,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         model = self.tmp_base.create_model()
 
         with assert_raises(posix_ipc.ExistentialError):
-            posix_ipc.Semaphore(name=self.tmp_base._get_semaphore_name(),
+            posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
                                 flags=posix_ipc.O_CREX)
 
         assert self.tmp_base._get_semaphore().value == 1

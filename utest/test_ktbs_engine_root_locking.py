@@ -2,6 +2,7 @@ from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
 
 from ktbs.engine.lock import WithLockMixin
+from ktbs.engine.lock import get_semaphore_name
 from ktbs.engine.service import make_ktbs
 
 import posix_ipc
@@ -32,7 +33,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
     def test_lock_has_semaphore(self):
         """Test if KtbsRoot.lock() really acquires the semaphore."""
-        semaphore = posix_ipc.Semaphore(name=self.my_ktbs._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=1)
         assert semaphore.value == 1
@@ -45,7 +46,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
     def test_lock_cant_get_semaphore(self):
         """Make sure KtbsRoot.lock() get stuck if the semaphore is already in use."""
-        semaphore = posix_ipc.Semaphore(name=self.my_ktbs._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
@@ -58,7 +59,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
     def test_edit_locked_root(self):
         """Test that a KtbsRoot.edit() fails if the root is already locked."""
-        semaphore = posix_ipc.Semaphore(name=self.my_ktbs._get_semaphore_name(),
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
                                         flags=posix_ipc.O_CREX,
                                         initial_value=0)
         assert semaphore.value == 0
@@ -74,7 +75,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
         # Check that the semaphore has been created.
         with assert_raises(posix_ipc.ExistentialError):
-            posix_ipc.Semaphore(name=self.my_ktbs._get_semaphore_name(),
+            posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
                                 flags=posix_ipc.O_CREX)
 
         assert self.my_ktbs._get_semaphore().value == 1
@@ -94,7 +95,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
         base = self.my_ktbs.create_base()
 
         with assert_raises(posix_ipc.ExistentialError):
-            posix_ipc.Semaphore(name=self.my_ktbs._get_semaphore_name(),
+            posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
                                 flags=posix_ipc.O_CREX)
 
         assert self.my_ktbs._get_semaphore().value == 1

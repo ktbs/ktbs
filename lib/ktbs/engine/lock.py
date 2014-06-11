@@ -24,6 +24,16 @@ from threading import current_thread
 from contextlib import contextmanager
 
 
+def get_semaphore_name(resource_uri):
+    """Return a safe semaphore name for a resource.
+
+    :param basestring resource_uri: the URI of the resource.
+    :return: safe semaphore name.
+    :rtype: str
+    """
+    return str('/' + resource_uri.replace('/', '-'))
+
+
 class WithLockMixin(object):
     """ I provide methods to lock a resource.
 
@@ -33,14 +43,6 @@ class WithLockMixin(object):
     """
     __locking_thread_id = None
     LOCK_DEFAULT_TIMEOUT = 60  # TODO take this variable from the global kTBS conf file
-
-    def _get_semaphore_name(self):
-        """Return the semaphore name for this resource.
-
-        :return: semaphore name.
-        :rtype: str
-        """
-        return str('/' + self.uri.replace('/', '-'))
 
     def _get_semaphore(self):
         """Return the semaphore for this resource.
@@ -52,7 +54,7 @@ class WithLockMixin(object):
         :return: semaphore for this resource.
         :rtype: posix_ipc.Semaphore
         """
-        return posix_ipc.Semaphore(name=self._get_semaphore_name(),
+        return posix_ipc.Semaphore(name=get_semaphore_name(self.uri),
                                    flags=posix_ipc.O_CREAT,
                                    initial_value=1)
 
