@@ -43,7 +43,7 @@ from ktbs.engine.lock import get_semaphore_name
 def get_args():
     """Get arguments from the command line."""
     parser = argparse.ArgumentParser(description="""Reset all the locks of a kTBS.
-    This could be useful after a kTBS crash. This shouldn't be used on a running kTBS.""")
+    This could be useful after a kTBS crash. This MUST NOT be used on a running kTBS.""")
 
     parser.add_argument('repository', nargs=1, type=str,
                         help='the filename/identifier of the RDF database. '
@@ -59,7 +59,10 @@ def get_args():
 
 
 def get_store_info(repository):
-    """Get the store type and configuration from the repository argument."""
+    """Get the store type and configuration from the repository argument.
+
+    :param str repository: repository type and configuration in the form `:type:configuration`.
+    """
     if repository[0] != ':':
         repository = ':Sleepycat:' + repository
     _, store_type, store_config = repository.split(':', 2)
@@ -69,8 +72,10 @@ def get_store_info(repository):
 
 def get_locked_resources(graph):
     """Generator of all the possibly locked resources of a store.
+    Possible locked resources are KtbsRoot and kTBS bases.
 
-    Possible locked resoruces are KtbsRoot and kTBS bases."""
+    :param ConjunctiveGraph graph: graph that stores the kTBS resources.
+    """
     # Add KtbsRoot
     for root in graph.subjects(predicate=RDF.type, object=KTBS.KtbsRoot):
         yield root
@@ -81,8 +86,13 @@ def get_locked_resources(graph):
 
 
 def unlock(resource_uri):
-    """Unlock a resource at the semaphore level."""
+    """Unlock a resource at the semaphore level.
+
+    :param resource_uri: URI of the resource to unlock.
+    :return: True if the resource has been unlocked, False otherwise.
+    """
     semaphore_name = get_semaphore_name(resource_uri)
+    unlocked_resource = False
 
     try:
         semaphore = posix_ipc.Semaphore(semaphore_name)
@@ -91,30 +101,41 @@ def unlock(resource_uri):
             semaphore.release()
             semaphore.close()
             logging.info("The resource <{res}> has been unlocked.".format(res=resource_uri))
+            unlocked_resource = True
 
         elif semaphore.value == 1:
             logging.info("The resource <{res}> doesn't appear to be locked (semaphore found).".format(res=resource_uri))
 
     except posix_ipc.ExistentialError:
-        message = "The resource <{res}> doesn't appear to be locked (no semaphore found).".format(res=resource_uri)
+        message = "The resource <{res}> doesn't appear to be locked (semaphore not found).".format(res=resource_uri)
         logging.info(message)
 
+    return unlocked_resource
 
-def main():
+
+def main(repository, log_level):
     """Entry point for the script."""
-    args = get_args()
-    store_type, store_config = get_store_info(args.repository[0])
+    store_type, store_config = get_store_info(repository)
+    if store_type == 'IOMemory':
+        raise ValueError('Cannot use IOMemory as repository. Try rebooting to get rid of the locks.')
 
     # Set logging level
-    logging.basicConfig(level=args.log_level[0].upper())
+    logging.basicConfig(level=log_level.upper())
 
     # Make a graph of everything that is in the RDF store
-    big_graph = ConjunctiveGraph(store_type)
-    big_graph.open(store_config, create=False)
+    graph = ConjunctiveGraph(store_type)
+    graph.open(store_config, create=False)
 
-    for resource in get_locked_resources(big_graph):
-        unlock(resource)
+    # Do the unlocking of the resources
+    did_unlock = False  # tell if we already did a successful unlock or not
+    for resource in get_locked_resources(graph):
+        if unlock(resource) and not did_unlock:
+            did_unlock = True
+
+    if not did_unlock:
+        logging.warning('No lock to unlock, did not do anything.')
 
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args.repository[0], args.log_level[0])
