@@ -20,7 +20,6 @@ I provide the implementation of ktbs:KtbsRoot .
 """
 
 from rdfrest.exceptions import MethodNotAllowedError
-from contextlib import contextmanager
 
 from .resource import KtbsPostableMixin, KtbsResource
 from .lock import WithLockMixin
@@ -34,21 +33,6 @@ class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
     ######## ILocalResource (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
-
-    @contextmanager
-    def edit(self, parameters=None, clear=None, _trust=False):
-        """I override :meth:`rdfrest.interface.IResource.edit`.
-        """
-        with self.lock(self), super(KtbsRoot, self).edit(parameters, clear, _trust) as editable:
-            yield editable
-
-    def post_graph(self, graph, parameters=None,
-                   _trust=False, _created=None, _rdf_type=None):
-        """I override :meth:`rdfrest.interface.IResource.post_graph`.
-        """
-        with self.lock(self):
-            return super(KtbsRoot, self).post_graph(graph, parameters,
-                                                    _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=True):
         """I override :meth:`rdfrest.util.EditableResource.delete`.

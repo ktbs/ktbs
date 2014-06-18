@@ -22,6 +22,7 @@ I provide a locking mechanism for resource that needs protection in the context 
 import posix_ipc
 from threading import current_thread
 from contextlib import contextmanager
+from rdfrest.local import _mark_as_deleted
 
 
 def get_semaphore_name(resource_uri):
@@ -86,7 +87,12 @@ class WithLockMixin(object):
                 self.__locking_thread_id = current_thread().ident
 
                 try:  # catch exceptions occurring after the lock has been acquired
+                    # Make sure the resource still exists (it could have been deleted by a concurrent process).
+                    if len(resource.state) == 0:
+                        _mark_as_deleted(resource)
+                        raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
                     yield
+
                 finally:  # make sure we exit properly by releasing the lock
                     self.__locking_thread_id = None
                     semaphore.release()
@@ -97,3 +103,25 @@ class WithLockMixin(object):
                 error_msg = 'The resource <{res_uri}> is locked by thread {thread_id}.'.format(res_uri=self.uri,
                                                                                                thread_id=thread_id)
                 raise posix_ipc.BusyError(error_msg)
+
+    @contextmanager
+    def edit(self, parameters=None, clear=None, _trust=False):
+        """I override :meth:`rdfrest.interface.IResource.edit`.
+        """
+        with self.lock(self), super(WithLockMixin, self).edit(parameters, clear, _trust) as editable:
+            yield editable
+
+    def post_graph(self, graph, parameters=None,
+                   _trust=False, _created=None, _rdf_type=None):
+        """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
+        """
+        with self.lock(self):
+            return super(WithLockMixin, self).post_graph(graph, parameters,
+                                                         _trust, _created, _rdf_type)
+
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """
+        root = self.get_root()
+        with root.lock(self), self.lock(self):
+            super(WithLockMixin, self).delete(parameters, _trust)

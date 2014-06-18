@@ -25,7 +25,6 @@ from .resource import KtbsPostableMixin, KtbsResource
 from .lock import WithLockMixin
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
-from rdfrest.local import _mark_as_deleted
 
 
 class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
@@ -36,40 +35,6 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
     RDF_MAIN_TYPE = KTBS.Base
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
-
-    @contextmanager
-    def lock(self, resource, timeout=None):
-        """I override :meth:`.lock.WithLockMixin.lock`.
-        """
-        # Make sure the resource still exists (it could have been deleted by a concurrent process).
-        if len(resource.state) == 0:
-            _mark_as_deleted(resource)
-            raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
-
-        with super(Base, self).lock(self, timeout):
-            yield
-
-    def delete(self, parameters=None, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.delete`.
-        """
-        root = self.get_root()
-        with root.lock(self), self.lock(self):
-            super(Base, self).delete(parameters, _trust)
-
-    @contextmanager
-    def edit(self, parameters=None, clear=False, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.edit`.
-        """
-        with self.lock(self), super(Base, self).edit(parameters, clear, _trust) as editable:
-            yield editable
-
-    def post_graph(self, graph, parameters=None,
-                   _trust=False, _created=None, _rdf_type=None):
-        """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
-        """
-        with self.lock(self):
-            return super(Base, self).post_graph(graph, parameters,
-                                                _trust, _created, _rdf_type)
 
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
