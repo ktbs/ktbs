@@ -44,7 +44,6 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         with root.edit(_trust=True) as editable:
             editable.remove((root.uri, KTBS.hasBase, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
-        self._get_semaphore().unlink()  # remove the semaphore from this Base as it no longer exists
 
     def ack_post(self, parameters, created, new_graph):
         """I override :meth:`rdfrest.util.GraphPostableMixin.ack_post`.

@@ -125,3 +125,9 @@ class WithLockMixin(object):
         root = self.get_root()
         with root.lock(self), self.lock(self):
             super(WithLockMixin, self).delete(parameters, _trust)
+
+    def ack_delete(self, parameters):
+        """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
+        """
+        super(WithLockMixin, self).ack_delete(parameters)
+        self._get_semaphore().unlink()  # remove the semaphore from this resource as it no longer exists
