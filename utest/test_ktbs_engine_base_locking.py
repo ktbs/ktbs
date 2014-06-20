@@ -34,7 +34,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_lock_has_semaphore(self):
         """Test if Base.lock() really acquires the semaphore."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
-                                        flags=posix_ipc.O_CREX,
+                                        flags=posix_ipc.O_CREAT,
                                         initial_value=1)
         assert semaphore.value == 1
 
@@ -47,8 +47,9 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
-                                        flags=posix_ipc.O_CREX,
-                                        initial_value=0)
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        semaphore.acquire()
         assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):
@@ -61,8 +62,9 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         """Tries to delete a base that is currently being locked."""
         # Make a semaphore to lock the previously created base
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
-                                        flags=posix_ipc.O_CREX,
-                                        initial_value=0)
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        semaphore.acquire()
         assert semaphore.value == 0
 
         # Tries to get a semaphore and delete a base,
@@ -88,8 +90,9 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
     def test_edit_locked_base(self):
         """Test that a base.edit() fails if the base is already locked."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
-                                        flags=posix_ipc.O_CREX,
-                                        initial_value=0)
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        semaphore.acquire()
         assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):

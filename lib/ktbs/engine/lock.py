@@ -35,6 +35,18 @@ def get_semaphore_name(resource_uri):
     return str('/' + resource_uri.replace('/', '-'))
 
 
+def reset_lock(resource_uri):
+    """Reset the value of the semaphore to 1 for a given resource.
+
+    :param basestring resource_uri: the URI of the resource that is possibly locked.
+    """
+    semaphore = posix_ipc.Semaphore(name=get_semaphore_name(resource_uri),
+                                    flags=posix_ipc.O_CREAT)
+    if semaphore.value == 0:
+        semaphore.release()
+        semaphore.close()
+
+
 class WithLockMixin(object):
     """ I provide methods to lock a resource.
 
@@ -131,3 +143,8 @@ class WithLockMixin(object):
         """
         super(WithLockMixin, self).ack_delete(parameters)
         self._get_semaphore().unlink()  # remove the semaphore from this resource as it no longer exists
+
+    @classmethod
+    def create(cls, service, uri, new_graph):
+        super(WithLockMixin, cls).create(service, uri, new_graph)
+        reset_lock(uri)

@@ -34,7 +34,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
     def test_lock_has_semaphore(self):
         """Test if KtbsRoot.lock() really acquires the semaphore."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
-                                        flags=posix_ipc.O_CREX,
+                                        flags=posix_ipc.O_CREAT,
                                         initial_value=1)
         assert semaphore.value == 1
 
@@ -47,8 +47,9 @@ class TestKtbsRootLocking(KtbsRootTestCase):
     def test_lock_cant_get_semaphore(self):
         """Make sure KtbsRoot.lock() get stuck if the semaphore is already in use."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
-                                        flags=posix_ipc.O_CREX,
-                                        initial_value=0)
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        semaphore.acquire()
         assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):
@@ -60,8 +61,9 @@ class TestKtbsRootLocking(KtbsRootTestCase):
     def test_edit_locked_root(self):
         """Test that a KtbsRoot.edit() fails if the root is already locked."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
-                                        flags=posix_ipc.O_CREX,
-                                        initial_value=0)
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1)
+        semaphore.acquire()
         assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):
