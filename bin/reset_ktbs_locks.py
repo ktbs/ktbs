@@ -85,14 +85,14 @@ def get_locked_resources(graph):
         yield base
 
 
-def unlock(resource_uri):
-    """Unlock a resource at the semaphore level.
+def reset(resource_uri):
+    """Reset a resource at the semaphore level, i.e. set its value to 1.
 
-    :param resource_uri: URI of the resource to unlock.
-    :return: True if the resource has been unlocked, False otherwise.
+    :param resource_uri: URI of the resource to reset.
+    :return: True if the resource has been reset, False otherwise.
     """
     semaphore_name = get_semaphore_name(resource_uri)
-    unlocked_resource = False
+    reset_resource = False
 
     try:
         semaphore = posix_ipc.Semaphore(semaphore_name)
@@ -101,7 +101,15 @@ def unlock(resource_uri):
             semaphore.release()
             semaphore.close()
             logging.info("The resource <{res}> has been unlocked.".format(res=resource_uri))
-            unlocked_resource = True
+            reset_resource = True
+
+        elif semaphore.value > 1:
+            old_semaphore_value = semaphore.value
+            while semaphore.value > 1:
+                semaphore.acquire()
+            reset_resource = True
+            logging.info("The lock for <{res}> has been reset to 1 (was {old_value})."
+                         .format(res=resource_uri, old_value=old_semaphore_value))
 
         elif semaphore.value == 1:
             logging.info("The resource <{res}> doesn't appear to be locked (semaphore found).".format(res=resource_uri))
@@ -110,7 +118,7 @@ def unlock(resource_uri):
         message = "The resource <{res}> doesn't appear to be locked (semaphore not found).".format(res=resource_uri)
         logging.info(message)
 
-    return unlocked_resource
+    return reset_resource
 
 
 def main(repository, log_level):
@@ -126,14 +134,14 @@ def main(repository, log_level):
     graph = ConjunctiveGraph(store_type)
     graph.open(store_config, create=False)
 
-    # Do the unlocking of the resources
-    did_unlock = False  # tell if we already did a successful unlock or not
+    # Do the reset of the resources
+    did_reset = False  # tell if we already did a successful reset or not
     for resource in get_locked_resources(graph):
-        if unlock(resource) and not did_unlock:
-            did_unlock = True
+        if reset(resource) and not did_reset:
+            did_reset = True
 
-    if not did_unlock:
-        logging.warning('No lock to unlock, did not do anything.')
+    if not did_reset:
+        logging.warning('No lock to reset, did not do anything.')
 
 
 if __name__ == '__main__':
