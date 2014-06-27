@@ -99,7 +99,6 @@ def reset(resource_uri):
 
         if semaphore.value == 0:
             semaphore.release()
-            semaphore.close()
             logging.info("The resource <{res}> has been unlocked.".format(res=resource_uri))
             reset_resource = True
 
@@ -113,6 +112,8 @@ def reset(resource_uri):
 
         elif semaphore.value == 1:
             logging.info("The resource <{res}> doesn't appear to be locked (semaphore found).".format(res=resource_uri))
+
+        semaphore.close()
 
     except posix_ipc.ExistentialError:
         message = "The resource <{res}> doesn't appear to be locked (semaphore not found).".format(res=resource_uri)
