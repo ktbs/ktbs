@@ -21,7 +21,6 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
-from ConfigParser import SafeConfigParser
 from rdfrest.http_server import SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
@@ -29,6 +28,7 @@ from wsgiref.simple_server import WSGIServer, make_server
 
 from .namespace import KTBS
 from .engine.service import make_ktbs
+from .config import get_ktbs_configuration
 from .utils import SKOS
 
 OPTIONS = None
@@ -41,8 +41,8 @@ def main():
     OPTIONS = parse_options()
 
     # Get default configuration possibly overriden by a user configuration file
-    # OPTIONS is a global variable, no parameter is necessary
-    ktbs_config = parse_configuration_file()
+    # or command line configuration OPTIONS
+    ktbs_config = parse_configuration_options()
 
     log_level = ktbs_config.get('debug', 'log-level', 1).upper()
     logging.basicConfig(level=log_level) # configure logging
@@ -56,7 +56,7 @@ def main():
                                     fromlist="start_plugin")
             plugin.start_plugin()
 
-    uri = "http://{hostname}:{port}{basepath}/".format(
+    root_uri = "http://{hostname}:{port}{basepath}/".format(
             hostname = ktbs_config.get('server', 'host-name', 1),
             port = ktbs_config.getint('server', 'port'),
             basepath = ktbs_config.get('server', 'base-path', 1))
@@ -65,7 +65,7 @@ def main():
     if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
 
-    ktbs_service = make_ktbs(uri,
+    ktbs_service = make_ktbs(root_uri,
                              ktbs_config.get('rdf_database', 'repository', 1),
                              ktbs_config.get('rdf_database', 'init-repo', 1)
                              ).service
@@ -99,7 +99,7 @@ def main():
                         ktbs_config.getint('server', 'port'),
                         application,
                         MyWSGIServer)
-    LOG.info("KTBS server at %s" % uri)
+    LOG.info("KTBS server at %s" % root_uri)
     requests = ktbs_config.getint('debug', 'requests')
     if requests == -1:
         httpd.serve_forever()
@@ -108,56 +108,16 @@ def main():
             httpd.handle_request()
             requests -= 1
 
-def parse_configuration_file():
-    """I parse a kTBS configuration file.
+def parse_configuration_options():
+    """I get kTBS default configuration options and override them with
+    command line options.
 
     Command line options are stored in a global variable.
     If this changes, it should be passed as a parameter to this function.
 
     :return: Configuration object.
     """
-    # When allow_no_value=True is passed, options without values return None
-    # The value must be used as flags i.e
-    # [rdf_database]
-    # repository
-    # and not :
-    # repository =
-    # which will return an empty string whatever 'allow_no_value' value is set
-    config = SafeConfigParser()
-
-    # Setting default values
-    config.add_section('server')
-    config.set('server', 'host-name', 'localhost')
-    config.set('server', 'port', '8001')
-    config.set('server', 'base-path', '')
-    config.set('server', 'ns-prefix', '')
-    config.set('server', 'ipv4', 'false')
-    config.set('server', 'max-bytes', '0')
-    config.set('server', 'no-cache', 'false')
-    config.set('server', 'flash-allow', 'false')
-    config.set('server', 'max-triples', '0')
-    config.set('server', 'cors-allow-origin', '')
-    config.set('server', 'max-age', '0')
-    config.set('server', 'resource-cache', 'false')
-
-    config.add_section('plugins')
-    config.set('plugins', 'post_via_get', 'false')
-
-    # TODO : optional plugin specific configuration
-    #config.add_section('post_via_get')
-
-    config.add_section('rdf_database')
-    config.set('rdf_database', 'repository', '')
-    config.set('rdf_database', 'init-repo', 'auto')
-
-    config.add_section('debug')
-    config.set('debug', 'log-level', 'info')
-    config.set('debug', 'requests', '-1')
-
-    # Loading from config file
-    if OPTIONS.configfile is not None:
-        with open(OPTIONS.configfile) as f:
-            config.readfp(f)
+    config = get_ktbs_configuration(OPTIONS.configfile)
 
     # Override default / config file parameters with command line parameters
     if OPTIONS.host_name is not None:
@@ -173,7 +133,10 @@ def parse_configuration_file():
         config.set('rdf_database', 'repository', OPTIONS.repository)
 
     if OPTIONS.ns_prefix is not None:
-        config.set('server', 'ns-prefix', str(OPTIONS.ns_prefix))
+        for nsprefix in OPTIONS.ns_prefix:
+            prefix, uri = nsprefix.split(':', 1)
+            #config.set('server', 'ns-prefix', str(OPTIONS.ns_prefix))
+            config.set('ns_prefix', prefix, uri)
 
     if OPTIONS.plugin is not None:
         for plugin in  OPTIONS.plugin:
