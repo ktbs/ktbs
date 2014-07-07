@@ -58,7 +58,8 @@ def reset_lock(resource_uri):
         defeats the purpose of using lock. This could lead to inconsistencies in the kTBS state.
     """
     semaphore = posix_ipc.Semaphore(name=get_semaphore_name(resource_uri),
-                                    flags=posix_ipc.O_CREAT)
+                                    flags=posix_ipc.O_CREAT,
+                                    initial_value=1)  # if the semaphore doesn't exist, set its value to 1
     if semaphore.value == 0:
         semaphore.release()
         semaphore.close()
