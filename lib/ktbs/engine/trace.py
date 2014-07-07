@@ -33,7 +33,7 @@ from .resource import KtbsPostableMixin, METADATA
 from .trace_obsels import ComputedTraceObsels, StoredTraceObsels
 from ..api.trace import AbstractTraceMixin, StoredTraceMixin, ComputedTraceMixin
 from ..namespace import KTBS, KTBS_NS_URI
-from ..utils import extend_api
+from ..utils import extend_api, check_new
 
 LOG = getLogger(__name__)
 
@@ -266,6 +266,13 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # start origin with a letter because if it starts with 4 digits,
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
+
+    def check_new(self, created):
+        """ I override :meth:`GraphPostableMixin.check_new`.
+
+        I check if the created resource exists in my obsel collection.
+        """
+        return check_new(self.obsel_collection.get_state(), created)
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
