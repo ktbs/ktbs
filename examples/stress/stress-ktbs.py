@@ -51,7 +51,8 @@ def task():
             for j in xrange(ARGS.nbpost):
                 if ARGS.nbobs > 1:
                     raise NotImplementedError("batch post not supported yet")
-                trace.create_obsel(None, "#obsel", no_return=True)
+                trace.create_obsel(None, "#obsel", subject="Alice",
+                                   no_return=True)
         print "%ss" % timeit(create_P_obsels, number=1)
 
 def tearDown():
