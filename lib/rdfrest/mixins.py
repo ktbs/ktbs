@@ -247,6 +247,10 @@ class GraphPostableMixin(ILocalResource):
 
         return self._find_created_query(new_graph, query)
 
+    def check_new(self, created):
+        """Proxy to :func:`check_new` that can be overrided by children classes."""
+        return check_new(self.get_state(), created)
+
     def check_posted_graph(self, parameters, created, new_graph):
         """Check whether `new_graph` is acceptable to post on this resource.
 
@@ -270,7 +274,7 @@ class GraphPostableMixin(ILocalResource):
         # unused argument 'new_graph' #pylint: disable=W0613
         diag = Diagnosis("check_posted_graph")
         if isinstance(created, URIRef):
-            if not check_new(self.get_state(), created):
+            if not self.check_new(created):
                 diag.append("URI already in use <%s>" % created)
         return diag
 

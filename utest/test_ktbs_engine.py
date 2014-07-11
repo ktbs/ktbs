@@ -324,6 +324,29 @@ class TestKtbs(KtbsTestCase):
         new_tag = trace.obsel_collection.str_mon_tag
         eq_(old_tag, new_tag)
 
+    def test_post_homonymic_obsels(self):
+        """Check that it is impossible to post an obsel with an URI
+        that already exists in a trace."""
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "test homonymic obsels")
+
+        obsel = URIRef(trace.uri + 'obs')
+        graph1 = Graph()
+        graph1.add((obsel, KTBS.hasTrace, trace.uri))
+        graph1.add((obsel, RDF.type, otype1.uri))
+
+        graph2 = Graph()
+        graph2.add((obsel, KTBS.hasTrace, trace.uri))
+        graph2.add((obsel, RDF.type, otype2.uri))
+
+        created = trace.post_graph(graph1)
+        with assert_raises(InvalidDataError):
+            created_homonymic = trace.post_graph(graph2)
+
     def test_lineage(self):
         b = self.my_ktbs.create_base()
         model = b.create_model()
