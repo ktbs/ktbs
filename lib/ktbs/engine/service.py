@@ -18,6 +18,7 @@
 """I provide an entry point to create a local kTBS.
 """
 
+from os import getpid
 from os.path import exists
 from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef, Literal
 from rdflib.store import Store
@@ -43,7 +44,7 @@ urlparse.uses_fragment.append("ktbs")
 urlparse.uses_query.append("ktbs")
 urlparse.uses_relative.append("ktbs")
     
-def make_ktbs(root_uri="ktbs:/", repository=None, create=None):
+def make_ktbs(root_uri=None, repository=None, create=None):
     """I create a kTBS engine conforming with the `abstract-ktbs-api`:ref:.
 
     :param root_uri:    the URI to use as the root of this kTBS
@@ -74,6 +75,10 @@ def make_ktbs(root_uri="ktbs:/", repository=None, create=None):
         repository = ":Sleepycat:%s" % repository
     _, store_type, config_str = repository.split(":", 2)
     store = rdflib_plugin.get(store_type, Store)(config_str)
+    if root_uri is None:
+        root_uri = 'ktbs' + repository
+        if store_type == 'IOMemory':
+            root_uri += str(getpid())
     service = KtbsService(root_uri, store, create)
     ret = service.get(service.root_uri, _rdf_type=KTBS.KtbsRoot)
     assert isinstance(ret, KtbsRoot)

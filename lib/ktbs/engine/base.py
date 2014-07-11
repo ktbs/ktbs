@@ -19,12 +19,15 @@
 I provide the implementation of ktbs:Base .
 """
 from rdflib import RDF
+from contextlib import contextmanager
 
 from .resource import KtbsPostableMixin, KtbsResource
+from .lock import WithLockMixin
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
 
-class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
+
+class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
     ######## ILocalResource (and mixins) implementation  ########
@@ -84,6 +87,7 @@ class Base(BaseMixin, KtbsPostableMixin, KtbsResource):
         """ % (KTBS, self.uri)
         return self._find_created_default(new_graph, query)
 
+
 class InBase(InBaseMixin, KtbsResource):
     """I provide common implementation of all elements contained in a base.
     """
@@ -100,3 +104,17 @@ class InBase(InBaseMixin, KtbsResource):
             editable.remove((base.uri, KTBS.contains, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
 
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """
+        base = self.get_base()
+        with base.lock(self):
+            super(InBase, self).delete(parameters, _trust)
+
+    @contextmanager
+    def edit(self, parameters=None, clear=False, _trust=False):
+        """I override :meth:`rdfrest.local.EditableResource.edit`.
+        """
+        base = self.get_base()
+        with base.lock(self), super(InBase, self).edit(parameters, clear, _trust) as editable:
+            yield editable
