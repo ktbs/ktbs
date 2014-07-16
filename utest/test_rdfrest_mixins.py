@@ -28,6 +28,7 @@ from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.factory import unregister_service
+from rdfrest.config import get_service_configuration
 from rdfrest.utils import coerce_to_node
 
 OTHER = Namespace("http://example.org/other/")
@@ -36,14 +37,18 @@ EXPECTING_LITERAL = (EXAMPLE.label,)
 
 class TestMixins:
 
-    ROOT_URI = URIRef("http://localhost:11235/foo/")
+    #ROOT_URI = URIRef("http://localhost:11235/foo/")
     service = None
     root = None
     item = None
 
     def setUp(self):
-        self.service = make_example2_service(self.ROOT_URI,
+        service_config = get_service_configuration()
+        service_config.set('server', 'port', '11235')
+        service_config.set('server', 'base-path', '/foo')
+        self.service = make_example2_service(service_config,
                                              additional = [TestItem])
+        self.ROOT_URI = self.service.root_uri
         self.root = self.service.get(self.ROOT_URI,
                                      _rdf_type=EXAMPLE.Group2)
         assert isinstance(self.root, Group2Implementation)

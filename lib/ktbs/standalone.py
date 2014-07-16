@@ -23,12 +23,12 @@ import logging
 from optparse import OptionParser, OptionGroup
 from rdfrest.http_server import SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
+from .config import get_ktbs_configuration
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
 from .namespace import KTBS
-from .engine.service import make_ktbs
-from .config import get_ktbs_configuration
+from .engine.service import KtbsService
 from .utils import SKOS
 
 OPTIONS = None
@@ -56,50 +56,27 @@ def main():
                                     fromlist="start_plugin")
             plugin.start_plugin()
 
-    root_uri = "http://{hostname}:{port}{basepath}/".format(
-            hostname = ktbs_config.get('server', 'host-name', 1),
-            port = ktbs_config.getint('server', 'port'),
-            basepath = ktbs_config.get('server', 'base-path', 1))
-
     # TODO : remove this option ?
     if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
 
-    ktbs_service = make_ktbs(root_uri,
-                             ktbs_config.get('rdf_database', 'repository', 1),
-                             ktbs_config.get('rdf_database', 'init-repo', 1)
-                             ).service
+    ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())
 
-    wsgifront_options = {}
-    # TODO : remove this option ?
-    if ktbs_config.getint('server', 'max-age'):
-        LOG.warning("option --max-age is deprecated")
-        wsgifront_options["cache_control"] = "max-age=%s" % OPTIONS.max_age
-    if ktbs_config.getboolean('server', 'no-cache'):
-        wsgifront_options["cache_control"] = (lambda x: None)
-    if ktbs_config.get('server', 'cors-allow-origin', 1):
-        wsgifront_options["cors_allow_origin"] = OPTIONS.cors_allow_origin
-    application = SparqlHttpFrontend(ktbs_service, **wsgifront_options)
+    application = SparqlHttpFrontend(ktbs_service, ktbs_config)
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
 
     for prefix, uri in ktbs_config.items('ns_prefix'):
         bind_prefix(prefix, uri)
-    prefix_bindings = get_prefix_bindings()
-    for prefix in ["", "k", "ktbs", "ktbsns"]:
-        if prefix not in prefix_bindings:
-            bind_prefix(prefix, KTBS)
-            break
-    if str(SKOS) not in prefix_bindings.values():
-        bind_prefix("skos", SKOS)
 
     httpd = make_server(ktbs_config.get('server', 'host-name', 1),
                         ktbs_config.getint('server', 'port'),
                         application,
-                        MyWSGIServer)
-    LOG.info("KTBS server at %s" % root_uri)
+                        make_server_class(ktbs_config))
+
+    LOG.info("KTBS server at %s" % ktbs_service.root_uri)
     requests = ktbs_config.getint('debug', 'requests')
     if requests == -1:
         httpd.serve_forever()
@@ -135,7 +112,6 @@ def parse_configuration_options():
     if OPTIONS.ns_prefix is not None:
         for nsprefix in OPTIONS.ns_prefix:
             prefix, uri = nsprefix.split(':', 1)
-            #config.set('server', 'ns-prefix', str(OPTIONS.ns_prefix))
             config.set('ns_prefix', prefix, uri)
 
     if OPTIONS.plugin is not None:
@@ -144,8 +120,8 @@ def parse_configuration_options():
             if config.has_option('plugins', plugin):
                 config.set('plugins', plugin, 'true')
 
-    if OPTIONS.ipv4 is not None:
-        config.set('server', 'ipv4', 'true')
+    if OPTIONS.force_ipv4 is not None:
+        config.set('server', 'force-ipv4', 'true')
 
     if OPTIONS.max_bytes is not None:
         # TODO max_bytes us not defined as an int value in OptionParser ?
@@ -163,11 +139,8 @@ def parse_configuration_options():
     if OPTIONS.cors_allow_origin is not None:
         config.set('server', 'cors-allow-origin', str(OPTIONS.cors_allow_origin))
 
-    if OPTIONS.init_repo is not None:
-        config.set('rdf_database', 'init-repo', 'yes')
-
-    if OPTIONS.max_age is not None:
-        config.set('server', 'max-age', str(OPTIONS.max_age))
+    if OPTIONS.force_init is not None:
+        config.set('rdf_database', 'force-init', 'true')
 
     if OPTIONS.resource_cache is not None:
         #config.set('server', 'resource-cache', OPTIONS.resource_cache)
@@ -199,7 +172,7 @@ def parse_options():
                   help="loads the given plugin")
 
     ogr = OptionGroup(opt, "Advanced options")
-    ogr.add_option("-4", "--ipv4", action="store_true", #default=False,
+    ogr.add_option("-4", "--force-ipv4", action="store_true", #default=False,
                    help="Force IPv4")
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
@@ -213,14 +186,11 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
-    ogr.add_option("--init-repo", action="store_true", #default=None,
+    ogr.add_option("--force-init", action="store_true", #default=None,
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
     ogr = OptionGroup(opt, "Deprecated options")
-    ogr.add_option("-A", "--max-age", type=int, #default=0, type=int,
-                   help="the cache duration (in seconds) of contents served by "
-                   " the kTBS (now better implemented by default)")
     ogr.add_option("--resource-cache", action="store",
                    help="not used anymore")
     opt.add_option_group(ogr)
@@ -249,22 +219,27 @@ def number_callback(_option, opt, _value, parser):
     parser.values.requests = val
 
 
-# We define MyWSGIServer here, so that it can access OPTIONS
-class MyWSGIServer(WSGIServer):
+def make_server_class(ktbs_config):
+    """We define this closure so that MyWSGIServer class
+       can access the configuration options.
     """
-    I override WSGIServer to make it possibly IPV6-able.
-    """
-    def __init__(self, (host, port), handler_class):
-        ipv = self.address_family = AF_INET
-        if OPTIONS.ipv4:
-            info = getaddrinfo(host, port, AF_INET, SOCK_STREAM)
-        else:
-            info = getaddrinfo(host, port, 0, SOCK_STREAM)
-            # when IPV6 is available, prefer it to IPV4
-            if [ i for i in info if i[0] == AF_INET6 ]:
-                ipv = self.address_family =  AF_INET6
-        LOG.info("Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv])
-        WSGIServer.__init__(self, (host, port), handler_class)
+
+    class MyWSGIServer(WSGIServer):
+        """
+        I override WSGIServer to make it possibly IPV6-able.
+        """
+        def __init__(self, (host, port), handler_class):
+            ipv = self.address_family = AF_INET
+            if ktbs_config.get('server', 'force-ipv4', 1):
+                info = getaddrinfo(host, port, AF_INET, SOCK_STREAM)
+            else:
+                info = getaddrinfo(host, port, 0, SOCK_STREAM)
+                # when IPV6 is available, prefer it to IPV4
+                if [ i for i in info if i[0] == AF_INET6 ]:
+                    ipv = self.address_family =  AF_INET6
+            LOG.info("Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv])
+            WSGIServer.__init__(self, (host, port), handler_class)
+    return MyWSGIServer
 
 class NoCache(object):
     """

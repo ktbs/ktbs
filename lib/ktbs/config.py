@@ -21,7 +21,10 @@
 I provide configuration functions for the kTBS.
 """
 
-from ConfigParser import SafeConfigParser
+from rdfrest.config import get_service_configuration
+
+from .namespace import KTBS
+from .utils import SKOS
 
 def get_ktbs_configuration(configfile_path=None):
     """I set kTBS default configuration options and possibly override them
@@ -31,48 +34,10 @@ def get_ktbs_configuration(configfile_path=None):
 
     :return: Configuration object.
     """
-    # When allow_no_value=True is passed, options without values return None
-    # The value must be used as flags i.e
-    # [rdf_database]
-    # repository
-    # and not :
-    # repository =
-    # which will return an empty string whatever 'allow_no_value' value is set
-    config = SafeConfigParser()
+    ktbs_config = get_service_configuration(configfile_path)
 
-    # Setting default values
-    config.add_section('server')
-    config.set('server', 'host-name', 'localhost')
-    config.set('server', 'port', '8001')
-    config.set('server', 'base-path', '')
-    config.set('server', 'ipv4', 'false')
-    config.set('server', 'max-bytes', '0')
-    config.set('server', 'no-cache', 'false')
-    config.set('server', 'flash-allow', 'false')
-    config.set('server', 'max-triples', '0')
-    config.set('server', 'cors-allow-origin', '')
-    config.set('server', 'max-age', '0')
-    config.set('server', 'resource-cache', 'false')
+    if ktbs_config.has_section('ns_prefix'):
+        ktbs_config.set('ns_prefix', '_', str(KTBS))
+        ktbs_config.set('ns_prefix', 'skos', str(SKOS))
 
-    config.add_section('ns_prefix')
-
-    config.add_section('plugins')
-    config.set('plugins', 'post_via_get', 'false')
-
-    # TODO : optional plugin specific configuration
-    #config.add_section('post_via_get')
-
-    config.add_section('rdf_database')
-    config.set('rdf_database', 'repository', '')
-    config.set('rdf_database', 'init-repo', 'auto')
-
-    config.add_section('debug')
-    config.set('debug', 'log-level', 'info')
-    config.set('debug', 'requests', '-1')
-
-    # Loading from config file
-    if configfile_path is not None:
-        with open(configfile_path) as f:
-            config.readfp(f)
-
-    return config
+    return ktbs_config

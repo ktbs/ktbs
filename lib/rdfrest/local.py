@@ -40,8 +40,10 @@ implement the concerns of the server.
 * Subclasses of :class:`ILocalResource` can also benefit from a number of mix-in
   classes provided in the `.mixins`:mod: module.
 """
+from os.path import exists
 from contextlib import contextmanager
-from rdflib import Graph, Namespace, RDF, RDFS, URIRef
+from rdflib import Graph, plugin as rdflib_plugin, Namespace, RDF, RDFS, URIRef
+from rdflib.store import Store
 from rdflib.compare import graph_diff
 import traceback
 from weakref import WeakValueDictionary
@@ -53,6 +55,7 @@ from .hosted import HostedResource
 from .interface import get_subclass, IResource
 from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
+from .config import get_service_configuration, build_service_root_uri
 
 NS = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.rdfrest:")
 
@@ -68,14 +71,17 @@ class Service(object):
     All the resources in a service are stored in the same
     `rdflib.store.Store`:class:.
 
-    :param root_uri:  the URI of the root resource of this service
-    :type  root_uri:  str
-    :param store:     the RDF store containing the data of this service
-    :type  store:     rdflib.store.Store                         
-    :param classes:   a list of classes to be used by this service (see below)
+    :param classes: a list of classes to be used by this service (see below)
+    :param service_config: kTBS configuration
     :param init_with: a callable to initialize the store if necessary (i.e. at
         least populate the root resource); it will be passed this service as
         its sole argument.
+
+    root_uri (str), the URI of the root resource of this service
+    store (rdflib.store.Store), the RDF store containing the data of this service
+    init_with, a callable to initialize the store if necessary (i.e. at
+    least populate the root resource); it will be passed this service as
+    its sole argument.
 
     The classes passed to this service should all be subclasses of
     :class:`ILocalResource`, and all have an attribute `RDF_MAIN_TYPE`
@@ -83,15 +89,35 @@ class Service(object):
     """
     # too few public methods (1/2) #pylint: disable=R0903
 
-    def __init__(self, root_uri, store, classes, init_with=None):
+    def __init__(self, classes, service_config=None, init_with=None):
         """I create a local RDF-REST service around the given store.
         """
-        # about self._resource_cache: this is not per se a cache,
-        # but ensures that we will not generate multiple instances for the
-        # same resource.
+        if service_config is None:
+            service_config = get_service_configuration()
+
+        self.config = service_config
+        root_uri = build_service_root_uri(service_config)
+
         assert urisplit(root_uri)[3:] == (None, None), \
             "Invalid URI <%s>" % root_uri
         self.root_uri = coerce_to_uri(root_uri)
+
+        init_repo = False
+        repository = service_config.get('rdf_database', 'repository', 1)
+        if not repository:
+            init_repo = True
+            repository = ":IOMemory:"
+        elif repository[0] != ":":
+            init_repo = not exists(repository)
+            repository = ":Sleepycat:%s" % repository
+
+        # Whether we should force data repository initialization
+        if service_config.getboolean('rdf_database', 'force-init'):
+            init_repo = True
+
+        _, store_type, config_str = repository.split(":", 2)
+        store = rdflib_plugin.get(store_type, Store)(config_str)
+
         self.store = store
         self.class_map = class_map = {}
         for cls in classes:
@@ -100,6 +126,9 @@ class Service(object):
                 "duplicate RDF_MAIN_TYPE <%s>" % cls.RDF_MAIN_TYPE
             class_map[cls.RDF_MAIN_TYPE] = cls
 
+        # about self._resource_cache: this is not per se a cache,
+        # but ensures that we will not generate multiple instances for the
+        # same resource.
         self._resource_cache = WeakValueDictionary()
         self._context_level = 0
 
@@ -108,7 +137,7 @@ class Service(object):
         initialized = list(metadata_graph.triples((self.root_uri,
                                                    NS.hasImplementation,
                                                    None)))
-        if not initialized:
+        if not initialized and init_repo:
             assert init_with, \
                 "Store is not initialized, and no initializer was provided"
             init_with(self)

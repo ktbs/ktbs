@@ -5,6 +5,7 @@ from rdfrest.http_client import set_http_option
 from ktbs.client import get_ktbs
 from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
+from ktbs.config import get_ktbs_configuration
 
 ARGS = None
 BASE = None
@@ -27,15 +28,18 @@ def parse_args():
 
 def setUp():
     global ARGS, BASE
+
     if ARGS.ktbs is None:
         my_ktbs = make_ktbs()
         ARGS.ktbs = my_ktbs.uri
     elif ARGS.ktbs.startswith("file://"):
-        my_ktbs = make_ktbs(repository=ARGS.ktbs[7:])
+        ktbs_config = get_ktbs_configuration()
+        config.set('rdf_database', 'repository', ARGS.ktbs[7:])
+        my_ktbs = make_ktbs(ktbs_config)
         ARGS.ktbs = my_ktbs.uri
     else:
         my_ktbs = get_ktbs(ARGS.ktbs)
-    
+
     BASE = my_ktbs.create_base(label="stress-ktbs-base")
     model = BASE.create_model("m")
     model.unit = KTBS.millisecond
