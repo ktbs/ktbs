@@ -249,6 +249,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                     except ValueError:
                         raise InvalidParametersError("%s should be an integer"
                                                      "(got %s" % (key, val))
+                elif key in ("quick"):
+                    pass
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
                                                  % key)
@@ -422,9 +424,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
         I support parameter 'quick' to bypass the updating of the obsels.
         """
         quick = (parameters and "quick" in parameters) # even with empty value
-        if quick:
-            parameters.pop("quick", None)
-        else:
+        if not quick:
             self.force_state_refresh(parameters)
         return super(ComputedTraceObsels, self).get_state(parameters)
 
