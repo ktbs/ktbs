@@ -134,6 +134,7 @@ class HttpFrontend(object):
                                     allow="HEAD, GET, PUT, POST, DELETE")
         try:
             with self._service:
+                resource.force_state_refresh()
                 response = method(request, resource)
                 # NB: even for a GET, we embed method in a "transaction"
                 # because it may nonetheless make some changes (e.g. in
@@ -467,7 +468,9 @@ class SparqlHttpFrontend(HttpFrontend):
 
         # TODO LATER do something with default_graph_uri and named_graph_uri ?
 
-        result = resource.get_state().query(query)
+        resource.force_state_refresh()
+        graph = resource.get_state()
+        result = graph.query(query)
         # TODO LATER use content negociation to decide on the output format
         if result.graph is not None:
             serfmt = "xml"
