@@ -89,7 +89,7 @@ class AbstractTraceMixin(InBaseMixin):
             origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, reverse=False, bgp=None):
+    def iter_obsels(self, begin=None, end=None, reverse=False, bgp=None, quick=False):
         """
         Iter over the obsels of this trace.
 
@@ -105,6 +105,7 @@ class AbstractTraceMixin(InBaseMixin):
         * end: an int, datetime or Obsel
         * reverse: an object with a truth value
         * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
+        * quick: a boolean, will prevent force_state_refresh to be called
 
         In the `bgp` parameter, notice that:
 
@@ -158,6 +159,8 @@ class AbstractTraceMixin(InBaseMixin):
             filters = ""
 
         collection = self.obsel_collection
+        if not quick:
+            collection.force_state_refresh(parameters)
         if isinstance(collection, OpportunisticObselCollection):
             obsels_graph = collection.get_state(parameters)
         else:
