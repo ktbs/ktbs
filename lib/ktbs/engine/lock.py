@@ -20,10 +20,12 @@ I provide a locking mechanism for resource that needs protection in the context 
 
 """
 import posix_ipc
+from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
 from rdfrest.local import _mark_as_deleted
 
+LOG = getLogger(__name__)
 
 def get_semaphore_name(resource_uri):
     """Return a safe semaphore name for a resource.
@@ -114,6 +116,7 @@ class WithLockMixin(object):
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
                 semaphore.acquire(timeout)
+                LOG.debug("locked %s", self)
                 self.__locking_thread_id = current_thread().ident
 
                 try:  # catch exceptions occurring after the lock has been acquired
@@ -127,6 +130,7 @@ class WithLockMixin(object):
                     self.__locking_thread_id = None
                     semaphore.release()
                     semaphore.close()
+                    LOG.debug("released %s", self)
 
             except posix_ipc.BusyError:
                 thread_id = self.__locking_thread_id if self.__locking_thread_id else 'Unknown'
