@@ -431,12 +431,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
         quick = (parameters and "quick" in parameters) # even with empty value
         if quick:
             parameters.pop("quick", None)
-        elif not self.__forcing_state_refresh:
-            self.__forcing_state_refresh = True
-            try:
-                self.force_state_refresh(parameters)
-            finally:
-                del self.__forcing_state_refresh
+        else:
+            self.force_state_refresh(parameters)
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
@@ -444,20 +440,30 @@ class ComputedTraceObsels(AbstractTraceObsels):
 
         I recompute the obsels if needed.
         """
-        super(ComputedTraceObsels, self).force_state_refresh(parameters)
-        trace = self.trace
-        if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
-            LOG.info("recomputing <%s>", self.uri)
-            # we *first* unset the dirty bit, so that recursive calls to
-            # get_state do not result in an infinite recursion
-            self.metadata.remove((self.uri, METADATA.dirty, None))
-            trace.force_state_refresh()
-            impl = trace._method_impl # friend #pylint: disable=W0212
-            diag = impl.compute_obsels(trace)
-            if not diag:
-                self.metadata.set((self.uri, METADATA.dirty,
-                                      Literal("yes")))
-                raise CanNotProceedError(unicode(diag))
+        if self.__forcing_state_refresh:
+            return
+        self.__forcing_state_refresh = True
+        try:
+            LOG.debug("forcing state refresh <%s>", self.uri)
+            super(ComputedTraceObsels, self).force_state_refresh(parameters)
+            trace = self.trace
+            for src in trace.iter_source_traces():
+                src.obsel_collection.force_state_refresh(parameters)
+            if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+                LOG.info("recomputing <%s>", self.uri)
+                # we *first* unset the dirty bit, so that recursive calls to
+                # get_state do not result in an infinite recursion
+                self.metadata.remove((self.uri, METADATA.dirty, None))
+                trace.force_state_refresh()
+                impl = trace._method_impl # friend #pylint: disable=W0212
+                diag = impl.compute_obsels(trace)
+                if not diag:
+                    self.metadata.set((self.uri, METADATA.dirty,
+                                          Literal("yes")))
+                    raise CanNotProceedError(unicode(diag))
+        finally:
+            del self.__forcing_state_refresh
+
 
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`.KtbsResource.edit`.
