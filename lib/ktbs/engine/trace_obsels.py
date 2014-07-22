@@ -303,14 +303,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         for ttr in trace.iter_transformed_traces():
             obsels = ttr.obsel_collection
             obsels.metadata.set((obsels.uri, METADATA.dirty, Literal("yes")))
-            del ttr, obsels # remove spurious references (see below)
-        # setting dirty above is necessary so that all transformed traces
-        # refresh theirs obsels on force_state_refresh.
-        # However, it is also necessary to call force_state_refresh on all
-        # transfored traces already loaded as python objects.
-        for ttr in self._existing_transformed_traces():
-            ttr.obsel_collection.force_state_refresh()
-            
+
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.
 
