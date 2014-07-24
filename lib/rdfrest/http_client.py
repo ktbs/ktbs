@@ -35,6 +35,13 @@ from .hosted import HostedResource
 from .proxystore import ProxyStore, ResourceAccessError
 from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph
 
+# fix a bug(?) in httplib2 preventing *any* retry;
+# some servers (e.g. uWSGI) are quite hasty to close sockets,
+# so it is important that some amount of retry be performed
+import httplib2
+httplib2.RETRIES += 1 # prevents spurious socket.errors with uWSGI
+
+
 # HTTPLIB2_OPTIONS can be customized 
 _HTTPLIB2_OPTIONS = {}
 _HTTPLIB2_CREDENTIALS = []
