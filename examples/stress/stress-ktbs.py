@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+from os import fork
+from sys import stderr
 from timeit import timeit
 
 from rdfrest.http_client import set_http_option
@@ -15,6 +17,8 @@ def parse_args():
     parser.add_argument("-k", "--ktbs",
                         help="the URI of the kTBS to stress (a local "
                              "in-memory kTBS will be used if none is giveb)")
+    parser.add_argument("-f", "--forks", type=int, default=1,
+                        help="the number of processes to fork")
     parser.add_argument("-i", "--iterations", type=int, default=10,
                         help="the number of iterations to run")
     parser.add_argument("-p", "--nbpost", type=int, default=100,
@@ -46,6 +50,7 @@ def task():
     trace = BASE.get("t/")
     print "Stressing %s %s times with %sx%s obsels" % (
         ARGS.ktbs, ARGS.iterations, ARGS.nbpost, ARGS.nbobs)
+    results = []
     for i in xrange(ARGS.iterations):
         def create_P_obsels():
             for j in xrange(ARGS.nbpost):
@@ -53,7 +58,10 @@ def task():
                     raise NotImplementedError("batch post not supported yet")
                 trace.create_obsel(None, "#obsel", subject="Alice",
                                    no_return=True)
-        print "%ss" % timeit(create_P_obsels, number=1)
+        res = timeit(create_P_obsels, number=1)
+        print "%ss" % res
+        results.append(res)
+    print "average: %ss" % (sum(results)/len(results))
 
 def tearDown():
     if not ARGS.no_clean:
@@ -62,11 +70,22 @@ def tearDown():
         BASE.delete()
 
 def main(argv):
-    set_http_option("disable_ssl_certificate_validation", True)
     parse_args()
+    forks = ARGS.forks
+    while forks > 1:
+        forks -= 1
+        rf = fork()
+        if rf == 0:
+            break # children must not spawn children of their own
+        elif rf < 0:
+            print >>stderr, "Fork failed..."
+            break
+    set_http_option("disable_ssl_certificate_validation", True)
     setUp()
-    task()
-    tearDown()
+    try:
+        task()
+    finally:
+        tearDown()
 
 if __name__ == "__main__":
     from sys import argv, exit

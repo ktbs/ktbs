@@ -22,7 +22,7 @@ import atexit
 from contextlib import contextmanager
 from httplib2 import Http
 from os import listdir, rmdir, unlink
-from os.path import isdir, join
+from os.path import exists, isdir, join
 from rdflib import Graph, RDF
 from tempfile import mkdtemp 
 from weakref import WeakValueDictionary
@@ -296,11 +296,12 @@ CACHE_DIR = mkdtemp("http_cache")
 def rm_rf(dirname):
     """Recursively remove directory `dirname`.
     """
-    for path in (join(dirname, i) for i in listdir(dirname)):
-        if isdir(path):
-            rm_rf(path)
-        else:
-            unlink(path)
-    rmdir(dirname)
+    if exists(dirname):
+        for path in (join(dirname, i) for i in listdir(dirname)):
+            if isdir(path):
+                rm_rf(path)
+            else:
+                unlink(path)
+        rmdir(dirname)
 
 atexit.register(rm_rf, CACHE_DIR)
