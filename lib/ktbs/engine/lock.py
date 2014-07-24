@@ -24,8 +24,10 @@ from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
 from rdfrest.local import _mark_as_deleted
+from os import getpid
 
 LOG = getLogger(__name__)
+PID = getpid()
 
 def get_semaphore_name(resource_uri):
     """Return a safe semaphore name for a resource.
@@ -35,36 +37,6 @@ def get_semaphore_name(resource_uri):
     :rtype: str
     """
     return str('/' + resource_uri.replace('/', '-'))
-
-
-def reset_lock(resource_uri):
-    """Reset the value of the semaphore to 1 for a given resource.
-
-    :param basestring resource_uri: the URI of the resource that is possibly locked.
-
-    .. note ::
-
-        In some edge cases, this function can put the kTBS in a bad state. For example,
-        the default lock value for a resource could be left to 2, removing the thread safety
-        entirely for this resource.
-
-        This could happen with the following scenario: a resource acquires a lock by
-        calling :meth:`WithLockMixin.lock`, bringing the lock value to 0.
-        In the same time, this function, :func:`reset_lock`, is called: it checks that
-        the lock value is 0 and then bring it to 1.
-        Then, the call to :meth:`WithLockMixin.lock` ends, releasing the lock:
-        it brings the lock value from 1 to 2.
-
-        As a result of having the lock value to 2, two calls to a method that needs a lock
-        are not going to be run one after another. They will run at the same time, which
-        defeats the purpose of using lock. This could lead to inconsistencies in the kTBS state.
-    """
-    semaphore = posix_ipc.Semaphore(name=get_semaphore_name(resource_uri),
-                                    flags=posix_ipc.O_CREAT,
-                                    initial_value=1)  # if the semaphore doesn't exist, set its value to 1
-    if semaphore.value == 0:
-        semaphore.release()
-        semaphore.close()
 
 
 class WithLockMixin(object):
@@ -116,8 +88,9 @@ class WithLockMixin(object):
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
                 semaphore.acquire(timeout)
-                LOG.debug("locked %s", self)
-                self.__locking_thread_id = current_thread().ident
+                assert semaphore.value == 0, "This lock is corrupted"
+                self.__locking_thread_id = thread_id = current_thread().ident
+                LOG.debug("%s locked   by %s--%s", self, PID, thread_id)
 
                 try:  # catch exceptions occurring after the lock has been acquired
                     # Make sure the resource still exists (it could have been deleted by a concurrent process).
@@ -125,12 +98,14 @@ class WithLockMixin(object):
                         _mark_as_deleted(resource)
                         raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
                     yield
-
+                except:
+                    LOG.debug("%s        in %s--%s got an exception", self, PID, thread_id)
+                    raise
                 finally:  # make sure we exit properly by releasing the lock
                     self.__locking_thread_id = None
                     semaphore.release()
                     semaphore.close()
-                    LOG.debug("released %s", self)
+                    LOG.debug("%s released by %s--%s", self, PID, thread_id)
 
             except posix_ipc.BusyError:
                 thread_id = self.__locking_thread_id if self.__locking_thread_id else 'Unknown'
@@ -168,9 +143,65 @@ class WithLockMixin(object):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """ I am called when a :class:`KtbsRoot` or a :class:`Base` is created.
-        After checking that the resource we create is correct, I set its lock to 1 because it is new
-        resource so there is no reason for it to be locked.
+        """ I implement :meth:`rdfrest.local.ILocalResource.creare`.
+
+        After checking that the resource we create is correct,
+        I ensure that the corresponding lock exists and is correctly set.
+        If the semaphore already existed and was *not* correctly set,
+        (i.e. with a value of 1), I raise a ValueError.
+
+        .. note::
+
+            It is possible that the semaphore exists
+            if an old version of the service
+            forgot to clean it after deleting the resource,
+            or was left in an inconsistent state.
+
+            It is then tempting to force the value of that semaphore to 1,
+            so that such leftovers do not prevent a new service to run.
+            However this is unsafe: imagine that
+
+            * P1 creates the resources, and acquires the semaphore,
+
+            * at the same time P2 creates the same resource,
+
+            * P2 sees the semaphore value is 0, it forces it to 1,
+
+            * finally, P1 releases the semaphore, setting its value to 2,
+              defeating its purpose of being a lock.
+
+            This scenario can be prevented if the creation of the resource
+            is itself protected by a "higher" lock
+            (usually the parent resource).
+            This sounds like a good thing to do,
+            but can not always be guaranteed
+            (typically, service root resources have no parent to protect them).
+
+            So this implemention stays on the safe side by making no assumption.
+            Subclasses may override `create_lock` to force its value
+            if they now they are safe to do so.
         """
         super(WithLockMixin, cls).create(service, uri, new_graph)
-        reset_lock(uri)
+        sem = cls.create_lock(uri)
+        if sem.value != 1:
+            # can happen if the semaphore already existed
+            raise ValueError("Something's wrong: "
+                             "semaphore for <{}> has value != 1"
+                             .format(uri))
+            # NB: the fact that semaphore.value == 1 is not a 100% proof
+            # that everything is fine --
+            # there could be a 2nd "token" being held at the moment.
+            # But this test is better than nothing...
+        sem.close()
+
+    @classmethod
+    def create_lock(cls, uri):
+        """ I create the lock for the resource with the given uri.
+
+        :param uri: the URI of the resource owning the lock
+        :return: the created semaphore
+        """
+        semaphore = posix_ipc.Semaphore(name=get_semaphore_name(uri),
+                                        flags=posix_ipc.O_CREAT,
+                                        initial_value=1) # if it doesn't exist
+        return semaphore

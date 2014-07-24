@@ -87,6 +87,28 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         """ % (KTBS, self.uri)
         return self._find_created_default(new_graph, query)
 
+    @classmethod
+    def create_lock(cls, uri):
+        """ I override `WithLockMixin.create_lock`.
+
+        As base creation is protected by the KtbsRoot lock,
+        we are sure that this method can not be called concurrently.
+        So rather than taking the existing semaphore as is
+        and hoping it is correctly set,
+        we force it to 1.
+
+        That way, if a previous kTBS didn't clean up its semaphores,
+        it won't block a new instance.
+        """
+        semaphore = super(Base, cls).create_lock(uri)
+        if semaphore.value == 0:
+            semaphore.release()
+        else:
+            while semaphore.value > 1:
+                semaphore.acquire()
+        return semaphore
+
+
 
 class InBase(InBaseMixin, KtbsResource):
     """I provide common implementation of all elements contained in a base.
