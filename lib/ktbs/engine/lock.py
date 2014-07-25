@@ -26,6 +26,8 @@ from contextlib import contextmanager
 from rdfrest.local import _mark_as_deleted
 from os import getpid
 
+from rdfrest.local import ILocalResource
+
 LOG = getLogger(__name__)
 PID = getpid()
 
@@ -39,7 +41,7 @@ def get_semaphore_name(resource_uri):
     return str('/' + resource_uri.replace('/', '-'))
 
 
-class WithLockMixin(object):
+class WithLockMixin(ILocalResource):
     """ I provide methods to lock a resource.
 
     :cvar int __locking_thread_id: id of the thread
