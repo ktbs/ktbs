@@ -34,10 +34,11 @@ from wsgiref.simple_server import make_server
 
 from ktbs.api.ktbs_root import KtbsRootMixin
 from ktbs.engine.resource import METADATA
-from ktbs.engine.service import make_ktbs
+from ktbs.engine.service import KtbsService
 from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS
 from ktbs.time import lit2datetime
+from ktbs.config import get_ktbs_configuration
 
 from .utils import StdoutHandler
 
@@ -49,8 +50,11 @@ class KtbsTestCase(object):
     service = None
 
     def setUp(self):
-        self.my_ktbs = make_ktbs("http://localhost:12345/")
-        self.service = self.my_ktbs.service
+        ktbs_config = get_ktbs_configuration()
+        ktbs_config.set('server', 'port', '12345')
+        self.service = KtbsService(ktbs_config)
+        self.my_ktbs = self.service.get(self.service.root_uri,
+                                        _rdf_type=KTBS.KtbsRoot)
 
     def tearDown(self):
         if self.service is not None:
@@ -69,7 +73,9 @@ class HttpKtbsTestCaseMixin(object):
 
     def setUp(self):
         super(HttpKtbsTestCaseMixin, self).setUp()
-        app = HttpFrontend(self.service, cache_control="max-age=60")
+        ktbs_config = get_ktbs_configuration()
+        app = HttpFrontend(self.service, ktbs_config)
+        #app = HttpFrontend(self.service, cache_control="max-age=60")
         httpd = make_server("localhost", 12345, app,
                             handler_class=StdoutHandler)
         thread = Thread(target=httpd.serve_forever)

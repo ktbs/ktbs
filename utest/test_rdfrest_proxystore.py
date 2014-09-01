@@ -68,7 +68,7 @@ def test_identifier_no_open():
     """ Pass the URI as identifier to __init__() but does not explicitely
         call open(). Should be OK.
     """
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     gs = graph.serialize()
     #print gs
@@ -79,7 +79,7 @@ def test_identifier_no_configuration():
         configuration parameter.
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.open({})
     gs = graph.serialize()
@@ -93,7 +93,7 @@ def test_no_identifier_uri_in_open():
 
     store = ProxyStore()
     graph = Graph(store=store)
-    graph.open({PS_CONFIG_URI: "http://localhost:1234/foo"})
+    graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/"})
     gs = graph.serialize()
     #print gs
     graph.close()
@@ -106,7 +106,7 @@ def test_uri_with_good_credentials_in_init():
     http = httplib2.Http()
     http.add_credentials("user", "pwd")
     store = ProxyStore(configuration={PS_CONFIG_HTTP_CX: http},
-                       identifier="http://localhost:1234/foo")
+                       identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.close()
 
@@ -118,7 +118,7 @@ def test_uri_with_wrong_credentials_in_init():
     http = httplib2.Http()
     http.add_credentials("user", "wrong-pwd")
     store = ProxyStore(configuration={PS_CONFIG_HTTP_CX: http},
-                       identifier="http://localhost:1234/foo")
+                       identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.close()
 
@@ -128,7 +128,7 @@ def test_uri_with_good_credentials_in_open():
         Should be OK.
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     http = httplib2.Http()
     http.add_credentials("user", "pwd")
@@ -150,7 +150,7 @@ def test_different_uris():
     """ Pass different URIs to __init__() and to open().
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/group1/"})
     graph.close()

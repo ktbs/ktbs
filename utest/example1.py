@@ -59,6 +59,7 @@ from rdfrest.local import EditableResource, Service
 from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
 from rdfrest.utils import coerce_to_uri, parent_uri
+from rdfrest.config import get_service_configuration
 
 # INTERFACE
 
@@ -460,8 +461,17 @@ def main():
     """
     test = len(argv) > 1 and argv[1] == "test"
 
-    root_uri = URIRef("http://localhost:1234/foo/")
-    serv = make_example1_service(root_uri)
+    #root_uri = URIRef("http://localhost:1234/foo/")
+
+    service_config = get_service_configuration()
+    service_config.set('server', 'port', '1234')
+    service_config.set('server', 'base-path', '/foo')
+
+    # TODO Store management : special tests ?
+
+    serv = make_example1_service(service_config)
+
+    root_uri = serv.root_uri
 
     if test:
         local_root = serv.get(root_uri)
@@ -483,11 +493,11 @@ def main():
         _httpd.shutdown()
         print "httpd stopped"
 
-def make_example1_service(root_uri, store=None):
+def make_example1_service(service_config=None):
     """Make a service serving items and groups."""
-    if store is None:
-        store = rdflib_plugin_get("IOMemory", Store)()
-    return Service(root_uri, store, [ItemImplementation, GroupImplementation],
+
+    return Service([ItemImplementation, GroupImplementation],
+                   service_config,
                    GroupImplementation.create_service_root)
 
 def do_tests(root):
@@ -548,7 +558,7 @@ def do_tests(root):
     root.remove_item("group1")
     check_content(root, [])
 
-def make_example1_httpd(service=None):
+def make_example1_httpd(service=None, service_config=None):
     """Make a HTTPd running in a separate thread.
 
     Return the thread and the HTTPd.
@@ -558,9 +568,18 @@ def make_example1_httpd(service=None):
     NB: the service is assumed to be located on localhost:1234
     """
     if service is None:
-        service = make_example1_service("http://localhost:1234/foo")
-    app = HttpFrontend(service, cache_control="max-age=60")
-    _httpd = make_server("localhost", 1234, app)
+        if service_config is None:
+            service_config = get_service_configuration()
+            service_config.set('server', 'port', '1234')
+            service_config.set('server', 'base-path', '/foo')
+
+        service = make_example1_service(service_config)
+
+    # cache_control="max-age=60")
+    app = HttpFrontend(service, service_config)
+    _httpd = make_server(service_config.get('server', 'host-name', 1),
+                         service_config.getint('server', 'port'),
+                         app)
     thread = Thread(target=_httpd.serve_forever)
     thread.start()
     return thread, _httpd

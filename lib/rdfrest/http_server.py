@@ -58,26 +58,6 @@ class HttpFrontend(object):
     contents, for changing internal URIs into URIs served by the
     HttpFrontend.
 
-    :param service: the service to expose over HTTP
-    :type  service: :class:`.local.Service`
-
-    Additionally, the following keyword arguments are recognized:
-
-    :param cache_control:     either a string to be used as the cache-control
-                              header field, or a callable accepting a resource
-                              and returning either None or the value of the
-                              cache-control header field.
-                              Defaults to :func:`cache_half_last_modified`.
-    :param cors_allow_origin: if provided, cross-domain requests will be
-                              allowed from the given domains, by implementing
-                              http://www.w3.org/TR/cors/ .
-    :param max_bytes:         the maximum number of bytes that this server
-                              accepts to serve or to consume.
-    :type  max_bytes:         int
-    :param max_triples:       the maximum number of triples that this server
-                              accepts to serve or to consume.
-    :type  max_triples:       int
-
     .. warning::
     
         RDF-REST is meant to differenciate an empty query-string from no
@@ -87,22 +67,57 @@ class HttpFrontend(object):
 
     """
 
-    def __init__(self, service, **options):
+    def __init__(self, service, service_config):
         """See class docstring.
+
+        :param service: the service to expose over HTTP
+        :type  service: :class:`.local.Service`
+
+        :param service_config: An object containing kTBS configuration options
+        :type service_config: configParser object
+
+        Additionally, the following configuration options are recognized:
+
+        - cache_control: either a string to be used as the cache-control
+          header field, or a callable accepting a resource and returning
+          either None or the value of the cache-control header field.
+          Defaults to :func:`cache_half_last_modified`.
+        - cors_allow_origin: if provided, cross-domain requests will be
+          allowed from the given domains, by implementing
+          http://www.w3.org/TR/cors/ .
+        - max_bytes (int): the maximum number of bytes that this server
+          accepts to serve or to consume.
+        - max_triples (int): the maximum number of triples that this server
+          accepts to serve or to consume.
         """
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
-        cache_control = options.pop("cache_control", cache_half_last_modified)
-        if isinstance(cache_control, basestring):
-            cache_control = (lambda _, ret = cache_control: ret)
+
+        cache_control = cache_half_last_modified
+        if service_config.getboolean('server', 'no-cache'):
+            cache_control = (lambda x: None)
         self.cache_control = cache_control
-        self.max_bytes = options.pop("max_bytes", None)
-        self.max_triples = options.pop("max_triples", None)
-        self.cors_allow_origin = set(
-            options.pop("cors_allow_origin", "").split(" ")
-            )
-        self._options = options or {}
+
+        if service_config.getint('server', 'max-bytes') >= 0:
+            self.max_bytes = service_config.getint('server', 'max-bytes')
+        else:
+            self.max_bytes = None
+
+        if service_config.getint('server', 'max-triples') >= 0:
+            self.max_triples = service_config.getint('server', 'max-triples')
+        else:
+            self.max_triples = None
+
+        #self.cors_allow_origin = set(
+        #    options.pop("cors_allow_origin", "").split(" ")
+        #    )
+        self.cors_allow_origin = service_config.get('server', 'cors-allow-origin', 1).split(" ")
+
+        # HttpFrondend does not receive a dictionary any more
+        # Other options should be explicitely set
+        #self._options = options or {}
+        self._options = {}
 
     def __call__(self, environ, start_response):
         """Wrap `get_response` to honnor the WSGI protocol.
@@ -212,7 +227,8 @@ class HttpFrontend(object):
         return response
 
     def http_delete(self, request, resource):
-        """Process a DELETE request on the given resource.
+        """Process a DELETE request on the given resource.c
+
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)

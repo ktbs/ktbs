@@ -494,8 +494,14 @@ class _KtbsNsResource(StandaloneResource):
         """
         cls.create(service, KTBS_NS_URIREF, KTBS_NS_GRAPH)
 
-KTBS_NS_SERVICE = Service(KTBS_NS_URI, rdflib_plugin.get("IOMemory", Store)(""),
-                          classes=[_KtbsNsResource],
+from rdfrest.config import get_service_configuration
+
+service_config = get_service_configuration()
+
+service_config.set('server', 'fixed-root-uri', KTBS_NS_URI)
+#rdflib_plugin.get("IOMemory", Store)(""),
+
+KTBS_NS_SERVICE = Service(classes=[_KtbsNsResource], service_config=service_config,
                           init_with=_KtbsNsResource.init_service)
 
 if __name__ == "__main__":

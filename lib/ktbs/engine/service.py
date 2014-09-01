@@ -20,8 +20,7 @@
 
 from os import getpid
 from os.path import exists
-from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef, Literal
-from rdflib.store import Store
+from rdflib import Graph, RDF, URIRef, Literal
 from rdfrest.local import Service
 from rdfrest.utils import parent_uri
 import urlparse
@@ -35,6 +34,7 @@ from .trace import StoredTrace, ComputedTrace
 from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
+from ..config import get_ktbs_configuration
 from ..serpar import *
 from .. import __version__ as ktbs_version
 from .. import __commitno__ as ktbs_commit
@@ -47,11 +47,11 @@ urlparse.uses_relative.append("ktbs")
 def make_ktbs(root_uri=None, repository=None, create=None):
     """I create a kTBS engine conforming with the `abstract-ktbs-api`:ref:.
 
-    :param root_uri:    the URI to use as the root of this kTBS
-                        (defaults to <ktbs:/>)
-    :param repository:  where to store kTBS data
-    :param create:      whether the data repository should be initialized;
-                        (see below)
+    :param root_uri:   the URI to use as the root of this kTBS
+                       (defaults to <ktbs:/>)
+    :param repository: where to store kTBS data
+    :param create:     whether the data repository should be initialized;
+                       (see below)
 
     Parameter `repository` can be either a path (in which case data will be
     stored in a directory of that name, which will be created if needed), or a
@@ -62,24 +62,29 @@ def make_ktbs(root_uri=None, repository=None, create=None):
     If `repository` is omitted or None, a volatile in-memory repository will be
     created.
 
-    Parameter `create` defaults to True if `repository` is None or if it is an
-    non-existing path; in other cases, it defaults to False.
+    If the repository is in-memory or a non-existing path, it will be
+    initialized. In all other cases (i.e. existing path or explicit `store_type`),
+    the repository is assumed to be already initialized;
+    the ``force-init`` option in the ``rdf_database`` section can be
+    set to force the initialization in those cases.
     """
-    if repository is None:
-        if create is None:
-            create = True
-        repository = ":IOMemory:"
-    elif repository[0] != ":":
-        if create is None:
-            create = not exists(repository)
-        repository = ":Sleepycat:%s" % repository
-    _, store_type, config_str = repository.split(":", 2)
-    store = rdflib_plugin.get(store_type, Store)(config_str)
+
+    ktbs_config = get_ktbs_configuration()
+
+    if repository is not None:
+        ktbs_config.set('rdf_database', 'repository', repository)
+
     if root_uri is None:
-        root_uri = 'ktbs' + repository
-        if store_type == 'IOMemory':
-            root_uri += str(getpid())
-    service = KtbsService(root_uri, store, create)
+        if repository is None:
+            ktbs_config.set('server', 'fixed-root-uri', 'ktbs://{!s}'.format(getpid()))
+        else:
+            ktbs_config.set('server', 'fixed-root-uri', 
+                            'ktbs://{:s}'.format(ktbs_config.get('rdf_database', 'repository',1)))
+    else:
+        ktbs_config.set('server', 'fixed-root-uri', root_uri)
+
+    service = KtbsService(ktbs_config)
+
     ret = service.get(service.root_uri, _rdf_type=KTBS.KtbsRoot)
     assert isinstance(ret, KtbsRoot)
     return ret
@@ -89,12 +94,14 @@ class KtbsService(Service):
     """The KTBS service.
     """
 
-    def __init__(self, root_uri, store, create=False):
+    def __init__(self, service_config=None):
         """I override `Service.__init__` to update the built-in methods.
 
-        :param root_uri: the URI of this kTBS
-        :param store: the rdflib store containing this kTBS data
-        :param create: whether the store should be initialized with fresh data
+        :param service_config: kTBS configuration
+
+        root_uri: the URI of this kTBS
+        store: the rdflib store containing this kTBS data
+        create: whether the store should be initialized with fresh data
         
         NB: built-in methods may change from one execution to another, so
         they have to be checked against the store.
@@ -108,11 +115,12 @@ class KtbsService(Service):
                     StoredTraceObsels,
                     TraceModel,
                     ]
-        init_with = create and self.init_ktbs
 
-        Service.__init__(self, root_uri, store, classes, init_with)
+        # self.init_ktbs : always give the initialization method
+        Service.__init__(self, classes, service_config, self.init_ktbs)
 
-        root = self.get(URIRef(root_uri))
+        root = self.get(URIRef(self.root_uri))
+
         # testing that all built-in methods are still supported
         for uri in root.state.objects(self.root_uri, KTBS.hasBuiltinMethod):
             if not get_builtin_method_impl(uri):

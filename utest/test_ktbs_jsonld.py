@@ -40,7 +40,7 @@ from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
 from ktbs.serpar.jsonld_parser import *
 from ktbs.serpar.jsonld_serializers import *
-
+from ktbs.config import get_ktbs_configuration
 from ktbs import __version__ as ktbs_version
 from ktbs import __commitno__ as ktbs_commit
 

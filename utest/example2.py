@@ -46,6 +46,7 @@ from rdfrest.local import Service
 from rdfrest.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin
 from rdfrest.utils import ReadOnlyGraph
+from rdfrest.config import get_service_configuration
 
 from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
@@ -166,28 +167,37 @@ def main():
     """
     test = len(argv) > 1 and argv[1] == "test"
 
-    root_uri = URIRef("http://localhost:1234/foo/")
-    serv = make_example2_service(root_uri)
+    service_config = get_service_configuration()
+    service_config.set('server', 'port', '1234')
+    service_config.set('server', 'base-path', '/foo')
+
+    # TODO Store management : special tests ?
+
+    serv = make_example2_service(service_config)
+
+    root_uri = serv.root_uri
 
     if test:
         do_tests(serv.get(root_uri))
         print "Local tests passed"
 
-    app = HttpFrontend(serv)
-    _httpd = make_server("localhost", 1234, app)
+    app = HttpFrontend(serv, service_config)
+    _httpd = make_server(service_config.get('server', 'host-name', 1),
+                         service_config.getint('server', 'port'),
+                         app)
     print "Now listening on", root_uri
     _httpd.serve_forever()
 
-def make_example2_service(root_uri, store=None, additional=()):
+def make_example2_service(service_config=None, additional=()):
     """Make a service serving item2's and group2's.
 
     Additional classes can also be passed.
     """
-    if store is None:
-        store = rdflib_plugin_get("IOMemory", Store)()
+
     additional = list(additional)
-    return Ex2Service(root_uri, store,
-                      [Item2Implementation, Group2Implementation] + additional,
+
+    return Ex2Service([Item2Implementation, Group2Implementation] + additional,
+                      service_config,
                       Group2Implementation.create_service_root)
 
 
