@@ -31,6 +31,7 @@ from rdfrest.iso8601 import UTC
 from threading import Thread
 from time import sleep
 from wsgiref.simple_server import make_server
+import unittest
 
 from ktbs.api.ktbs_root import KtbsRootMixin
 from ktbs.engine.resource import METADATA
@@ -39,6 +40,7 @@ from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS
 from ktbs.time import lit2datetime
 from ktbs.config import get_ktbs_configuration
+from ktbs.engine.service import make_ktbs
 
 from .utils import StdoutHandler
 
@@ -666,3 +668,19 @@ def last_obsel(trace):
         return values[0]
     else:
         return None
+
+class TestMakeKtbs(unittest.TestCase):
+
+    my_ktbs = None
+    service = None
+
+    def setUp(self):
+        self.my_ktbs = make_ktbs()
+
+    def tearDown(self):
+        if self.my_ktbs is not None:
+            unregister_service(self.my_ktbs.service)
+
+    def test_ktbs_default_scheme(self):
+        assert self.my_ktbs.uri.startswith('ktbs:')
+

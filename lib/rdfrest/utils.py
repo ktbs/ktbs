@@ -23,7 +23,15 @@ from random import choice
 from rdflib import BNode, URIRef
 from rdflib.graph import Graph, ModificationException
 from urllib import quote_plus
-from urlparse import SplitResult, urlsplit, urlunsplit
+import urlparse
+
+# To parse custom uris with python urlparse
+# http://stackoverflow.com/a/6264214/481719
+def register_scheme(scheme):
+    for method in filter(lambda s: s.startswith('uses_'), dir(urlparse)):
+        getattr(urlparse, method).append(scheme)
+
+register_scheme('ktbs')
 
 def add_uri_params(uri, parameters):
     """Add query-string parameters to a given URI.
@@ -215,7 +223,7 @@ def urisplit(url):
       urisplit('http://a.b/c/d?#') -> ('http', 'a.b', '/c/d', '', '')
 
     """
-    ret = list(urlsplit(url))
+    ret = list(urlparse.urlsplit(url))
 
     if ret[4] == '' and url[-1] != '#':
         ret[4] = None
@@ -228,7 +236,7 @@ def urisplit(url):
     if ret[3] == '' and url[before_fragment] != '?':
         ret[3] = None
 
-    return SplitResult(*ret)
+    return urlparse.SplitResult(*ret)
     
 def uriunsplit(split_uri):
     """A better urlunsplit.
@@ -242,7 +250,7 @@ def uriunsplit(split_uri):
       uriunsplit('http', 'a.b', '/c/d', '', '') -> 'http://a.b/c/d?#'
 
     """
-    ret = urlunsplit(split_uri)
+    ret = urlparse.urlunsplit(split_uri)
     if split_uri[4] == "":
         ret += "#"
     if split_uri[3] == "":
