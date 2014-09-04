@@ -18,6 +18,7 @@
 """
 I implement a WSGI-based HTTP server wrapping a given :class:`.local.Service`.
 """
+from bisect import insort
 from datetime import datetime
 from pyparsing import ParseException
 from rdflib import URIRef
@@ -150,10 +151,26 @@ class HttpFrontend(object):
         try:
             with self._service:
                 resource.force_state_refresh()
+                pre_process_request(self._service, request, resource)
                 response = method(request, resource)
                 # NB: even for a GET, we embed method in a "transaction"
                 # because it may nonetheless make some changes (e.g. in
                 # the #metadata graphs)
+        except RedirectException, ex:
+            status = "%s Redirected" % ex.code
+            response = MyResponse("%s - Can not proceed\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  headerlist= ex.get_headerlist(),
+                                  request=request)
+        except UnauthorizedError, ex:
+            status = "401 Unauthorized"
+            headerlist = ex.get_headerlist()
+            body = ex.get_body()
+            response = MyResponse(body,
+                                  status=status,
+                                  headerlist=headerlist,
+                                  request=request)
         except CanNotProceedError, ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
@@ -227,8 +244,7 @@ class HttpFrontend(object):
         return response
 
     def http_delete(self, request, resource):
-        """Process a DELETE request on the given resource.c
-
+        """Process a DELETE request on the given resource.
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)
@@ -515,6 +531,38 @@ class _TooManyTriples(Exception):
     """
     pass
 
+class UnauthorizedError(Exception):
+    """An error raised when a remote user is not authorized to perform an
+    action.
+    """
+    def __init__(self, message="", challenge=None, **headers):
+        super(Exception, self).__init__(message)
+        self.challenge = challenge or 'Basic Realm="authentication required"'
+        self.headers = headers
+
+    def get_headerlist(self):
+        return [ ("www-authenticate", str(self.challenge)) ] + [
+            (str(key), str(val)) for key, val in self.headers.iteritems()
+        ]
+
+    def get_body(self):
+        return "401 Unauthorized\n%s" % self.message
+
+class RedirectException(Exception):
+    """An exception raised to redirect a given query to another URL.
+    """
+    def __init__(self, location, code=303, **headers):
+        super(Exception, self).__init__("Redirecting to <%s>" % location)
+        self.location = location
+        self.code = code
+        self.headers = headers
+
+    def get_headerlist(self):
+        return [ ("location", str(self.location)) ] + [
+            (str(key), str(val)) for key, val in self.headers.iteritems()
+        ]
+
+
 ################################################################
 #
 # Cache-control functions
@@ -534,3 +582,48 @@ def cache_half_last_modified(resource):
         return "max-age=%s" % (int(time() - last_mod) / 2)
     else:
         return None
+
+###############################################################
+#
+# Request pre-processors registry
+#
+
+_PREPROC_REGISTRY = []
+
+def pre_process_request(service, request, resource):
+    """
+    Applies all registered pre-processors to `request`.
+    """
+    for _, plugin in _PREPROC_REGISTRY:
+        plugin(service, request, resource)
+
+def register_pre_processor(level, preproc, quiet=False):
+    """
+    Register a pre-processor for HTTP requests.
+
+    :param level: a level governing the order of execution of pre-processors;
+      predefined levels are AUTHENTICATION, AUTHORIZATION
+
+    :param level: a function accepting 3 parameters: a Service,
+      a Webob request and an RdfRest resource
+    """
+    if preproc in ( i[1] for i in _PREPROC_REGISTRY ):
+        if not quiet:
+            raise ValueError("pre-processor already registered")
+        else:
+            return
+    insort(_PREPROC_REGISTRY, (level, preproc))
+
+def unregister_pre_processor(preproc, quiet=False):
+    """
+    Unregister a pre-processor for HTTP requests.
+    """
+    for i, pair in enumerate(_PREPROC_REGISTRY):
+        if pair[1] == preproc:
+            del _PREPROC_REGISTRY[i]
+            return
+    if not quiet:
+        raise ValueError("pre-processor not registered")
+
+AUTHENTICATION = 200
+AUTHORIZATION = 400
