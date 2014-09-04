@@ -113,12 +113,10 @@ def parse_configuration_options():
         for nsprefix in OPTIONS.ns_prefix:
             prefix, uri = nsprefix.split(':', 1)
             config.set('ns_prefix', prefix, uri)
-
+            
     if OPTIONS.plugin is not None:
-        for plugin in  OPTIONS.plugin:
-            # TODO - do we code an else (third party plugins possible) ?
-            if config.has_option('plugins', plugin):
-                config.set('plugins', plugin, 'true')
+        for plugin in OPTIONS.plugin:
+            config.set('plugins', plugin, 'true')
 
     if OPTIONS.force_ipv4 is not None:
         config.set('server', 'force-ipv4', 'true')
