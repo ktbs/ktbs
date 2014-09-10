@@ -26,6 +26,7 @@ from rdfrest.serializers import bind_prefix, get_prefix_bindings
 from .config import get_ktbs_configuration
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
+from beaker.middleware import SessionMiddleware
 
 from .namespace import KTBS
 from .engine.service import KtbsService
@@ -64,6 +65,10 @@ def main():
     atexit.register(lambda: ktbs_service.store.close())
 
     application = SparqlHttpFrontend(ktbs_service, ktbs_config)
+    application = SessionMiddleware(
+        application,
+        {'session.auto': True}
+    )
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)

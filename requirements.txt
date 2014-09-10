@@ -3,3 +3,4 @@ httplib2==0.9
 WebOb==1.4
 PyLD==0.5.1
 posix_ipc==0.9.8
+beaker==1.6.4
