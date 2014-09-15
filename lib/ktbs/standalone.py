@@ -27,11 +27,12 @@ from .config import get_ktbs_configuration
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
-from .namespace import KTBS
+#from .namespace import KTBS
 from .engine.service import KtbsService
 from .utils import SKOS
 
 OPTIONS = None
+
 LOG = logging.getLogger("ktbs")
 
 def main():
@@ -43,9 +44,6 @@ def main():
     # Get default configuration possibly overriden by a user configuration file
     # or command line configuration OPTIONS
     ktbs_config = parse_configuration_options()
-
-    log_level = ktbs_config.get('debug', 'log-level', 1).upper()
-    logging.basicConfig(level=log_level) # configure logging
 
     for plugin_name in ktbs_config.options('plugins'):
         if ktbs_config.getboolean('plugins', plugin_name):
@@ -77,13 +75,8 @@ def main():
                         make_server_class(ktbs_config))
 
     LOG.info("KTBS server at %s" % ktbs_service.root_uri)
-    requests = ktbs_config.getint('debug', 'requests')
-    if requests == -1:
-        httpd.serve_forever()
-    else:
-        while requests:
-            httpd.handle_request()
-            requests -= 1
+
+    httpd.serve_forever()
 
 def parse_configuration_options():
     """I get kTBS default configuration options and override them with
@@ -144,12 +137,20 @@ def parse_configuration_options():
         #config.set('server', 'resource-cache', OPTIONS.resource_cache)
         config.set('server', 'resource-cache', 'true')
 
-    if OPTIONS.log_level is not None:
-        config.set('debug', 'log-level', str(OPTIONS.log_level))
+    if OPTIONS.loggers is not None:
+        config.set('logging', 'loggers', str(OPTIONS.loggers))
 
-    if OPTIONS.requests is not None:
-        # TODO How to manage -1 = -R1, -2 = -R2
-        config.set('debug', 'requests', str(OPTIONS.requests))
+    if OPTIONS.loggers is not None:
+        config.set('logging', 'loggers', ' '.join(OPTIONS.loggers))
+
+    if OPTIONS.console_level is not None:
+        config.set('logging', 'console-level', str(OPTIONS.console_level))
+
+    if OPTIONS.file_level is not None:
+        config.set('logging', 'file-level', str(OPTIONS.file_level))
+
+    if OPTIONS.logging_filename is not None:
+        config.set('logging', 'filename', str(OPTIONS.logging_filename))
 
     return config
 
@@ -193,12 +194,18 @@ def parse_options():
                    help="not used anymore")
     opt.add_option_group(ogr)
     
-    ogr = OptionGroup(opt, "Debug options")
-    ogr.add_option("-l", "--log-level", #default="info",
-                   choices=["debug", "info", "warning", "error", "critical"],
-                   help="specify the debug level (debug, info, warning, error, critical)")
-    ogr.add_option("-R", "--requests", type=int, #default=-1,
-                   help="serve only the given number of requests")
+    ogr = OptionGroup(opt, "Logging options")
+    ogr.add_option("--loggers", action="append",
+                   help="for which module(s), you want to activate logging (ktbs, rdfrest, rdflib, ...)")
+
+    ogr.add_option("--console-level", 
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                   help="specify the logging level for the console (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+    ogr.add_option("--file-level", 
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                   help="specify the logging level for the logging file (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+    ogr.add_option("--logging-filename", #, default="ktbs.log")
+                   help="specify the filename for the logging file")
     ogr.add_option("-1", "--once", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R1)")
     ogr.add_option("-2", action="callback", callback=number_callback,

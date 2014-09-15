@@ -21,6 +21,9 @@
 I provide configuration functions for the rdfrest Service.
 """
 
+import sys
+import logging
+import logging.config
 from ConfigParser import SafeConfigParser
 
 
@@ -70,9 +73,13 @@ def get_service_configuration(configfile_path=None):
     config.set('rdf_database', 'repository', '')
     config.set('rdf_database', 'force-init', 'false')
 
-    config.add_section('debug')
-    config.set('debug', 'log-level', 'info')
-    config.set('debug', 'requests', '-1')
+    config.add_section('logging')
+    config.set('logging', 'loggers', '')
+    config.set('logging', 'console-level', 'INFO')
+    # No filename implies no logging to file
+    config.set('logging', 'filename', '')
+    config.set('logging', 'file-level', 'INFO')
+    config.set('logging', 'json-configuration-filename', 'logging.json')
 
     # Loading from config file
     if configfile_path is not None:
@@ -100,3 +107,112 @@ def build_service_root_uri(service_config):
             basepath = service_config.get('server', 'base-path', 1))
 
     return root_uri
+
+
+def apply_logging_config(service_config):
+    """
+    Configures the logging for rdfrest services.
+
+    :param service_config: SafeConfigParser object containing URI scheme elements
+    """
+    # No filter configured
+    loggingConfig =  {
+            'version': 1,
+            'disable_existing_loggers': False,
+            'formatters': {
+                'simple': {
+                    'format': '%(levelname)s %(asctime)s %(name)s %(message)s',
+                    'datefmt': '%d/%m/%Y %I:%M:%S %p'
+                    },
+                'withpid': {
+                    'format': '%(levelname)s %(asctime)s %(process)d %(name)s %(message)s'
+                    }
+                },
+            'handlers': {
+                'console': {
+                    'level': 'INFO',
+                    'class': 'logging.StreamHandler',
+                    'formatter': 'simple'
+                    }
+                }
+            }
+
+    # Use the maximum handler loglevel for the loggers
+    loglevels = []
+
+    if service_config is not None:
+        # TODO add controls on some values
+        if service_config.has_option('logging', 'loggers'):
+            loggers = service_config.get('logging', 'loggers', 1).split()
+            if len(loggers) > 0:
+                for logger in loggers:
+                    if logger == 'root':
+                        # Perhaps better to False when root is concerned
+                        #loggingConfig['disable_existing_loggers'] = False
+
+                        loggingConfig['root'] = {}
+                        loggingConfig['root']['handlers'] = ['console',]
+                    else:
+                        if not loggingConfig.has_key('loggers'):
+                            loggingConfig['loggers'] = {}
+
+                        # default logging level should be warning if not specified
+                        loggingConfig['loggers'][logger] = {}
+                        loggingConfig['loggers'][logger]['handlers'] = ['console',]
+            else:
+                # If not logger is set, no logging configuration is done
+                return
+
+        if service_config.has_option('logging', 'console-level'):
+            loggingConfig['handlers']['console']['level'] = service_config.get('logging', 'console-level', 1)
+        loglevels.append(loggingConfig['handlers']['console']['level'])
+
+        if service_config.has_option('logging', 'filename') and \
+           len(service_config.get('logging', 'filename', 1)) > 0:
+            # Add a 'filelog' handler
+            loggingConfig['handlers']['filelog'] = {}
+            loggingConfig['handlers']['filelog']['class'] = 'logging.FileHandler'
+            loggingConfig['handlers']['filelog']['filename'] = service_config.get('logging', 'filename', 1)
+            loggingConfig['handlers']['filelog']['mode'] = 'w'
+            # Just to test
+            loggingConfig['handlers']['filelog']['formatter'] = 'withpid'
+
+            if service_config.has_option('logging', 'file-level'):
+                loggingConfig['handlers']['filelog']['level'] = service_config.get('logging', 'file-level', 1)
+                loglevels.append(loggingConfig['handlers']['filelog']['level'])
+
+    if loggingConfig.has_key('loggers'):
+        for logger in loggingConfig['loggers'].keys():
+            loggingConfig['loggers'][logger]['level'] = min(loglevels)
+
+            if loggingConfig['handlers'].has_key('filelog'):
+                loggingConfig['loggers'][logger]['handlers'].append('filelog')
+
+    if loggingConfig.has_key('root'):
+        loggingConfig['root']['level'] = min(loglevels)
+
+        if loggingConfig['handlers'].has_key('filelog'):
+            loggingConfig['root']['handlers'].append('filelog')
+
+    try:
+        # Load config
+        logging.config.dictConfig(loggingConfig)
+    except ValueError as e:
+        print "Error in kTBS logging configuration, please read the following error message carefully.\n{0}".format(e.message)
+
+def apply_namespace_config(service_config):
+    """
+    TODO Loads and applies the namespace configuration.
+
+    :param service_config: SafeConfigParser object containing URI scheme elements
+    """
+    pass
+
+
+def apply_plugin_config(service_config):
+    """
+    TODO Loads and applies the plugin configuration.
+
+    :param service_config: SafeConfigParser object containing URI scheme elements
+    """
+    pass
