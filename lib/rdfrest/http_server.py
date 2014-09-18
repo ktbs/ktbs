@@ -604,7 +604,7 @@ def register_pre_processor(level, preproc, quiet=False):
     :param level: a level governing the order of execution of pre-processors;
       predefined levels are AUTHENTICATION, AUTHORIZATION
 
-    :param prepoc: a function accepting 3 parameters: a Service,
+    :param preproc: a function accepting 3 parameters: a Service,
       a Webob request and an RdfRest resource
     """
     if preproc in ( i[1] for i in _PREPROC_REGISTRY ):

@@ -67,7 +67,8 @@ def main():
     application = SparqlHttpFrontend(ktbs_service, ktbs_config)
     application = SessionMiddleware(
         application,
-        {'session.auto': True}
+        {'session.auto': True,  # auto-save session
+         'session.key': 'sid'}  # TODO setup encryption and signature
     )
 
     if ktbs_config.getboolean('server', 'flash-allow'):

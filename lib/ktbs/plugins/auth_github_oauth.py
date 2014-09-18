@@ -1,4 +1,4 @@
-#    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
+# This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
 #    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
@@ -24,7 +24,10 @@ from rdfrest.http_server import \
     UnauthorizedError, RedirectException, \
     AUTHENTICATION, AUTHORIZATION
 
-# OAUTH2 stuff
+from logging import getLogger
+LOG = getLogger(__name__)
+
+# Necessary imports for OAuth2
 import urllib, json, urlparse
 from config_oauth import CLIENT_SECRET, CLIENT_ID
 
@@ -35,6 +38,7 @@ THIRD_PARTY_API_ENDPOINT = 'https://api.github.com/user'
 
 class MyUnauthorizedError(UnauthorizedError):
     def __init__(self, message="", challenge=None, **headers):
+        self.redirect_uri = THIRD_PARTY_AUTH_ENDPOINT+"?client_id="+CLIENT_ID
         super(MyUnauthorizedError, self).__init__(message, "OAuth2",
                                                   content_type="text/html",
                                                   **headers)
@@ -42,33 +46,36 @@ class MyUnauthorizedError(UnauthorizedError):
     def get_body(self):
         return """<!DOCTYPE html>
         <html>
-          <head><title>401 Unauthorized</title></head>
+          <head profile="http://tools.ietf.org/html/rfc6749#section-1.1">
+            <title>401 Unauthorized</title>
+            <link id="github_auth_endpoint" rel="resource_server" href="{redirect_auth_uri}">
+          </head>
           <body><h1>401 Unauthorized</h1>
-          <a href="{auth_endpoint}?client_id={cid}">Log in with github</a>.
+          <a href="{redirect_auth_uri}">Log in with Github</a>.
           </body>
         </html>
-        """.format(auth_endpoint=THIRD_PARTY_AUTH_ENDPOINT, cid=CLIENT_ID)
+        """.format(redirect_auth_uri=self.redirect_uri)
 
 
 def start_plugin():
-    register_pre_processor(AUTHENTICATION, preproc1)
-    register_pre_processor(AUTHORIZATION, preproc2)
+    register_pre_processor(AUTHENTICATION, preproc_authentication)
+    register_pre_processor(AUTHORIZATION, preproc_authorization)
 
 
 def stop_plugin():
-    unregister_pre_processor(preproc1)
-    unregister_pre_processor(preproc2)
+    unregister_pre_processor(preproc_authentication)
+    unregister_pre_processor(preproc_authorization)
 
 
-def preproc1(service, request, resource):
-    auth = request.authorization
+def preproc_authentication(service, request, resource):
     session = request.environ['beaker.session']
 
-    try:  # Succeed if user is logged in
+    try:  # Succeed if user has been authenticated
         request.remote_user = session['client_oauth_id']
+        LOG.debug("User {0} is authenticated".format(request.remote_user))
 
-    except KeyError:  # User is not logged in
-        # If in the process of loggin in
+    except KeyError:  # User is not authenticated
+        # If in the process of authenticating
         if request.GET.getall('code'):
             # Exchange code for an access_token
             data = {
@@ -85,20 +92,23 @@ def preproc1(service, request, resource):
                                         .format(api_url=THIRD_PARTY_API_ENDPOINT, at=access_token))
             gh_resp_id = gh_resp_id.read().decode('utf-8')
             resp_id_dec = json.loads(gh_resp_id)
-            cid = resp_id_dec['id']
-            request.remote_user = cid
-            # Session cookie
-            session['client_oauth_id'] = str(cid)
+            user_id = resp_id_dec['id']
+            # Set the user ID in the session
+            session['client_oauth_id'] = str(user_id)
+            LOG.debug("User {0} has been successfully authenticated".format(session['client_oauth_id']))
             raise RedirectException('/')
 
-    print ("===", auth, "REMOTE_USER:", request.remote_user)
+        # Else, preproc_authorization() is called afterward to invite the user to login
 
 
-def preproc2(service, request, resource):
+def preproc_authorization(service, request, resource):
+    session = request.environ['beaker.session']
     if request.remote_addr != "127.0.0.1":
         raise UnauthorizedError("wrong address")
     if request.remote_user is None:
-        #raise UnauthorizedError()
-        raise MyUnauthorizedError()  # for OAuth2
+        raise MyUnauthorizedError()
     if "logout" in request.GET:
+        user_id = session['client_oauth_id']
+        session.delete()
+        LOG.debug("User {0} has successfully logged out".format(user_id))
         raise UnauthorizedError("logged out", challenge="logged out")
