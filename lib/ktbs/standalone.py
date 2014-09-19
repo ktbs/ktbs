@@ -51,7 +51,7 @@ def main():
             except ImportError:
                 plugin = __import__("ktbs.plugins." + plugin_name,
                                     fromlist="start_plugin")
-            plugin.start_plugin()
+            plugin.start_plugin(ktbs_config)
 
     # TODO : remove this option ?
     if ktbs_config.getboolean('server', 'resource-cache'):
