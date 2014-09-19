@@ -38,12 +38,11 @@ LOG = logging.getLogger("ktbs")
 def main():
     """I launch KTBS as a standalone HTTP server.
     """
-    global OPTIONS # global statement #pylint: disable=W0603
-    OPTIONS = parse_options()
+    cmdline_options = parse_options()
 
     # Get default configuration possibly overriden by a user configuration file
     # or command line configuration OPTIONS
-    ktbs_config = parse_configuration_options()
+    ktbs_config = parse_configuration_options(cmdline_options)
 
     for plugin_name in ktbs_config.options('plugins'):
         if ktbs_config.getboolean('plugins', plugin_name):
@@ -78,79 +77,82 @@ def main():
 
     httpd.serve_forever()
 
-def parse_configuration_options():
+def parse_configuration_options(options=None):
     """I get kTBS default configuration options and override them with
     command line options.
 
-    Command line options are stored in a global variable.
-    If this changes, it should be passed as a parameter to this function.
+    :param options: Command line options.
 
     :return: Configuration object.
     """
-    config = get_ktbs_configuration(OPTIONS.configfile)
 
-    # Override default / config file parameters with command line parameters
-    if OPTIONS.host_name is not None:
-        config.set('server', 'host-name', OPTIONS.host_name)
+    if options is None:
+        config = get_ktbs_configuration()
+    else:
+        config = get_ktbs_configuration(options.configfile)
 
-    if OPTIONS.port is not None:
-        config.set('server', 'port', str(OPTIONS.port))
+        # Override default / config file parameters with command line parameters
+        if options.host_name is not None:
+            config.set('server', 'host-name', options.host_name)
 
-    if OPTIONS.base_path is not None:
-        config.set('server', 'base-path', OPTIONS.base_path)
+        if options.port is not None:
+            config.set('server', 'port', str(options.port))
 
-    if OPTIONS.repository is not None:
-        config.set('rdf_database', 'repository', OPTIONS.repository)
+        if options.base_path is not None:
+            config.set('server', 'base-path', options.base_path)
 
-    if OPTIONS.ns_prefix is not None:
-        for nsprefix in OPTIONS.ns_prefix:
-            prefix, uri = nsprefix.split(':', 1)
-            config.set('ns_prefix', prefix, uri)
-            
-    if OPTIONS.plugin is not None:
-        for plugin in OPTIONS.plugin:
-            config.set('plugins', plugin, 'true')
+        if options.repository is not None:
+            config.set('rdf_database', 'repository', options.repository)
 
-    if OPTIONS.force_ipv4 is not None:
-        config.set('server', 'force-ipv4', 'true')
+        if options.ns_prefix is not None:
+            for nsprefix in options.ns_prefix:
+                prefix, uri = nsprefix.split(':', 1)
+                config.set('ns_prefix', prefix, uri)
+                
+        if options.plugin is not None:
+            for plugin in options.plugin:
+                config.set('plugins', plugin, 'true')
 
-    if OPTIONS.max_bytes is not None:
-        # TODO max_bytes us not defined as an int value in OptionParser ?
-        config.set('server', 'max-bytes', OPTIONS.max_bytes)
+        if options.force_ipv4 is not None:
+            config.set('server', 'force-ipv4', 'true')
 
-    if OPTIONS.no_cache is not None:
-        config.set('server', 'no-cache', 'true')
+        if options.max_bytes is not None:
+            # TODO max_bytes us not defined as an int value in OptionParser ?
+            config.set('server', 'max-bytes', options.max_bytes)
 
-    if OPTIONS.flash_allow is not None:
-        config.set('server', 'flash-allow', 'true')
+        if options.no_cache is not None:
+            config.set('server', 'no-cache', 'true')
 
-    if OPTIONS.max_triples is not None:
-        config.set('server', 'max-triples', str(OPTIONS.max_triples))
+        if options.flash_allow is not None:
+            config.set('server', 'flash-allow', 'true')
 
-    if OPTIONS.cors_allow_origin is not None:
-        config.set('server', 'cors-allow-origin', str(OPTIONS.cors_allow_origin))
+        if options.max_triples is not None:
+            config.set('server', 'max-triples', str(options.max_triples))
 
-    if OPTIONS.force_init is not None:
-        config.set('rdf_database', 'force-init', 'true')
+        if options.cors_allow_origin is not None:
+            config.set('server', 'cors-allow-origin', str(options.cors_allow_origin))
 
-    if OPTIONS.resource_cache is not None:
-        #config.set('server', 'resource-cache', OPTIONS.resource_cache)
-        config.set('server', 'resource-cache', 'true')
+        if options.force_init is not None:
+            config.set('rdf_database', 'force-init', 'true')
 
-    if OPTIONS.loggers is not None:
-        config.set('logging', 'loggers', str(OPTIONS.loggers))
+        if options.resource_cache is not None:
+            #config.set('server', 'resource-cache', options.resource_cache)
+            config.set('server', 'resource-cache', 'true')
 
-    if OPTIONS.loggers is not None:
-        config.set('logging', 'loggers', ' '.join(OPTIONS.loggers))
+        if options.loggers is not None:
+            config.set('logging', 'loggers', str(options.loggers))
 
-    if OPTIONS.console_level is not None:
-        config.set('logging', 'console-level', str(OPTIONS.console_level))
+        if options.loggers is not None:
+            config.set('logging', 'loggers', ' '.join(options.loggers))
 
-    if OPTIONS.file_level is not None:
-        config.set('logging', 'file-level', str(OPTIONS.file_level))
+        if options.console_level is not None:
+            config.set('logging', 'console-level', str(options.console_level))
 
-    if OPTIONS.logging_filename is not None:
-        config.set('logging', 'filename', str(OPTIONS.logging_filename))
+        if options.file_level is not None:
+            config.set('logging', 'file-level', str(options.file_level))
+
+        if options.logging_filename is not None:
+            config.set('logging', 'filename', str(options.logging_filename))
 
     return config
 
