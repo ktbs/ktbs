@@ -31,8 +31,6 @@ from wsgiref.simple_server import WSGIServer, make_server
 from .engine.service import KtbsService
 from .utils import SKOS
 
-OPTIONS = None
-
 LOG = logging.getLogger("ktbs")
 
 def main():
@@ -156,13 +154,13 @@ def parse_configuration_options(options=None):
 
     return config
 
-def parse_options():
-    """I parse sys.argv for the main.
-    """
+def build_cmdline_options():
+    """I build ktbs command line options."""
+
     opt = OptionParser(description="HTTP-based Kernel for Trace-Based Systems")
-    opt.add_option("-H", "--host-name") #, default="localhost")
-    opt.add_option("-p", "--port", type=int) #default=8001, type=int)
-    opt.add_option("-b", "--base-path") #, default="")
+    opt.add_option("-H", "--host-name")
+    opt.add_option("-p", "--port")
+    opt.add_option("-b", "--base-path")
     opt.add_option("-r", "--repository",
                   help="the filename/identifier of the RDF database (default: "
                        "in memory)")
@@ -173,12 +171,12 @@ def parse_options():
                   help="loads the given plugin")
 
     ogr = OptionGroup(opt, "Advanced options")
-    ogr.add_option("-4", "--force-ipv4", action="store_true", #default=False,
+    ogr.add_option("-4", "--force-ipv4", action="store_true",
                    help="Force IPv4")
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
-    ogr.add_option("-N", "--no-cache", type=int, #default=0,
+    ogr.add_option("-N", "--no-cache", action="store_true",
                    help="prevent kTBS to send cache-control directives")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
@@ -187,7 +185,7 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
-    ogr.add_option("--force-init", action="store_true", #default=None,
+    ogr.add_option("--force-init", action="store_true",
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
@@ -206,13 +204,22 @@ def parse_options():
     ogr.add_option("--file-level", 
                    choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
                    help="specify the logging level for the logging file (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
-    ogr.add_option("--logging-filename", #, default="ktbs.log")
+    ogr.add_option("--logging-filename",
                    help="specify the filename for the logging file")
     ogr.add_option("-1", "--once", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R1)")
     ogr.add_option("-2", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R2)")
     opt.add_option_group(ogr)
+
+    return opt
+
+
+def parse_options():
+    """I parse sys.argv for the main.
+    """
+
+    opt = build_cmdline_options()
 
     options, args = opt.parse_args()
     if args:

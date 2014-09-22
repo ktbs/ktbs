@@ -33,8 +33,7 @@ from unittest import skip
 
 from nose.tools import assert_raises, eq_
 
-from optparse import OptionParser, OptionGroup
-from ktbs.standalone import parse_configuration_options
+from ktbs.standalone import build_cmdline_options, parse_configuration_options
 
 class TestkTBSConfig(TestCase):
     """
@@ -42,31 +41,7 @@ class TestkTBSConfig(TestCase):
     """
 
     def setUp(self):
-        self.opt = OptionParser()
-        self.opt.add_option('--host-name')
-        self.opt.add_option('--port', type=int)
-        self.opt.add_option('--base-path')
-        self.opt.add_option('--repository')
-        self.opt.add_option('-c', '--configfile')
-        self.opt.add_option('--ns-prefix', action='append')
-        self.opt.add_option('--plugin', action='append')
-        # OptionGroup is not needed, it's just for display ?
-        self.opt.add_option('--force-ipv4', action='store_true')
-        self.opt.add_option('--max-bytes')
-        self.opt.add_option('--no-cache')
-        self.opt.add_option('--flash-allow', action='store_true')
-        self.opt.add_option('--max-triples')
-        self.opt.add_option('--cors-allow-origin', action='store_true')
-        self.opt.add_option('--force-init', action='store_true')
-        self.opt.add_option('--resource-cache', action='store')
-        self.opt.add_option('--loggers', action='append')
-        self.opt.add_option('--console-level', 
-                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
-        self.opt.add_option('--file-level',
-                       choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'])
-        self.opt.add_option('--logging-filename')
-        self.opt.add_option('--once')
-        self.opt.add_option('-2')
+        self.opt = build_cmdline_options()
 
     def tearDown(self):
         pass
@@ -110,12 +85,15 @@ class TestkTBSConfig(TestCase):
         ktbs_config = parse_configuration_options(options)
         eq_(ktbs_config.getint('server', 'max-bytes'), 1500)
 
-    @skip("To write")
     def test_server_nocache(self):
         """Be careful in ConfigParser this parameter is treated as boolean.
            In standalone, it is defined as an integer !!!
         """
-        pass
+        options, args = self.opt.parse_args(['ktbs', 
+                                             '--no-cache'])
+
+        ktbs_config = parse_configuration_options(options)
+        eq_(ktbs_config.getboolean('server', 'no-cache'), True)
 
     def test_server_flashallow(self):
         options, args = self.opt.parse_args(['ktbs', 
@@ -145,14 +123,13 @@ class TestkTBSConfig(TestCase):
         """USAGE TO BE DISCUSSED !!!!"""
         pass
 
-    @skip("To write")
     def test_ns_prefix_one_item(self):
-        """SYNTAX TO BE SPECIFIED"""
         options, args = self.opt.parse_args(['ktbs', 
-                                             '--ns-prefix=foaf'])
+                                             '--ns-prefix=foaf:http://xmlns.com/foaf/0.1/'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('ns_prefix', 'loggers', 1), 'foaf')
+        eq_(ktbs_config.options('ns_prefix'), ['_', 'skos', 'foaf'])
+        eq_(ktbs_config.get('ns_prefix', 'foaf', 1), 'http://xmlns.com/foaf/0.1/')
 
     def test_plugins_one_item(self):
         options, args = self.opt.parse_args(['ktbs', 
