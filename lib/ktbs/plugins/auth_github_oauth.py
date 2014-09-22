@@ -29,16 +29,12 @@ LOG = getLogger(__name__)
 
 # Necessary imports for OAuth2
 import urllib, json, urlparse
-from config_oauth import CLIENT_SECRET, CLIENT_ID
-
-THIRD_PARTY_AUTH_ENDPOINT = 'https://github.com/login/oauth/authorize'
-THIRD_PARTY_ACCESS_TOKEN_ENDPOINT = 'https://github.com/login/oauth/access_token'
-THIRD_PARTY_API_ENDPOINT = 'https://api.github.com/user'
 
 
 class MyUnauthorizedError(UnauthorizedError):
-    def __init__(self, message="", challenge=None, **headers):
-        self.redirect_uri = THIRD_PARTY_AUTH_ENDPOINT+"?client_id="+CLIENT_ID
+    def __init__(self, auth_endpoint, client_id, root_uri, message="", challenge=None, **headers):
+        self.redirect_uri = auth_endpoint+"?client_id="+client_id
+        self.root_uri = root_uri
         super(MyUnauthorizedError, self).__init__(message, "OAuth2",
                                                   content_type="text/html",
                                                   **headers)
@@ -46,18 +42,20 @@ class MyUnauthorizedError(UnauthorizedError):
     def get_body(self):
         return """<!DOCTYPE html>
         <html>
-          <head profile="http://tools.ietf.org/html/rfc6749#section-1.1">
+          <head>
             <title>401 Unauthorized</title>
-            <link id="github_auth_endpoint" rel="resource_server" href="{redirect_auth_uri}">
+            <meta charset="utf-8"/>
+            <link id="github_auth_endpoint" class="oauth_resource_server" href="{redirect_auth_uri}">
+            <link id="successful_login_redirect" href="{root_uri}">
           </head>
           <body><h1>401 Unauthorized</h1>
           <a href="{redirect_auth_uri}">Log in with Github</a>.
           </body>
         </html>
-        """.format(redirect_auth_uri=self.redirect_uri)
+        """.format(redirect_auth_uri=self.redirect_uri, root_uri=self.root_uri)
 
 
-def start_plugin():
+def start_plugin(_config):
     register_pre_processor(AUTHENTICATION, preproc_authentication)
     register_pre_processor(AUTHORIZATION, preproc_authorization)
 
@@ -68,6 +66,7 @@ def stop_plugin():
 
 
 def preproc_authentication(service, request, resource):
+    oauth_config = {opt_key: opt_value for opt_key, opt_value in service.config.items('oauth_login')}
     session = request.environ['beaker.session']
 
     try:  # Succeed if user has been authenticated
@@ -80,16 +79,16 @@ def preproc_authentication(service, request, resource):
             # Exchange code for an access_token
             data = {
                 'code': request.GET.getall('code')[0],
-                'client_id': CLIENT_ID,
-                'client_secret': CLIENT_SECRET
+                'client_id': oauth_config['client_id'],
+                'client_secret': oauth_config['client_secret']
             }
             enc_data = urllib.urlencode(data)
-            gh_resp = urllib.urlopen(THIRD_PARTY_ACCESS_TOKEN_ENDPOINT, data=enc_data)
+            gh_resp = urllib.urlopen(oauth_config['access_token_endpoint'], data=enc_data)
             gh_resp_qs = urlparse.parse_qs(gh_resp.read())
             access_token = gh_resp_qs[b'access_token'][0].decode('utf-8')
             # Exchange access_token for user id.
             gh_resp_id = urllib.urlopen('{api_url}?access_token={at}'
-                                        .format(api_url=THIRD_PARTY_API_ENDPOINT, at=access_token))
+                                        .format(api_url=oauth_config['api_endpoint'], at=access_token))
             gh_resp_id = gh_resp_id.read().decode('utf-8')
             resp_id_dec = json.loads(gh_resp_id)
             user_id = resp_id_dec['id']
@@ -102,11 +101,12 @@ def preproc_authentication(service, request, resource):
 
 
 def preproc_authorization(service, request, resource):
+    oauth_config = {opt_key: opt_value for opt_key, opt_value in service.config.items('oauth_login')}
     session = request.environ['beaker.session']
     if request.remote_addr != "127.0.0.1":
         raise UnauthorizedError("wrong address")
     if request.remote_user is None:
-        raise MyUnauthorizedError()
+        raise MyUnauthorizedError(oauth_config['auth_endpoint'], oauth_config['client_id'], service.root_uri)
     if "logout" in request.GET:
         user_id = session['client_oauth_id']
         session.delete()
