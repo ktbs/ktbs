@@ -56,6 +56,7 @@ from .interface import get_subclass, IResource
 from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
 from .config import get_service_configuration, build_service_root_uri
+from .config import apply_logging_config
 
 NS = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.rdfrest:")
 
@@ -101,6 +102,8 @@ class Service(object):
         assert urisplit(root_uri)[3:] == (None, None), \
             "Invalid URI <%s>" % root_uri
         self.root_uri = coerce_to_uri(root_uri)
+
+        apply_logging_config(service_config)
 
         init_repo = False
         repository = service_config.get('rdf_database', 'repository', 1)

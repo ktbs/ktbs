@@ -51,7 +51,7 @@ class StoredTrace(OriginalStoredTrace):
             return super(StoredTrace, self).get_state(parameters)
 
 
-def start_plugin():
+def start_plugin(_config):
     # replace original StoredTrace by our patched version
     import ktbs.engine.service
     ktbs.engine.service.StoredTrace = StoredTrace

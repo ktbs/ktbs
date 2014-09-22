@@ -28,25 +28,20 @@ from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 from beaker.middleware import SessionMiddleware
 
-from .namespace import KTBS
+#from .namespace import KTBS
 from .engine.service import KtbsService
 from .utils import SKOS
 
-OPTIONS = None
 LOG = logging.getLogger("ktbs")
 
 def main():
     """I launch KTBS as a standalone HTTP server.
     """
-    global OPTIONS # global statement #pylint: disable=W0603
-    OPTIONS = parse_options()
+    cmdline_options = parse_options()
 
     # Get default configuration possibly overriden by a user configuration file
     # or command line configuration OPTIONS
-    ktbs_config = parse_configuration_options()
-
-    log_level = ktbs_config.get('debug', 'log-level', 1).upper()
-    logging.basicConfig(level=log_level) # configure logging
+    ktbs_config = parse_configuration_options(cmdline_options)
 
     for plugin_name in ktbs_config.options('plugins'):
         if ktbs_config.getboolean('plugins', plugin_name):
@@ -55,7 +50,7 @@ def main():
             except ImportError:
                 plugin = __import__("ktbs.plugins." + plugin_name,
                                     fromlist="start_plugin")
-            plugin.start_plugin()
+            plugin.start_plugin(ktbs_config)
 
     # TODO : remove this option ?
     if ktbs_config.getboolean('server', 'resource-cache'):
@@ -83,89 +78,95 @@ def main():
                         make_server_class(ktbs_config))
 
     LOG.info("KTBS server at %s" % ktbs_service.root_uri)
-    requests = ktbs_config.getint('debug', 'requests')
-    if requests == -1:
-        httpd.serve_forever()
-    else:
-        while requests:
-            httpd.handle_request()
-            requests -= 1
 
-def parse_configuration_options():
+    httpd.serve_forever()
+
+def parse_configuration_options(options=None):
     """I get kTBS default configuration options and override them with
     command line options.
 
-    Command line options are stored in a global variable.
-    If this changes, it should be passed as a parameter to this function.
+    :param options: Command line options.
 
     :return: Configuration object.
     """
-    config = get_ktbs_configuration(OPTIONS.configfile)
 
-    # Override default / config file parameters with command line parameters
-    if OPTIONS.host_name is not None:
-        config.set('server', 'host-name', OPTIONS.host_name)
+    if options is None:
+        config = get_ktbs_configuration()
+    else:
+        config = get_ktbs_configuration(options.configfile)
 
-    if OPTIONS.port is not None:
-        config.set('server', 'port', str(OPTIONS.port))
+        # Override default / config file parameters with command line parameters
+        if options.host_name is not None:
+            config.set('server', 'host-name', options.host_name)
 
-    if OPTIONS.base_path is not None:
-        config.set('server', 'base-path', OPTIONS.base_path)
+        if options.port is not None:
+            config.set('server', 'port', str(options.port))
 
-    if OPTIONS.repository is not None:
-        config.set('rdf_database', 'repository', OPTIONS.repository)
+        if options.base_path is not None:
+            config.set('server', 'base-path', options.base_path)
 
-    if OPTIONS.ns_prefix is not None:
-        for nsprefix in OPTIONS.ns_prefix:
-            prefix, uri = nsprefix.split(':', 1)
-            config.set('ns_prefix', prefix, uri)
-            
-    if OPTIONS.plugin is not None:
-        for plugin in OPTIONS.plugin:
-            config.set('plugins', plugin, 'true')
+        if options.repository is not None:
+            config.set('rdf_database', 'repository', options.repository)
 
-    if OPTIONS.force_ipv4 is not None:
-        config.set('server', 'force-ipv4', 'true')
+        if options.ns_prefix is not None:
+            for nsprefix in options.ns_prefix:
+                prefix, uri = nsprefix.split(':', 1)
+                config.set('ns_prefix', prefix, uri)
+                
+        if options.plugin is not None:
+            for plugin in options.plugin:
+                config.set('plugins', plugin, 'true')
 
-    if OPTIONS.max_bytes is not None:
-        # TODO max_bytes us not defined as an int value in OptionParser ?
-        config.set('server', 'max-bytes', OPTIONS.max_bytes)
+        if options.force_ipv4 is not None:
+            config.set('server', 'force-ipv4', 'true')
 
-    if OPTIONS.no_cache is not None:
-        config.set('server', 'no-cache', 'true')
+        if options.max_bytes is not None:
+            # TODO max_bytes us not defined as an int value in OptionParser ?
+            config.set('server', 'max-bytes', options.max_bytes)
 
-    if OPTIONS.flash_allow is not None:
-        config.set('server', 'flash-allow', 'true')
+        if options.no_cache is not None:
+            config.set('server', 'no-cache', 'true')
 
-    if OPTIONS.max_triples is not None:
-        config.set('server', 'max-triples', str(OPTIONS.max_triples))
+        if options.flash_allow is not None:
+            config.set('server', 'flash-allow', 'true')
 
-    if OPTIONS.cors_allow_origin is not None:
-        config.set('server', 'cors-allow-origin', str(OPTIONS.cors_allow_origin))
+        if options.max_triples is not None:
+            config.set('server', 'max-triples', str(options.max_triples))
 
-    if OPTIONS.force_init is not None:
-        config.set('rdf_database', 'force-init', 'true')
+        if options.cors_allow_origin is not None:
+            config.set('server', 'cors-allow-origin', str(options.cors_allow_origin))
 
-    if OPTIONS.resource_cache is not None:
-        #config.set('server', 'resource-cache', OPTIONS.resource_cache)
-        config.set('server', 'resource-cache', 'true')
+        if options.force_init is not None:
+            config.set('rdf_database', 'force-init', 'true')
 
-    if OPTIONS.log_level is not None:
-        config.set('debug', 'log-level', str(OPTIONS.log_level))
+        if options.resource_cache is not None:
+            #config.set('server', 'resource-cache', options.resource_cache)
+            config.set('server', 'resource-cache', 'true')
 
-    if OPTIONS.requests is not None:
-        # TODO How to manage -1 = -R1, -2 = -R2
-        config.set('debug', 'requests', str(OPTIONS.requests))
+        if options.loggers is not None:
+            config.set('logging', 'loggers', str(options.loggers))
+
+        if options.loggers is not None:
+            config.set('logging', 'loggers', ' '.join(options.loggers))
+
+        if options.console_level is not None:
+            config.set('logging', 'console-level', str(options.console_level))
+
+        if options.file_level is not None:
+            config.set('logging', 'file-level', str(options.file_level))
+
+        if options.logging_filename is not None:
+            config.set('logging', 'filename', str(options.logging_filename))
 
     return config
 
-def parse_options():
-    """I parse sys.argv for the main.
-    """
+def build_cmdline_options():
+    """I build ktbs command line options."""
+
     opt = OptionParser(description="HTTP-based Kernel for Trace-Based Systems")
-    opt.add_option("-H", "--host-name") #, default="localhost")
-    opt.add_option("-p", "--port", type=int) #default=8001, type=int)
-    opt.add_option("-b", "--base-path") #, default="")
+    opt.add_option("-H", "--host-name")
+    opt.add_option("-p", "--port")
+    opt.add_option("-b", "--base-path")
     opt.add_option("-r", "--repository",
                   help="the filename/identifier of the RDF database (default: "
                        "in memory)")
@@ -176,12 +177,12 @@ def parse_options():
                   help="loads the given plugin")
 
     ogr = OptionGroup(opt, "Advanced options")
-    ogr.add_option("-4", "--force-ipv4", action="store_true", #default=False,
+    ogr.add_option("-4", "--force-ipv4", action="store_true",
                    help="Force IPv4")
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
-    ogr.add_option("-N", "--no-cache", type=int, #default=0,
+    ogr.add_option("-N", "--no-cache", action="store_true",
                    help="prevent kTBS to send cache-control directives")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
@@ -190,7 +191,7 @@ def parse_options():
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
                    help="space separated list of allowed origins")
-    ogr.add_option("--force-init", action="store_true", #default=None,
+    ogr.add_option("--force-init", action="store_true",
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
@@ -199,17 +200,32 @@ def parse_options():
                    help="not used anymore")
     opt.add_option_group(ogr)
     
-    ogr = OptionGroup(opt, "Debug options")
-    ogr.add_option("-l", "--log-level", #default="info",
-                   choices=["debug", "info", "warning", "error", "critical"],
-                   help="specify the debug level (debug, info, warning, error, critical)")
-    ogr.add_option("-R", "--requests", type=int, #default=-1,
-                   help="serve only the given number of requests")
+    ogr = OptionGroup(opt, "Logging options")
+    ogr.add_option("--loggers", action="append",
+                   help="for which module(s), you want to activate logging (ktbs, rdfrest, rdflib, ...)")
+
+    ogr.add_option("--console-level", 
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                   help="specify the logging level for the console (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+    ogr.add_option("--file-level", 
+                   choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+                   help="specify the logging level for the logging file (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
+    ogr.add_option("--logging-filename",
+                   help="specify the filename for the logging file")
     ogr.add_option("-1", "--once", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R1)")
     ogr.add_option("-2", action="callback", callback=number_callback,
                    help="serve only one query (equivalent to -R2)")
     opt.add_option_group(ogr)
+
+    return opt
+
+
+def parse_options():
+    """I parse sys.argv for the main.
+    """
+
+    opt = build_cmdline_options()
 
     options, args = opt.parse_args()
     if args:
