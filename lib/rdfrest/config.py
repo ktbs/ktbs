@@ -27,11 +27,11 @@ import logging.config
 from ConfigParser import SafeConfigParser
 
 
-def get_service_configuration(configfile_path=None):
+def get_service_configuration(configfile_handler=None):
     """I set rdfrest Service default configuration options and possibly
     override them with the values extracted from a configuration file.
 
-    :param configfile_path: optional path of a configuration file
+    :param configfile_handler: optional handler of a configuration file
 
     :return: Configuration object.
     """
@@ -82,9 +82,8 @@ def get_service_configuration(configfile_path=None):
     config.set('logging', 'json-configuration-filename', 'logging.json')
 
     # Loading from config file
-    if configfile_path is not None:
-        with open(configfile_path) as f:
-            config.readfp(f)
+    if configfile_handler is not None:
+        config.readfp(configfile_handler)
 
     return config
 

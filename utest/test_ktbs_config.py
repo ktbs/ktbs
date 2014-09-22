@@ -34,10 +34,17 @@ from unittest import skip
 from nose.tools import assert_raises, eq_
 
 from ktbs.standalone import build_cmdline_options, parse_configuration_options
+from ktbs.config import get_ktbs_configuration
 
-class TestkTBSConfig(TestCase):
+try:
+    from cStringIO import StringIO
+except:
+    from StringIO import StringIO
+
+class TestkTBSCmdlineConfig(TestCase):
     """
-    Test that kTBS configuration parameters are correctly managed.
+    Test that kTBS command line configuration parameters are correctly 
+    managed.
     """
 
     def setUp(self):
@@ -188,4 +195,211 @@ class TestkTBSConfig(TestCase):
                                              '--file-level=WARNING'])
 
         ktbs_config = parse_configuration_options(options)
+        eq_(ktbs_config.get('logging', 'file-level', 1), 'WARNING')
+
+class TestkTBSFileConfig(TestCase):
+    """
+    Test that kTBS configuration configuration file parameters are correctly 
+    managed.
+
+    If you want to use StringIO more dynamically with writelines(), you must
+    insert seek(0) before passing the object to ConfigParser code.
+
+        fhandler.writelines(["[server]\n",
+                             "host-name = testhost\n"])
+        fhandler.seek(0)
+    otherwise no line are recored by ConfigParser readline() calls.
+
+    Giving a string to the cStringIO.StringIO() constructor returns an object 
+    with fewer methods (no write method for instance).
+
+        configstring = '''
+        [server]
+        host-name = testhost
+        '''
+        fhandler = StringIO(configstring)
+
+    But this failed to be user by ConfigParser readfp() method.
+    """
+
+    #def setUp(self):
+    #    self.opt = build_cmdline_options()
+
+    #def tearDown(self):
+    #    pass
+
+    def test_server_hostname(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n",
+                             "host-name = testhost\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('server', 'host-name', 1), 'testhost')
+
+    def test_server_hostport(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "port = 4444\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getint('server', 'port'), 4444)
+
+    def test_server_basepath(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "base-path = myktbsroot/\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('server', 'base-path', 1), 'myktbsroot/')
+
+    def test_server_ipv4(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "force-ipv4 = true\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getboolean('server', 'force-ipv4'), True)
+
+    def test_server_maxbytes(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "max-bytes = 1234\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getint('server', 'max-bytes'), 1234)
+
+    def test_server_nocache(self):
+        """Be careful in ConfigParser this parameter is treated as boolean.
+           In standalone, it is defined as an integer !!!
+        """
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "no-cache = true\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getboolean('server', 'no-cache'), True)
+
+    def test_server_flashallow(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "flash-allow = true\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getboolean('server', 'flash-allow'), True)
+
+    def test_server_maxtriples(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "max-triples = 1200\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getint('server', 'max-triples'), 1200)
+
+    @skip("To write")
+    def test_server_corsalloworigin(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[server]\n", 
+                             "cors-allow-origin = xxx\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getboolean('server', 'cors-allow-origin'), True)
+        pass
+
+    @skip("To write")
+    def test_server_resourcecache(self):
+        """USAGE TO BE DISCUSSED !!!!"""
+        pass
+
+    def test_ns_prefix_one_item(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[ns_prefix]\n", 
+                             "foaf = http://xmlns.com/foaf/0.1/\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        # In this case, foaf is the first prefix added before the 2
+        # default ones added by get_ktbs_configuration()
+        eq_(ktbs_config.options('ns_prefix'), ['foaf', '_', 'skos'])
+        eq_(ktbs_config.get('ns_prefix', 'foaf', 1), 'http://xmlns.com/foaf/0.1/')
+
+    def test_plugins_one_item(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[plugins]\n", 
+                             "test_preproc = true\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        # There's a default plugin in the config post_via_get
+        eq_(ktbs_config.options('plugins'), ['post_via_get', 'test_preproc'])
+
+    def test_rdf_database_repository(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[rdf_database]\n", 
+                             "repository = /var/myktbs/\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('rdf_database', 'repository', 1), '/var/myktbs/')
+
+    def test_rdf_database_forceinit(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[rdf_database]\n", 
+                             "force-init = true\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.getboolean('rdf_database', 'force-init'), True)
+
+    def test_logging_one_logger(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[logging]\n", 
+                             "loggers = ktbs\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs')
+
+    def test_logging_multiple_loggers(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[logging]\n", 
+                             "loggers = ktbs rdfrest\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs rdfrest')
+
+    def test_logging_consolelevel(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[logging]\n", 
+                             "console-level = DEBUG\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('logging', 'console-level', 1), 'DEBUG')
+
+    def test_logging_filename(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[logging]\n", 
+                             "filename = /var/log/myktbslogs.log\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
+        eq_(ktbs_config.get('logging', 'filename', 1), '/var/log/myktbslogs.log')
+
+    def test_logging_filelevel(self):
+        fhandler = StringIO()
+        fhandler.writelines(["[logging]\n", 
+                             "file-level = WARNING\n"])
+        fhandler.seek(0)
+
+        ktbs_config = get_ktbs_configuration(fhandler)
         eq_(ktbs_config.get('logging', 'file-level', 1), 'WARNING')

@@ -26,15 +26,15 @@ from rdfrest.config import get_service_configuration
 from .namespace import KTBS
 from .utils import SKOS
 
-def get_ktbs_configuration(configfile_path=None):
+def get_ktbs_configuration(configfile_handler=None):
     """I set kTBS default configuration options and possibly override them
     with the values extracted from a configuration file.
 
-    :param configfile_path: optional path of a configuration file
+    :param configfile_handler: optional file handler of a configuration file
 
     :return: Configuration object.
     """
-    ktbs_config = get_service_configuration(configfile_path)
+    ktbs_config = get_service_configuration(configfile_handler)
 
     if ktbs_config.has_section('ns_prefix'):
         ktbs_config.set('ns_prefix', '_', str(KTBS))
