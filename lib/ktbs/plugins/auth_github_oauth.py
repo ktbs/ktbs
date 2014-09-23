@@ -29,6 +29,7 @@ LOG = getLogger(__name__)
 
 # Necessary imports for OAuth2
 import urllib, json, urlparse
+OAUTH_CONFIG = None
 
 
 class MyUnauthorizedError(UnauthorizedError):
@@ -56,6 +57,8 @@ class MyUnauthorizedError(UnauthorizedError):
 
 
 def start_plugin(_config):
+    global OAUTH_CONFIG
+    OAUTH_CONFIG = {opt_key: opt_value for opt_key, opt_value in _config.items('oauth_login')}
     register_pre_processor(AUTHENTICATION, preproc_authentication)
     register_pre_processor(AUTHORIZATION, preproc_authorization)
 
@@ -66,7 +69,6 @@ def stop_plugin():
 
 
 def preproc_authentication(service, request, resource):
-    oauth_config = {opt_key: opt_value for opt_key, opt_value in service.config.items('oauth_login')}
     session = request.environ['beaker.session']
 
     try:  # Succeed if user has been authenticated
@@ -79,16 +81,16 @@ def preproc_authentication(service, request, resource):
             # Exchange code for an access_token
             data = {
                 'code': request.GET.getall('code')[0],
-                'client_id': oauth_config['client_id'],
-                'client_secret': oauth_config['client_secret']
+                'client_id': OAUTH_CONFIG['client_id'],
+                'client_secret': OAUTH_CONFIG['client_secret']
             }
             enc_data = urllib.urlencode(data)
-            gh_resp = urllib.urlopen(oauth_config['access_token_endpoint'], data=enc_data)
+            gh_resp = urllib.urlopen(OAUTH_CONFIG['access_token_endpoint'], data=enc_data)
             gh_resp_qs = urlparse.parse_qs(gh_resp.read())
             access_token = gh_resp_qs[b'access_token'][0].decode('utf-8')
             # Exchange access_token for user id.
             gh_resp_id = urllib.urlopen('{api_url}?access_token={at}'
-                                        .format(api_url=oauth_config['api_endpoint'], at=access_token))
+                                        .format(api_url=OAUTH_CONFIG['api_endpoint'], at=access_token))
             gh_resp_id = gh_resp_id.read().decode('utf-8')
             resp_id_dec = json.loads(gh_resp_id)
             user_id = resp_id_dec['id']
@@ -101,12 +103,11 @@ def preproc_authentication(service, request, resource):
 
 
 def preproc_authorization(service, request, resource):
-    oauth_config = {opt_key: opt_value for opt_key, opt_value in service.config.items('oauth_login')}
     session = request.environ['beaker.session']
     if request.remote_addr != "127.0.0.1":
         raise UnauthorizedError("wrong address")
     if request.remote_user is None:
-        raise MyUnauthorizedError(oauth_config['auth_endpoint'], oauth_config['client_id'], service.root_uri)
+        raise MyUnauthorizedError(OAUTH_CONFIG['auth_endpoint'], OAUTH_CONFIG['client_id'], service.root_uri)
     if "logout" in request.GET:
         user_id = session['client_oauth_id']
         session.delete()
