@@ -185,7 +185,7 @@ class WithLockMixin(ILocalResource):
         """
         super(WithLockMixin, cls).create(service, uri, new_graph)
         sem = cls.create_lock(uri)
-        if sem.value != 1:
+        if posix_ipc.SEMAPHORE_VALUE_SUPPORTED and sem.value != 1:
             # can happen if the semaphore already existed
             raise ValueError("Something's wrong: "
                              "semaphore for <{}> has value != 1"
