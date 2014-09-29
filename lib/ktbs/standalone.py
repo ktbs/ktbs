@@ -90,11 +90,17 @@ def parse_configuration_options(options=None):
     :return: Configuration object.
     """
 
-    if options is None:
+    config = None
+
+    if options is None or options.configfile is None:
         config = get_ktbs_configuration()
     else:
-        config = get_ktbs_configuration(options.configfile)
+        #if options is not None and options.configfile is not None:
+        if options.configfile is not None:
+            with open(options.configfile) as configfile_handler:
+                config = get_ktbs_configuration(configfile_handler)
 
+    if options is not None and config is not None:
         # Override default / config file parameters with command line parameters
         if options.host_name is not None:
             config.set('server', 'host-name', options.host_name)

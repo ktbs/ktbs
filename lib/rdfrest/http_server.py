@@ -157,19 +157,15 @@ class HttpFrontend(object):
                 # because it may nonetheless make some changes (e.g. in
                 # the #metadata graphs)
         except RedirectException, ex:
-            status = "%s Redirected" % ex.code
             response = MyResponse("%s - Can not proceed\n%s"
-                                  % (status, ex.message),
-                                  status=status,
+                                  % (ex.status, ex.message),
+                                  status=ex.status,
                                   headerlist= ex.get_headerlist(),
                                   request=request)
         except UnauthorizedError, ex:
-            status = "401 Unauthorized"
-            headerlist = ex.get_headerlist()
-            body = ex.get_body()
-            response = MyResponse(body,
-                                  status=status,
-                                  headerlist=headerlist,
+            response = MyResponse(ex.get_body(),
+                                  status=ex.status,
+                                  headerlist=ex.get_headerlist(),
                                   request=request)
         except CanNotProceedError, ex:
             status = "409 Conflict"
@@ -531,36 +527,45 @@ class _TooManyTriples(Exception):
     """
     pass
 
-class UnauthorizedError(Exception):
+class HttpException(Exception):
+    def __init__(self, message, status, **headers):
+        super(HttpException, self).__init__(message)
+        self.status = status
+        self.headers = headers
+
+    def get_body(self):
+        return "%s\n%s" % (self.status, self.message)
+
+    def get_headerlist(self):
+        hlist = []
+        for key, val in self.headers.iteritems():
+            if type(val) is not list:
+                val = [val]
+            for i in val:
+                hlist.append((str(key), str(i)))
+        return  hlist
+    
+
+class UnauthorizedError(HttpException):
     """An error raised when a remote user is not authorized to perform an
     action.
     """
     def __init__(self, message="", challenge=None, **headers):
-        super(Exception, self).__init__(message)
-        self.challenge = challenge or 'Basic Realm="authentication required"'
-        self.headers = headers
+        if challenge is None:
+            challenge = 'Basic Realm="authentication required"'
+        headers['www-authenticate'] = challenge
+        super(UnauthorizedError, self).__init__(message,
+                                                "401 Unauthorized",
+                                                **headers)
 
-    def get_headerlist(self):
-        return [ ("www-authenticate", str(self.challenge)) ] + [
-            (str(key), str(val)) for key, val in self.headers.iteritems()
-        ]
-
-    def get_body(self):
-        return "401 Unauthorized\n%s" % self.message
-
-class RedirectException(Exception):
+class RedirectException(HttpException):
     """An exception raised to redirect a given query to another URL.
     """
     def __init__(self, location, code=303, **headers):
-        super(Exception, self).__init__("Redirecting to <%s>" % location)
-        self.location = location
-        self.code = code
-        self.headers = headers
-
-    def get_headerlist(self):
-        return [ ("location", str(self.location)) ] + [
-            (str(key), str(val)) for key, val in self.headers.iteritems()
-        ]
+        message = "Redirecting to <%s>" % location
+        status = "%s Redirect" % code
+        headers['location'] = location
+        super(RedirectException, self).__init__(message, status, **headers)
 
 
 ################################################################

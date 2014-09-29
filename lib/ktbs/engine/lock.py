@@ -34,6 +34,9 @@ PID = getpid()
 def get_semaphore_name(resource_uri):
     """Return a safe semaphore name for a resource.
 
+    posix_ipc doesn't accept '/' inside the semaphore name but the name must
+    begin with '/'.
+
     :param basestring resource_uri: the URI of the resource.
     :return: safe semaphore name.
     :rtype: str
@@ -68,6 +71,10 @@ class WithLockMixin(ILocalResource):
     @contextmanager
     def lock(self, resource, timeout=None):
         """Lock the current resource (self) with a semaphore.
+
+        Currently, the resources locked are ktbs root and ktbs base. To change
+        any other resources (traces, models, obsels, ...) requires getting a ktbs
+        root or ktbs base semaphore.
 
         :param resource: the resource that asks for the lock.
         :param timeout: maximum time to wait on acquire() until a BusyError is raised.
@@ -179,7 +186,7 @@ class WithLockMixin(ILocalResource):
             but can not always be guaranteed
             (typically, service root resources have no parent to protect them).
 
-            So this implemention stays on the safe side by making no assumption.
+            So this implementation stays on the safe side by making no assumption.
             Subclasses may override `create_lock` to force its value
             if they now they are safe to do so.
         """
