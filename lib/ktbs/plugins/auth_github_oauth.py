@@ -1,4 +1,4 @@
-# This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
+#    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
 #    Copyright (C) 2011-2012 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
 #    Universite de Lyon <http://www.universite-lyon.fr>
 #
@@ -23,26 +23,30 @@ from rdfrest.http_server import \
     register_pre_processor, unregister_pre_processor, \
     UnauthorizedError, RedirectException, \
     AUTHENTICATION, AUTHORIZATION
-
+from base64 import standard_b64encode
 from logging import getLogger
-LOG = getLogger(__name__)
 
 # Necessary imports for OAuth2
-import urllib, json, urlparse
+import urllib
+import json
+import urlparse
 
+LOG = getLogger(__name__)
 OAUTH_CONFIG = None
-IP_WHITELIST = None
+IP_WHITELIST = []
+ADMIN_CREDENTIALS_HASH = None
 
 
-class MyUnauthorizedError(UnauthorizedError):
-    def __init__(self, auth_endpoint, client_id, root_uri, message="", challenge=None, **headers):
+class OAuth2Unauthorized(UnauthorizedError):
+    def __init__(self, auth_endpoint, client_id, root_uri, message="", **headers):
         self.redirect_uri = auth_endpoint + "?client_id=" + client_id
         self.root_uri = root_uri
         self.headers = headers
-        self.headers['Link'] = '<{r_uri}>; rel=oauth_resource_server'.format(r_uri=self.redirect_uri)
-        super(MyUnauthorizedError, self).__init__(message, "OAuth2",
-                                                  content_type="text/html",
-                                                  **headers)
+        self.headers['Link'] = ['<{r_uri}>; rel=oauth_resource_server'.format(r_uri=self.redirect_uri),
+                                '<{root_uri}>; rel=successful_login_redirect'.format(root_uri=self.root_uri)]
+        super(OAuth2Unauthorized, self).__init__(message, "OAuth2",
+                                                 content_type="text/html",
+                                                 **headers)
 
     def get_body(self):
         return """<!DOCTYPE html>
@@ -50,21 +54,34 @@ class MyUnauthorizedError(UnauthorizedError):
           <head>
             <title>401 Unauthorized</title>
             <meta charset="utf-8"/>
-            <link rel="github_auth_endpoint" class="oauth_resource_server" href="{redirect_auth_uri}">
-            <link rel="successful_login_redirect" href="{root_uri}">
           </head>
-          <body><h1>401 Unauthorized</h1>
+          <body><h1>401 Unauthorized</h1></body>
           <a href="{redirect_auth_uri}">Log in with Github</a>.
           </body>
         </html>
-        """.format(redirect_auth_uri=self.redirect_uri, root_uri=self.root_uri)
+        """.format(redirect_auth_uri=self.redirect_uri)
 
 
 def start_plugin(_config):
+
+    def section_dict(section_name):
+        if _config.has_section(section_name):
+            return {opt_key: opt_value for opt_key, opt_value in _config.items(section_name)}
+        else:
+            return None
+
     global OAUTH_CONFIG
     global IP_WHITELIST
-    OAUTH_CONFIG = {opt_key: opt_value for opt_key, opt_value in _config.items('oauth_login')}
-    IP_WHITELIST = OAUTH_CONFIG['ip_whitelist'].split(' ')
+    global ADMIN_CREDENTIALS_HASH
+
+    OAUTH_CONFIG = section_dict('oauth_login')
+
+    admin_login_config = section_dict('admin_login')
+    if admin_login_config:
+        IP_WHITELIST = admin_login_config['ip_whitelist'].split(' ')
+        ADMIN_CREDENTIALS_HASH = standard_b64encode(admin_login_config['login'] + ':' +
+                                                    admin_login_config['password'])
+
     register_pre_processor(AUTHENTICATION, preproc_authentication)
     register_pre_processor(AUTHORIZATION, preproc_authorization)
 
@@ -79,11 +96,10 @@ def preproc_authentication(service, request, resource):
 
     try:  # Succeed if the user has already been authenticated
         user_role = session['remote_user_role']
-        LOG.debug("User {0} is authenticated".format(request.remote_user))
 
     except KeyError:  # User is not authenticated
         # If in the process of authenticating with Github.
-        # Else, preproc_authorization() is called afterward to invite the user to login
+        # Else, preproc_authorization() will be called afterward to invite the user to login
         authenticate(request)
 
     except Exception, e:
@@ -93,26 +109,33 @@ def preproc_authentication(service, request, resource):
         if user_role == 'admin':
             request.remote_user = request.remote_addr
         elif user_role == 'user':
-            request.remote_user = session['client_oauth_id']
+            request.remote_user = session['user_id']
         else:
-            # TODO authn with same route as inside "except KeyError"
             LOG.debug("User role should be 'user' or 'admin', got {user_role} instead. Re-doing authentication."
                       .format(user_role=user_role))
+            authenticate(request)
+        LOG.debug("User {0} is authenticated".format(request.remote_user))
 
 
 def authenticate(request):
     session = request.environ['beaker.session']
+
+    def log_successful_auth(user_id):
+        LOG.debug("User {0} has been successfully authenticated".format(user_id))
+
     if request.remote_addr in IP_WHITELIST:
         auth = request.authorization
-        if not auth:
-            raise UnauthorizedError()
-        elif auth[0] == 'Basic' and auth[1] == 'YWRtaW46YWRtaW4=':  # TODO take the variable from the conf and do the hash here
+        if auth and auth[0] == 'Basic' and auth[1] == ADMIN_CREDENTIALS_HASH:
             session['remote_user_role'] = 'admin'
-            request.remote_user = request.remote_addr
+            request.remote_user = session['user_id'] = request.remote_addr
+            log_successful_auth(session['user_id'])
+        else:
+            raise UnauthorizedError()
+
     elif request.GET.getall('code'):
-        session['client_oauth_id'] = github_flow(request)
+        request.remote_user = session['user_id'] = github_flow(request)
         session['remote_user_role'] = 'user'
-        LOG.debug("User {0} has been successfully authenticated".format(session['client_oauth_id']))
+        log_successful_auth(session['user_id'])
         raise RedirectException('/')
 
 
@@ -138,9 +161,9 @@ def github_flow(request):
 def preproc_authorization(service, request, resource):
     session = request.environ['beaker.session']
     if request.remote_user is None:
-        raise MyUnauthorizedError(OAUTH_CONFIG['auth_endpoint'], OAUTH_CONFIG['client_id'], service.root_uri)
+        raise OAuth2Unauthorized(OAUTH_CONFIG['auth_endpoint'], OAUTH_CONFIG['client_id'], service.root_uri)
     if "logout" in request.GET:
-        user_id = session['client_oauth_id']
+        user_id = session['user_id']
         session.delete()
         LOG.debug("User {0} has successfully logged out".format(user_id))
-        raise UnauthorizedError("logged out", challenge="logged out")
+        raise UnauthorizedError("Successfully logged out", challenge="logged out")
