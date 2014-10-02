@@ -14,6 +14,7 @@ WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
 
+
 # Tests for BASE
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsBaseTestCase(KtbsTestCase):
