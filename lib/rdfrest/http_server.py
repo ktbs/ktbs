@@ -156,17 +156,8 @@ class HttpFrontend(object):
                 # NB: even for a GET, we embed method in a "transaction"
                 # because it may nonetheless make some changes (e.g. in
                 # the #metadata graphs)
-        except RedirectException, ex:
-            response = MyResponse("%s - Can not proceed\n%s"
-                                  % (ex.status, ex.message),
-                                  status=ex.status,
-                                  headerlist= ex.get_headerlist(),
-                                  request=request)
-        except UnauthorizedError, ex:
-            response = MyResponse(ex.get_body(),
-                                  status=ex.status,
-                                  headerlist=ex.get_headerlist(),
-                                  request=request)
+        except HttpException, ex:
+            response = ex.response
         except CanNotProceedError, ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
@@ -383,21 +374,31 @@ class HttpFrontend(object):
         # too many return statements (7/6) #pylint: disable=R0911
 
         # find parser
-        ctype = request.content_type or "text/turtle"
-        iter_etags = getattr(resource, "iter_etags", None)
-        if iter_etags is not None:
-            if request.headers.get("if-match", "*") == "*":
-                return MyResponse(
-                    status="403 Forbidden: 'if-match' is required",
-                    request=request,
-                    )
-            for i in iter_etags(request.GET.mixed() or None):
-                if taint_etag(i, ctype) in request.if_match:
-                    break
-            else: # no matching etag found in 'for' loop
-                return self.issue_error(412, request, resource)
-        parser, _ = get_parser_by_content_type(ctype)
-
+        ext = request.uri_extension
+        if ext:
+            parser = None
+            _, ctype = get_serializer_by_extension(ext)
+            if ctype is not None:
+                parser, _ = get_parser_by_content_type(ctype)
+            if parser is None:
+                return self.issue_error(404, request, resource, "Bad extension")
+            print "===", parser
+        else:
+            ctype = request.content_type or "text/turtle"
+            iter_etags = getattr(resource, "iter_etags", None)
+            if iter_etags is not None:
+                if request.headers.get("if-match", "*") == "*":
+                    return MyResponse(
+                        status="403 Forbidden: 'if-match' is required",
+                        request=request,
+                        )
+                for i in iter_etags(request.GET.mixed() or None):
+                    if taint_etag(i, ctype) in request.if_match:
+                        break
+                else: # no matching etag found in 'for' loop
+                    return self.issue_error(412, request, resource)
+            parser, _ = get_parser_by_content_type(ctype)
+    
         # parse and check bytes/triples limitations
         if parser is None:
             return self.issue_error(415, request, resource)
