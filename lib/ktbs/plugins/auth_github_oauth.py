@@ -21,7 +21,7 @@ KTBS: Kernel for Trace-Based Systems.
 
 from rdfrest.http_server import \
     register_pre_processor, unregister_pre_processor, \
-    UnauthorizedError, RedirectException, \
+    UnauthorizedError, RedirectException, HttpException, \
     AUTHENTICATION, AUTHORIZATION
 from base64 import standard_b64encode
 from logging import getLogger
@@ -59,9 +59,8 @@ class OAuth2Unauthorized(UnauthorizedError):
                                 .format(r_uri=self.oauth_endpoint_uri),
                                 '<{redirect_uri}>; rel=successful_login_redirect'
                                 .format(redirect_uri=self.redirect_uri)]
-        super(OAuth2Unauthorized, self).__init__(message, challenge="OAuth2",
-                                                 content_type="text/html",
-                                                 **headers)
+        self.headers['Content-Type'] = "text/html"
+        super(OAuth2Unauthorized, self).__init__(message, challenge="OAuth2", **self.headers)
 
     def get_body(self):
         """Display a minimalistic HTML page to prompt the user to login."""
@@ -78,25 +77,29 @@ class OAuth2Unauthorized(UnauthorizedError):
         """.format(redirect_auth_uri=self.oauth_endpoint_uri)
 
 
-class UserUnauthorized(UnauthorizedError):
-    def __init__(self, base_uri, **headers):
-        self.base_uri = base_uri
-        super(UserUnauthorized, self).__init__(message=None,
-                                               challenge="kTBS authorization control",
-                                               headers=headers)
+class AccessForbidden(HttpException):
+    def __init__(self, redirect_uri, **headers):
+        self.redirect_uri = redirect_uri
+        self.headers = headers
+        self.headers['Content-Type'] = "text/html"
+        super(AccessForbidden, self).__init__(message="",
+                                              status="403 Forbidden",
+                                              **self.headers)
 
     def get_body(self):
         return """<!DOCTYPE html>
         <html>
           <head>
-            <title>401 Unauthorized</title>
+            <title>403 Forbidden</title>
             <meta charset="utf-8"/>
           </head>
-          <body><h1>401 Unauthorized</h1>
-          <a href="{base_uri}">Go to your base</a>.
+          <body><h1>403 Forbidden</h1>
+          <script>setTimeout(function() {{ window.location = "{redirect_uri}"; }}, 10000);</script>
+          <p><a href="{redirect_uri}">Please go to your base</a>.</p>
+          <p>You will be redirected in 10 s.</p>
           </body>
         </html>
-        """.format(base_uri=self.base_uri)
+        """.format(redirect_uri=self.redirect_uri)
 
 
 def start_plugin(_config):
@@ -144,7 +147,7 @@ def preproc_authentication(service, request, resource):
 
     except KeyError:  # User is not authenticated
         # If in the process of authenticating (redirect from Github or input from Basic Auth)
-        authenticate(request)
+        authenticate(service, request)
         # Else, preproc_authorization() will be called afterward to invite the user to login
 
     except Exception, e:
@@ -157,10 +160,10 @@ def preproc_authentication(service, request, resource):
         else:
             LOG.debug("User role should be 'user' or 'admin', got {user_role} instead. Re-doing authentication."
                       .format(user_role=user_role))
-            authenticate(request)
+            authenticate(service, request)
 
 
-def authenticate(request):
+def authenticate(service, request):
     """I authenticate a user, either via Github or via Basic Auth."""
     session = request.environ['beaker.session']
 
@@ -186,7 +189,7 @@ def authenticate(request):
         request.remote_user = session['user_id'] = github_flow(request)
         session['remote_user_role'] = 'user'
         log_successful_auth(session['user_id'])
-        raise RedirectException('/')
+        raise RedirectException(service.root_uri + session['user_id'] + '/')
 
 
 def github_flow(request):
@@ -215,6 +218,7 @@ def github_flow(request):
 
 
 def preproc_authorization(service, request, resource):
+    """I make sure the current user as the right to access the requested resource."""
     session = request.environ['beaker.session']
 
     # If the user is not authenticated, the access is forbidden: prompt him to login first
@@ -234,19 +238,19 @@ def preproc_authorization(service, request, resource):
 
         # Else, he is just browsing the kTBS:
         # If a user wants to do stuff on his base it's ok
-        elif role == 'user' and request.path.startswith('/'+user_id+'/'):
+        elif role == 'user' and request.path_info.startswith('/'+user_id+'/'):
             LOG.debug("User {user_id} is allowed to do a {method} request on <{res_uri}>."
-                      .format(user_id=user_id, method=request.method, res_uri=request.path))
+                      .format(user_id=user_id, method=request.method, res_uri=request.path_info))
         # If a user wants to POST something on the root, it's ok
-        elif role == 'user' and request.path == '/' and request.method == 'POST':
+        elif role == 'user' and request.path_info == '/' and request.method == 'POST':
             LOG.debug("User {user_id} is allowed to POST on root <{root_uri}>."
                       .format(user_id=user_id, root_uri=service.root_uri))
         # If it's an admin, it's ok to do anything
         elif role == 'admin':
             LOG.debug("User {user_id} is allowed to do a {method} request on <{res_uri}> because he is an admin."
-                      .format(user_id=user_id, method=request.method, res_uri=request.path))
+                      .format(user_id=user_id, method=request.method, res_uri=request.path_info))
         # Otherwise, the user is trying to access or post something at the wrong place
         else:
             LOG.debug("User {user_id} is forbidden to do a {method} request on <{res_uri}>"
-                      .format(user_id=user_id, method=request.method, res_uri=request.path))
-            raise UserUnauthorized(base_uri=service.root_uri+user_id+'/')
+                      .format(user_id=user_id, method=request.method, res_uri=request.path_info))
+            raise AccessForbidden(redirect_uri=service.root_uri+user_id+'/')
