@@ -48,11 +48,11 @@ class OAuth2Unauthorized(UnauthorizedError):
         - "Link" in the HTTP header
         - Visual information in the HTML
 
-        :param auth_endpoint: the Github OAuth2 authentication endpoint
+        :param auth_endpoint: the Github OAuth2 authentication endpoint with parameter(s)
         :param client_id: the client ID registered at Github for this application
         :param redirect_uri: the URI to send the user back to after he log in
         """
-        self.oauth_endpoint_uri = auth_endpoint + "?client_id=" + client_id
+        self.oauth_endpoint_uri = auth_endpoint
         self.redirect_uri = redirect_uri
         self.headers = headers
         self.headers['Link'] = ['<{r_uri}>; rel=oauth_resource_server'
