@@ -52,11 +52,11 @@ class OAuth2Unauthorized(UnauthorizedError):
         :param client_id: the client ID registered at Github for this application
         :param redirect_uri: the URI to send the user back to after he log in
         """
-        self.oauth_endpoint_uri = auth_endpoint
+        self.auth_endpoint = auth_endpoint
         self.redirect_uri = redirect_uri
         self.headers = headers
         self.headers['Link'] = ['<{r_uri}>; rel=oauth_resource_server'
-                                .format(r_uri=self.oauth_endpoint_uri),
+                                .format(r_uri=self.auth_endpoint),
                                 '<{redirect_uri}>; rel=successful_login_redirect'
                                 .format(redirect_uri=self.redirect_uri)]
         self.headers['Content-Type'] = "text/html"
@@ -74,12 +74,14 @@ class OAuth2Unauthorized(UnauthorizedError):
           <a href="{redirect_auth_uri}">Log in with Github</a>.
           </body>
         </html>
-        """.format(redirect_auth_uri=self.oauth_endpoint_uri)
+        """.format(redirect_auth_uri=self.auth_endpoint)
 
 
 class AccessForbidden(HttpException):
-    def __init__(self, redirect_uri, **headers):
+    def __init__(self, user_id, redirect_uri, root_uri, **headers):
         self.redirect_uri = redirect_uri
+        self.user_id = user_id
+        self.root_uri = root_uri
         self.headers = headers
         self.headers['Content-Type'] = "text/html"
         super(AccessForbidden, self).__init__(message="",
@@ -87,19 +89,40 @@ class AccessForbidden(HttpException):
                                               **self.headers)
 
     def get_body(self):
-        return """<!DOCTYPE html>
-        <html>
-          <head>
-            <title>403 Forbidden</title>
-            <meta charset="utf-8"/>
-          </head>
-          <body><h1>403 Forbidden</h1>
-          <script>setTimeout(function() {{ window.location = "{redirect_uri}"; }}, 10000);</script>
-          <p><a href="{redirect_uri}">Please go to your base</a>.</p>
-          <p>You will be redirected in 10 s.</p>
-          </body>
-        </html>
-        """.format(redirect_uri=self.redirect_uri)
+        return """
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <title>403 Forbidden</title>
+                    <meta charset="utf-8"/>
+                    <script type="text/javascript">
+                    window.onload = function() {{
+                        setTimeout(function() {{ window.location = "{redirect_uri}"; }}, 10000);
+
+                        var elemCreateBase = document.getElementById("check_create_base");
+                        elemCreateBase.onclick = function() {{
+                            var xhr = new XMLHttpRequest();
+                            var payloadCreateBase = '{{"@id": "{user_id}/","@type": "Base"}}';
+                            xhr.open("post", "{root_uri}", true);
+                            xhr.setRequestHeader('Content-Type', 'application/json');
+                            xhr.onload = function() {{
+                                console.log(this.responseText);
+                            }}
+                            xhr.send(payloadCreateBase);
+                            return false;
+                        }}
+                    }}
+                    </script>
+                </head>
+                <body>
+                    <h1>403 Forbidden</h1>
+                    <p><a href="{redirect_uri}">Please go to your base</a>.</p>
+                    <p>You will be redirected in 10 s.</p>
+                    <p><a id="check_create_base" href="">Create base?</a></p>
+                </body>
+            </html>""".format(user_id=self.user_id,
+                              redirect_uri=self.redirect_uri,
+                              root_uri=self.root_uri)
 
 
 def start_plugin(_config):
@@ -253,4 +276,6 @@ def preproc_authorization(service, request, resource):
         else:
             LOG.debug("User {user_id} is forbidden to do a {method} request on <{res_uri}>"
                       .format(user_id=user_id, method=request.method, res_uri=request.path_info))
-            raise AccessForbidden(redirect_uri=service.root_uri+user_id+'/')
+            raise AccessForbidden(user_id=user_id,
+                                  redirect_uri=service.root_uri+user_id+'/',
+                                  root_uri=service.root_uri)
