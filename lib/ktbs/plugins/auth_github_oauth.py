@@ -209,7 +209,7 @@ def authenticate(service, request):
 
     # If the user is being redirected by Github, we continue the Github auth flow
     elif request.GET.getall('code'):
-        request.remote_user = session['user_id'] = github_flow(request)
+        request.remote_user = session['user_id'] = claco_flow(request)
         session['remote_user_role'] = 'user'
         log_successful_auth(session['user_id'])
         raise RedirectException(service.root_uri + session['user_id'] + '/')
@@ -244,7 +244,7 @@ def claco_flow(request):
     # 1. Exchange code for an access_token
     claco_resp = urllib.urlopen(OAUTH_CONFIG['access_token_endpoint']+'&code='+request.GET.getall('code')[0])
     claco_resp_access_token = claco_resp.read().decode('utf-8')
-    access_token = json.loads(claco_resp)['access_token']
+    access_token = json.loads(claco_resp_access_token)['access_token']
 
     # 2. Exchange access_token for user id.
     claco_resp_id = urllib.urlopen('{api_url}?access_token={at}'
@@ -252,7 +252,7 @@ def claco_flow(request):
     claco_resp_id = claco_resp_id.read().decode('utf-8')
     resp_id_dec = json.loads(claco_resp_id)
 
-    return str(resp_id_dec['id'])
+    return str(resp_id_dec['user_id'])
 
 
 def preproc_authorization(service, request, resource):
