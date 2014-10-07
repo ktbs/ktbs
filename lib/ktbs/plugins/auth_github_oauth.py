@@ -240,6 +240,21 @@ def github_flow(request):
     return str(resp_id_dec['id'])
 
 
+def claco_flow(request):
+    # 1. Exchange code for an access_token
+    claco_resp = urllib.urlopen(OAUTH_CONFIG['access_token_endpoint']+'&code='+request.GET.getall('code')[0])
+    claco_resp_access_token = claco_resp.read().decode('utf-8')
+    access_token = json.loads(claco_resp)['access_token']
+
+    # 2. Exchange access_token for user id.
+    claco_resp_id = urllib.urlopen('{api_url}?access_token={at}'
+                                   .format(api_url=OAUTH_CONFIG['api_endpoint'], at=access_token))
+    claco_resp_id = claco_resp_id.read().decode('utf-8')
+    resp_id_dec = json.loads(claco_resp_id)
+
+    return str(resp_id_dec['id'])
+
+
 def preproc_authorization(service, request, resource):
     """I make sure the current user as the right to access the requested resource."""
     session = request.environ['beaker.session']
