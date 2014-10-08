@@ -107,7 +107,7 @@ class AccessForbidden(HttpException):
                 // 1. Test if base exists
                 var xhrBaseExists = new XMLHttpRequest();
                 var status = null;
-                xhrBaseExists.open("get", "{redirect_uri}", true);
+                xhrBaseExists.open("head", "{redirect_uri}", true);
                 xhrBaseExists.onload = function () {{
 
                     if (xhrBaseExists.status == 200) {{ // 2. Base exists --> redirect user
@@ -233,7 +233,7 @@ def authenticate(service, request):
         request.remote_user = session['user_id'] = claco_flow(request)
         session['remote_user_role'] = 'user'
         log_successful_auth(session['user_id'])
-        raise RedirectException(service.root_uri + session['user_id'] + '/')
+        raise RedirectException(service.root_uri)
 
 
 def github_flow(request):
