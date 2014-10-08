@@ -215,13 +215,12 @@ class HttpFrontend(object):
             origin = request.headers.get("origin")
             if origin and (origin in self.cors_allow_origin
                            or "*" in self.cors_allow_origin):
-                response.headerlist.append(
-                    ("access-control-allow-origin", origin)
-                    ),
-                response.headerlist.append(
+                response.headerlist.extend(
+                    ("access-control-allow-origin", origin),
                     ("access-control-allow-methods",
                      "GET, HEAD, PUT, POST, DELETE"),
-                    )
+                    ("access-control-allow-credentials", "true"),
+                )
                 acrh = request.headers.get("access-control-request-headers")
                 if acrh:
                     response.headerlist.append(
