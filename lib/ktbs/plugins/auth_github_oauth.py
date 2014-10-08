@@ -113,9 +113,9 @@ class AccessForbidden(HttpException):
                     if (xhrBaseExists.status == 200) {{ // 2. Base exists --> redirect user
                         elemCheckBase.innerHTML = "<a href='{redirect_uri}'>Your base</a> exists, redirecting in 5 s.";
                         setTimeout(function() {{window.location = "{redirect_uri}"}}, 5000);
-                    }} else if (xhrBaseExists.status == 404) {{ // 3. Base doesn't exists --> invite to create base
-                        elemCheckBase.innerHTML = "Your base doesn't exists. "+
-                                                  "<a href='' id='create_base'>Create base?</a>.";
+                    }} else if (xhrBaseExists.status == 404) {{ // 3. Base doesn't exist --> invite to create base
+                        elemCheckBase.innerHTML = "Your base doesn't exist. "+
+                                                  "<a href='' id='create_base'>Create base?</a>";
 
                         var payloadCreateBase = '{{"@id": "{user_id}/","@type": "Base"}}';
                         var balCB = document.getElementById('create_base');
@@ -125,8 +125,8 @@ class AccessForbidden(HttpException):
                             xhrCreateBase.open("post", "{root_uri}", true);
                             xhrCreateBase.setRequestHeader('Content-Type', 'application/json');
                             xhrCreateBase.onload = function() {{
-                                elemCheckBase.innerHTML = "Your base has been created. "+
-                                    "<a href={redirect_uri}>Go to your base</a> (redirecting in 5 s).";
+                                elemCheckBase.innerHTML = "<a href={redirect_uri}>Your base</a> has been created "+
+                                    "(redirecting in 5 s).";
                                 setTimeout(function() {{window.location = "{redirect_uri}"}}, 5000);
                             }}
                             xhrCreateBase.send(payloadCreateBase);
