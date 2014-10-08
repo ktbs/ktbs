@@ -71,7 +71,7 @@ class OAuth2Unauthorized(UnauthorizedError):
             <meta charset="utf-8"/>
           </head>
           <body><h1>401 Unauthorized</h1>
-          <a href="{redirect_auth_uri}">Log in with Github</a>.
+          <a href="{redirect_auth_uri}">Log in with OAuth2</a>.
           </body>
         </html>
         """.format(redirect_auth_uri=self.auth_endpoint)
@@ -92,37 +92,58 @@ class AccessForbidden(HttpException):
         return """
             <!DOCTYPE html>
             <html>
-                <head>
-                    <title>403 Forbidden</title>
-                    <meta charset="utf-8"/>
-                    <script type="text/javascript">
-                    window.onload = function() {{
-                        setTimeout(function() {{ window.location = "{redirect_uri}"; }}, 10000);
+            <head>
+            <title>403 Forbidden</title>
+            <meta charset="utf-8">
+            </head>
+            <body>
+            <h1>403 Forbidden</h1>
+            <p id="check_base">Checking if your base exists...</p>
+            <script type="text/javascript">
+            window.onload = function() {{
 
-                        var elemCreateBase = document.getElementById("check_create_base");
-                        elemCreateBase.onclick = function() {{
-                            var xhr = new XMLHttpRequest();
-                            var payloadCreateBase = '{{"@id": "{user_id}/","@type": "Base"}}';
-                            xhr.open("post", "{root_uri}", true);
-                            xhr.setRequestHeader('Content-Type', 'application/json');
-                            xhr.onload = function() {{
-                                console.log(this.responseText);
+                var elemCheckBase = document.getElementById('check_base');
+
+                // 1. Test if base exists
+                var xhrBaseExists = new XMLHttpRequest();
+                var status = null;
+                xhrBaseExists.open("get", "{redirect_uri}", true);
+                xhrBaseExists.onload = function () {{
+
+                    if (xhrBaseExists.status == 200) {{ // 2. Base exists --> redirect user
+                        elemCheckBase.innerHTML = "<a href='{redirect_uri}'>Your base</a> exists, redirecting in 5 s.";
+                        setTimeout(function() {{window.location = "{redirect_uri}"}}, 5000);
+                    }} else if (xhrBaseExists.status == 404) {{ // 3. Base doesn't exists --> invite to create base
+                        elemCheckBase.innerHTML = "Your base doesn't exists. "+
+                                                  "<a href='' id='create_base'>Create base?</a>.";
+
+                        var payloadCreateBase = '{{"@id": "{user_id}/","@type": "Base"}}';
+                        var balCB = document.getElementById('create_base');
+                        balCB.onclick = function() {{
+                            // POST to create base.
+                            var xhrCreateBase = new XMLHttpRequest();
+                            xhrCreateBase.open("post", "{root_uri}", true);
+                            xhrCreateBase.setRequestHeader('Content-Type', 'application/json');
+                            xhrCreateBase.onload = function() {{
+                                elemCheckBase.innerHTML = "Your base has been created. "+
+                                    "<a href={redirect_uri}>Go to your base</a> (redirecting in 5 s).";
+                                setTimeout(function() {{window.location = "{redirect_uri}"}}, 5000);
                             }}
-                            xhr.send(payloadCreateBase);
+                            xhrCreateBase.send(payloadCreateBase);
                             return false;
-                        }}
+                        }};
+                    }} else {{
+                        elemCheckBase.innerHTML = "Didn't manage to see if your base exists.";
                     }}
-                    </script>
-                </head>
-                <body>
-                    <h1>403 Forbidden</h1>
-                    <p><a href="{redirect_uri}">Please go to your base</a>.</p>
-                    <p>You will be redirected in 10 s.</p>
-                    <p><a id="check_create_base" href="">Create base?</a></p>
-                </body>
-            </html>""".format(user_id=self.user_id,
-                              redirect_uri=self.redirect_uri,
-                              root_uri=self.root_uri)
+                }}
+                xhrBaseExists.send();
+            }}
+            </script>
+            </body>
+            </html>
+            """.format(user_id=self.user_id,
+                       redirect_uri=self.redirect_uri,
+                       root_uri=self.root_uri)
 
 
 def start_plugin(_config):
