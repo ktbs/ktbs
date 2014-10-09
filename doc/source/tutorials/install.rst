@@ -169,12 +169,75 @@ Specifically, it assumes that:
 For more information on the WSGI directives,
 see the `mod_wsgi documentation <https://code.google.com/p/modwsgi/wiki/ConfigurationGuidelines>`_.
 
+Restricting access to kTBS
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Traces can contain very sensitive information,
+so you will probably want to restrict access to your kTBS.
+To do this, you will need to add the following section
+to your Apache configuration files::
+
+    <Location /ktbs>
+      # here some access control directives
+    </Location>
+
+where ``/ktbs`` is the ``WSGIScriptAlias`` that you chose (see above).
+To do this, you can either use Apache's authorization mechanisms,
+or use some kTBS plugin (to come).
+
+Managing access control with Apache
+```````````````````````````````````
+
+Apache provides `a number of directives`__
+that you can use inside the ``Location`` section
+to restrict access based on various authorization schemes.
+
+__ https://httpd.apache.org/docs/2.4/howto/access.html
+
+If you want fine grained access control (on a per Base or per Trace basis),
+you can do this by adding further ``Location`` directives, for example::
+
+    <Location /ktbs>
+      # ... # global access control rules
+    </Location>
+
+    <Location /ktbs/base1/>
+      # ... # access control for Base base1/
+    </Location>
+
+    <Location /ktbs/base1/t1/>
+      # ... # access control for Trace base1/t1/
+    </Location>
+
+    <Location /ktbs/base2/>
+      # ... # access control for Base base2/
+    </Location>
+
+.. warning::
+
+   Note that `access control in Apache 2.2`__ differs significantly from
+   Apache 2.4, so check your version and use the appropriate documentation.
+
+__ https://httpd.apache.org/docs/2.2/howto/access.html
+
+Managing access control with kTBS plugins
+`````````````````````````````````````````
+
+Eventually, kTBS will provide plugins
+to handle authentication and/or authorization.
+Note that, whenever you want to use HTTP authentication with such a plugin,
+you will need the following directive::
+
+    <Location /ktbs>
+        WSGIPassAuthorization On
+    </Location>
+
+----
+
 .. TODO::
 
     Explain how to:
 
-    * configure password authentication for kTBS,
-    * configure give different permissions to differenc trace bases,
     * configure several kTBS in the same VirtualHost.
 
 .. rubric:: Notes

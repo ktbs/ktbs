@@ -215,13 +215,12 @@ class HttpFrontend(object):
             origin = request.headers.get("origin")
             if origin and (origin in self.cors_allow_origin
                            or "*" in self.cors_allow_origin):
-                response.headerlist.append(
-                    ("access-control-allow-origin", origin)
-                    ),
-                response.headerlist.append(
+                response.headerlist.extend([
+                    ("access-control-allow-origin", origin),
                     ("access-control-allow-methods",
                      "GET, HEAD, PUT, POST, DELETE"),
-                    )
+                    ("access-control-allow-credentials", "true"),
+                ])
                 acrh = request.headers.get("access-control-request-headers")
                 if acrh:
                     response.headerlist.append(
@@ -374,21 +373,31 @@ class HttpFrontend(object):
         # too many return statements (7/6) #pylint: disable=R0911
 
         # find parser
-        ctype = request.content_type or "text/turtle"
-        iter_etags = getattr(resource, "iter_etags", None)
-        if iter_etags is not None:
-            if request.headers.get("if-match", "*") == "*":
-                return MyResponse(
-                    status="403 Forbidden: 'if-match' is required",
-                    request=request,
-                    )
-            for i in iter_etags(request.GET.mixed() or None):
-                if taint_etag(i, ctype) in request.if_match:
-                    break
-            else: # no matching etag found in 'for' loop
-                return self.issue_error(412, request, resource)
-        parser, _ = get_parser_by_content_type(ctype)
-
+        ext = request.uri_extension
+        if ext:
+            parser = None
+            _, ctype = get_serializer_by_extension(ext)
+            if ctype is not None:
+                parser, _ = get_parser_by_content_type(ctype)
+            if parser is None:
+                return self.issue_error(404, request, resource, "Bad extension")
+            print "===", parser
+        else:
+            ctype = request.content_type or "text/turtle"
+            iter_etags = getattr(resource, "iter_etags", None)
+            if iter_etags is not None:
+                if request.headers.get("if-match", "*") == "*":
+                    return MyResponse(
+                        status="403 Forbidden: 'if-match' is required",
+                        request=request,
+                        )
+                for i in iter_etags(request.GET.mixed() or None):
+                    if taint_etag(i, ctype) in request.if_match:
+                        break
+                else: # no matching etag found in 'for' loop
+                    return self.issue_error(412, request, resource)
+            parser, _ = get_parser_by_content_type(ctype)
+    
         # parse and check bytes/triples limitations
         if parser is None:
             return self.issue_error(415, request, resource)
