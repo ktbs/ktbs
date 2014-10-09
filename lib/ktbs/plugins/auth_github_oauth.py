@@ -16,7 +16,28 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-KTBS: Kernel for Trace-Based Systems.
+This kTBS plugin provides authentication and authorization.
+
+Authentication
+--------------
+We want to make sure the user is who he pretends he is.
+At the end of the process we have an ID for the user.
+
+There are two ways to authenticate :
+- using an IP whitelist coupled with login/password credentials
+- delegating it to an OAuth2 identity provider
+
+
+Authorization
+-------------
+We check that the user has the rights to access a given resource.
+A user has one of the two roles: *user* or *admin*.
+
+If he has the role *user* then he can only access a base that has
+his ID as name. He can also do POST request on the kTBS root.
+
+If he has the role *admin* then he can do anything.
+
 """
 
 from rdfrest.http_server import \
@@ -26,31 +47,29 @@ from rdfrest.http_server import \
 from base64 import standard_b64encode
 from logging import getLogger
 
-# Necessary imports for OAuth2
 import urllib
 import json
 import urlparse
 
 LOG = getLogger(__name__)
 OAUTH_CONFIG = None  # Dictionary for the OAuth2 configuration
-IP_WHITELIST = []  # Set if it exists in the configuration
+IP_WHITELIST = []  # Set only if it exists in the configuration
 ADMIN_CREDENTIALS_HASH = None  # Base64 hash of "login:password" if admin credentials are set in the configuration
 
 
 class OAuth2Unauthorized(UnauthorizedError):
 
-    """Prompt a user to login using Github OAuth2."""
+    """Prompt a user to login using an OAuth2 identity provider."""
 
-    def __init__(self, auth_endpoint, client_id, redirect_uri, message="", **headers):
-        """Set the information about the Github OAuth2 endpoint and redirect URI.
+    def __init__(self, auth_endpoint, redirect_uri, message="", **headers):
+        """Set the information about the OAuth2 endpoint and redirect URI.
 
-        We provide the OAuth2 endpoint information to the user using:
+        We provide to the user the OAuth2 endpoint information using:
         - "Link" in the HTTP header
-        - Visual information in the HTML
+        - visual information in the HTML
 
-        :param auth_endpoint: the Github OAuth2 authentication endpoint with parameter(s)
-        :param client_id: the client ID registered at Github for this application
-        :param redirect_uri: the URI to send the user back to after he log in
+        :param auth_endpoint: the OAuth2 authentication endpoint with parameter(s)
+        :param redirect_uri: the URI to send the user back to after he logs in
         """
         self.auth_endpoint = auth_endpoint
         self.redirect_uri = redirect_uri
@@ -59,6 +78,7 @@ class OAuth2Unauthorized(UnauthorizedError):
                                 .format(r_uri=self.auth_endpoint),
                                 '<{redirect_uri}>; rel=successful_login_redirect'
                                 .format(redirect_uri=self.redirect_uri)]
+        self.headers['Access-control-expose-headers'] = ['Link']
         self.headers['Content-Type'] = "text/html"
         super(OAuth2Unauthorized, self).__init__(message, challenge="OAuth2", **self.headers)
 
@@ -78,7 +98,16 @@ class OAuth2Unauthorized(UnauthorizedError):
 
 
 class AccessForbidden(HttpException):
+
+    """Tell a user that he has not the right to access the given resource.
+
+    This typically arises when a user his logged in but tries to access
+    a protected resource like the kTBS root or a base that doesn't belong
+    to him.
+    """
+
     def __init__(self, user_id, redirect_uri, root_uri, **headers):
+        """I store information to render a useful 403 HTML page."""
         self.redirect_uri = redirect_uri
         self.user_id = user_id
         self.root_uri = root_uri
@@ -89,6 +118,15 @@ class AccessForbidden(HttpException):
                                               **self.headers)
 
     def get_body(self):
+        """I return the body of 403 page.
+
+        This pages tell the user that he has not the right to access the resource.
+        We check if his base exists. If so, we redirect him to his base, if not
+        we invite him to create his base.
+
+        .. note :: the '{{' and '}}' in the code bellow are meant
+                   to escape '{' and '}' for the format method.
+        """
         return """
             <!DOCTYPE html>
             <html>
@@ -118,8 +156,7 @@ class AccessForbidden(HttpException):
                                                   "<a href='' id='create_base'>Create base?</a>";
 
                         var payloadCreateBase = '{{"@id": "{user_id}/","@type": "Base"}}';
-                        var balCB = document.getElementById('create_base');
-                        balCB.onclick = function() {{
+                        document.getElementById('create_base').onclick = function() {{
                             // POST to create base.
                             var xhrCreateBase = new XMLHttpRequest();
                             xhrCreateBase.open("post", "{root_uri}", true);
@@ -190,7 +227,7 @@ def preproc_authentication(service, request, resource):
         user_role = session['remote_user_role']
 
     except KeyError:  # User is not authenticated
-        # If in the process of authenticating (redirect from Github or input from Basic Auth)
+        # If in the process of authenticating (redirect from OAuth2 identify provider or input from Basic Auth)
         authenticate(service, request)
         # Else, preproc_authorization() will be called afterward to invite the user to login
 
@@ -208,7 +245,7 @@ def preproc_authentication(service, request, resource):
 
 
 def authenticate(service, request):
-    """I authenticate a user, either via Github or via Basic Auth."""
+    """I authenticate a user, either via an OAuth2 identity provider or via Basic Auth."""
     session = request.environ['beaker.session']
 
     def log_successful_auth(user_id):
@@ -284,7 +321,7 @@ def preproc_authorization(service, request, resource):
     try:  # This raises a KeyError if the user has not been authenticated yet
         role = session['remote_user_role']
     except KeyError:
-        raise OAuth2Unauthorized(OAUTH_CONFIG['auth_endpoint'], OAUTH_CONFIG['client_id'], service.root_uri)
+        raise OAuth2Unauthorized(OAUTH_CONFIG['auth_endpoint'], service.root_uri)
 
     # Else, the user is authenticated
     else:
