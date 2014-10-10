@@ -1,5 +1,6 @@
 from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
+from unittest import skipUnless
 
 from ktbs.engine.lock import WithLockMixin
 from ktbs.engine.lock import get_semaphore_name
@@ -11,9 +12,11 @@ import posix_ipc
 # Set the lock timeout to 1 s in order to speed up the tests
 WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
 
+SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
+
 
 # Tests for BASE
-
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsBaseTestCase(KtbsTestCase):
 
     tmp_base = None
@@ -28,6 +31,7 @@ class KtbsBaseTestCase(KtbsTestCase):
         self.tmp_base.delete()
 
 
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):
     """Test locking in the kTBS context."""
 
@@ -137,7 +141,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
 
 # Tests for MODEL
-
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
@@ -150,6 +154,7 @@ class KtbsModelTestCase(KtbsBaseTestCase):
         super(KtbsModelTestCase, self).tearDown()
 
 
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsModelLocking(KtbsModelTestCase):
     # NOTE we can't use the flag O_CREX anymore when instantiating a semaphore.
     # A semaphore already exists, because we use create_model() during setup.
@@ -199,7 +204,7 @@ class TestKtbsModelLocking(KtbsModelTestCase):
 
 
 # Tests for METHOD
-
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
@@ -213,6 +218,7 @@ class KtbsMethodTestCase(KtbsBaseTestCase):
         super(KtbsMethodTestCase, self).tearDown()
 
 
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsMethodLocking(KtbsMethodTestCase):
     def test_edit_locked_base(self):
         """Test that we can't edit a method is the base is locked."""
@@ -257,7 +263,7 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
 
 
 # Tests Trace
-
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None
@@ -271,6 +277,7 @@ class KtbsTraceTestCase(KtbsModelTestCase):
         super(KtbsTraceTestCase, self).tearDown()
 
 
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsTraceLocking(KtbsTraceTestCase):
     def test_edit_locked_base(self):
         """Test that we can't edit a Trace if the base is locked."""

@@ -1,5 +1,6 @@
 from test_ktbs_engine import KtbsTestCase
 from nose.tools import assert_raises
+from unittest import skipUnless
 
 from ktbs.engine.lock import WithLockMixin
 from ktbs.engine.lock import get_semaphore_name
@@ -10,7 +11,10 @@ import posix_ipc
 # Set the lock timeout to 1 s in order to speed up the tests
 WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
 
+SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
 
+
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsRootTestCase(KtbsTestCase):
 
     def setUp(self):
@@ -28,6 +32,7 @@ class KtbsRootTestCase(KtbsTestCase):
         semaphore.unlink()
 
 
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsRootLocking(KtbsRootTestCase):
     """Test locking for the kTBS root."""
 
