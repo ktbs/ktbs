@@ -94,6 +94,8 @@ class HttpFrontend(object):
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
+        self._middleware_stack_version = None
+        self._middleware_stack = None
 
         cache_control = cache_half_last_modified
         if service_config.getboolean('server', 'no-cache'):
@@ -121,33 +123,39 @@ class HttpFrontend(object):
         self._options = {}
 
     def __call__(self, environ, start_response):
-        """Wrap `get_response` to honnor the WSGI protocol.
+        """Honnor the WSGI protocol.
         """
-        request = MyRequest(environ)
-        response = self.get_response(request)
-        return response(environ, start_response)
-        
-    def get_response(self, request):
-        """Process a webob request and return a webob response.
+        if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
+            self._middleware_stack = build_middleware_stack(self._core_call)
+            self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+        return self._middleware_stack(environ, start_response)
 
-        :param request: a MyRequest
+    def _core_call(self, environ, start_response):
+        """The actual implementation of this WSGI application.
+
+        NB: the __call__ method wraps this function into a middleware_stack,
+        including all middlewares registered by plugins.
 
         CAUTION: the conversion of exceptions to HTTP status codes  should be
         maintained consistent with
         :meth:`.http_client.HttpResource._http_to_exception`.
         """
+        request = MyRequest(environ)
         resource_uri, request.uri_extension = extsplit(request.path_url)
         resource_uri = URIRef(resource_uri)
         resource = self._service.get(resource_uri)
         if resource is None:
-            return self.issue_error(404, request, None)
+            resp = self.issue_error(404, request, None)
+            return resp(environ, start_response)
         if resource.uri != resource_uri:
-            return self.issue_error(303, request, None,
+            resp = self.issue_error(303, request, None,
                                     location=str(resource.uri))
+            return resp(environ, start_response)
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
-            return self.issue_error(405, request, resource,
+            resp = self.issue_error(405, request, resource,
                                     allow="HEAD, GET, PUT, POST, DELETE")
+            return resp(environ, start_response)
         try:
             with self._service:
                 resource.force_state_refresh()
@@ -227,7 +235,7 @@ class HttpFrontend(object):
                         ("access-control-allow-headers", acrh),
                         )
             
-        return response
+        return response(environ, start_response)
 
     def http_delete(self, request, resource):
         """Process a DELETE request on the given resource.
@@ -598,6 +606,52 @@ def cache_half_last_modified(resource):
 
 ###############################################################
 #
+# UWSGI Middleware registry
+#
+
+_MIDDLEWARE_REGISTRY = []
+_MIDDLEWARE_STACK_VERSION = 0
+
+def build_middleware_stack(original_application):
+    stack = original_application
+    for _, middleware in _MIDDLEWARE_REGISTRY[::-1]:
+        stack = middleware(stack)
+    return stack
+
+def register_middleware(level, middleware, quiet=False):
+    """
+    Register a middleware for HTTP requests.
+
+    :param level: a level governing the order of execution of pre-processors;
+      predefined levels are AUTHENTICATION, AUTHORIZATION
+
+    :param middleware: a function accepting a WSGI application,
+      and producing a WSGI application wrapping the former
+    """
+    if middleware in ( i[1] for i in _MIDDLEWARE_REGISTRY ):
+        if not quiet:
+            raise ValueError("middleware already registered")
+        else:
+            return
+    insort(_MIDDLEWARE_REGISTRY, (level, middleware))
+    global _MIDDLEWARE_STACK_VERSION
+    _MIDDLEWARE_STACK_VERSION += 1
+
+def unregister_middleware(middleware, quiet=False):
+    """
+    Unregister a middleware for HTTP requests.
+    """
+    for i, pair in enumerate(_MIDDLEWARE_REGISTRY):
+        if pair[1] == preproc:
+            del _MIDDLEWARE_REGISTRY[i]
+            global _MIDDLEWARE_STACK_VERSION
+            _MIDDLEWARE_STACK_VERSION += 1
+            return
+    if not quiet:
+        raise ValueError("pre-processor not registered")
+
+###############################################################
+#
 # Request pre-processors registry
 #
 
@@ -638,5 +692,6 @@ def unregister_pre_processor(preproc, quiet=False):
     if not quiet:
         raise ValueError("pre-processor not registered")
 
+SESSION = 0
 AUTHENTICATION = 200
 AUTHORIZATION = 400

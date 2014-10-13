@@ -270,8 +270,9 @@ class HttpResource(IResource):
     def _http_to_exception(cls, headers, content):
         """I inspect HTTP headers and raise an appropriate exception if needed.
 
-        CAUTION: this should be maintained consistent with
-        :meth:`.http_server.HttpFrontend.get_response`.
+        CAUTION: this should be maintained consistent
+        with exception handling in
+        :meth:`.http_server.HttpFrontend._core_call`.
         """
         status = headers.status
         if status / 100 == 2:

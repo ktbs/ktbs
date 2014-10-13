@@ -109,7 +109,7 @@ class TestHttpFront(object):
                 environ[key] = val
 
         req = Request(environ)
-        res = self.app.get_response(req)
+        res = req.get_response(self.app)
         return res, res.body
 
 

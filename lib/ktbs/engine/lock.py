@@ -97,7 +97,8 @@ class WithLockMixin(ILocalResource):
 
             try:  # acquire the lock, re-raise BusyError with info if it fails
                 semaphore.acquire(timeout)
-                assert semaphore.value == 0, "This lock is corrupted"
+                if posix_ipc.SEMAPHORE_VALUE_SUPPORTED:
+                    assert semaphore.value == 0, "This lock is corrupted"
                 self.__locking_thread_id = thread_id = current_thread().ident
                 LOG.debug("%s locked   by %s--%s", self, PID, thread_id)
 
@@ -192,7 +193,7 @@ class WithLockMixin(ILocalResource):
         """
         super(WithLockMixin, cls).create(service, uri, new_graph)
         sem = cls.create_lock(uri)
-        if sem.value != 1:
+        if posix_ipc.SEMAPHORE_VALUE_SUPPORTED and sem.value != 1:
             # can happen if the semaphore already existed
             raise ValueError("Something's wrong: "
                              "semaphore for <{}> has value != 1"

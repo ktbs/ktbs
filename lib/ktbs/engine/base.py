@@ -20,6 +20,7 @@ I provide the implementation of ktbs:Base .
 """
 from rdflib import RDF
 from contextlib import contextmanager
+from posix_ipc import SEMAPHORE_VALUE_SUPPORTED
 
 from .resource import KtbsPostableMixin, KtbsResource
 from .lock import WithLockMixin
@@ -101,11 +102,12 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         it won't block a new instance.
         """
         semaphore = super(Base, cls).create_lock(uri)
-        if semaphore.value == 0:
-            semaphore.release()
-        else:
-            while semaphore.value > 1:
-                semaphore.acquire()
+        if SEMAPHORE_VALUE_SUPPORTED:
+            if semaphore.value == 0:
+                semaphore.release()
+            else:
+                while semaphore.value > 1:
+                    semaphore.acquire()
         return semaphore
 
 
