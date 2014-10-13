@@ -41,11 +41,12 @@ If he has the role *admin* then he can do anything.
 """
 
 from rdfrest.http_server import \
-    register_pre_processor, unregister_pre_processor, \
+    register_pre_processor, unregister_pre_processor, register_middleware, \
     UnauthorizedError, RedirectException, HttpException, \
-    AUTHENTICATION, AUTHORIZATION
+    AUTHENTICATION, AUTHORIZATION, SESSION
 from base64 import standard_b64encode
 from logging import getLogger
+from beaker.middleware import SessionMiddleware
 
 import urllib
 import json
@@ -183,6 +184,13 @@ class AccessForbidden(HttpException):
                        root_uri=self.root_uri)
 
 
+class AuthSessionMiddleware(SessionMiddleware):
+    def __init__(self, app):
+        self.session_config = {'session.auto': True,  # auto-save session
+                               'session.key': 'sid'}  # TODO setup SQLite, encryption and signature
+        self.app = super(AuthSessionMiddleware, self).__init__(app, self.session_config)
+
+
 def start_plugin(_config):
     """I get the configuration values from the main kTBS configuration.
 
@@ -208,6 +216,8 @@ def start_plugin(_config):
         IP_WHITELIST = admin_login_config['ip_whitelist'].split(' ')
         ADMIN_CREDENTIALS_HASH = standard_b64encode(admin_login_config['login'] + ':' +
                                                     admin_login_config['password'])
+
+    register_middleware(SESSION, AuthSessionMiddleware)
 
     # We register two functions to call (in order) at each request
     register_pre_processor(AUTHENTICATION, preproc_authentication)
