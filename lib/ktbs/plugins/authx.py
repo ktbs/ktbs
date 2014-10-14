@@ -16,7 +16,14 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This kTBS plugin provides authentication and authorization.
+This kTBS plugin provides authentication and authorization (hence authX).
+
+It requires the following dependencies:
+
+- beaker
+- sqlalchemy (if you plan to use an SQL database to store sessions)
+- if you use an SQL database and you use a database that is not SQLite:
+  a driver library that provides bindings for your database type (e.g. psycopg2, mysqldb)
 
 Authentication
 --------------
@@ -24,6 +31,7 @@ We want to make sure the user is who he pretends he is.
 At the end of the process we have an ID for the user.
 
 There are two ways to authenticate :
+
 - using an IP whitelist coupled with login/password credentials
 - delegating it to an OAuth2 identity provider
 
@@ -37,6 +45,21 @@ If he has the role *user* then he can only access a base that has
 his ID as name. He can also do POST request on the kTBS root.
 
 If he has the role *admin* then he can do anything.
+
+
+How to add a new OAuth2 identity provider (IP)?
+-----------------------------------------------
+
+- make a function that does the authentication flow between the IP and you.
+  This function takes a request as argument and returns the unique user id
+  given by the IP.
+
+- declare this function in the dictionary ``registered_oauth_flows`` inside
+  the function ``start_plugin``. The *key* you add to the dictionary is a
+  string that represents the name of the IP, the *value* is the function object.
+
+- add a section in the configuration file with the parameter you need for your flow.
+  This section name MUST be the same as the key string you added to the dictionary.
 
 """
 
@@ -56,6 +79,7 @@ LOG = getLogger(__name__)
 OAUTH_CONFIG = None  # Dictionary for the OAuth2 configuration
 IP_WHITELIST = []  # Set only if it exists in the configuration
 ADMIN_CREDENTIALS_HASH = None  # Base64 hash of "login:password" if admin credentials are set in the configuration
+SESSION_CONFIG = {}
 
 
 class OAuth2Unauthorized(UnauthorizedError):
@@ -187,7 +211,8 @@ class AccessForbidden(HttpException):
 class AuthSessionMiddleware(SessionMiddleware):
     def __init__(self, app):
         self.session_config = {'session.auto': True,  # auto-save session
-                               'session.key': 'sid'}  # TODO setup SQLite, encryption and signature
+                               'session.key': 'sid'}  # TODO setup encryption and signature
+        self.session_config.update(SESSION_CONFIG)
         self.app = super(AuthSessionMiddleware, self).__init__(app, self.session_config)
 
 
@@ -197,6 +222,8 @@ def start_plugin(_config):
     .. note:: This function is called automatically by the kTBS.
               It is called once when the kTBS starts, not at each request.
     """
+    registered_oauth_flows = {'oauth_github': github_flow,
+                              'oauth_claco': claco_flow}
 
     def section_dict(section_name):
         """Convert a configuration section to a Python dictionary"""
@@ -205,17 +232,25 @@ def start_plugin(_config):
         else:
             return None
 
-    global OAUTH_CONFIG
-    global IP_WHITELIST
-    global ADMIN_CREDENTIALS_HASH
+    global OAUTH_CONFIG, IP_WHITELIST, ADMIN_CREDENTIALS_HASH, SESSION_CONFIG
 
-    OAUTH_CONFIG = section_dict('oauth_login')
+    authx_config = section_dict('authx')
 
-    admin_login_config = section_dict('admin_login')
-    if admin_login_config:
-        IP_WHITELIST = admin_login_config['ip_whitelist'].split(' ')
-        ADMIN_CREDENTIALS_HASH = standard_b64encode(admin_login_config['login'] + ':' +
-                                                    admin_login_config['password'])
+    # Session management
+    session_config_keys = filter(lambda k: k.startswith('beaker.session.'), authx_config)
+    SESSION_CONFIG = {k: authx_config[k] for k in session_config_keys}
+
+    # Identity provider management
+    ip_name = authx_config['oauth_flow']
+    OAUTH_CONFIG = section_dict(ip_name)
+    OAUTH_CONFIG['flow'] = registered_oauth_flows[ip_name]
+
+    # Admin credentials management
+    admin_auth_config = section_dict('authx_admin')
+    if admin_auth_config:
+        IP_WHITELIST = admin_auth_config['ip_whitelist'].split(' ')
+        ADMIN_CREDENTIALS_HASH = standard_b64encode(admin_auth_config['login'] + ':' +
+                                                    admin_auth_config['password'])
 
     register_middleware(SESSION, AuthSessionMiddleware)
 
@@ -275,9 +310,10 @@ def authenticate(service, request):
         else:
             raise UnauthorizedError()
 
-    # If the user is being redirected by Github, we continue the Github auth flow
+    # If the user is being redirected by the OAuth2 identity provider, we continue the auth flow
     elif request.GET.getall('code'):
-        request.remote_user = session['user_id'] = claco_flow(request)
+        oauth_flow = OAUTH_CONFIG['flow']
+        request.remote_user = session['user_id'] = oauth_flow(request)
         session['remote_user_role'] = 'user'
         log_successful_auth(session['user_id'])
         raise RedirectException(service.root_uri)
