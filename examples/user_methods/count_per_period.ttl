@@ -1,13 +1,14 @@
 @prefix : <http://liris.cnrs.fr/silex/2009/ktbs#> .
 
-<http://localhost:8001/b2/> :contains <count_per_period> .
+<> :contains <count_per_period> .
 
 <count_per_period> a :Method;
-    :hasParentMethod :sparql,
-    :hasParameter "origin=http://liris.cnrs.fr/silex/2013/stat#",
+    :hasParentMethod :sparql;
+    :hasParameter "model=http://liris.cnrs.fr/silex/2013/stat#",
         """sparql=
 PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
 PREFIX m: <http://liris.cnrs.fr/silex/2013/stat#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 
 CONSTRUCT {
   [] a m:Stat ;
@@ -18,8 +19,8 @@ CONSTRUCT {
      m:obselCount ?nbo .
 }
 WHERE {
-  SELECT (count(?o) as ?nbo) ((?interval*?w) as ?begin) ((?interval*?w+?w-1) as ?end) {
-    SELECT ?o (%(period)s as ?w) ((?b/?w) as ?interval) {
+  SELECT (count(?o) as ?nbo) (xsd:integer(?interval*?w) as ?begin) (xsd:integer(?interval*?w+?w-1) as ?end) {
+    SELECT ?o (%(period)s as ?w) ((round(?b/?w)) as ?interval) {
       ?o :hasBegin ?b.
     }
   } GROUP BY ?interval
