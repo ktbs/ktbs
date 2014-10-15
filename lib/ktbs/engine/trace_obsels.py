@@ -183,7 +183,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # on the other hand, this is only by http_server when a query_string
         # is provided, and http_server does not require dynamic graphs, so...
 
-        if not parameters: # empty dict is equivalent to no dict
+        if (not parameters # empty dict is equivalent to no dict
+            or "quick" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, "get_state")
