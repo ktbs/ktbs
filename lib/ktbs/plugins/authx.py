@@ -70,6 +70,7 @@ from rdfrest.http_server import \
 from base64 import standard_b64encode
 from logging import getLogger
 from beaker.middleware import SessionMiddleware
+from webob import Request
 
 import urllib
 import json
@@ -80,6 +81,7 @@ OAUTH_CONFIG = None  # Dictionary for the OAuth2 configuration
 IP_WHITELIST = []  # Set only if it exists in the configuration
 ADMIN_CREDENTIALS_HASH = None  # Base64 hash of "login:password" if admin credentials are set in the configuration
 SESSION_CONFIG = {}
+ENABLE_BEAKER = None
 
 
 class OAuth2Unauthorized(UnauthorizedError):
@@ -208,12 +210,17 @@ class AccessForbidden(HttpException):
                        root_uri=self.root_uri)
 
 
-class AuthSessionMiddleware(SessionMiddleware):
+class AuthSessionMiddleware(object):
     def __init__(self, app):
         self.session_config = {'session.auto': True,  # auto-save session
-                               'session.key': 'sid'}  # TODO setup encryption and signature
+                               'session.key': 'sid'}
         self.session_config.update(SESSION_CONFIG)
-        self.app = super(AuthSessionMiddleware, self).__init__(app, self.session_config)
+        self.app = SessionMiddleware(app, self.session_config) if ENABLE_BEAKER else app
+
+    def __call__(self, environ, start_response):
+        req = Request(environ)
+        resp = req.get_response(self.app)
+        return resp(environ, start_response)
 
 
 def start_plugin(_config):
@@ -232,7 +239,8 @@ def start_plugin(_config):
         else:
             return None
 
-    global OAUTH_CONFIG, IP_WHITELIST, ADMIN_CREDENTIALS_HASH, SESSION_CONFIG
+    global OAUTH_CONFIG, IP_WHITELIST, ADMIN_CREDENTIALS_HASH, SESSION_CONFIG, ENABLE_BEAKER
+    ENABLE_BEAKER = _config.getboolean('authx', 'enable_beaker')
 
     authx_config = section_dict('authx')
 
