@@ -71,6 +71,7 @@ from base64 import standard_b64encode
 from logging import getLogger
 from beaker.middleware import SessionMiddleware
 from webob import Request
+from ConfigParser import NoOptionError
 
 import urllib
 import json
@@ -240,7 +241,10 @@ def start_plugin(_config):
             return None
 
     global OAUTH_CONFIG, IP_WHITELIST, ADMIN_CREDENTIALS_HASH, SESSION_CONFIG, ENABLE_BEAKER
-    ENABLE_BEAKER = _config.getboolean('authx', 'enable_beaker')
+    try:
+        ENABLE_BEAKER = _config.getboolean('authx', 'enable_beaker')
+    except NoOptionError:  # if we didn't set the `enable_beaker` option in the config, we set it to true by default
+        ENABLE_BEAKER = True
 
     authx_config = section_dict('authx')
 
