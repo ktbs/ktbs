@@ -2,39 +2,30 @@
 # -*- coding: utf-8 -*-
 
 """Runs kTBS behind a WSGI-enabled HTTP server.
+
+This file MUST be accompanied, in the same directory,
+by a file with the same name plus the ".ini" extension.
+
+All configuration happens in the .ini file,
+you should normally not have to modify this file (the .wsgi file).
 """
-
-#### CHANGE THE VALUES BELOW ACCORDINGLY TO YOUR CONFIGURATION
-
-RDF_STORE = "/var/dir/ktbs.db"                # where RDF data will be stored
-ROOT_URI  = "https://example.com:1234/ktbs/"  # URI of the kTBS root
-OPTIONS = {  # see rdfrest.http_server.HttpFrontend for available options
-  #"cache_control": "no-cache",
-  #"cors_allow_origin": "*",
-  #"max_bytes": 1000000,
-  #"max_triples": 1000,
-}
 
 ####
 import atexit
-from os.path import join
 
-from rdflib import URIRef
-
-from ktbs.engine.service import make_ktbs
-from ktbs.namespace import KTBS
+from ktbs.engine.service import get_ktbs_configuration, KtbsService
+from rdfrest.config import apply_global_config
 from rdfrest.http_server import HttpFrontend, SparqlHttpFrontend
-from rdfrest.serializers import bind_prefix, get_prefix_bindings
 
-prefix_bindings = get_prefix_bindings()
-for prefix in ["", "k", "ktbs", "ktbsns"]:
-    if prefix not in prefix_bindings:
-        bind_prefix(prefix, KTBS)
-        break
 
-ktbs_service = make_ktbs(URIRef(ROOT_URI), RDF_STORE).service
+ktbs_config_path = __file__ + ".ini"
+ktbs_config = get_ktbs_configuration(open(ktbs_config_path))
+apply_global_config(ktbs_config)
+
+ktbs_service = KtbsService(ktbs_config)
 atexit.register(lambda: ktbs_service.store.close())
-application = SparqlHttpFrontend(ktbs_service, **OPTIONS)
-# or, if you don't want SPARQL support:
-# application = HttpFrontend(ktbs_service, **OPTIONS)
+
+#application = HttpFrontend(ktbs_service, ktbs_config)
+# or, if you want SPARQL support:
+application = SparqlHttpFrontend(ktbs_service, ktbs_config)
 
