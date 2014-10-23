@@ -26,6 +26,8 @@ import logging
 import logging.config
 from ConfigParser import SafeConfigParser
 
+from rdfrest.serializers import bind_prefix
+
 
 def get_service_configuration(configfile_handler=None):
     """I set rdfrest Service default configuration options and possibly
@@ -112,7 +114,7 @@ def apply_logging_config(service_config):
     """
     Configures the logging for rdfrest services.
 
-    :param service_config: SafeConfigParser object containing URI scheme elements
+    :param service_config: SafeConfigParser object containing a 'logging' section
     """
     # No filter configured
     loggingConfig =  {
@@ -199,19 +201,51 @@ def apply_logging_config(service_config):
     except ValueError as e:
         print "Error in kTBS logging configuration, please read the following error message carefully.\n{0}".format(e.message)
 
-def apply_namespace_config(service_config):
-    """
-    TODO Loads and applies the namespace configuration.
 
-    :param service_config: SafeConfigParser object containing URI scheme elements
+def apply_ns_prefix_config(service_config):
     """
-    pass
+    Loads and applies the namespace configuration.
+
+    :param service_config: SafeConfigParser object containing a 'ns_prefix' section
+    """
+    for prefix, uri in service_config.items('ns_prefix'):
+        if prefix == "_":
+            prefix = ""
+        bind_prefix(prefix, uri)
 
 
-def apply_plugin_config(service_config):
+def apply_plugins_config(service_config):
     """
-    TODO Loads and applies the plugin configuration.
+    Loads and applies the plugin configuration.
 
-    :param service_config: SafeConfigParser object containing URI scheme elements
+    :param service_config: SafeConfigParser object containing a 'plugins' section
     """
-    pass
+    for plugin_name in service_config.options('plugins'):
+        if service_config.getboolean('plugins', plugin_name):
+            try:
+                plugin = __import__(plugin_name, fromlist="start_plugin")
+            except ImportError:
+                plugin = __import__("ktbs.plugins." + plugin_name,
+                                    fromlist="start_plugin")
+            plugin.start_plugin(service_config)
+
+
+def apply_global_config(service_config, **sections):
+    """
+    Loads and applies all global configuration settings
+    (i.e. settings having an impact beyong the configured Service).
+
+    Some sections can be individually disabled by using keyword.
+    For example::
+
+        apply_global_config(cfg, logging=False, plugins=do_plugins)
+
+    will skip the 'logging' section, and conditionally apply the 'plugins'
+    section (depending on the do_plugins variable).
+    """
+    if sections.get("logging", True):
+        apply_logging_config(service_config)
+    if sections.get("ns_prefix", True):
+        apply_ns_prefix_config(service_config)
+    if sections.get("plugins", True):
+        apply_plugins_config(service_config)

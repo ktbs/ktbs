@@ -21,6 +21,7 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
+from rdfrest.config import apply_global_config
 from rdfrest.http_server import SparqlHttpFrontend
 from rdfrest.serializers import bind_prefix, get_prefix_bindings
 from .config import get_ktbs_configuration
@@ -42,18 +43,12 @@ def main():
     # or command line configuration OPTIONS
     ktbs_config = parse_configuration_options(cmdline_options)
 
-    for plugin_name in ktbs_config.options('plugins'):
-        if ktbs_config.getboolean('plugins', plugin_name):
-            try:
-                plugin = __import__(plugin_name, fromlist="start_plugin")
-            except ImportError:
-                plugin = __import__("ktbs.plugins." + plugin_name,
-                                    fromlist="start_plugin")
-            plugin.start_plugin(ktbs_config)
-
     # TODO : remove this option ?
     if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
+
+    ktbs_config.set("logging", "loggers", "rdfrest ktbs");
+    apply_global_config(ktbs_config)
 
     ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())
@@ -62,9 +57,6 @@ def main():
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
-
-    for prefix, uri in ktbs_config.items('ns_prefix'):
-        bind_prefix(prefix, uri)
 
     httpd = make_server(ktbs_config.get('server', 'host-name', 1),
                         ktbs_config.getint('server', 'port'),
