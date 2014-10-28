@@ -13,12 +13,8 @@ kTBS:
 Dependencies
 ============
 
-See ``requirements.txt`` for the required versions. 
+See ``requirements.d/README``.
 
-For developpers
----------------
-
-See ``requirements-dev.txt``.
 
 Install
 =======

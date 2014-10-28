@@ -1,0 +1,10 @@
+This folder contains various requirements files to be used with
+
+  pip -r <filename>
+
+depending on your needs.
+
+- base.txt      contains the basic requirement
+- dev.txt       contains the requierements for developers
+                (running tests and building documentation, mostly)
+- plugin_X.txt  will contain the requirements of specific plugins

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from os.path import join
 from setuptools import setup, find_packages
 
 from ast import literal_eval
@@ -18,7 +19,7 @@ with open('README.rst', 'r') as f:
     README = f.read()
 
 install_req = []
-with open('requirements.txt', 'r') as f:
+with open(join('requirements.d', 'base.txt'), 'r') as f:
     # Get requirements depencies as written in the file
     install_req = [ i[:-1] for i in f if i[0] != "#" ]
 

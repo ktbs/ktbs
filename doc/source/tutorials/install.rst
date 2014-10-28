@@ -76,7 +76,7 @@ You install the kTBS with::
 
 If you plan to work on the source code, you might want to install developer dependencies as well::
 
-  pip install -r requirements-dev.txt
+  pip install -r requirements.d/dev.txt
 
 You can get information on the currently installed version of ktbs with the following command::
 
