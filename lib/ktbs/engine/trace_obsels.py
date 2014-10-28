@@ -21,12 +21,13 @@ I provide the implementation of kTBS obsel collections.
 from itertools import chain
 from logging import getLogger
 from rdflib import Graph, Literal, RDF
-from rdflib_sparql.processor import prepareQuery
+from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.local import NS as RDFREST
 
 from .resource import KtbsResource, METADATA
+from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 
@@ -182,7 +183,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # on the other hand, this is only by http_server when a query_string
         # is provided, and http_server does not require dynamic graphs, so...
 
-        if not parameters: # empty dict is equivalent to no dict
+        if (not parameters # empty dict is equivalent to no dict
+            or "quick" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, "get_state")
@@ -198,29 +200,36 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
+            query_epilogue = ""
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
+            maxb = parameters.get("maxb")
+            if maxb is not None:
+                query_filter.append("?b <= %s" % maxb)
+            mine = parameters.get("mine")
+            if mine is not None:
+                query_filter.append("?e >= %s" % mine)
             maxe = parameters.get("maxe")
             if maxe is not None:
                 query_filter.append("?e <= %s" % maxe)
+            limit = parameters.get("limit")
+            if limit is not None:
+                query_epilogue = "ORDER BY ?b LIMIT %s" % limit
             if query_filter:
                 query_filter = "FILTER(%s)" % (" && ".join(query_filter))
             else:
                 query_filter = ""
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s }
-            """ % query_filter
-            matching_obsels = self.state.query(query_str)
+            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
+            """ % (query_filter, query_epilogue)
 
             # add description of all matching obsels
             # TODO LATER include bounded description of obsels
             # rather than just adjacent arcs
-            for obs in matching_obsels:
-                for triple in self.state.triples((obs, None, None)):
-                    graph_add(triple)
-                for triple in self.state.triples((None, None, obs)):
-                    graph_add(triple)
+            self_state = self.state
+            for obs, in self.state.query(query_str): #/!\ returns 1-uples
+                get_obsel_bounded_description(obs, self_state, graph)
 
             return graph
 
@@ -232,7 +241,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 
         I also convert parameters values from strings to usable datatypes.
         """
-        if parameters is not None and method == "get_state":
+        if parameters is not None \
+        and method in ("get_state", "force_state_refresh"):
             for key, val in parameters.items():
                 if key in ("minb", "maxb", "mine", "maxe", "limit"):
                     try:
@@ -240,11 +250,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                     except ValueError:
                         raise InvalidParametersError("%s should be an integer"
                                                      "(got %s" % (key, val))
+                elif key in ("quick"):
+                    pass
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
-                                                 % key)
-                if key in ("maxb", "mine", "limit"):
-                    raise InvalidParametersError("%s not implemented yet"
                                                  % key)
             parameters = None # hide all parameters for super call below
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
@@ -297,14 +306,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         for ttr in trace.iter_transformed_traces():
             obsels = ttr.obsel_collection
             obsels.metadata.set((obsels.uri, METADATA.dirty, Literal("yes")))
-            del ttr, obsels # remove spurious references (see below)
-        # setting dirty above is necessary so that all transformed traces
-        # refresh theirs obsels on force_state_refresh.
-        # However, it is also necessary to call force_state_refresh on all
-        # transfored traces already loaded as python objects.
-        for ttr in self._existing_transformed_traces():
-            ttr.obsel_collection.force_state_refresh()
-            
+
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.
 
@@ -423,12 +425,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
         I support parameter 'quick' to bypass the updating of the obsels.
         """
         quick = (parameters and "quick" in parameters) # even with empty value
-        if quick:
-            parameters.pop("quick", None)
-        elif not self.__forcing_state_refresh:
-            self.__forcing_state_refresh = True
+        if not quick:
             self.force_state_refresh(parameters)
-            del self.__forcing_state_refresh
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
@@ -436,20 +434,30 @@ class ComputedTraceObsels(AbstractTraceObsels):
 
         I recompute the obsels if needed.
         """
-        super(ComputedTraceObsels, self).force_state_refresh(parameters)
-        trace = self.trace
-        if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
-            LOG.info("recomputing <%s>", self.uri)
-            # we *first* unset the dirty bit, so that recursive calls to
-            # get_state do not result in an infinite recursion
-            self.metadata.remove((self.uri, METADATA.dirty, None))
-            trace.force_state_refresh()
-            impl = trace._method_impl # friend #pylint: disable=W0212
-            diag = impl.compute_obsels(trace)
-            if not diag:
-                self.metadata.set((self.uri, METADATA.dirty,
-                                      Literal("yes")))
-                raise CanNotProceedError(unicode(diag))
+        if self.__forcing_state_refresh:
+            return
+        self.__forcing_state_refresh = True
+        try:
+            LOG.debug("forcing state refresh <%s>", self.uri)
+            super(ComputedTraceObsels, self).force_state_refresh(parameters)
+            trace = self.trace
+            for src in trace.iter_source_traces():
+                src.obsel_collection.force_state_refresh(parameters)
+            if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+                LOG.info("recomputing <%s>", self.uri)
+                # we *first* unset the dirty bit, so that recursive calls to
+                # get_state do not result in an infinite recursion
+                self.metadata.remove((self.uri, METADATA.dirty, None))
+                trace.force_state_refresh()
+                impl = trace._method_impl # friend #pylint: disable=W0212
+                diag = impl.compute_obsels(trace)
+                if not diag:
+                    self.metadata.set((self.uri, METADATA.dirty,
+                                          Literal("yes")))
+                    raise CanNotProceedError(unicode(diag))
+        finally:
+            del self.__forcing_state_refresh
+
 
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`.KtbsResource.edit`.

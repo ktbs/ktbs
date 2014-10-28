@@ -43,26 +43,3 @@ class AbstractTraceObselsMixin(IResource):
         trace_uri = self.state.value(None, KTBS.hasObselCollection, self.uri)
         return self.factory(trace_uri)
         # must be a .trace.AbstractTraceMixin
-
-    ######## IResource implementation ########
-
-    def force_state_refresh(self, parameters=None):
-        """I override :meth:`rdfrest.interface.IResource.force_state_refresh`
-        """
-        super(AbstractTraceObselsMixin, self).force_state_refresh(parameters)
-        for ttr in self._existing_transformed_traces():
-            ttr.obsel_collection.force_state_refresh()
-
-    ######## Private methods ########
-
-    def _existing_transformed_traces(self):
-        """I iter over existing transformed traces.
-
-        "existing" here refers to transformed traces that are instanciated
-        as python objects.
-        """
-        trace = self.trace
-        for ttr_uri in trace.state.subjects(KTBS.hasSource, trace.uri):
-            ttr = self.factory(ttr_uri, _no_spawn=True)
-            if ttr is not None:
-                yield ttr

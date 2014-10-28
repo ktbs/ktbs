@@ -23,6 +23,7 @@ I provide the pythonic interface of ktbs:Base .
 """
 
 from datetime import datetime
+from numbers import Real
 from rdflib import Graph, Literal, RDF, URIRef
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.interface import register_mixin
@@ -208,18 +209,15 @@ class BaseMixin(KtbsResourceMixin):
         # Furthermore, the signature of this method makes it significantly
         # easier to produce a valid graph, so there is a benefit to this
         # duplication.
-        
+
         if model is None:
             raise ValueError("model is mandatory")
         trust = graph is None  and  id is None
         node = coerce_to_node(id, self.uri)
         model = coerce_to_uri(model, self.uri)
-        if origin is None:
-            origin = "o"+random_token(32)
-            # start origin with a letter because if it starts with 4 digits,
-            # it will be misinterpreted for a year
-        elif isinstance(origin, int):
-            origin = datetime.fromtimestamp(origin, UTC)
+        origin_isoformat = getattr(origin, "isoformat", None)
+        if origin_isoformat:
+            origin = origin_isoformat()
 
         if graph is None:
             graph = Graph()

@@ -39,8 +39,8 @@ from unittest import skip
 
 from rdfrest.proxystore import ProxyStore
 from rdfrest.proxystore import StoreIdentifierError, GraphChangedError
-from rdfrest.proxystore import PS_CONFIG_URI, PS_CONFIG_USER, PS_CONFIG_PWD
-from rdfrest.proxystore import PS_CONFIG_HTTP_CACHE, PS_CONFIG_HTTP_RESPONSE
+from rdfrest.proxystore import PS_CONFIG_URI, PS_CONFIG_HTTP_CX
+from rdfrest.proxystore import PS_CONFIG_HTTP_RESPONSE
 
 import logging
 
@@ -68,7 +68,7 @@ def test_identifier_no_open():
     """ Pass the URI as identifier to __init__() but does not explicitely
         call open(). Should be OK.
     """
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     gs = graph.serialize()
     #print gs
@@ -79,7 +79,7 @@ def test_identifier_no_configuration():
         configuration parameter.
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.open({})
     gs = graph.serialize()
@@ -93,7 +93,7 @@ def test_no_identifier_uri_in_open():
 
     store = ProxyStore()
     graph = Graph(store=store)
-    graph.open({PS_CONFIG_URI: "http://localhost:1234/foo"})
+    graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/"})
     gs = graph.serialize()
     #print gs
     graph.close()
@@ -103,10 +103,10 @@ def test_uri_with_good_credentials_in_init():
     """ Pass an URI to __init__() and good credentials in configuration.
         Should be OK.
     """
-
-    store = ProxyStore(configuration={PS_CONFIG_USER: "user",
-                                      PS_CONFIG_PWD: "pwd"},
-                       identifier="http://localhost:1234/foo")
+    http = httplib2.Http()
+    http.add_credentials("user", "pwd")
+    store = ProxyStore(configuration={PS_CONFIG_HTTP_CX: http},
+                       identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.close()
 
@@ -115,9 +115,10 @@ def test_uri_with_wrong_credentials_in_init():
     """ Pass an URI to __init__() and wrong credentials in configuration.
     """
 
-    store = ProxyStore(configuration={PS_CONFIG_USER: "user",
-                                      PS_CONFIG_PWD: "wrong-pwd"},
-                       identifier="http://localhost:1234/foo")
+    http = httplib2.Http()
+    http.add_credentials("user", "wrong-pwd")
+    store = ProxyStore(configuration={PS_CONFIG_HTTP_CX: http},
+                       identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.close()
 
@@ -127,10 +128,11 @@ def test_uri_with_good_credentials_in_open():
         Should be OK.
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
-    graph.open(configuration={PS_CONFIG_USER: "user",
-                              PS_CONFIG_PWD: "pwd"})
+    http = httplib2.Http()
+    http.add_credentials("user", "pwd")
+    graph.open(configuration={PS_CONFIG_HTTP_CX: http,})
     graph.close()
 
 @raises(StoreIdentifierError)
@@ -148,7 +150,7 @@ def test_different_uris():
     """ Pass different URIs to __init__() and to open().
     """
 
-    store = ProxyStore(identifier="http://localhost:1234/foo")
+    store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/group1/"})
     graph.close()

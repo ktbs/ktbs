@@ -56,8 +56,12 @@ class _FilterMethod(IMethod):
         src, params =  self._prepare_source_and_params(computed_trace, diag)
         if src is not None:
             assert params is not None
-            model = params.get("model")  or  src.model_uri
-            origin = params.get("origin")  or  src.origin
+            model = params.get("model")
+            if model is None:
+                model = src.model_uri
+            else:
+                model = URIRef(model)
+            origin = Literal(params.get("origin")  or  src.origin)
             with computed_trace.edit(_trust=True) as editable:
                 editable.add((computed_trace.uri, KTBS.hasModel, model))
                 editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
@@ -83,6 +87,7 @@ class _FilterMethod(IMethod):
                 after = converter(params.get("afterDT") - origin_dt)
             cstate["after"] = after
             cstate["otypes"] = params.get("otypes")
+            cstate["bgp"] = params.get("bgp")
 
         if not diag:
             cstate["errors"] = list(diag)
@@ -114,6 +119,7 @@ class _FilterMethod(IMethod):
         after = cstate["after"]
         before = cstate["before"]
         otypes = cstate["otypes"]
+        bgp = cstate["bgp"]
         if otypes:
             otypes = set( URIRef(i) for i in otypes )
         old_log_mon_tag = cstate["log_mon_tag"]
@@ -145,7 +151,7 @@ class _FilterMethod(IMethod):
             target_contains = editable.__contains__
             target_add = editable.add
 
-            for obs in source.iter_obsels(begin=begin):
+            for obs in source.iter_obsels(begin=begin, bgp=bgp, quick=True):
                 cstate["last_seen"] = obs.begin
                 if after  and  obs.begin < after:
                     LOG.debug("--- dropping %s", obs)
@@ -259,6 +265,7 @@ _PARAMETERS_TYPE = {
     "after": int,
     "beforeDT": parse_date,
     "afterDT": parse_date,
+    "bgp": unicode,
     "otypes":
         lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
 }

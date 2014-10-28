@@ -22,10 +22,12 @@ I provide the implementation of ktbs:KtbsRoot .
 from rdfrest.exceptions import MethodNotAllowedError
 
 from .resource import KtbsPostableMixin, KtbsResource
+from .lock import WithLockMixin
 from ..api.ktbs_root import KtbsRootMixin
 from ..namespace import KTBS
 
-class KtbsRoot(KtbsRootMixin, KtbsPostableMixin, KtbsResource):
+
+class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:KtbsRoot .
     """
     ######## ILocalResource (and mixins) implementation  ########

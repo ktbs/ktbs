@@ -19,8 +19,9 @@
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
-from rdflib import Graph, Literal, URIRef, Variable, XSD
-from rdflib_sparql.processor import prepareQuery
+from rdflib import Graph, Literal, URIRef, XSD
+from rdflib.plugins.sparql.processor import prepareQuery
+from rdfrest.exceptions import InvalidDataError
 from rdfrest.local import compute_added_and_removed
 from rdfrest.mixins import FolderishMixin
 from rdfrest.utils import cache_result, random_token
@@ -32,7 +33,7 @@ from .resource import KtbsPostableMixin, METADATA
 from .trace_obsels import ComputedTraceObsels, StoredTraceObsels
 from ..api.trace import AbstractTraceMixin, StoredTraceMixin, ComputedTraceMixin
 from ..namespace import KTBS, KTBS_NS_URI
-from ..utils import extend_api
+from ..utils import extend_api, check_new
 
 LOG = getLogger(__name__)
 
@@ -266,24 +267,34 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
 
+    def check_new(self, created):
+        """ I override :meth:`GraphPostableMixin.check_new`.
+
+        I check if the created resource exists in my obsel collection.
+        """
+        return check_new(self.obsel_collection.get_state(), created)
+
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
         """I override :meth:`rdfrest.util.GraphPostableMixin.post_graph`.
 
         I allow for multiple obsels to be posted at the same time.
         """
+        base = self.get_base()
         post_single_obsel = super(StoredTrace, self).post_graph
         binding = { "trace": self.uri }
         ret = []
         candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
-                                 initBindings=binding).bindings
-        for candidate in candidates:
-            candidate = candidate[_OBS]
-            ret1 = post_single_obsel(graph, parameters, _trust, candidate,
-                                     KTBS.Obsel)
-            if ret1:
-                assert len(ret1) == 1
-                ret.append(ret1[0])
+                                 initBindings=binding)
+        with base.lock(self):
+            for candidate, _, _ in candidates:
+                ret1 = post_single_obsel(graph, parameters, _trust, candidate,
+                                         KTBS.Obsel)
+                if ret1:
+                    assert len(ret1) == 1
+                    ret.append(ret1[0])
+        if not ret:
+            raise InvalidDataError("No obsel found in posted graph")
         return ret
                 
     def get_created_class(self, rdf_type):
@@ -297,8 +308,8 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 
 # the following query gets all the candidate obsels in a POSTed graph,
 # and orders them correctly, guessing implicit values
-_SELECT_CANDIDATE_OBSELS = ("""
-    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#float>
+_SELECT_CANDIDATE_OBSELS = prepareQuery("""
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
     PREFIX : <%s#>
     SELECT ?obs
            (IF(bound(?b), ?b, "INF"^^xsd:float) as ?begin)
@@ -311,12 +322,9 @@ _SELECT_CANDIDATE_OBSELS = ("""
     ORDER BY ?begin ?end
 """ % KTBS_NS_URI)
 
-_OBS = Variable("obs")
-# TODO remove this once rdflib-sparql handles variable order correctly
-
 
 class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
-    """I provide the implementation of ktbs:StoredTrace .
+    """I provide the implementation of ktbs:ComputedTrace .
     """
 
     ######## ILocalResource (and mixins) implementation  ########

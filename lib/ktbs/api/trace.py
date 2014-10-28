@@ -22,7 +22,9 @@
 I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
 from datetime import datetime
-from rdflib import Graph, Literal, RDF, RDFS
+from numbers import Integral, Real
+from rdflib import Graph, Literal, RDF, RDFS, URIRef
+from rdflib.term import Node
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
 from rdfrest.interface import get_subclass, register_mixin
@@ -83,9 +85,11 @@ class AbstractTraceMixin(InBaseMixin):
                 origin = parse_date(origin)
             except ParseError:
                 pass
+        elif origin is not None:
+            origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, reverse=False):
+    def iter_obsels(self, begin=None, end=None, reverse=False, bgp=None, quick=False):
         """
         Iter over the obsels of this trace.
 
@@ -100,17 +104,23 @@ class AbstractTraceMixin(InBaseMixin):
         * begin: an int, datetime or Obsel
         * end: an int, datetime or Obsel
         * reverse: an object with a truth value
+        * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
+        * quick: a boolean, will prevent force_state_refresh to be called
+
+        In the `bgp` parameter, notice that:
+
+        * the variable `?obs` is bound each obsel
+        * the `m:` prefix is bound to the trace model
 
         NB: the order of "recent" obsels may vary even if the trace is not
         amended, since collectors are not bound to respect the order in begin
         timestamps and identifiers.
         """
-        # TODO SOON implement missing parameters of iter_obsels
         parameters = {}
         filters = []
         postface = ""
         if begin is not None:
-            if isinstance(begin, int):
+            if isinstance(begin, Real):
                 pass # nothing else to do
             elif isinstance(begin, datetime):
                 raise NotImplementedError(
@@ -122,7 +132,7 @@ class AbstractTraceMixin(InBaseMixin):
             filters.append("?b >= %s" % begin)
             parameters["minb"] = begin
         if end is not None:
-            if isinstance(end, int):
+            if isinstance(end, Real):
                 pass # nothing else to do
             elif isinstance(end, datetime):
                 raise NotImplementedError(
@@ -134,8 +144,13 @@ class AbstractTraceMixin(InBaseMixin):
             filters.append("?e <= %s" % end)
             parameters["maxe"] = end
         if reverse:
-            raise NotImplementedError(
-                "iter_obsels parameters not implemented yet")
+            postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
+        else:
+            postface += "ORDER BY ?b ?e ?obs"
+        if bgp is None:
+            bgp = ""
+        else:
+            bgp = "%s" % bgp
         if not parameters:
             parameters = None
         if filters:
@@ -144,24 +159,24 @@ class AbstractTraceMixin(InBaseMixin):
             filters = ""
 
         collection = self.obsel_collection
+        if not quick:
+            collection.force_state_refresh(parameters)
         if isinstance(collection, OpportunisticObselCollection):
             obsels_graph = collection.get_state(parameters)
         else:
             # we have the raw resource instead, so we access the whole graph
             # (pylint does not know that, hence the directive below)
             obsels_graph = collection.state #pylint: disable=E1101
-        # TODO LATER when rdflib supports ORDER BY, make SPARQL do the sorting
-        # then remove the line 'tuples.sort()' below
         query_str = """
             SELECT ?b ?e ?obs WHERE {
                 ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e
+                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e .
+                %s
                 %s
             } %s
-        """ % (self.uri, filters, postface)
-        tuples = list(obsels_graph.query(query_str))
-        tuples.sort()
+        """ % (self.uri, filters, bgp, postface)
+        tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for _, _, obs_uri in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
             cls = get_subclass(ObselProxy, types)
@@ -214,6 +229,15 @@ class AbstractTraceMixin(InBaseMixin):
         tmodel_uri = self.state.value(self.uri, KTBS.hasModel)
         return tmodel_uri
 
+    def get_model_prefix(self, _NICE_SUFFIX={"#", "/"}):
+        """
+        I return a prefix-friendly version of the model URI for this trace.
+        """
+        prefix_uri = self.state.value(self.uri, KTBS.hasModel)
+        if prefix_uri[-1] not in _NICE_SUFFIX:
+            prefix_uri = URIRef(prefix_uri + "#")
+        return prefix_uri
+
     @property
     @cache_result
     def obsel_collection(self):
@@ -240,7 +264,7 @@ class AbstractTraceMixin(InBaseMixin):
 
         TODO DOC reference to a detailed explaination about monotonicity.
         """
-        assert isinstance(val, int)
+        assert isinstance(val, Real)
         assert val >= 0
         if val == 0:
             val = None
@@ -280,7 +304,10 @@ class StoredTraceMixin(AbstractTraceMixin):
         """
         I return the default subject of this trace.
         """
-        return self.state.value(self.uri, KTBS.hasDefaultSubject)
+        ret = self.state.value(self.uri, KTBS.hasDefaultSubject)
+        if ret is not None:
+            ret = unicode(ret)
+        return ret
 
     def set_default_subject(self, subject):
         """I set the default subject of this trace.
@@ -341,8 +368,8 @@ class StoredTraceMixin(AbstractTraceMixin):
         graph.add((obs, RDF.type, type_uri))
         graph.add((obs, KTBS.hasTrace, self.uri))
 
-        if isinstance(begin, int):
-            graph.add((obs, KTBS.hasBegin, Literal(begin)))
+        if isinstance(begin, Integral):
+            graph.add((obs, KTBS.hasBegin, Literal(int(begin))))
         else: # will use KTBS.hasBeginDT
             begin_dt = begin
             if isinstance(begin, basestring):
@@ -354,8 +381,8 @@ class StoredTraceMixin(AbstractTraceMixin):
                 raise ValueError("Could not interpret begin %s", begin)
             graph.add((obs, KTBS.hasBeginDT, Literal(begin_dt)))
 
-        if isinstance(end, int):
-            graph.add((obs, KTBS.hasEnd, Literal(end)))
+        if isinstance(end, Integral):
+            graph.add((obs, KTBS.hasEnd, Literal(int(end))))
         else: # will use KTBS.hasEndDT
             end_dt = end
             if isinstance(end_dt, basestring):
@@ -373,9 +400,12 @@ class StoredTraceMixin(AbstractTraceMixin):
         if attributes is not None:
             for key, val in attributes.items():
                 k_uri = coerce_to_uri(key)
-                v_lit = Literal(val)
-                # TODO LATER do something if val is a list
-                graph.add((obs, k_uri, v_lit))
+                if isinstance(val, Node):
+                    v_node = val
+                else:
+                    v_node = Literal(val)
+                    # TODO LATER do something if val is a list
+                graph.add((obs, k_uri, v_node))
 
         if relations is not None:
             for rtype, other in relations:

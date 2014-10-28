@@ -31,6 +31,7 @@ from ..utils import mint_uri_from_label, SKOS
 
 METADATA = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.ktbs.metadata:")
 
+
 class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                    WithReservedNamespacesMixin, WithTypedPropertiesMixin,
                    BookkeepingMixin, EditableResource):
@@ -53,6 +54,7 @@ class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                  or basename
                  or cls.__name__)
         return mint_uri_from_label(label, target, suffix=suffix)
+
 
 class KtbsPostableMixin(FolderishMixin, GraphPostableMixin, KtbsResource):
     """I implement the common post-related functionalities for KtbsResources.

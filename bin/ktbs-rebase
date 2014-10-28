@@ -1,0 +1,207 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+http://rdflib.readthedocs.org/en/latest/persistence.html
+"""
+from os.path import abspath, dirname, join, isdir, exists
+from sys import path
+
+from rdflib import Graph
+from rdflib.graph import ConjunctiveGraph, URIRef, Literal
+from rdflib.store import VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
+
+from argparse import ArgumentParser
+
+import logging
+
+try:
+    SOURCE_DIR = dirname(dirname(abspath(__file__)))
+    LIB_DIR = join(SOURCE_DIR, "lib")
+    path.append(LIB_DIR)
+except NameError:
+    # __file__ is not define in py2exe
+    pass
+
+from ktbs.namespace import KTBS
+
+STORE_TYPE = 'Sleepycat'
+LOG = logging.getLogger("ktbs-rebase")
+
+def parse_options():
+    """
+    Extract command line options.
+    Later : add store type (if different than Sleepycat).
+    """
+    parser = ArgumentParser(description="Creates a new database with a kTBS base URI modified.")
+    parser.add_argument("currentdb", nargs=1,
+                        help="Enter the full path of the current database "
+                             "(path and database name)")
+    parser.add_argument("newdb", nargs=1,
+                        help="Enter the full path of the new database "
+                             "(path and database name)")
+    parser.add_argument("oldURI", nargs=1,
+                        help="Enter the old kTBS base URI (the one you want to change)")
+    parser.add_argument("newURI", nargs=1,
+                        help="Entre the new kTBS URI")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Display print messages")
+
+    options = {}
+    options = parser.parse_args()
+
+    if options.verbose:
+        LOG.setLevel(logging.INFO)
+
+    # In case of parsing errors, the program execution is stopped
+    LOG.info("Parsed with argparse: %s" % str(options))
+
+    return options
+
+def check_arguments(options=None):
+    """Check that we have valid parameters.
+    :param options: The Namespace object returned by parse_arg.
+    """
+    if not isdir(options.currentdb[0]):
+        LOG.info(u'{0:s} is not a valid original database path.'.format(options.currentdb[0]))
+        return False
+
+    if not exists(options.newdb[0]):
+        if not isdir(dirname(options.newdb[0])):
+            LOG.info(u'{0:s} is not a valid destination database path.'.format(options.newdb[0]))
+            return False
+
+        # TODO : Add a control on valid URI ?
+    # options.oldURI[0]
+    # options.newURI[0]
+
+    return True
+
+def show_graph(gpath=None, gid=None):
+    """
+    Display the identified STORE_TYPE (Sleepycat for the moment) graph.
+
+    :param gpath: the full path of the store database.
+    :param gid: the URI of the graph.
+
+    http://answers.semanticweb.com/questions/24797/rdflib-persistence/24803
+    Sleepycat is a store for named graphs (or datasets), it will keep track 
+    of what graph a triple is in. When you create a Graph a random ID is 
+    generated - if you create a NEW graph, the ID will be different.
+    """
+    graph = Graph(store=STORE_TYPE, identifier=gid)
+
+    # first time create the store:
+    gstate = graph.open(gpath, create=False)
+
+    if gstate == VALID_STORE:
+        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath, nb=len(graph)))
+
+        for subj, pred, obj in graph:
+            LOG.info("{subj}, {pred}, {obj}".format(subj=subj, pred=pred, obj=obj))
+
+    graph.close()
+
+def show_all_graphs(gpath=None):
+    """
+    http://rdflib.readthedocs.org/en/latest/apidocs/rdflib.html#rdflib.graph.Dataset
+    """
+    all_graphs = ConjunctiveGraph(store=STORE_TYPE)
+
+    gstate = all_graphs.open(gpath, create=False)
+
+    if gstate == VALID_STORE:
+        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath,
+                                                            nb=len(all_graphs)))
+
+        for subj, pred, obj, ctx in all_graphs.quads():
+            LOG.info(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
+                                    pred=pred, obj=obj, ctxid=ctx.identifier))
+
+    all_graphs.close()
+
+def build_new_database(options=None):
+    """Build the new database given the user parameters.
+    :param options: The Namespace object returned by parse_arg.
+    """
+    old_uri = options.oldURI[0]
+
+    old_db = ConjunctiveGraph(store=STORE_TYPE)
+    ogs = old_db.open(options.currentdb[0], create=False)
+
+    new_uri = options.newURI[0]
+
+    new_db = ConjunctiveGraph(store=STORE_TYPE)
+    ngs = new_db.open(options.newdb[0], create=True)
+
+    if (ogs == VALID_STORE) and (ngs == VALID_STORE):
+        LOG.info('The Sleepycat current store \'{osp}\' and \'{nsp}\' new store '
+                 'are valid.'.format(osp=options.currentdb[0],
+                                     nsp=options.newdb[0]))
+
+        LOG.info("Changing '{olduri}' for '{newuri}'".format(olduri=old_uri,
+                                                             newuri=new_uri))
+
+        for subj, pred, obj, ctx in old_db.quads():
+            if isinstance(subj, URIRef) and subj.find(old_uri) != -1:
+                nsubj = URIRef(subj.replace(old_uri, new_uri))
+            else:
+                nsubj = subj
+
+            if isinstance(pred, URIRef) and pred.find(old_uri) != -1:
+                npred = URIRef(pred.replace(old_uri, new_uri))
+            else:
+                npred = pred
+
+            if isinstance(obj, URIRef) and obj.find(old_uri) != -1:
+                nobj = URIRef(obj.replace(old_uri, new_uri))
+            else:
+                nobj = obj
+
+            if isinstance(obj, Literal) and obj.find(old_uri) != -1:
+                if (pred == KTBS.hasParameter) and obj.startswith("sparql="):
+                    if obj.find('<' + old_uri):
+                        nobj = Literal(obj.replace('<' + old_uri, '<' + new_uri))
+
+                        LOG.warning('\n...................'
+                                    '\nThe old uri \'{olduri}\' HAS BEEN REPLACED '
+                                    'WITH new uri \'{newuri}\' in '
+                                    '\n\t{obj:s}\n'.format(olduri=old_uri,
+                                                     newuri=new_uri, obj=nobj))
+                    else:
+                        LOG.warning('\n...................'
+                                    '\nThe \n\t{obj:s} \nliteral contains the old URI '
+                                    '\'{olduri}\' but not enclosed in angle brackets '
+                                    '(\'<>\'). \n>>>> IT HAS NOT BEEN CHANGED, please '
+                                    'check this statement\n'.format(obj=obj,
+                                                                    olduri=old_uri))
+                else:
+                    LOG.warning('\n...................'
+                                '\nThe \n\t{obj:s} \nliteral contains the old '
+                                'URI  \'{olduri}\' but not in a ktbs#hasParameter '
+                                'predicate or a \'sparql=\' statement. \n>>>> IT '
+                                'HAS NOT BEEN CHANGED, please check this '
+                                'statement\n'.format(obj=obj, olduri=old_uri))
+
+            if ctx.identifier.find(old_uri) != -1:
+                ctxid = URIRef(ctx.identifier.replace(old_uri, new_uri))
+            else:
+                ctxid = ctx.identifier
+
+            LOG.debug(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
+                                    pred=npred, obj=nobj, ctxid=ctxid))
+
+            new_db.addN([(nsubj, npred, nobj, ctxid),])
+
+    new_db.close()
+    old_db.close()
+
+if __name__ == '__main__':
+    logging.basicConfig()
+    args = parse_options()
+    if check_arguments(args):
+        #show_graph(args.currentdb[0], gid=args.oldURI[0])
+        #show_all_graphs(args.currentdb[0])
+        build_new_database(args)

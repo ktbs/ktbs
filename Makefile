@@ -15,7 +15,7 @@ lint-todos:
 	@${PYPATH} pylint ${PYLINT_FILES} ${PYLINT_OPT} ${PYLINT_DISABLED} --report=n --enable=W0511 | grep 'NOW\|^' --color
 
 lint:
-	@${PYPATH} pylint ${PYLINT_FILES} ${PYLINT_OPT} ${PYLINT_DISABLED} --report=n --include-ids=y
+	${PYPATH} pylint ${PYLINT_FILES} ${PYLINT_OPT} ${PYLINT_DISABLED} --report=n
 
 unit-tests:
 	@${PYPATH} nosetests utest

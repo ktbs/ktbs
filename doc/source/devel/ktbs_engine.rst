@@ -69,7 +69,7 @@ Method implementation
 BuiltinMethod implementation
 ----------------------------
 
-.. inheritance-diagram:: ktbs.engine.builtin_method
+.. COMMENTED OUT (no class in there) inheritance-diagram:: ktbs.engine.builtin_method
 
 .. automodule:: ktbs.engine.builtin_method
     :members:

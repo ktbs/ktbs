@@ -34,7 +34,8 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.coverage', 
               'sphinx.ext.pngmath', 
               'sphinx.ext.viewcode',
-              'turtlelexer']
+              'turtlelexer',
+              'sparqllexer']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -233,3 +234,7 @@ autodoc_member_order='bysource'
 
 # this is work in progress; let the TODOs show
 todo_include_todos=True
+
+# -- ReadTheDocs specific ------------------------------------------------------
+
+RTD_NEW_THEME = True

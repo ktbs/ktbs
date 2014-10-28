@@ -31,13 +31,16 @@ from rdfrest.iso8601 import UTC
 from threading import Thread
 from time import sleep
 from wsgiref.simple_server import make_server
+import unittest
 
 from ktbs.api.ktbs_root import KtbsRootMixin
 from ktbs.engine.resource import METADATA
-from ktbs.engine.service import make_ktbs
+from ktbs.engine.service import KtbsService
 from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS
 from ktbs.time import lit2datetime
+from ktbs.config import get_ktbs_configuration
+from ktbs.engine.service import make_ktbs
 
 from .utils import StdoutHandler
 
@@ -49,8 +52,11 @@ class KtbsTestCase(object):
     service = None
 
     def setUp(self):
-        self.my_ktbs = make_ktbs("http://localhost:12345/")
-        self.service = self.my_ktbs.service
+        ktbs_config = get_ktbs_configuration()
+        ktbs_config.set('server', 'port', '12345')
+        self.service = KtbsService(ktbs_config)
+        self.my_ktbs = self.service.get(self.service.root_uri,
+                                        _rdf_type=KTBS.KtbsRoot)
 
     def tearDown(self):
         if self.service is not None:
@@ -69,15 +75,21 @@ class HttpKtbsTestCaseMixin(object):
 
     def setUp(self):
         super(HttpKtbsTestCaseMixin, self).setUp()
-        app = HttpFrontend(self.service, cache_control="max-age=60")
+        ktbs_config = get_ktbs_configuration()
+        app = HttpFrontend(self.service, ktbs_config)
+        #app = HttpFrontend(self.service, cache_control="max-age=60")
         httpd = make_server("localhost", 12345, app,
                             handler_class=StdoutHandler)
         thread = Thread(target=httpd.serve_forever)
         thread.start()
         self.httpd = httpd
 
-        self.my_ktbs = HttpResource.factory("http://localhost:12345/")
-        assert isinstance(self.my_ktbs, KtbsRootMixin)
+        try:
+            self.my_ktbs = HttpResource.factory("http://localhost:12345/")
+            assert isinstance(self.my_ktbs, KtbsRootMixin)
+        except:
+            self.tearDown()
+            raise
 
     def tearDown(self):
         if self.httpd:
@@ -302,6 +314,46 @@ class TestKtbs(KtbsTestCase):
         eq_(obsN.subject, "alice")
         eq_(obsN.obsel_type, otypeN)
 
+    def test_post_no_obsels(self):
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        otype3 = model.create_obsel_type("#MyObsel3")
+        otypeN = model.create_obsel_type("#MyObselN")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        graph = Graph()
+
+        old_tag = trace.obsel_collection.str_mon_tag
+        with assert_raises(InvalidDataError):
+            created = trace.post_graph(graph)
+        new_tag = trace.obsel_collection.str_mon_tag
+        eq_(old_tag, new_tag)
+
+    def test_post_homonymic_obsels(self):
+        """Check that it is impossible to post an obsel with an URI
+        that already exists in a trace."""
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype1 = model.create_obsel_type("#MyObsel1")
+        otype2 = model.create_obsel_type("#MyObsel2")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "test homonymic obsels")
+
+        obsel = URIRef(trace.uri + 'obs')
+        graph1 = Graph()
+        graph1.add((obsel, KTBS.hasTrace, trace.uri))
+        graph1.add((obsel, RDF.type, otype1.uri))
+
+        graph2 = Graph()
+        graph2.add((obsel, KTBS.hasTrace, trace.uri))
+        graph2.add((obsel, RDF.type, otype2.uri))
+
+        created = trace.post_graph(graph1)
+        with assert_raises(InvalidDataError):
+            created_homonymic = trace.post_graph(graph2)
 
     def test_lineage(self):
         b = self.my_ktbs.create_base()
@@ -616,3 +668,19 @@ def last_obsel(trace):
         return values[0]
     else:
         return None
+
+class TestMakeKtbs(unittest.TestCase):
+
+    my_ktbs = None
+    service = None
+
+    def setUp(self):
+        self.my_ktbs = make_ktbs()
+
+    def tearDown(self):
+        if self.my_ktbs is not None:
+            unregister_service(self.my_ktbs.service)
+
+    def test_ktbs_default_scheme(self):
+        assert self.my_ktbs.uri.startswith('ktbs:')
+

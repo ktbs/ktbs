@@ -18,7 +18,9 @@
 """
 I implement a WSGI-based HTTP server wrapping a given :class:`.local.Service`.
 """
+from bisect import insort
 from datetime import datetime
+from pyparsing import ParseException
 from rdflib import URIRef
 from time import time
 from webob import Request, Response
@@ -57,23 +59,6 @@ class HttpFrontend(object):
     contents, for changing internal URIs into URIs served by the
     HttpFrontend.
 
-    :param service: the service to expose over HTTP
-    :type  service: :class:`.local.Service`
-
-    Additionally, the following keyword arguments are recognized:
-
-    :param cache_control: either a string to be used as the cache-control header
-                          field, or a callable accepting a resource and
-                          returning either None or the value of the
-                          cache-control header field.
-                          Defaults to :func:`cache_half_last_modified`.
-    :param max_bytes:     the maximum number of bytes that this server accepts
-                          to serve or to consume.
-    :type  max_bytes:     int
-    :param max_triples:   the maximum number of triples that this server accepts
-                          to serve or to consume.
-    :type  max_triples:   int
-
     .. warning::
     
         RDF-REST is meant to differenciate an empty query-string from no
@@ -83,57 +68,104 @@ class HttpFrontend(object):
 
     """
 
-    def __init__(self, service, **options):
+    def __init__(self, service, service_config):
         """See class docstring.
+
+        :param service: the service to expose over HTTP
+        :type  service: :class:`.local.Service`
+
+        :param service_config: An object containing kTBS configuration options
+        :type service_config: configParser object
+
+        Additionally, the following configuration options are recognized:
+
+        - cache_control: either a string to be used as the cache-control
+          header field, or a callable accepting a resource and returning
+          either None or the value of the cache-control header field.
+          Defaults to :func:`cache_half_last_modified`.
+        - cors_allow_origin: if provided, cross-domain requests will be
+          allowed from the given domains, by implementing
+          http://www.w3.org/TR/cors/ .
+        - max_bytes (int): the maximum number of bytes that this server
+          accepts to serve or to consume.
+        - max_triples (int): the maximum number of triples that this server
+          accepts to serve or to consume.
         """
         # __init__ not called in mixin #pylint: disable=W0231
         # NB: strange, pylint should recognized it is a mixin...
         self._service = service
-        cache_control = options.pop("cache_control", cache_half_last_modified)
-        if isinstance(cache_control, basestring):
-            cache_control = (lambda _, ret = cache_control: ret)
+        self._middleware_stack_version = None
+        self._middleware_stack = None
+
+        cache_control = cache_half_last_modified
+        if service_config.getboolean('server', 'no-cache'):
+            cache_control = (lambda x: None)
         self.cache_control = cache_control
-        self.max_bytes = options.pop("max_bytes", None)
-        self.max_triples = options.pop("max_triples", None)
-        self.cors_allow_origin = set(
-            options.pop("cors_allow_origin", "").split(" ")
-            )
-        self._options = options or {}
+
+        if service_config.getint('server', 'max-bytes') >= 0:
+            self.max_bytes = service_config.getint('server', 'max-bytes')
+        else:
+            self.max_bytes = None
+
+        if service_config.getint('server', 'max-triples') >= 0:
+            self.max_triples = service_config.getint('server', 'max-triples')
+        else:
+            self.max_triples = None
+
+        #self.cors_allow_origin = set(
+        #    options.pop("cors_allow_origin", "").split(" ")
+        #    )
+        self.cors_allow_origin = service_config.get('server', 'cors-allow-origin', 1).split(" ")
+
+        # HttpFrondend does not receive a dictionary any more
+        # Other options should be explicitely set
+        #self._options = options or {}
+        self._options = {}
 
     def __call__(self, environ, start_response):
-        """Wrap `get_response` to honnor the WSGI protocol.
+        """Honnor the WSGI protocol.
         """
-        request = MyRequest(environ)
-        response = self.get_response(request)
-        return response(environ, start_response)
-        
-    def get_response(self, request):
-        """Process a webob request and return a webob response.
+        if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
+            self._middleware_stack = build_middleware_stack(self._core_call)
+            self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+        return self._middleware_stack(environ, start_response)
 
-        :param request: a MyRequest
+    def _core_call(self, environ, start_response):
+        """The actual implementation of this WSGI application.
+
+        NB: the __call__ method wraps this function into a middleware_stack,
+        including all middlewares registered by plugins.
 
         CAUTION: the conversion of exceptions to HTTP status codes  should be
         maintained consistent with
         :meth:`.http_client.HttpResource._http_to_exception`.
         """
+        request = MyRequest(environ)
         resource_uri, request.uri_extension = extsplit(request.path_url)
         resource_uri = URIRef(resource_uri)
         resource = self._service.get(resource_uri)
         if resource is None:
-            return self.issue_error(404, request, None)
+            resp = self.issue_error(404, request, None)
+            return resp(environ, start_response)
         if resource.uri != resource_uri:
-            return self.issue_error(303, request, None,
+            resp = self.issue_error(303, request, None,
                                     location=str(resource.uri))
+            return resp(environ, start_response)
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
-            return self.issue_error(405, request, resource,
+            resp = self.issue_error(405, request, resource,
                                     allow="HEAD, GET, PUT, POST, DELETE")
+            return resp(environ, start_response)
         try:
             with self._service:
+                resource.force_state_refresh()
+                pre_process_request(self._service, request, resource)
                 response = method(request, resource)
                 # NB: even for a GET, we embed method in a "transaction"
                 # because it may nonetheless make some changes (e.g. in
                 # the #metadata graphs)
+        except HttpException, ex:
+            response = ex.get_response(request)
         except CanNotProceedError, ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
@@ -164,6 +196,14 @@ class HttpFrontend(object):
                                   % (status, ex.message),
                                   status=status,
                                   request=request)
+        except ParseException, ex:
+            status = "400 Bad Request"
+            message = "%s at line %s col %s\n\n%s" % \
+                      (ex.msg, ex.lineno, ex.column, ex.markInputline())
+            response = MyResponse("%s - Parse exception\n%s"
+                                  % (status, message),
+                                  status=status,
+                                  request=request)
         except SerializeError, ex:
             status = "550 Serialize Error"
             response = MyResponse("%s\n%s" % (status, ex.message),
@@ -183,20 +223,19 @@ class HttpFrontend(object):
             origin = request.headers.get("origin")
             if origin and (origin in self.cors_allow_origin
                            or "*" in self.cors_allow_origin):
-                response.headerlist.append(
-                    ("access-control-allow-origin", origin)
-                    ),
-                response.headerlist.append(
+                response.headerlist.extend([
+                    ("access-control-allow-origin", origin),
                     ("access-control-allow-methods",
-                     "GET HEAD PUT POST DELETE"),
-                    )
+                     "GET, HEAD, PUT, POST, DELETE"),
+                    ("access-control-allow-credentials", "true"),
+                ])
                 acrh = request.headers.get("access-control-request-headers")
                 if acrh:
                     response.headerlist.append(
                         ("access-control-allow-headers", acrh),
                         )
             
-        return response
+        return response(environ, start_response)
 
     def http_delete(self, request, resource):
         """Process a DELETE request on the given resource.
@@ -342,21 +381,31 @@ class HttpFrontend(object):
         # too many return statements (7/6) #pylint: disable=R0911
 
         # find parser
-        ctype = request.content_type or "text/turtle"
-        iter_etags = getattr(resource, "iter_etags", None)
-        if iter_etags is not None:
-            if request.headers.get("if-match", "*") == "*":
-                return MyResponse(
-                    status="403 Forbidden: 'if-match' is required",
-                    request=request,
-                    )
-            for i in iter_etags(request.GET.mixed() or None):
-                if taint_etag(i, ctype) in request.if_match:
-                    break
-            else: # no matching etag found in 'for' loop
-                return self.issue_error(412, request, resource)
-        parser, _ = get_parser_by_content_type(ctype)
-
+        ext = request.uri_extension
+        if ext:
+            parser = None
+            _, ctype = get_serializer_by_extension(ext)
+            if ctype is not None:
+                parser, _ = get_parser_by_content_type(ctype)
+            if parser is None:
+                return self.issue_error(404, request, resource, "Bad extension")
+            print "===", parser
+        else:
+            ctype = request.content_type or "text/turtle"
+            iter_etags = getattr(resource, "iter_etags", None)
+            if iter_etags is not None:
+                if request.headers.get("if-match", "*") == "*":
+                    return MyResponse(
+                        status="403 Forbidden: 'if-match' is required",
+                        request=request,
+                        )
+                for i in iter_etags(request.GET.mixed() or None):
+                    if taint_etag(i, ctype) in request.if_match:
+                        break
+                else: # no matching etag found in 'for' loop
+                    return self.issue_error(412, request, resource)
+            parser, _ = get_parser_by_content_type(ctype)
+    
         # parse and check bytes/triples limitations
         if parser is None:
             return self.issue_error(415, request, resource)
@@ -410,6 +459,68 @@ class HttpFrontend(object):
         res = MyResponse(body, status, kw.items())
         return res
 
+class SparqlHttpFrontend(HttpFrontend):
+    """
+    I derive :class:`HttpFrontend` by adding support for the SPARQL protocol.
+    """
+
+    POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
+
+    def http_get(self, request, resource):
+        if request.GET.getall("query"):
+            return self.handle_sparql(request, resource)
+        else:
+            return super(SparqlHttpFrontend, self).http_get(request, resource)
+
+    def http_post(self, request, resource):
+        if request.content_type in self.POST_CTYPES:
+            return self.handle_sparql(request, resource)
+        else:
+            return super(SparqlHttpFrontend, self).http_post(request, resource)
+
+    def handle_sparql(self, request, resource):
+        """
+        I handle a SPARQL request
+        """
+        if request.method == "GET" \
+        or request.content_type == "application/sparql-query":
+            params = request.GET
+        else:
+            params = request.POST
+        default_graph_uri = params.getall("default-graph-uri")
+        named_graph_uri = params.getall("named-graph-uri")
+
+        if request.content_type != "application/sparql-query":
+            lst = params.getall("query")
+            if len(lst) == 0:
+                # NB: not rejecting several queries, because some services
+                # provide the same query several times (YASGUI)
+                return MyResponse("400 Bad Request\nQuery not provided",
+                                  status="400 Bad Request",
+                                  request=request)
+            query = lst[0]
+        else:
+            query = request.body
+
+        # TODO LATER do something with default_graph_uri and named_graph_uri ?
+
+        resource.force_state_refresh()
+        graph = resource.get_state()
+        result = graph.query(query)
+        # TODO LATER use content negociation to decide on the output format
+        if result.graph is not None:
+            serfmt = "xml"
+            ctype = "application/rdf+xml"
+        else:
+            serfmt = "json"
+            ctype = "application/sparql-results+json"
+        return MyResponse(result.serialize(format=serfmt),
+                          status="200 Ok",
+                          content_type=ctype,
+                          request=request)
+
+
+
 def taint_etag(etag, ctype):
     """I taint etag with the given content-type.
 
@@ -423,6 +534,55 @@ class _TooManyTriples(Exception):
     """This exception class is used to abort edit context during PUT.
     """
     pass
+
+class HttpException(Exception):
+    def __init__(self, message, status, **headers):
+        super(HttpException, self).__init__(message)
+        self.status = status
+        self.headers = headers
+
+    def get_body(self):
+        return "%s\n%s" % (self.status, self.message)
+
+    def get_headerlist(self):
+        hlist = []
+        for key, val in self.headers.iteritems():
+            if type(val) is not list:
+                val = [val]
+            for i in val:
+                hlist.append((str(key), str(i)))
+        return  hlist
+
+    def get_response(self, request):
+        return MyResponse(body=self.get_body(),
+                          status=self.status,
+                          headerlist=self.get_headerlist(),
+                          request=request)
+
+
+class UnauthorizedError(HttpException):
+    """An error raised when a remote user is not authorized to perform an
+    action.
+    """
+    def __init__(self, message="", challenge=None, **headers):
+        if challenge is None:
+            challenge = 'Basic Realm="authentication required"'
+        headers['www-authenticate'] = challenge
+        super(UnauthorizedError, self).__init__(message,
+                                                "401 Unauthorized",
+                                                **headers)
+
+class RedirectException(HttpException):
+    """An exception raised to redirect a given query to another URL.
+    """
+    def __init__(self, location, code=303, **headers):
+        self.message = "Redirecting to <%s>" % location
+        self.status = "%s Redirect" % code
+        headers['location'] = location
+        super(RedirectException, self).__init__(self.message, self.status, **headers)
+
+    def get_body(self):
+        return "{0} - Can not proceed\n{1}".format(self.status, self.message)
 
 ################################################################
 #
@@ -443,3 +603,95 @@ def cache_half_last_modified(resource):
         return "max-age=%s" % (int(time() - last_mod) / 2)
     else:
         return None
+
+###############################################################
+#
+# UWSGI Middleware registry
+#
+
+_MIDDLEWARE_REGISTRY = []
+_MIDDLEWARE_STACK_VERSION = 0
+
+def build_middleware_stack(original_application):
+    stack = original_application
+    for _, middleware in _MIDDLEWARE_REGISTRY[::-1]:
+        stack = middleware(stack)
+    return stack
+
+def register_middleware(level, middleware, quiet=False):
+    """
+    Register a middleware for HTTP requests.
+
+    :param level: a level governing the order of execution of pre-processors;
+      predefined levels are AUTHENTICATION, AUTHORIZATION
+
+    :param middleware: a function accepting a WSGI application,
+      and producing a WSGI application wrapping the former
+    """
+    if middleware in ( i[1] for i in _MIDDLEWARE_REGISTRY ):
+        if not quiet:
+            raise ValueError("middleware already registered")
+        else:
+            return
+    insort(_MIDDLEWARE_REGISTRY, (level, middleware))
+    global _MIDDLEWARE_STACK_VERSION
+    _MIDDLEWARE_STACK_VERSION += 1
+
+def unregister_middleware(middleware, quiet=False):
+    """
+    Unregister a middleware for HTTP requests.
+    """
+    for i, pair in enumerate(_MIDDLEWARE_REGISTRY):
+        if pair[1] == preproc:
+            del _MIDDLEWARE_REGISTRY[i]
+            global _MIDDLEWARE_STACK_VERSION
+            _MIDDLEWARE_STACK_VERSION += 1
+            return
+    if not quiet:
+        raise ValueError("pre-processor not registered")
+
+###############################################################
+#
+# Request pre-processors registry
+#
+
+_PREPROC_REGISTRY = []
+
+def pre_process_request(service, request, resource):
+    """
+    Applies all registered pre-processors to `request`.
+    """
+    for _, plugin in _PREPROC_REGISTRY:
+        plugin(service, request, resource)
+
+def register_pre_processor(level, preproc, quiet=False):
+    """
+    Register a pre-processor for HTTP requests.
+
+    :param level: a level governing the order of execution of pre-processors;
+      predefined levels are AUTHENTICATION, AUTHORIZATION
+
+    :param preproc: a function accepting 3 parameters: a Service,
+      a Webob request and an RdfRest resource
+    """
+    if preproc in ( i[1] for i in _PREPROC_REGISTRY ):
+        if not quiet:
+            raise ValueError("pre-processor already registered")
+        else:
+            return
+    insort(_PREPROC_REGISTRY, (level, preproc))
+
+def unregister_pre_processor(preproc, quiet=False):
+    """
+    Unregister a pre-processor for HTTP requests.
+    """
+    for i, pair in enumerate(_PREPROC_REGISTRY):
+        if pair[1] == preproc:
+            del _PREPROC_REGISTRY[i]
+            return
+    if not quiet:
+        raise ValueError("pre-processor not registered")
+
+SESSION = 0
+AUTHENTICATION = 200
+AUTHORIZATION = 400

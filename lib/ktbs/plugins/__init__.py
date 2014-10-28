@@ -18,5 +18,8 @@
 """I contain plugins for kTBS.
 
 Additional plugins can be provided by third party.
-A plugin is a python module containing a `start_plugin()` function.
+A plugin is a python module containing:
+
+- a `start_plugin(config)` function (accepting a service config, see rdfrest/config.py)
+- a `stop_plugin()` if the plugin can be stopped dynamically
 """

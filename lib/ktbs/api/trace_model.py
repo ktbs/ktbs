@@ -22,12 +22,13 @@
 I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF
+from rdfrest.factory import factory as universal_factory
 from rdfrest.interface import register_mixin
 from rdfrest.utils import coerce_to_uri, parent_uri
 
 from .base import InBaseMixin
 from .resource import KtbsResourceMixin
-from ..namespace import KTBS
+from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api, mint_uri_from_label, SKOS
 
 @register_mixin(KTBS.TraceModel)
@@ -55,7 +56,7 @@ class TraceModelMixin(InBaseMixin):
     def set_unit(self, unit):
         """Return the temporal unit used by this model.
         """
-        unit = coerce_to_uri(unit, KTBS)
+        unit = coerce_to_uri(unit, KTBS_NS_URI)
         with self.edit(_trust=True) as graph:
             graph.set((self.uri, KTBS.hasUnit, unit))
 
@@ -88,16 +89,15 @@ class TraceModelMixin(InBaseMixin):
         """
         I iter over all the parent models of this model.
         """
-        factory = self.factory
         cache = set()
         for uri in self.state.objects(self.uri, KTBS.hasParentModel):
-            model = factory(uri) or uri
+            model = universal_factory(uri) or uri
             if include_indirect:
                 cache.add(model)
             yield model
         if include_indirect:
             for model in list(cache):
-                for i in model.iter_indirect(True):
+                for i in model.iter_parents(include_indirect=True):
                     if i not in cache:
                         cache.add(i)
                         yield i
@@ -367,8 +367,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         if include_indirect:
             return _closure(self, "subtypes")
         else:
-            factory = self.factory
-            return ( factory(uri) 
+            return ( universal_factory(uri) 
                      for uri in self.state.subjects(self._SUPER_TYPE_PROP,
                                                      self.uri) )
 
@@ -381,8 +380,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         if include_indirect:
             return _closure(self, "supertypes")
         else:
-            factory = self.factory
-            return ( factory(uri, self._RDF_TYPE)
+            return ( universal_factory(uri, self._RDF_TYPE)
                      for uri in self.state.objects(self.uri, 
                                                     self._SUPER_TYPE_PROP) )
 
@@ -443,7 +441,7 @@ class AttributeTypeMixin(_ModelElementMixin):
         if uri is None:
             return None
         else:
-            ret = self.factory(uri)
+            ret = universal_factory(uri)
             assert isinstance(ret, ObselTypeMixin)
             return ret
 
@@ -495,9 +493,8 @@ class ObselTypeMixin(_ModelTypeMixin):
                 for atype in supertype.iter_attribute_types(False):
                     yield atype
         else:
-            factory = self.factory
             for uri in self.state.subjects(_HAS_ATT_OBSELTYPE, self.uri):
-                yield factory(uri)
+                yield universal_factory(uri)
 
     def iter_relation_types(self, include_inherited=True):
         """
@@ -508,9 +505,8 @@ class ObselTypeMixin(_ModelTypeMixin):
                 for rtype in supertype.iter_relation_types(False):
                     yield rtype
         else:
-            factory = self.factory
             for uri in self.state.subjects(_HAS_REL_ORIGIN, self.uri):
-                yield factory(uri)
+                yield universal_factory(uri)
 
     def iter_inverse_relation_types(self, include_inherited=True):
         """
@@ -521,9 +517,8 @@ class ObselTypeMixin(_ModelTypeMixin):
                 for rtype in supertype.iter_inverse_relation_types(False):
                     yield rtype
         else:
-            factory = self.factory
             for uri in self.state.subjects(_HAS_REL_DESTINATION, self.uri):
-                yield factory(uri)
+                yield universal_factory(uri)
 
     def create_attribute_type(self, id=None, data_type=None,
                               value_is_list=False, label=None):
@@ -573,7 +568,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         if uri is None:
             return None
         else:
-            ret = self.factory(uri)
+            ret = universal_factory(uri)
             assert isinstance(ret, ObselTypeMixin), ret
             return ret
 
@@ -587,7 +582,7 @@ class RelationTypeMixin(_ModelTypeMixin):
         if uri is None:
             return None
         else:
-            ret = self.factory(uri)
+            ret = universal_factory(uri)
             assert isinstance(ret, ObselTypeMixin), ret
             return ret
 

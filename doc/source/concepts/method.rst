@@ -21,6 +21,8 @@ This method copies the obsels of the source trace if they pass the filter.
   :beforeDT: the datetime timestamp above which obsels are filtered out 
   :otypes: space-separated list of URIs indicating which obsel types must be
            kept in the computed trace
+  :bgp: a SPARQL Basic Graph Pattern used to express additional criteria
+        (see below)
 :extensible: no
 
 If parameter ``model`` (resp. ``origin``) is not provided,
@@ -40,7 +42,12 @@ the datetime will be ignored.
 Note that temporal boundaries are *inclusive*,
 but obsels must be entirely contained in them.
 
-
+The ``bgp`` parameter accepts any SPARQL BGP
+(i.e. triple patterns, FILTER clauses)
+used to add further criteria to the obsels to keep in the computed trace.
+The SPARQL variables ``?obs``, ``?b`` and ``?e`` are bound respectively to
+the obsel, its begin timestamp and its end timestamp.
+The prefix ``m:`` is bound to the source trace model URI.
 
 
 Fusion

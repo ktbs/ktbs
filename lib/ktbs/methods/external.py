@@ -18,6 +18,7 @@
 """
 Implementation of the external builtin methods.
 """
+import logging
 from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.utils import Diagnosis
@@ -28,6 +29,8 @@ from .interface import IMethod
 from .utils import replace_obsels
 from ..engine.builtin_method import register_builtin_method_impl
 from ..namespace import KTBS
+
+LOG = logging.getLogger(__name__)
 
 class _ExternalMethod(IMethod):
     """I implement the external builtin method.
@@ -44,13 +47,16 @@ class _ExternalMethod(IMethod):
 
             assert params is not None
             model = params.get("model")
-            if model is None:
+            if model is not None:
+                model = URIRef(model)
+            else:
                 models = set( src.model_uri for src in srcs )
                 if len(models) != 1:
                     diag.append("Can not infer model from sources and no "
                                 "target model is explicitly specified")
                 else:
                     model = models.pop()
+
             origin = params.get("origin")
             if origin is None:
                 origins = set( src.origin for src in srcs )
@@ -59,6 +65,7 @@ class _ExternalMethod(IMethod):
                                 "target origin is explicitly specified")
                 else:
                     origin = origins.pop()
+            origin = Literal(origin)
 
             with computed_trace.edit(_trust=True) as editable:
                 editable.add((computed_trace.uri, KTBS.hasModel, model))
@@ -81,16 +88,19 @@ class _ExternalMethod(IMethod):
         command_line = parameters["command-line"] % parameters
         if parameters.get("feed-to-stdin"):
             stdin = PIPE
-            stdin_data = sources[0].obsel_collection.state \
+            stdin_data = sources[0].obsel_collection.get_state({"quick":1}) \
                 .serialize(format=rdfformat, encoding="utf-8")
         else:
             stdin = None
             stdin_data = None
-            
+
+        popen_env = {
+            "PATH": getenv("PATH", ""),
+            "PYTHONPATH": getenv("PYTHONPATH", ""),
+            }
+        LOG.info("Running: %s" % command_line)
         child = Popen(command_line, shell=True, stdin=stdin, stdout=PIPE,
-                      close_fds=True, env={"PATH": getenv("PATH"),
-                                           "PYTHONPATH": getenv("PYTHONPATH"),
-                                           })
+                      close_fds=True, env=popen_env)
         rdfdata, _ = child.communicate(stdin_data)
         if child.returncode != 0:
             diag.append("command-line ended with error: %s" % child.returncode)

@@ -49,7 +49,7 @@ Although the description of the parent resource may contain references to its ch
 Aspect resources
 ++++++++++++++++
 
-Some resources are too complex to be handled only through the four HTTP verbs. Those resources are therefore linked to several *aspect resources*, each of them represeting only one aspect of the original resource.
+Some resources are too complex to be handled only through the four HTTP verbs. Those resources are therefore linked to several *aspect resources*, each of them reprenseting only one aspect of the original resource.
 
 As a convention, a resource with aspect resources will have a URI ended with '/', and all its aspect resources will have a suffix starting with '@'. The number, types and names of aspect resources depends only on the type of the original resource. Aspect resources are automatically created and deleted with the original resource and can not be created or deleted independandly.
 
@@ -70,12 +70,12 @@ Resource representations in kTBS are typically in RDF (except for some `aspect r
 .. _Turtle: http://www.w3.org/2007/02/turtle/primer/
 .. _N3: http://www.w3.org/TeamSubmission/n3/
 
-The representations in GET an PUT requests are about existing resources with a known URI. It is therefore quite straightforward to represent those resources in RDF: they appear in the graph as a URI node, and the arcs in the graph represent their relations with other resources and literals. Depending on the type of the represented resources, some `representation constraints` (see below) may apply to the structure of the graph.
+The representations in GET and PUT requests are about existing resources with a known URI. It is therefore quite straightforward to represent those resources in RDF: they appear in the graph as a URI node, and the arcs in the graph represent their relations with other resources and literals. Depending on the type of the represented resources, some `representation constraints` (see below) may apply to the structure of the graph.
 
 .. _posted-graph:
 .. _postable-properties:
 
-On the other hand, the representation of a created resource (POST request) deserves more explainations, since their URI is not necessarily known in advance. The POSTed RDF graph must comply with the following rules:
+On the other hand, the representation of a created resource (POST request) deserves more explanations, since their URI is not necessarily known in advance. The POSTed RDF graph must comply with the following rules:
 
 * the target URI of the POST request must be present in the graph as a URI node;
 * it must be linked, through exactly one *postable* property (see below), to a

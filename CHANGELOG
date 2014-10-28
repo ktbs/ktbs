@@ -1,3 +1,22 @@
+0.3 2014-10-28
+
+    * for developpers
+      * JSON is now the default format (using JSON-LD to map to RDF)
+      * full support for CORS
+      * all resources now partially support the SPARQL protocol
+      * tutorials improved
+
+    * for admins
+      * authentication+authorization support (via Apache or plugin)
+      * centralized configuration in config file
+      * install tutorial available
+      * administration tools (ktbs-infos, ktbs-rebase)
+
+    * performance improvements
+      * now support multi-threading
+      * various bugfixes improving performance
+
+
 0.2 2013-03-19
 
     * methods for computed traces

@@ -25,17 +25,21 @@ import example1 # can not import do_tests directly, nose tries to run it...
 from example1 import GroupMixin, make_example1_service
 from rdfrest.exceptions import RdfRestException
 from rdfrest.factory import unregister_service
-
+from rdfrest.config import get_service_configuration
 
 
 class TestExample1:
 
-    ROOT_URI = URIRef("http://localhost:11235/foo/")
+    #ROOT_URI = URIRef("http://localhost:11235/foo/")
     service = None
     root = None
 
     def setUp(self):
-        self.service = make_example1_service(self.ROOT_URI)
+        service_config = get_service_configuration()
+        service_config.set('server', 'port', '11235')
+        service_config.set('server', 'base-path', '/foo')
+        self.service = make_example1_service(service_config)
+        self.ROOT_URI = self.service.root_uri
         self.root = self.service.get(self.ROOT_URI)
         assert isinstance(self.root, GroupMixin)
 

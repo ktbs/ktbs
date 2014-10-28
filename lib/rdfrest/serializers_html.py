@@ -17,7 +17,7 @@
 
 """I provide functionalities to serialize RDF-REST resource in HTML.
 """
-from rdflib import Literal, RDF, URIRef, Variable
+from rdflib import Literal, RDF, URIRef
 
 def htmlize_node(bindings, node, base):
     """
@@ -48,7 +48,7 @@ def htmlize_node(bindings, node, base):
         datatype = node.datatype
         value = unicode(node).replace("<", "&lt;")
         if '"' in node or '\n' in node:
-            quoted = u'"""%s"""' % value
+            quoted = u'"""<pre style="display: inline">%s</pre>"""' % value
         else:
             quoted = u'"%s"' % value
 
@@ -104,7 +104,7 @@ def generate_crumbs(graph, resource, bindings, ctypes):
     for i in xrange(len(crumbs)-1):
         link = "/".join(crumbs[:i+1]) + "/"
         ret += u'<a href="%s">%s</a>' % (link, crumbs[i] + "/",)
-    ret += u'<a href="%s">%s</a></h1>\n' % (resource.uri, crumbs[-1])
+    ret += u'<a href="%s">%s</a>\n' % (resource.uri, crumbs[-1])
     return ret
 
 def generate_formats(graph, resource, bindings, ctypes):
@@ -146,15 +146,9 @@ def generate_htmlized_turtle(graph, resource, bindings, ctypes,
     """
     ret = ""
     uri = resource.uri
-    svar = Variable("s")
-    pvar = Variable("p")
-    ovar = Variable("o")
     old_subj = None
     old_pred = None
-    for b in graph.query(query).bindings:
-        subj = b[svar]
-        pred = b[pvar]
-        obj  = b[ovar]
+    for subj, pred, obj in graph.query(query):
         if subj != old_subj:
             if old_subj is not None:
                 ret += ".</div></div></div>\n"
@@ -392,8 +386,20 @@ def generate_ajax_client_js(graph, resource, bindings, ctypes):
         return req;
     }
 
+    function ctype_change(evt) {
+        var ctype = encodeURIComponent(evt.target.value);
+        document.cookie = "rdfrest.ctype=" + ctype + ";path=/";
+    }
+
+    function get_prefered_ctype() {
+        var ret = document.cookie.replace(/(?:(?:^|.*;\s*)rdfrest.ctype\s*\=\s*([^;]*).*$)|^.*$/, "$1");
+        ret = decodeURIComponent(ret);
+        return ret || "text/turtle" ;
+    }
+
     document.getElementById("toggle").onclick = toggle_editor;
-    document.getElementById("ctype").value = "text/turtle";
+    document.getElementById("ctype").value = get_prefered_ctype();
+    document.getElementById("ctype").onchange = ctype_change;
     document.getElementById("button_get").onclick = editor_get;
     document.getElementById("button_put").onclick = editor_put;
     document.getElementById("button_post").onclick = editor_post;
@@ -442,11 +448,14 @@ def serialize_htmlized_turtle(graph, resource, bindings, ctypes,
     #pylint: disable=R0914
     #    too many local variables
 
-    page = u"""<html>
+    page = u"""<!DOCTYPE html>
+    <html>
     <head>
+    <meta name="robots" content="noindex,nofollow">
+    <meta charset="utf-8">
     <title>%(uri)s</title>
-    <style text="text/css">%(style)s</style>
-    <script text="text/javascript">%(script)s</script>
+    <style type="text/css">%(style)s</style>
+    <script type="text/javascript">%(script)s</script>
     </head>
     <body onload="rdfrest_init_editor()">
     %(header)s

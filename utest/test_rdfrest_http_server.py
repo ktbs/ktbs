@@ -35,6 +35,7 @@ from rdfrest.factory import unregister_service
 from rdfrest.http_server import HttpFrontend
 from rdfrest.serializers import register_serializer
 from rdfrest.utils import urisplit
+from rdfrest.config import get_service_configuration
 
 URL = "http://localhost:8001/"
 
@@ -45,11 +46,14 @@ class TestHttpFront(object):
 
     def setUp(self):
         try:
-            self.service = make_example2_service(URL)
-            root = self.service.get(URIRef(URL))
+            service_config = get_service_configuration()
+            self.service = make_example2_service(service_config)
+            #root = self.service.get(URIRef(URL))
+            root = self.service.get(self.service.root_uri)
             assert isinstance(root, Group2Implementation)
             root.create_new_simple_item("foo")
-            self.app = HttpFrontend(self.service, cache_control="max-age=60")
+            # max-age is now deprecated, cache_control="max-age=60")
+            self.app = HttpFrontend(self.service, service_config)
         except:
             raise
 
@@ -105,7 +109,7 @@ class TestHttpFront(object):
                 environ[key] = val
 
         req = Request(environ)
-        res = self.app.get_response(req)
+        res = req.get_response(self.app)
         return res, res.body
 
 

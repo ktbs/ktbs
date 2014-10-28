@@ -59,6 +59,7 @@ from rdfrest.local import EditableResource, Service
 from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
 from rdfrest.utils import coerce_to_uri, parent_uri
+from rdfrest.config import get_service_configuration
 
 # INTERFACE
 
@@ -460,8 +461,17 @@ def main():
     """
     test = len(argv) > 1 and argv[1] == "test"
 
-    root_uri = URIRef("http://localhost:1234/foo/")
-    serv = make_example1_service(root_uri)
+    #root_uri = URIRef("http://localhost:1234/foo/")
+
+    service_config = get_service_configuration()
+    service_config.set('server', 'port', '1234')
+    service_config.set('server', 'base-path', '/foo')
+
+    # TODO Store management : special tests ?
+
+    serv = make_example1_service(service_config)
+
+    root_uri = serv.root_uri
 
     if test:
         local_root = serv.get(root_uri)
@@ -483,11 +493,11 @@ def main():
         _httpd.shutdown()
         print "httpd stopped"
 
-def make_example1_service(root_uri, store=None):
+def make_example1_service(service_config=None):
     """Make a service serving items and groups."""
-    if store is None:
-        store = rdflib_plugin_get("IOMemory", Store)()
-    return Service(root_uri, store, [ItemImplementation, GroupImplementation],
+
+    return Service([ItemImplementation, GroupImplementation],
+                   service_config,
                    GroupImplementation.create_service_root)
 
 def do_tests(root):
@@ -548,7 +558,7 @@ def do_tests(root):
     root.remove_item("group1")
     check_content(root, [])
 
-def make_example1_httpd(service=None):
+def make_example1_httpd(service=None, service_config=None):
     """Make a HTTPd running in a separate thread.
 
     Return the thread and the HTTPd.
@@ -558,9 +568,18 @@ def make_example1_httpd(service=None):
     NB: the service is assumed to be located on localhost:1234
     """
     if service is None:
-        service = make_example1_service("http://localhost:1234/foo")
-    app = HttpFrontend(service, cache_control="max-age=60")
-    _httpd = make_server("localhost", 1234, app)
+        if service_config is None:
+            service_config = get_service_configuration()
+            service_config.set('server', 'port', '1234')
+            service_config.set('server', 'base-path', '/foo')
+
+        service = make_example1_service(service_config)
+
+    # cache_control="max-age=60")
+    app = HttpFrontend(service, service_config)
+    _httpd = make_server(service_config.get('server', 'host-name', 1),
+                         service_config.getint('server', 'port'),
+                         app)
     thread = Thread(target=_httpd.serve_forever)
     thread.start()
     return thread, _httpd
@@ -586,35 +605,35 @@ def test_label_and_tags(item):
     # label
     assert item.label is None
     item.label = "hello world"
-    assert item.label == "hello world"
+    assert item.label == Literal("hello world")
     item.label = "bonjour le monde"
-    assert item.label == "bonjour le monde"
+    assert item.label == Literal("bonjour le monde")
     item.label = None
     assert item.label is None
     item.label = "Halo Welt"
-    assert item.label == "Halo Welt"
+    assert item.label == Literal("Halo Welt")
     del item.label
     assert item.label is None
     # adding tags
     eq_(item.tags, set([]))
     item.add_tag(u"tag1")
-    eq_(item.tags, set([u"tag1"]))
+    eq_(item.tags, set([Literal("tag1")]))
     item.add_tag(u"tag1")
-    eq_(list(item.iter_tags()), [u"tag1"]) # tags do not duplicate
+    eq_(list(item.iter_tags()), [Literal("tag1")]) # tags do not duplicate
     item.add_tag(u"tag2")
-    eq_(item.tags, set([u"tag1", u"tag2"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag2")]))
     item.add_tag(u"tag3")
-    eq_(item.tags, set([u"tag1", u"tag2", u"tag3"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag2"), Literal("tag3")]))
     # removing tags
     item.rem_tag(u"tag2")
-    eq_(item.tags, set([u"tag1", u"tag3"]))
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")]))
     item.rem_tag(u"tag2") # removing tag twice has no effect
-    eq_(item.tags, set([u"tag1", u"tag3"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
     item.rem_tag(u"tag4") # removing inexisting tag has no effect
-    eq_(item.tags, set([u"tag1", u"tag3"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
     # unicode tags
     item.add_tag(u"tagué")
-    eq_(item.tags, set([u"tag1", u"tag3", u"tagué"])) 
+    eq_(item.tags, set([Literal("tag1"), Literal("tag3"), Literal(u"tagué")])) 
 
 
 if __name__ == "__main__":
