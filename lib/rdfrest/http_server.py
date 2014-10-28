@@ -165,7 +165,7 @@ class HttpFrontend(object):
                 # because it may nonetheless make some changes (e.g. in
                 # the #metadata graphs)
         except HttpException, ex:
-            response = ex.response
+            response = ex.get_response(request)
         except CanNotProceedError, ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
@@ -552,7 +552,13 @@ class HttpException(Exception):
             for i in val:
                 hlist.append((str(key), str(i)))
         return  hlist
-    
+
+    def get_response(self, request):
+        return MyResponse(body=self.get_body(),
+                          status=self.status,
+                          headerlist=self.get_headerlist(),
+                          request=request)
+
 
 class UnauthorizedError(HttpException):
     """An error raised when a remote user is not authorized to perform an
@@ -570,11 +576,13 @@ class RedirectException(HttpException):
     """An exception raised to redirect a given query to another URL.
     """
     def __init__(self, location, code=303, **headers):
-        message = "Redirecting to <%s>" % location
-        status = "%s Redirect" % code
+        self.message = "Redirecting to <%s>" % location
+        self.status = "%s Redirect" % code
         headers['location'] = location
-        super(RedirectException, self).__init__(message, status, **headers)
+        super(RedirectException, self).__init__(self.message, self.status, **headers)
 
+    def get_body(self):
+        return "{0} - Can not proceed\n{1}".format(self.status, self.message)
 
 ################################################################
 #
