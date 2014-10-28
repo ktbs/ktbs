@@ -130,7 +130,7 @@ To communicate with Apache, kTBS uses the WSGI_ protocol, so you need to install
 
   sudo apt-get install libapache2-mod-wsgi
 
-You also need to write a dedicated WSGI script that Apache will be able to call (this is nothing but a Python script, declaring a function called ``application`` complying with the WSGI interface). An example of such a script is provided in the kTBS source tree at ``examples/wsgi/application.wsgi``. It is also available `online <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi>`_. At the top of the file are a few constants that you have to adapt to your own configuration.
+You also need to write a dedicated WSGI script that Apache will be able to call (this is nothing but a Python script, declaring a function called ``application`` complying with the WSGI interface). An example of such a script is provided in the kTBS source tree at ``examples/wsgi/application.wsgi``. It is also available `online <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi>`_. You must copy it together with its companion file `application.wsgi.conf <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi.conf>`_ which you need to adapt to your own configuration.
 
 Then, you need to change the apache configuration file; this would typically be ``/etc/apache2/sites-available/default`` or ``/etc/apache2/sites-available/default-ssl``. Those changes are twofold.
 
@@ -138,11 +138,11 @@ Just before the line ``</VirtualHost>`` add the following lines::
 
     <IfModule mod_wsgi.c>
         WSGIScriptAlias /ktbs /home/user/ktbs-env/application.wsgi
-        WSGIDaemonProcess myktbs processes=1 threads=1 python-path=/home/user/ktbs-env/ktbs/lib
+        WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/home/user/ktbs-env/ktbs/lib
         WSGIProcessGroup myktbs
     </IfModule>
 
-and at the end of the file, add the following lines::
+and at the end of the file (you can adjust the number of threads to your needs), add the following lines::
 
     <IfModule mod_wsgi.c>
         WSGIPythonHome /home/user/ktbs-env
@@ -223,8 +223,8 @@ __ https://httpd.apache.org/docs/2.2/howto/access.html
 Managing access control with kTBS plugins
 `````````````````````````````````````````
 
-Eventually, kTBS will provide plugins
-to handle authentication and/or authorization.
+The ``authx`` plugin handles authentication (based on OAuth2) and authorization.
+Eventually, kTBS may provide more such plugins.
 Note that, whenever you want to use HTTP authentication with such a plugin,
 you will need the following directive::
 
