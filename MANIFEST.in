@@ -1,3 +1,3 @@
 include README.rst
-include requirements.txt
+include requirements.d/base.txt
 include LICENSE.txt
