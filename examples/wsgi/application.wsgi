@@ -18,7 +18,7 @@ from rdfrest.config import apply_global_config
 from rdfrest.http_server import HttpFrontend, SparqlHttpFrontend
 
 
-ktbs_config_path = __file__ + ".ini"
+ktbs_config_path = __file__ + ".conf"
 ktbs_config = get_ktbs_configuration(open(ktbs_config_path))
 apply_global_config(ktbs_config)
 
