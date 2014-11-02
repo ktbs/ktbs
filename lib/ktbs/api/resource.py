@@ -22,7 +22,7 @@
 I provide the pythonic interface common to all kTBS resources.
 """
 from rdflib import Literal, RDFS
-from rdfrest.interface import IResource
+from rdfrest.core import IResource
 from rdfrest.utils import cache_result
 from urlparse import unquote
 
@@ -122,11 +122,11 @@ class KtbsResourceMixin(IResource):
         """I store and return the result of `get_state`.
 
         This property makes it more concise and hopefully slightly more
-        efficient than to call :meth:`rdfrest.interface.IResource.get_state`
+        efficient than to call :meth:`rdfrest.core.IResource.get_state`
         each time we need this resource's graph.
 
         Note that this graph must not be edited. We must use
-        :meth:`rdfrest.interface.IResource.get_state` instead.
+        :meth:`rdfrest.core.IResource.get_state` instead.
         """
         return self.get_state()
 

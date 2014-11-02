@@ -8,9 +8,9 @@ The ``rdfrest`` package
 The uniform interface
 =====================
 
-The ``interface`` module
+The ``core`` module
 ++++++++++++++++++++++++
-.. automodule:: rdfrest.interface
+.. automodule:: rdfrest.core
 
 The ``factory`` module
 ++++++++++++++++++++++

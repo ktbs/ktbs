@@ -41,7 +41,7 @@ from wsgiref.simple_server import make_server
 
 from rdfrest.exceptions import MethodNotAllowedError
 from rdfrest.http_server import HttpFrontend
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 from rdfrest.local import Service
 from rdfrest.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin

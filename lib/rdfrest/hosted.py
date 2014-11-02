@@ -22,7 +22,7 @@ from functools import wraps
 from rdflib import RDF, URIRef
 
 from .exceptions import MethodNotAllowedError
-from .interface import get_subclass, IResource
+from .core import get_subclass, IResource
 from .utils import coerce_to_uri, urisplit
 
 class HostedResource(IResource):

@@ -21,7 +21,7 @@
 """
 I provide the pythonic interface to kTBS built-in methods.
 """
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS

@@ -23,7 +23,7 @@ I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF
 from rdfrest.factory import factory as universal_factory
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 from rdfrest.utils import coerce_to_uri, parent_uri
 
 from .base import InBaseMixin

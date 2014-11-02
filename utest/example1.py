@@ -54,7 +54,7 @@ from rdfrest.exceptions import CanNotProceedError
 from rdfrest.factory import factory as universal_factory
 from rdfrest.http_client import HttpResource
 from rdfrest.http_server import HttpFrontend
-from rdfrest.interface import register_mixin, IResource
+from rdfrest.core import register_mixin, IResource
 from rdfrest.local import EditableResource, Service
 from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer

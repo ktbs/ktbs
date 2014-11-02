@@ -27,7 +27,7 @@ from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.term import Node
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
-from rdfrest.interface import get_subclass, register_mixin
+from rdfrest.core import get_subclass, register_mixin
 from rdfrest.iso8601 import parse_date, ParseError, UTC
 from rdfrest.utils import cache_result, coerce_to_node, coerce_to_uri
 
@@ -524,7 +524,7 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
 
 @extend_api
 class OpportunisticObselCollection(AbstractTraceObselsMixin):
-    """I implement :class:`rdfrest.interface.IResource` for obsel collections.
+    """I implement :class:`rdfrest.core.IResource` for obsel collections.
 
     Obsel collections in kTBS can become very big, possibly to the point where
     a server will refuse to serve the full graph at once. Fortunately, they
@@ -576,14 +576,14 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
     ######## IResource implementation ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.core.IResource.factory`.
 
         I simply rely on the factory of my trace.
         """
         return self.actual.factory(uri, _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.core.IResource.get_state`.
         """
         return self.actual.get_state(parameters)
 
@@ -595,7 +595,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
         return self.actual.force_state_refresh(parameters)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.core.IResource.edit`.
 
         I try to edit the whole graph.
         """
@@ -611,7 +611,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.core.IResource.post_graph`.
 
         Obsel collection do not support post_graph.
         """
@@ -620,7 +620,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
                                     % self)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.core.IResource.delete`.
 
         Delegate to proper obsel resource.
         """

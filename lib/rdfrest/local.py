@@ -52,7 +52,7 @@ from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_service, unregister_service
 from .hosted import HostedResource
-from .interface import get_subclass, IResource
+from .core import get_subclass, IResource
 from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
 from .config import get_service_configuration, build_service_root_uri

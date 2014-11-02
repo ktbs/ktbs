@@ -21,7 +21,7 @@
 """
 I provide the pythonic interface to kTBS obsel collections.
 """
-from rdfrest.interface import register_mixin, IResource
+from rdfrest.core import register_mixin, IResource
 from rdfrest.utils import cache_result
 
 from ..namespace import KTBS

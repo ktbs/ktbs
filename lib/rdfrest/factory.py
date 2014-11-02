@@ -57,7 +57,7 @@ its instances. However, you should check before you call :func:`factory` that:
 
 from bisect import bisect, insort
 
-from .interface import IResource
+from .core import IResource
 from .utils import coerce_to_uri
 
 

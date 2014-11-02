@@ -396,7 +396,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
     ######## IResource implementation  ########
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.get_state`:meth:
+        """I override `~rdfrest.core.IResource.get_state`:meth:
 
         I systematically call :meth:`force_state_refresh` to ensure all
         computations have been performed.
@@ -405,7 +405,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         return super(ComputedTrace, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.force_state_refresh`:meth:
+        """I override `~rdfrest.core.IResource.force_state_refresh`:meth:
 
         I recompute my data if needed.
         """

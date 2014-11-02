@@ -62,14 +62,14 @@ class _ObselImpl(ILocalResource):
     ######## IResource implementation  ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.core.IResource.factory`.
 
         I simply rely on my service's get method.
         """
         return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement `.interface.IResource.get_state`.
+        """I implement `.core.IResource.get_state`.
 
         I return the subgraph of the obsel collection representing this obsel.
         """
@@ -96,7 +96,7 @@ class _ObselImpl(ILocalResource):
         return
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement `.interface.IResource.edit`.
+        """I implement `.core.IResource.edit`.
 
         Not supported (for the moment?).
         """
@@ -108,7 +108,7 @@ class _ObselImpl(ILocalResource):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.core.IResource.post_graph`.
 
         No data can be posted to an obsel.
         """
@@ -116,7 +116,7 @@ class _ObselImpl(ILocalResource):
         raise MethodNotAllowedError("Can not post to obsel <%s>" % self.uri)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.core.IResource.delete`.
 
         Not supported (for the moment?).
         """

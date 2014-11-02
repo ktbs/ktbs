@@ -125,7 +125,7 @@ class WithLockMixin(ILocalResource):
 
     @contextmanager
     def edit(self, parameters=None, clear=None, _trust=False):
-        """I override :meth:`rdfrest.interface.IResource.edit`.
+        """I override :meth:`rdfrest.core.IResource.edit`.
         """
         with self.lock(self), super(WithLockMixin, self).edit(parameters, clear, _trust) as editable:
             yield editable

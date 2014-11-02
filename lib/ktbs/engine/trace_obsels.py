@@ -123,7 +123,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         """Add all the arcs in `graph` to this obsel collection's state.
 
         This should be used instead of the
-        `~rdfrest.interface.IResource.edit`:meth: context when no arc has to
+        `~rdfrest.core.IResource.edit`:meth: context when no arc has to
         be removed, as it will not change the
         `log_mon_tag`:meth`.
         """
@@ -169,13 +169,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     ######## IResource implementation  ########
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.get_state`:meth:
+        """I override `~rdfrest.core.IResource.get_state`:meth:
 
         I support some parameters to get "slices" of the obsel collection.
         Note that, contrarily to what the interface specifies, slice graphs are
         static copies of the data; they are not automatically updated, and
         the slicing parameters are not supported by
-        `~rdfrest.interface.IResource.force_state_refresh`:meth.
+        `~rdfrest.core.IResource.force_state_refresh`:meth.
 
         I consider an empty dict as equivalent to no dict.
         """
@@ -420,7 +420,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
     __forcing_state_refresh = False
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.get_state`:meth:
+        """I override `~rdfrest.core.IResource.get_state`:meth:
 
         I support parameter 'quick' to bypass the updating of the obsels.
         """
@@ -430,7 +430,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.force_state_refresh`:meth:
+        """I override `~rdfrest.core.IResource.force_state_refresh`:meth:
 
         I recompute the obsels if needed.
         """

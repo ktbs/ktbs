@@ -22,7 +22,7 @@
 I provide the pythonic interface of ktbs:KtbsRoot .
 """
 from rdflib import Graph, Literal, RDF
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 from rdfrest.factory import factory as universal_factory
 from rdfrest.utils import coerce_to_node, coerce_to_uri
 

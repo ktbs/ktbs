@@ -23,7 +23,7 @@ I provide the pythonic interface ktbs:Obsel .
 """
 from rdflib import Literal, RDF
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
-from rdfrest.interface import IResource, register_mixin
+from rdfrest.core import IResource, register_mixin
 from rdfrest.utils import coerce_to_uri, ReadOnlyGraph
 
 from .resource import KtbsResourceMixin
@@ -228,14 +228,14 @@ class ObselProxy(ObselMixin, IResource):
     ######## IResource implementation ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.core.IResource.factory`.
 
         I simply rely on the factory of my obsel collection.
         """
         return self.collection.factory(uri, _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.core.IResource.get_state`.
 
         I simply return
         """
@@ -256,7 +256,7 @@ class ObselProxy(ObselMixin, IResource):
         self.collection.force_state_refresh(self.host_parameters)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.core.IResource.edit`.
 
         If `self.host_graph` is the complete obsel collection (`host_parameters`
         is None), edit it directly;
@@ -290,7 +290,7 @@ class ObselProxy(ObselMixin, IResource):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.core.IResource.post_graph`.
 
         Obsels do not support post_graph.
         """
@@ -298,7 +298,7 @@ class ObselProxy(ObselMixin, IResource):
         raise MethodNotAllowedError("Can not post to obsel %s" % self)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.core.IResource.delete`.
 
         Delegate to proper obsel resource.
         """

@@ -30,7 +30,7 @@ from weakref import WeakValueDictionary
 from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_implementation
-from .interface import get_subclass, IResource
+from .core import get_subclass, IResource
 from .hosted import HostedResource
 from .proxystore import ProxyStore, ResourceAccessError
 from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph

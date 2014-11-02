@@ -26,7 +26,7 @@ from datetime import datetime
 from numbers import Real
 from rdflib import Graph, Literal, RDF, URIRef
 from rdfrest.exceptions import InvalidDataError
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 from rdfrest.iso8601 import UTC
 from rdfrest.utils import coerce_to_node, coerce_to_uri, parent_uri, \
     random_token

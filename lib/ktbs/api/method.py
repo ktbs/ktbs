@@ -23,7 +23,7 @@ I provide the pythonic interface of ktbs:Method.
 """
 from rdflib import Literal
 from rdfrest.factory import factory as universal_factory
-from rdfrest.interface import register_mixin
+from rdfrest.core import register_mixin
 from rdfrest.utils import coerce_to_uri
 
 from .base import InBaseMixin
