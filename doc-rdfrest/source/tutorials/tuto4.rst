@@ -5,6 +5,6 @@
 .. note::
 
    the idea here is to develop an alternative implementation of
-   :class:`rdfrest.local.ServiceResource` and a curtom subclass of
-   :class:`rdfrest.local.Service` to use it.
+   :class:`rdfrest.cores.local.ServiceResource` and a curtom subclass of
+   :class:`rdfrest.cores.local.Service` to use it.
 

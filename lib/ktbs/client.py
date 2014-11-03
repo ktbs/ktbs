@@ -17,7 +17,6 @@
 
 """I provide access to any kTBS (either local or remote).
 """
-from rdfrest.factory import factory
 
 # import all mixin classes to ensure they are registered
 import ktbs.api.base # unused import ktbs # pylint: disable=W0611
@@ -28,6 +27,8 @@ import ktbs.api.obsel # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace_model # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace_obsels # reimport ktbs #pylint: disable=W0404
+from rdfrest.cores.factory import factory
+
 
 def get_ktbs(uri):
     """I return the root of a kTBS.

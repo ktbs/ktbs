@@ -22,13 +22,14 @@
 I provide the pythonic interface of ktbs:Method.
 """
 from rdflib import Literal
-from rdfrest.factory import factory as universal_factory
-from rdfrest.interface import register_mixin
-from rdfrest.utils import coerce_to_uri
 
+from rdfrest.cores.factory import factory as universal_factory
+from rdfrest.util import coerce_to_uri
 from .base import InBaseMixin
 from ..namespace import KTBS
+from rdfrest.wrappers import register_wrapper
 from ..utils import extend_api
+
 
 @extend_api
 class WithParametersMixin(object):
@@ -105,7 +106,7 @@ class WithParametersMixin(object):
         return parameters
 
 
-@register_mixin(KTBS.Method)
+@register_wrapper(KTBS.Method)
 @extend_api
 class MethodMixin(WithParametersMixin, InBaseMixin):
     """

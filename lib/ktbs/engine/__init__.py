@@ -17,8 +17,8 @@
 
 """I provide an implementation of the kTBS engine.
 
-This implementation is defined as a `rdfrest.local.Service`:class:; it reuses
-the mix-in classes defined in `ktbs.api`:mod:.
+This implementation is defined as a `rdfrest.cores.local.Service`:class:;
+it reuses the mix-in classes defined in `ktbs.api`:mod:.
 
 To obtain a KTBS engine conforming with the Ktbs interface of the
 `abstract-ktbs-api`:ref:, use :func:`.service.make_ktbs`.

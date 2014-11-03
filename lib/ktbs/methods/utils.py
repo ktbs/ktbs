@@ -19,7 +19,7 @@
 Utility functions for method implementations.
 """
 from rdflib import BNode, URIRef
-from rdfrest.utils import make_fresh_uri
+from rdfrest.util import make_fresh_uri
 
 from ..namespace import KTBS
 

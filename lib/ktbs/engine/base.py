@@ -31,14 +31,14 @@ from ..namespace import KTBS, KTBS_NS_URI
 class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.Base
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, ]
 
     def ack_delete(self, parameters):
-        """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
+        """I override :meth:`rdfrest.util.EditableCore.ack_delete`.
         """
         super(Base, self).ack_delete(parameters)
         root = self.get_root()
@@ -62,7 +62,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                 assert 0, "No valid rdf:type was found for posted resource"
 
     def check_deletable(self, parameters):
-        """I override :meth:`rdfrest.util.EditableResource.check_deletable`.
+        """I override :meth:`rdfrest.util.EditableCore.check_deletable`.
 
         Only an empty base can be deleted.
         """
@@ -115,7 +115,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
 class InBase(InBaseMixin, KtbsResource):
     """I provide common implementation of all elements contained in a base.
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_CREATABLE_IN = [ KTBS.contains, ]
 
@@ -129,7 +129,7 @@ class InBase(InBaseMixin, KtbsResource):
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
 
     def delete(self, parameters=None, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """I override :meth:`rdfrest.cores.local.EditableCore.delete`.
         """
         base = self.get_base()
         with base.lock(self):
@@ -137,7 +137,7 @@ class InBase(InBaseMixin, KtbsResource):
 
     @contextmanager
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.edit`.
+        """I override :meth:`rdfrest.cores.local.EditableCore.edit`.
         """
         base = self.get_base()
         with base.lock(self), super(InBase, self).edit(parameters, clear, _trust) as editable:

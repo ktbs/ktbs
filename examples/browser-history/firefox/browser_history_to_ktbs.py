@@ -56,21 +56,21 @@ last_visit_date semble être un timestamp Unix : nbre de second depuis 01/01/197
 http://docs.python.org/library/sqlite3.html
 """
 
-import os
 import sys
 import sqlite3
-import datetime
 import math
-
 import time
-from processinfo import ProcessInfo
-
 import cProfile
-
 from argparse import ArgumentParser
 
+import os
+
+import datetime
+from processinfo import ProcessInfo
+
+
 # Peut-on éviter URIRef ...
-from rdflib import URIRef, XSD
+from rdflib import XSD
 
 try:
     from ktbs.client import get_ktbs
@@ -82,8 +82,6 @@ except:
     sys.path.insert(0, lib_dir)
 
     from ktbs.client import get_ktbs
-
-from rdfrest.proxystore import ResourceAccessError
 
 # General
 NB_MAX_ITEMS = 10000

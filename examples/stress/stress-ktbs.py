@@ -1,13 +1,15 @@
 from argparse import ArgumentParser
-from os import fork
 from sys import stderr
 from timeit import timeit
 
-from rdfrest.http_client import set_http_option
+from os import fork
+
+from rdfrest.cores.http_client import set_http_option
 from ktbs.client import get_ktbs
 from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
 from ktbs.config import get_ktbs_configuration
+
 
 ARGS = None
 BASE = None
@@ -92,5 +94,6 @@ def main(argv):
         tearDown()
 
 if __name__ == "__main__":
-    from sys import argv, exit
+    from sys import argv
+
     main(argv)

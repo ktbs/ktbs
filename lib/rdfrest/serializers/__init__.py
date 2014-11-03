@@ -33,10 +33,11 @@ serializers may not honnor them).
 from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.plugins.serializers.nt import _nt_row
 
-from .exceptions import SerializeError
-from .parsers import _FormatRegistry
-from .serializers_html import serialize_htmlized_turtle
-from .utils import coerce_to_uri, wrap_generator_exceptions
+from ..exceptions import SerializeError
+from ..parsers import _FormatRegistry
+from ..util import coerce_to_uri, wrap_generator_exceptions
+from .html import serialize_htmlized_turtle
+
 
 ################################################################
 #

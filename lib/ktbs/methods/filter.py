@@ -20,17 +20,19 @@ Implementation of the filter builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, RDF, URIRef
-from rdfrest.iso8601 import parse_date, ParseError
-from rdfrest.utils import check_new, Diagnosis
 
+from rdflib import Literal, RDF, URIRef
+
+from rdfrest.util.iso8601 import parse_date, ParseError
+from rdfrest.util import check_new, Diagnosis
 from .interface import IMethod
 from .utils import translate_node
 from ..engine.builtin_method import register_builtin_method_impl
 from ..engine.resource import METADATA
 from ..namespace import KTBS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
-    # pylint is confused by a module named time (as built-in module)
+
+# pylint is confused by a module named time (as built-in module)
 
 LOG = logging.getLogger(__name__)
 

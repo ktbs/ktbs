@@ -26,7 +26,7 @@ import logging
 import logging.config
 from ConfigParser import SafeConfigParser
 
-from rdfrest.serializers import bind_prefix
+from ..serializers import bind_prefix
 
 
 def get_service_configuration(configfile_handler=None):

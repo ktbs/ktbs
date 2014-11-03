@@ -18,24 +18,23 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-from httplib2 import Http
-from nose.tools import eq_
-from os.path import abspath, dirname, join
-from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from StringIO import StringIO
+
+from nose.tools import eq_
+from rdflib import Graph, Literal, RDF, RDFS, URIRef
+
 #from subprocess import Popen, PIPE
 from sys import stderr
 from webob import Request
 
-import example2 # can not import do_tests directly, nose tries to run it...
-from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
+from example2 import Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import SerializeError
-from rdfrest.factory import unregister_service
+from rdfrest.cores.factory import unregister_service
 from rdfrest.http_server import HttpFrontend
 from rdfrest.serializers import register_serializer
-from rdfrest.utils import urisplit
-from rdfrest.config import get_service_configuration
+from rdfrest.util import urisplit
+from rdfrest.util.config import get_service_configuration
 
 URL = "http://localhost:8001/"
 

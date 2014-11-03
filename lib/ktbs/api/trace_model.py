@@ -22,16 +22,17 @@
 I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF
-from rdfrest.factory import factory as universal_factory
-from rdfrest.interface import register_mixin
-from rdfrest.utils import coerce_to_uri, parent_uri
 
+from rdfrest.cores.factory import factory as universal_factory
+from rdfrest.util import coerce_to_uri, parent_uri
 from .base import InBaseMixin
+from rdfrest.wrappers import register_wrapper
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api, mint_uri_from_label, SKOS
 
-@register_mixin(KTBS.TraceModel)
+
+@register_wrapper(KTBS.TraceModel)
 @extend_api
 class TraceModelMixin(InBaseMixin):
     """
@@ -423,7 +424,7 @@ class _ModelTypeMixin(_ModelElementMixin):
         else:
             return True
 
-@register_mixin(KTBS.AttributeType)
+@register_wrapper(KTBS.AttributeType)
 @extend_api
 class AttributeTypeMixin(_ModelElementMixin):
     """
@@ -472,7 +473,7 @@ class AttributeTypeMixin(_ModelElementMixin):
             editable.set((self.uri, _HAS_ATT_DATATYPE, data_type_uri))
 
 
-@register_mixin(KTBS.ObselType)
+@register_wrapper(KTBS.ObselType)
 @extend_api
 class ObselTypeMixin(_ModelTypeMixin):
     """
@@ -546,7 +547,7 @@ class ObselTypeMixin(_ModelTypeMixin):
                                           supertypes=supertypes, 
                                           label=label)
 
-@register_mixin(KTBS.RelationType)
+@register_wrapper(KTBS.RelationType)
 @extend_api
 class RelationTypeMixin(_ModelTypeMixin):
     """

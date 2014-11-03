@@ -35,7 +35,7 @@ from ktbs.engine.trace import StoredTrace as OriginalStoredTrace
 class StoredTrace(OriginalStoredTrace):
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.interface.ICore.get_state`.
 
         If parameters contains 'ctype' and 'post', I perform a post instead.
         """

@@ -17,23 +17,25 @@
 
 """
 I provide additional useful mixin classes to be used with
-:class:`local.ILocalResource`.
+:class:`local.ILocalCore`.
 """
 
 from itertools import chain
 from hashlib import md5 # pylint does not see md5! #pylint: disable=E0611
 from logging import getLogger
-from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
+
 from time import time
 
-from .exceptions import InvalidDataError
-from .local import compute_added_and_removed, ILocalResource, NS as RDFREST
-from .utils import cache_result, check_new, Diagnosis, parent_uri, replace_node
+from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
+
+from ..exceptions import InvalidDataError
+from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node
+from .local import compute_added_and_removed, ILocalCore, NS as RDFREST
 
 
 LOG = getLogger(__name__)
 
-class BookkeepingMixin(ILocalResource):
+class BookkeepingMixin(ILocalCore):
     """I add bookkeeping metadata to the mixed-in class.
 
     Bookkeeping metadata consist of:
@@ -67,7 +69,7 @@ class BookkeepingMixin(ILocalResource):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I override :meth:`.local.ILocalResource.create`
+        """I override :meth:`.local.ILocalCore.create`
         to generate bookkeeping metadata.
         """
         super(BookkeepingMixin, cls).create(service, uri, new_graph)
@@ -75,7 +77,7 @@ class BookkeepingMixin(ILocalResource):
         cls._update_bk_metadata_in(uri, metadata)
     
     def ack_edit(self, parameters, prepared):
-        """I override :meth:`.local.ILocalResource.ack_edit`
+        """I override :meth:`.local.ILocalCore.ack_edit`
         to update bookkeeping metadata.
         """
         super(BookkeepingMixin, self).ack_edit(parameters, prepared)
@@ -98,8 +100,8 @@ class BookkeepingMixin(ILocalResource):
         # and if a significantly faster way is possible (random_token?)
 
 
-class FolderishMixin(ILocalResource):
-    """I implement :meth:`.interface.IResource.post_graph`.
+class FolderishMixin(ILocalCore):
+    """I implement :meth:`.interface.ICore.post_graph`.
 
     This mixin enforces that the resources of this class have a '/'-terminated
     URI.
@@ -108,7 +110,7 @@ class FolderishMixin(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I override :meth:`.local.ILocalResource.check_new_graph`
+        """I override :meth:`.local.ILocalCore.check_new_graph`
         to force the URI to end with a '/'.
         """
         diag = super(FolderishMixin, cls) \
@@ -120,7 +122,7 @@ class FolderishMixin(ILocalResource):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
-        """I override :meth:`.local.ILocalResource.mint_uri`
+        """I override :meth:`.local.ILocalCore.mint_uri`
         to force the URI to end with a '/'.
         """
         if suffix[-1:] != "/":
@@ -129,15 +131,15 @@ class FolderishMixin(ILocalResource):
             .mint_uri(target, new_graph, created, basename, suffix)
 
 
-class GraphPostableMixin(ILocalResource):
-    """I implement :meth:`.interface.IResource.post_graph`.
+class GraphPostableMixin(ILocalCore):
+    """I implement :meth:`.interface.ICore.post_graph`.
 
     This is a typical implementation where the posted graph represents a single
     resource that will be created as a "child" of this resource. This is why
     this mix-in class should usually be used with :class:`FolderishMixin`.
 
     In addition to the helper and hook methods defined by
-    :class:`.local.ILocalResource`, this mixin class defines a few others that
+    :class:`.local.ILocalCore`, this mixin class defines a few others that
     are specific to :meth:`post_graph`.
     """
 
@@ -147,7 +149,7 @@ class GraphPostableMixin(ILocalResource):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`interface.IResource.post_graph`.
+        """I implement :meth:`interface.ICore.post_graph`.
 
         I will first invoke :meth:`check_parameters`.
 
@@ -159,14 +161,14 @@ class GraphPostableMixin(ILocalResource):
         From that class, the following methods will be used (in this order):
         :meth:`mint_uri` to generate the URI of the resource to be created (only
         if it was a BNode in the posted graph);
-        :meth:`~.local.ILocalResource.complete_new_graph`, then
-        :meth:`~.local.ILocalResource.check_new_graph`, and finally
+        :meth:`~.local.ILocalCore.complete_new_graph`, then
+        :meth:`~.local.ILocalCore.check_new_graph`, and finally
         :meth:`create`.
 
         **Optimisation.** If `_created` is provided, :meth:`find_created` will
         not be used. If `_trust` is provided, none of
         :meth:`check_posted_graph`,
-        :meth:`~.local.ILocalResource.complete_new_graph` nor 
+        :meth:`~.local.ILocalCore.complete_new_graph` nor
         :meth:`check_new_graph` will be used (in fact,
         `check_posted_graph`:meth: and `check_new_graph`:meth: may be
         `assert`\ ed so that errors are detected earlier. But as `assert`\ s are
@@ -237,7 +239,7 @@ class GraphPostableMixin(ILocalResource):
         :rtype: rdflib.Node
 
         The default behaviour is to run :meth:`_find_created_default` with a
-        query returning all nodes linked to :attr:`~.interface.IResource.uri`.
+        query returning all nodes linked to :attr:`~.interface.ICore.uri`.
         Subclasses may also find it useful to rely on
         :meth:`_find_created_default`, passing it a more specific query.
         """
@@ -255,7 +257,7 @@ class GraphPostableMixin(ILocalResource):
         """Check whether `new_graph` is acceptable to post on this resource.
 
         Note that the purpose of this method is different from
-        :meth:`ILocalResource.check_new_graph`: while the latter implements the
+        :meth:`ILocalCore.check_new_graph`: while the latter implements the
         concerns of the resource to be created, this method implements the
         concerns of the target of the post.
 
@@ -266,7 +268,7 @@ class GraphPostableMixin(ILocalResource):
         :param new_graph: the posted RDF graph
         :type  new_graph: rflib.Graph
 
-        :rtype: a `.utils.Diagnosis`:class:
+        :rtype: a `.util.Diagnosis`:class:
 
         This implementation only checks that the 'created' node is not already
         in use in this resource's graph.
@@ -284,7 +286,7 @@ class GraphPostableMixin(ILocalResource):
         The default beheviour is to use `self.service.class_map` but some
         classes may override it.
         
-        :rtype: a subclass of :class:`~.local.ILocalResource`
+        :rtype: a subclass of :class:`~.local.ILocalCore`
         """
         return self.service.class_map.get(rdf_type) 
 
@@ -339,7 +341,7 @@ class GraphPostableMixin(ILocalResource):
         return candidates[0]
 
 
-class WithReservedNamespacesMixin(ILocalResource):
+class WithReservedNamespacesMixin(ILocalCore):
     """ 
     I add reserved namespaces to the mixed-in class.
 
@@ -352,11 +354,11 @@ class WithReservedNamespacesMixin(ILocalResource):
 
     The reserved namespace applies to URIs used as predicates and types.
     The default rule is that they can not be added at creation time (in a graph
-    passed to :meth:`~.interface.IResource.post_graph`) nor at
-    :meth:`~.interface.IResource.edit` time. They can only be inserted and
+    passed to :meth:`~.interface.ICore.post_graph`) nor at
+    :meth:`~.interface.ICore.edit` time. They can only be inserted and
     modified by the service itself (i.e. in
-    :meth:`~.local.ILocalResource.create` or in a *trusted*
-    :meth:`~.local.ILocalResource.edit` contexts).
+    :meth:`~.local.ILocalCore.create` or in a *trusted*
+    :meth:`~.local.ILocalCore.edit` contexts).
 
     It is however possible to provide exceptions for a class, *i.e.* URIs
     inside a reserved namespace which can freely set: at creation time only, or
@@ -382,7 +384,7 @@ class WithReservedNamespacesMixin(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I overrides :meth:`.local.ILocalResource.check_new_graph`
+        """I overrides :meth:`.local.ILocalCore.check_new_graph`
         to check the reserved namespace constraints.
         """
         if resource is not None:
@@ -520,7 +522,7 @@ class WithReservedNamespacesMixin(ILocalResource):
         :param operation:  "create" or "edit"
         :param uri:        the URI of the resource being created or edited
 
-        :rtype: a `.utils.Diagnosis`:class:
+        :rtype: a `.util.Diagnosis`:class:
         """
         if operation == "create":
             types = cls.__get_creatable_types()
@@ -557,7 +559,7 @@ class WithReservedNamespacesMixin(ILocalResource):
         return diag
 
 
-class WithCardinalityMixin(ILocalResource):
+class WithCardinalityMixin(ILocalCore):
     """
     I add cardinality constrains on some properties.
 
@@ -581,7 +583,7 @@ class WithCardinalityMixin(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I overrides :meth:`.local.ILocalResource.check_new_graph` to
+        """I overrides :meth:`.local.ILocalCore.check_new_graph` to
         check the cardinality constraints.
         """
         diag = super(WithCardinalityMixin, cls).check_new_graph(
@@ -640,7 +642,7 @@ class WithCardinalityMixin(ILocalResource):
             for constraint in getattr(superclass, "RDF_CARDINALITY_OUT", ())
             )
 
-class WithTypedPropertiesMixin(ILocalResource):
+class WithTypedPropertiesMixin(ILocalCore):
     """
     I add constrains on the datatype of some property values.
 
@@ -668,7 +670,7 @@ class WithTypedPropertiesMixin(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I overrides :meth:`.local.ILocalResource.check_new_graph` to
+        """I overrides :meth:`.local.ILocalCore.check_new_graph` to
         check the cardinality constraints.
         """
         diag = super(WithTypedPropertiesMixin, cls).check_new_graph(
@@ -714,7 +716,6 @@ class WithTypedPropertiesMixin(ILocalResource):
             for superclass in cls.mro()
             for constraint in getattr(superclass, "RDF_TYPED_PROP", ())
             )
-
 
 # TODO LATER implement WithWatchMixin
 # this mix-in class uses three class variables RDF_WATCH_TYPE, RDF_WATCH_IN and
