@@ -22,13 +22,14 @@
 I provide the pythonic interface of ktbs:KtbsRoot .
 """
 from rdflib import Graph, Literal, RDF
-from rdfrest.factory import factory as universal_factory
-from rdfrest.utils import coerce_to_node, coerce_to_uri
-from rdfrest.wrappers import register_wrapper
 
+from rdfrest.cores.factory import factory as universal_factory
+from rdfrest.util import coerce_to_node, coerce_to_uri
+from rdfrest.wrappers import register_wrapper
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS
 from ..utils import extend_api, SKOS
+
 
 @register_wrapper(KTBS.KtbsRoot)
 @extend_api

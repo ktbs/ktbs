@@ -40,24 +40,26 @@ implement the concerns of the server.
 * Subclasses of :class:`ILocalCore` can also benefit from a number of mix-in
   classes provided in the `.mixins`:mod: module.
 """
-from os.path import exists
 from contextlib import contextmanager
-from rdflib import Graph, plugin as rdflib_plugin, Namespace, RDF, RDFS, URIRef
-from rdflib.store import Store
-from rdflib.compare import graph_diff
 import traceback
 from weakref import WeakValueDictionary
 
-from .exceptions import CanNotProceedError, InvalidDataError, \
+from os.path import exists
+from rdflib import Graph, plugin as rdflib_plugin, Namespace, RDF, RDFS, URIRef
+from rdflib.store import Store
+from rdflib.compare import graph_diff
+
+from ..exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_service, unregister_service
 from .hosted import HostedCore
-from .cores import ICore
-from rdfrest.wrappers import get_wrapped
-from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
+from ..cores import ICore
+from ..wrappers import get_wrapped
+from ..util import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
-from .config import get_service_configuration, build_service_root_uri
-from .config import apply_logging_config
+from ..util.config import get_service_configuration, build_service_root_uri
+from ..util.config import apply_logging_config
+
 
 NS = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.rdfrest:")
 
@@ -170,12 +172,12 @@ class Service(object):
         :type  _no_spawn: bool
 
         :return: the resource, or None
-        :rtype:  :class:`ILocalCore` or :class:`~.hosted.HostedCore`
+        :rtype:  :class:`ILocalCore` or :class:`~.cores.hosted.HostedCore`
 
         TODO NOW: if no resource is found, try to get it from parent resource
 
         NB: if uri contains a fragment-id, the returned resource will be a
-        `~.hosted.HostedCore`:class: hosted by a resource from this
+        `~.cores.hosted.HostedCore`:class: hosted by a resource from this
         service.
 
         When using this function, it is a good practice to indicate the expected
@@ -377,11 +379,11 @@ class ILocalCore(ICore):
         :param removed:   if not None, an RDF graph containg triples to be
                           removed
 
-        The return value should be an empty `~.utils.Diagnosis`:class: if the
+        The return value should be an empty `~.util.Diagnosis`:class: if the
         new graph is acceptable, else it should contain a description of the
         problem(s).
 
-        :rtype: `~.utils.Diagnosis`:class:
+        :rtype: `~.util.Diagnosis`:class:
         """
         raise NotImplementedError
 
@@ -389,7 +391,7 @@ class ILocalCore(ICore):
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
         """I mint a fresh URI for a resource of that class.
 
-        This method is called by :class:`rdflib.mixins.WithPostMixin`;
+        This method is called by :class:`rdfrest.cores.mixins.GraphPostableMixin`;
         calling it directly is usually not required.
 
         :param target:    the resource to which `new_graph` has been posted
@@ -469,7 +471,7 @@ class ILocalCore(ICore):
         :param parameters: the querystring parameters passed to `delete` if any
         :type  parameters: dict or None
 
-        :rtype: `.utils.Diagnosis`:class:
+        :rtype: `.util.Diagnosis`:class:
 
         This class method can be overridden by subclasses that have constraints
         on whether their instances can be deleted.
@@ -536,7 +538,7 @@ class LocalCore(ILocalCore):
         """
         # while it is not technically an error to violate the assertion below
         # (factory should simply return None in that case)
-        # this is usually a design error, and rdfrest.factory.factory should
+        # this is usually a design error, and rdfrest.cores.factory.factory should
         # be used instead
         assert uri.startswith(self.service.root_uri), uri
 

@@ -23,6 +23,9 @@ JSON-LD parser and serializer for KTBS.
 """
 import logging
 
+from rdfrest.cores.factory import factory
+
+
 LOG = logging.getLogger(__name__)
 
 from json import loads
@@ -32,7 +35,7 @@ from rdflib import Graph
 
 from rdfrest.parsers import register_parser
 from rdfrest.exceptions import ParseError
-from rdfrest.factory import factory
+
 
 def load_document(url):
     """

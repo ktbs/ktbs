@@ -18,21 +18,21 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime, timedelta
-from nose.tools import assert_equal, assert_raises, eq_
-from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
-from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
-    MethodNotAllowedError, RdfRestException
-from rdfrest.factory import unregister_service
-from rdfrest.local import LocalCore
-from rdfrest.http_client import HttpClientCore
-from rdfrest.http_server import HttpFrontend
-from rdfrest.iso8601 import UTC
 from threading import Thread
-from time import sleep
 from wsgiref.simple_server import make_server
 import unittest
 
+from nose.tools import assert_equal, assert_raises, eq_
+from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
+
+from datetime import datetime, timedelta
+from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
+    MethodNotAllowedError, RdfRestException
+from rdfrest.cores.factory import unregister_service
+from rdfrest.cores.local import LocalCore
+from rdfrest.cores.http_client import HttpClientCore
+from rdfrest.http_server import HttpFrontend
+from rdfrest.util.iso8601 import UTC
 from ktbs.api.ktbs_root import KtbsRootMixin
 from ktbs.engine.resource import METADATA
 from ktbs.engine.service import KtbsService
@@ -41,8 +41,8 @@ from ktbs.namespace import KTBS
 from ktbs.time import lit2datetime
 from ktbs.config import get_ktbs_configuration
 from ktbs.engine.service import make_ktbs
-
 from .utils import StdoutHandler
+
 
 cmdline = "echo"
 
@@ -483,7 +483,7 @@ class TestKtbsSynthetic(KtbsTestCase):
                                      label="m2")
         if not isinstance(method2, HttpClientCore):
             ## the test above fails in TestHttpKtbs, because method2.parent
-            ## returns a rdfrest.local.LocalCore -- this is a side
+            ## returns a rdfrest.cores.local.LocalCore -- this is a side
             ## effect of having the HTTP server in the same process as the
             ## client
             assert method2.parent is method1

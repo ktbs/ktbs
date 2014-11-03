@@ -30,10 +30,12 @@ This module can be run as a program to generate the description:
 """
 
 from StringIO import StringIO
-from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef
-from rdflib.store import Store
+
+from rdflib import Graph, RDF, URIRef
 from rdflib.namespace import ClosedNamespace
-from rdfrest.local import LocalCore, Service
+
+from rdfrest.cores.local import LocalCore, Service
+
 
 KTBS_NS_URI = "http://liris.cnrs.fr/silex/2009/ktbs"
 KTBS_NS_URIREF = URIRef(KTBS_NS_URI)
@@ -494,7 +496,7 @@ class _KtbsNsResource(LocalCore):
         """
         cls.create(service, KTBS_NS_URIREF, KTBS_NS_GRAPH)
 
-from rdfrest.config import get_service_configuration
+from rdfrest.util.config import get_service_configuration
 
 service_config = get_service_configuration()
 

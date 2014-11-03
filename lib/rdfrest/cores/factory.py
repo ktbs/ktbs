@@ -15,7 +15,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-"""I provide a general resource factory.
+"""I provide a general core factory.
 
 While :meth:`ICore.factory <rdfrest.interface.ICore.factory>` aims at
 producing a resource of the *same kind* as the target, it may be necessary, in
@@ -57,8 +57,8 @@ its instances. However, you should check before you call :func:`factory` that:
 
 from bisect import bisect, insort
 
-from .cores import ICore
-from .utils import coerce_to_uri
+from ..cores import ICore
+from ..util import coerce_to_uri
 
 
 _IMPL_REG_KEYS = []
@@ -98,7 +98,7 @@ def register_service(service):
     NB: this need normally not be called directly, as
     :meth:`.local.Serice.__init__` already does it.
     """
-    assert isinstance(service, rdfrest.local.Service)
+    assert isinstance(service, rdfrest.cores.local.Service)
     assert service.root_uri not in _IMPL_REGISTRY
     _IMPL_REGISTRY[service.root_uri] = service.get
     insort(_IMPL_REG_KEYS, service.root_uri)
@@ -109,7 +109,7 @@ def unregister_service(service):
     NB: this beed normally not be called directlt, as
     :meth:`.local.Serice.__del__` already does it.
     """
-    assert isinstance(service, rdfrest.local.Service)
+    assert isinstance(service, rdfrest.cores.local.Service)
     if service.root_uri in _IMPL_REGISTRY:
         assert _IMPL_REGISTRY[service.root_uri] == service.get
         del _IMPL_REGISTRY[service.root_uri]
@@ -154,7 +154,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
         return None
     
 # ensure all shipped implementations are registered
-import http_client  # unused import #pylint: disable=W0611
+import rdfrest.cores.http_client  # unused import #pylint: disable=W0611
 
 # needed by some assertions
-import rdfrest.local
+import rdfrest.cores.local

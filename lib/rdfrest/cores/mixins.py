@@ -23,12 +23,14 @@ I provide additional useful mixin classes to be used with
 from itertools import chain
 from hashlib import md5 # pylint does not see md5! #pylint: disable=E0611
 from logging import getLogger
-from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
+
 from time import time
 
-from .exceptions import InvalidDataError
+from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
+
+from ..exceptions import InvalidDataError
+from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node
 from .local import compute_added_and_removed, ILocalCore, NS as RDFREST
-from .utils import cache_result, check_new, Diagnosis, parent_uri, replace_node
 
 
 LOG = getLogger(__name__)
@@ -266,7 +268,7 @@ class GraphPostableMixin(ILocalCore):
         :param new_graph: the posted RDF graph
         :type  new_graph: rflib.Graph
 
-        :rtype: a `.utils.Diagnosis`:class:
+        :rtype: a `.util.Diagnosis`:class:
 
         This implementation only checks that the 'created' node is not already
         in use in this resource's graph.
@@ -520,7 +522,7 @@ class WithReservedNamespacesMixin(ILocalCore):
         :param operation:  "create" or "edit"
         :param uri:        the URI of the resource being created or edited
 
-        :rtype: a `.utils.Diagnosis`:class:
+        :rtype: a `.util.Diagnosis`:class:
         """
         if operation == "create":
             types = cls.__get_creatable_types()
@@ -714,7 +716,6 @@ class WithTypedPropertiesMixin(ILocalCore):
             for superclass in cls.mro()
             for constraint in getattr(superclass, "RDF_TYPED_PROP", ())
             )
-
 
 # TODO LATER implement WithWatchMixin
 # this mix-in class uses three class variables RDF_WATCH_TYPE, RDF_WATCH_IN and

@@ -19,7 +19,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I extend classes from :mod:`.example1` with mixins from :mod:`rdfrest.mixins`.
+I extend classes from :mod:`.example1` with mixins from :mod:`rdfrest.cores.mixins`.
 
 While we are inheriting the mix-in classes from example1, we are redefining
 implementation classes from scratch.
@@ -33,22 +33,23 @@ Finally, the service provided by this module  supports a pseudo item '@goto' of
 the root, that redirects to the root.
 """
 
-from rdflib import Literal, Graph, URIRef, XSD
-from rdflib.store import Store
-from rdflib.plugin import get as rdflib_plugin_get
 from sys import argv
 from wsgiref.simple_server import make_server
 
+from rdflib import Literal, Graph, URIRef, XSD
+
 from rdfrest.exceptions import MethodNotAllowedError
 from rdfrest.http_server import HttpFrontend
-from rdfrest.local import Service
-from rdfrest.mixins import BookkeepingMixin, WithCardinalityMixin, \
+from rdfrest.cores.local import Service
+from rdfrest.cores.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin
-from rdfrest.utils import ReadOnlyGraph
-from rdfrest.config import get_service_configuration
-
+from rdfrest.util import ReadOnlyGraph
+from rdfrest.util.config import get_service_configuration
 from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
+
+
+
 
 # ex:Item2 has the same API as ex:Item
 from rdfrest.wrappers import register_wrapper
@@ -128,7 +129,7 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
         return ret
                 
     def ack_edit(self, parameters, prepared):
-        """I override :meth:`rdfrest.local.EditableMixin.ack_edit`
+        """I override :meth:`rdfrest.cores.local.EditableMixin.ack_edit`
 
         I update the special property number_of_tags"""
         super(Item2Implementation, self).ack_edit(parameters, prepared)

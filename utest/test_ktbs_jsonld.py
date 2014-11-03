@@ -18,32 +18,22 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from json import loads
 from pprint import pformat
 from unittest import skip
 
-from nose.tools import assert_equal, assert_raises, eq_
-from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 from rdflib.compare import graph_diff
-from pyld.jsonld import normalize
 
-from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
-    MethodNotAllowedError, RdfRestException
-from rdfrest.factory import unregister_service
-
+from rdfrest.cores.factory import unregister_service
 from ktbs.api.base import BaseMixin
 from ktbs.api.method import MethodMixin
 from ktbs.api.obsel import ObselMixin
 from ktbs.api.trace import ComputedTraceMixin, StoredTraceMixin
 from ktbs.api.trace_model import TraceModelMixin
 from ktbs.engine.service import make_ktbs
-from ktbs.namespace import KTBS
 from ktbs.serpar.jsonld_parser import *
 from ktbs.serpar.jsonld_serializers import *
-from ktbs.config import get_ktbs_configuration
 from ktbs import __version__ as ktbs_version
 from ktbs import __commitno__ as ktbs_commit
-
 from .test_ktbs_engine import KtbsTestCase
 
 

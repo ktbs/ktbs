@@ -23,7 +23,7 @@ I provide the pythonic interface common to all kTBS resources.
 """
 from rdflib import Literal, RDFS
 from rdfrest.cores import ICore
-from rdfrest.utils import cache_result
+from rdfrest.util import cache_result
 from urlparse import unquote
 
 from ..utils import extend_api_ignore, extend_api, short_name, SKOS

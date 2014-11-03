@@ -18,29 +18,32 @@
 """
 I provide the implementation of ktbs:Obsel .
 """
-from datetime import datetime
-from rdflib import Literal, RDF, URIRef, XSD
+from rdflib import Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
-from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
-from rdfrest.iso8601 import UTC
-from rdfrest.local import ILocalCore
-from rdfrest.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
-    WithTypedPropertiesMixin
-from rdfrest.utils import bounded_description, Diagnosis, make_fresh_uri, \
-    parent_uri
 import re
 
+from datetime import datetime
+from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
+from rdfrest.util.iso8601 import UTC
+from rdfrest.cores.local import ILocalCore
+from rdfrest.cores.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
+    WithTypedPropertiesMixin
+from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, \
+    parent_uri
 from ..api.obsel import ObselMixin
 from ..namespace import KTBS
 from ..utils import SKOS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
-    # pylint is confused by a module named time (as built-in module)
+
+
+
+# pylint is confused by a module named time (as built-in module)
     
 
 class _ObselImpl(ILocalCore):
-    """A specific :class:`~.local.ILocalCore` implementation for Obsel.
+    """A specific :class:`rdfrest.cores.local.ILocalCore` implementation for Obsel.
 
-    This is necessary because :class:`~.local.LocalCore` is not
+    This is necessary because :class:`rdfrest.cores.local.LocalCore` is not
     appropriate, as obsels do not have their own graph: they are stored in
     the trace's obsel collection instead.
 
@@ -86,7 +89,7 @@ class _ObselImpl(ILocalCore):
         return ret
 
     def force_state_refresh(self, parameters=None):
-        """I override `.hosted.HostedCore.force_state_refresh`.
+        """I override `.cores.hosted.HostedCore.force_state_refresh`.
         """
         # nothing to do, there is no cache involved
         self.check_parameters(parameters, "force_state_refresh")
@@ -253,7 +256,7 @@ class _ObselImpl(ILocalCore):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename="o", suffix=""):
-        """I implement :meth:`rdfrest.local.ILocalCore.mint_uri`.
+        """I implement :meth:`rdfrest.cores.local.ILocalCore.mint_uri`.
 
         I use the skos:prefLabel of the resource to mint a URI, else the
         basename.

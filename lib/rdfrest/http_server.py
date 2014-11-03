@@ -16,25 +16,29 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I implement a WSGI-based HTTP server wrapping a given :class:`.local.Service`.
+I implement a WSGI-based HTTP server
+wrapping a given :class:`.cores.local.Service`.
 """
 from bisect import insort
-from datetime import datetime
+from time import time
+
 from pyparsing import ParseException
 from rdflib import URIRef
-from time import time
 from webob import Request, Response
 from webob.etag import AnyETag, etag_property
+
 from webob.response import status_reasons
 
+from datetime import datetime
 from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, ParseError, \
     RdfRestException, SerializeError
-from .iso8601 import UTC
+from .util.iso8601 import UTC
 from .parsers import get_parser_by_content_type
 from .serializers import get_serializer_by_content_type, \
     get_serializer_by_extension, iter_serializers
-from .utils import extsplit
+from .util import extsplit
+
 
 class MyRequest(Request):
     """I override webob.Request by allowing weak etags.
@@ -52,8 +56,8 @@ class HttpFrontend(object):
     from the service through the HTTP protocol.
 
     For parsing and serializing payloads to and from RDF graphs, HttpFrontend
-    relies on the functions registered in `.local.parsers`:mod: and
-    `.local.serializers`:mod:.
+    relies on the functions registered in `.cores.local.parsers`:mod: and
+    `.cores.local.serializers`:mod:.
     
     In the future, WsgiFrontent may also include on-the-fly translation of
     contents, for changing internal URIs into URIs served by the
@@ -72,7 +76,7 @@ class HttpFrontend(object):
         """See class docstring.
 
         :param service: the service to expose over HTTP
-        :type  service: :class:`.local.Service`
+        :type  service: :class:`.cores.local.Service`
 
         :param service_config: An object containing kTBS configuration options
         :type service_config: configParser object
@@ -138,7 +142,7 @@ class HttpFrontend(object):
 
         CAUTION: the conversion of exceptions to HTTP status codes  should be
         maintained consistent with
-        :meth:`.http_client.HttpClientCore._http_to_exception`.
+        :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
         request = MyRequest(environ)
         resource_uri, request.uri_extension = extsplit(request.path_url)
@@ -373,7 +377,7 @@ class HttpFrontend(object):
             If `resource` has an `iter_etags` properties, then it is
             required that `request` include an ``If-Match`` header
             field. Note that those etags are *weak* etags (see
-            :class:`~rdfrest.mixins.BookkeepingMixin`), which are not
+            :class:`~rdfrest.cores.mixins.BookkeepingMixin`), which are not
             allowed in ``If-Match`` according to :RFC:`2616`. However,
             this limitation will probably be dropped in future
             versions of HTTP, so do not follow it.
@@ -440,7 +444,7 @@ class HttpFrontend(object):
         :param request:  the request being processed
         :type  request:  MyRequest
         :param resource: the resource being addressed (can be None)
-        :type  resource: rdfrest.local.ILocalCore
+        :type  resource: rdfrest.cores.local.ILocalCore
         :param message:  the payload of the error response
         :type  message:  str
         :param kw:       header fields to add to the response

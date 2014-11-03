@@ -19,13 +19,14 @@
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
+
 from rdflib import Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
-from rdfrest.exceptions import InvalidDataError
-from rdfrest.local import compute_added_and_removed
-from rdfrest.mixins import FolderishMixin
-from rdfrest.utils import cache_result, random_token
 
+from rdfrest.exceptions import InvalidDataError
+from rdfrest.cores.local import compute_added_and_removed
+from rdfrest.cores.mixins import FolderishMixin
+from rdfrest.util import cache_result, random_token
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from .obsel import Obsel
@@ -34,6 +35,7 @@ from .trace_obsels import ComputedTraceObsels, StoredTraceObsels
 from ..api.trace import AbstractTraceMixin, StoredTraceMixin, ComputedTraceMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api, check_new
+
 
 LOG = getLogger(__name__)
 
@@ -81,7 +83,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`~rdfrest.local.ILocalCore.check_new_graph`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_new_graph`
 
         I check that the sources exist and are in the same base.
         """
@@ -108,7 +110,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`~rdfrest.local.ILocalCore.create`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
 
         I create the obsel collection associated with this trace,
         and I notify this trace's sources.
@@ -133,7 +135,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         cls._notify_sources(service, uri, sources)
 
     def prepare_edit(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalCore.prepare_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
 
         I store old values of some properties (sources, pseudomon range)
         to handle the change in :meth:`ack_edit`.
@@ -144,7 +146,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         return ret
 
     def ack_edit(self, parameters, prepared):
-        """I overrides :meth:`rdfrest.local.ILocalCore.ack_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
 
         I reflect changes in the related resources (sources, obsel collection).
         """
@@ -159,7 +161,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
             self._ack_source_change(prepared.old_sources, new_sources)
 
     def check_deletable(self, parameters):
-        """I implement :meth:`~rdfrest.local.ILocalCore.check_deletable`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_deletable`
 
         I refuse to be deleted if I am the source of another trace.
         """
@@ -170,7 +172,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         return diag
 
     def ack_delete(self, parameters):
-        """I implement :meth:`~rdfrest.local.ILocalCore.ack_delete`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.ack_delete`
         """
         old_traces = self.state.objects(self.uri, KTBS.hasSource)
         self._ack_source_change(old_traces, [])
@@ -232,7 +234,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`~rdfrest.local.ILocalCore.check_new_graph`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_new_graph`
 
         I check the temporal extension of this trace.
         """
@@ -299,7 +301,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 
     def get_created_class(self, rdf_type):
         """I override
-        :class:`rdfrest.mixins.GraphPostableMixin.get_created_class`
+        :class:`rdfrest.cores.mixins.GraphPostableMixin.get_created_class`
         Only obsels can be posted to a trace.
         """
         # unused arguments #pylint: disable=W0613
@@ -360,7 +362,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                 editable.add((uri, KTBS.hasMethod, method.uri))
 
     def prepare_edit(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalCore.prepare_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
 
         I store old values of some properties (parameters, method) to handle the
         change in :meth:`ack_edit`.
@@ -371,7 +373,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         return ret
 
     def ack_edit(self, parameters, prepared):
-        """I overrides :meth:`rdfrest.local.ILocalCore.ack_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
 
         I reflect changes in the related resources (method, obsel collection).
         """
@@ -384,7 +386,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
             self._mark_dirty()
 
     def ack_delete(self, parameters):
-        """I override :meth:`~rdfrest.local.EditableCore.ack_delete`
+        """I override :meth:`~rdfrest.cores.local.EditableCore.ack_delete`
 
         I notify my method that I'm no longer using it.
         """

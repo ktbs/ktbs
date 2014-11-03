@@ -21,7 +21,7 @@ Implementation of the external builtin methods.
 import logging
 from os import getenv
 from rdflib import Literal, Graph, URIRef
-from rdfrest.utils import Diagnosis
+from rdfrest.util import Diagnosis
 from rdfrest.exceptions import ParseError
 from subprocess import Popen, PIPE
 

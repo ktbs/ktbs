@@ -17,7 +17,7 @@
 
 """I implement a built-in method registry.
 """
-from rdfrest.utils import Diagnosis
+from rdfrest.util import Diagnosis
 
 from ..methods.interface import IMethod
 

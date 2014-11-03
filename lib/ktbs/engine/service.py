@@ -18,13 +18,13 @@
 """I provide an entry point to create a local kTBS.
 """
 
-from os import getpid
-from os.path import exists
-from rdflib import Graph, RDF, URIRef, Literal
-from rdfrest.local import Service
-from rdfrest.utils import parent_uri
 import urlparse
 
+from os import getpid
+from rdflib import Graph, RDF, URIRef, Literal
+
+from rdfrest.cores.local import Service
+from rdfrest.util import parent_uri
 from .builtin_method import get_builtin_method_impl, iter_builtin_method_impl
 from .base import Base
 from .ktbs_root import KtbsRoot
@@ -35,9 +35,9 @@ from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
 from ..namespace import KTBS
 from ..config import get_ktbs_configuration
-from ..serpar import *
 from .. import __version__ as ktbs_version
 from .. import __commitno__ as ktbs_commit
+
 
 # make ktbs:/ URIs use relative, query, fragments
 urlparse.uses_fragment.append("ktbs")
@@ -133,7 +133,7 @@ class KtbsService(Service):
                        Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
     def get(self, uri, _rdf_type=None, _no_spawn=False):
-        """I override :meth:`rdfrest.local.Service.get`
+        """I override :meth:`rdfrest.cores.local.Service.get`
 
         If the original implementation returns None, I try to make an Obsel.
         """
@@ -160,4 +160,3 @@ class KtbsService(Service):
 
 # unused import #pylint: disable=W0611
 # ensures registration of parsers/serializers 
-import ktbs.engine.serpar

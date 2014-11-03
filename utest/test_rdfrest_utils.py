@@ -18,7 +18,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-from rdfrest.utils import add_uri_params, bounded_description, cache_result, \
+from rdfrest.util import add_uri_params, bounded_description, cache_result, \
     coerce_to_uri, Diagnosis, urisplit, uriunsplit, wrap_exceptions, \
     wrap_generator_exceptions
 

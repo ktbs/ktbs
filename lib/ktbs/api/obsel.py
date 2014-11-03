@@ -24,7 +24,7 @@ I provide the pythonic interface ktbs:Obsel .
 from rdflib import Literal, RDF
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.cores import ICore
-from rdfrest.utils import coerce_to_uri, ReadOnlyGraph
+from rdfrest.util import coerce_to_uri, ReadOnlyGraph
 from rdfrest.wrappers import register_wrapper
 
 from .resource import KtbsResourceMixin

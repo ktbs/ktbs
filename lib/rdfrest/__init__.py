@@ -47,4 +47,4 @@ More precisely, in RDF-REST:
 import rdflib
 assert rdflib.__version__[0] == "4"
 
-import rdfrest.compat
+import rdfrest.util.compat

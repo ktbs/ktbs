@@ -20,15 +20,17 @@ Implementation of the fusion builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, URIRef
-from rdfrest.iso8601 import ParseError
-from rdfrest.utils import Diagnosis
 
+from rdflib import Literal, URIRef
+
+from rdfrest.util.iso8601 import ParseError
+from rdfrest.util import Diagnosis
 from .interface import IMethod
 from .utils import translate_node
 from ..namespace import KTBS
 from ..engine.builtin_method import register_builtin_method_impl
 from ..engine.resource import METADATA
+
 
 LOG = logging.getLogger(__name__)
 

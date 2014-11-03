@@ -21,10 +21,10 @@ I implement :class:`.interface.ICore` as a resource "hosted" by another one.
 from functools import wraps
 from rdflib import RDF, URIRef
 
-from .exceptions import MethodNotAllowedError
-from .cores import ICore
-from rdfrest.wrappers import get_wrapped
-from .utils import coerce_to_uri, urisplit
+from ..exceptions import MethodNotAllowedError
+from ..cores import ICore
+from ..wrappers import get_wrapped
+from ..util import coerce_to_uri, urisplit
 
 class HostedCore(ICore):
     """A RESTful resource whose description is embeded in another resource.

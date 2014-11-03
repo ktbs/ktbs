@@ -20,7 +20,7 @@ Implementation of the sparql builtin methods.
 """
 from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
-from rdfrest.utils import Diagnosis
+from rdfrest.util import Diagnosis
 from rdflib import Literal, URIRef
 import rdflib.plugins.sparql.algebra
 

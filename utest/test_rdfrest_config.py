@@ -23,9 +23,11 @@ Nose unit-testing for the RDF-REST configuration part.
 """
 
 from unittest import TestCase
-from nose.tools import assert_raises, eq_
 
-from rdfrest.config import get_service_configuration
+from nose.tools import eq_
+
+from rdfrest.util.config import get_service_configuration
+
 
 class TestServiceConfigDefaults(TestCase):
     """

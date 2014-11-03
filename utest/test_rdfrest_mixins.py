@@ -18,18 +18,18 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-from nose.tools import assert_raises
-from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, URIRef, XSD
 from time import sleep
-from unittest import skip
+
+from nose.tools import assert_raises
+from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, XSD
 
 import example2 # can not import do_tests directly, nose tries to run it...
 from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import InvalidDataError
-from rdfrest.factory import unregister_service
-from rdfrest.config import get_service_configuration
-from rdfrest.utils import coerce_to_node
+from rdfrest.cores.factory import unregister_service
+from rdfrest.util.config import get_service_configuration
+
 
 OTHER = Namespace("http://example.org/other/")
 
@@ -98,8 +98,9 @@ class TestMixins:
         """I use the comprehensive test sequence defined in example1.py
 
         Note that this sequence does not explicitly use the functionalities
-        of the :mod:`mixins` module; but at least it shows that "normal"
-        functionalities still work when the mix-in classes are used.
+        of the :mod:`rdfrest.cores.mixins` module;
+        but at least it shows that "normal" functionalities
+        still work when the mix-in classes are used.
         """        
         example2.do_tests(self.root)
 

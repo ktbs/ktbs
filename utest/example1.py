@@ -31,7 +31,7 @@ interface: :class:`ItemMixin` and :class:`GroupMixin`.
 We then define local implementations of those resources:
 :class:`ItemImplementation` and :class:`GroupImplementation`. Note that those
 implementation inherit the mix-in classes defined above, but also override
-:class:`rdfrest.local.ILocalCore` methods to check and enforce local
+:class:`rdfrest.cores.local.ILocalCore` methods to check and enforce local
 integrity.
 
 We also define custom serializers (HTML view of simple items, and tag list).
@@ -40,26 +40,29 @@ We finally define function `main`:func: and auxiliary functions to test this
 example.
 
 """
-from nose.tools import assert_raises, eq_ # WTH! #pylint: disable=E0611
-from rdflib import Graph, Literal, Namespace, RDF, URIRef
-from rdflib.store import Store
-from rdflib.plugin import get as rdflib_plugin_get
-from re import compile as RegExp
 from sys import argv
 from threading import Thread
 from time import sleep
 from wsgiref.simple_server import make_server
 
+from nose.tools import assert_raises, eq_ # WTH! #pylint: disable=E0611
+from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from re import compile as RegExp
+
 from rdfrest.exceptions import CanNotProceedError
-from rdfrest.factory import factory as universal_factory
-from rdfrest.http_client import HttpClientCore
+from rdfrest.cores.http_client import HttpClientCore
 from rdfrest.http_server import HttpFrontend
 from rdfrest.cores import ICore
-from rdfrest.local import EditableCore, Service
-from rdfrest.mixins import FolderishMixin, GraphPostableMixin
+from rdfrest.cores.local import EditableCore, Service
+from rdfrest.cores.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
-from rdfrest.utils import coerce_to_uri, parent_uri
-from rdfrest.config import get_service_configuration
+from rdfrest.util import coerce_to_uri, parent_uri
+from rdfrest.util.config import get_service_configuration
+
+
+
+
+
 
 # INTERFACE
 from rdfrest.wrappers import register_wrapper
@@ -319,7 +322,7 @@ class ItemImplementation(ItemMixin, EditableCore):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
-        """I overrides :meth:`.local.ILocalCore.mint_uri`
+        """I overrides :meth:`rdfrest.core.local.ILocalCore.mint_uri`
 
         to use cls.BASENAME instead of cls.__classname__.
         """
@@ -329,7 +332,7 @@ class ItemImplementation(ItemMixin, EditableCore):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`rdfrest.local.ILocalCore.check_new_graph`
+        """I implement :meth:`rdfrest.cores.local.ILocalCore.check_new_graph`
         """
         diag = super(ItemImplementation, cls).check_new_graph(
             service, uri, parameters, new_graph, resource, added, removed)
@@ -338,7 +341,7 @@ class ItemImplementation(ItemMixin, EditableCore):
         return diag 
 
     def ack_delete(self, parameters):
-        """I implement :meth:`rdfrest.local.EditableCore.ack_delete`.
+        """I implement :meth:`rdfrest.cores.local.EditableCore.ack_delete`.
         """
         super(ItemImplementation, self).ack_delete(parameters)
         parent = self.parent
@@ -355,7 +358,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
     RDF_MAIN_TYPE = EXAMPLE.Group
 
     def find_created(self, new_graph):
-        """I implement :meth:`rdfrest.local.GraphPostableMixin.find_created`.
+        """I implement :meth:`rdfrest.cores.local.GraphPostableMixin.find_created`.
         """
         query = ("SELECT ?c WHERE { <%s> <%s> ?c }" 
                  % (self.uri, EXAMPLE.contains))
@@ -363,7 +366,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
 
     def check_posted_graph(self, parameters, created, new_graph):
         """I implement
-        :meth:`rdfrest.local.GraphPostableMixin.check_posted_graph`.
+        :meth:`rdfrest.cores.local.GraphPostableMixin.check_posted_graph`.
         """
         diag = super(GroupImplementation, self) \
             .check_posted_graph(parameters, created, new_graph)
@@ -383,7 +386,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
         return diag
 
     def ack_post(self, _parameters, created, new_graph):
-        """I implement :meth:`rdfrest.local.GraphPostableMixin.ack_post`.
+        """I implement :meth:`rdfrest.cores.local.GraphPostableMixin.ack_post`.
         """
         rdf_type = new_graph.value(created, RDF.type)
         with self.edit(_trust=True) as graph:
@@ -391,7 +394,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
             graph.add((created, RDF.type, rdf_type))
 
     def check_deletable(self, parameters):
-        """I implement :meth:`rdfrest.local.EditableCore.check_deletable`.
+        """I implement :meth:`rdfrest.cores.local.EditableCore.check_deletable`.
         """
         diag = super(GroupImplementation, self).check_deletable(parameters)
         if self.uri == self.service.root_uri:

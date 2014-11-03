@@ -21,15 +21,16 @@
 """
 I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
-from datetime import datetime
 from numbers import Integral, Real
+
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.term import Node
-from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
-from rdfrest.factory import factory as universal_factory
-from rdfrest.iso8601 import parse_date, ParseError, UTC
-from rdfrest.utils import cache_result, coerce_to_node, coerce_to_uri
 
+from datetime import datetime
+from rdfrest.cores.factory import factory as universal_factory
+from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
+from rdfrest.util.iso8601 import parse_date, ParseError, UTC
+from rdfrest.util import cache_result, coerce_to_node, coerce_to_uri
 from .base import InBaseMixin
 from .method import WithParametersMixin
 from .obsel import ObselMixin, ObselProxy
@@ -37,6 +38,7 @@ from rdfrest.wrappers import get_wrapped, register_wrapper
 from .trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 from ..utils import extend_api
+
 
 @extend_api
 class AbstractTraceMixin(InBaseMixin):

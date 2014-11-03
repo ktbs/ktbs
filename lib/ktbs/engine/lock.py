@@ -23,10 +23,12 @@ import posix_ipc
 from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
-from rdfrest.local import _mark_as_deleted
+
 from os import getpid
 
-from rdfrest.local import ILocalCore
+from rdfrest.cores.local import _mark_as_deleted
+from rdfrest.cores.local import ILocalCore
+
 
 LOG = getLogger(__name__)
 PID = getpid()
@@ -132,14 +134,14 @@ class WithLockMixin(ILocalCore):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
+        """I override :meth:`rdfrest.cores.mixins.GraphPostableMixin.post_graph`.
         """
         with self.lock(self):
             return super(WithLockMixin, self).post_graph(graph, parameters,
                                                          _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=False):
-        """I override :meth:`rdfrest.local.EditableCore.delete`.
+        """I override :meth:`rdfrest.cores.local.EditableCore.delete`.
         """
         root = self.get_root()
         with root.lock(self), self.lock(self):
@@ -153,7 +155,7 @@ class WithLockMixin(ILocalCore):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """ I implement :meth:`rdfrest.local.ILocalCore.creare`.
+        """ I implement :meth:`rdfrest.cores.local.ILocalCore.creare`.
 
         After checking that the resource we create is correct,
         I ensure that the corresponding lock exists and is correctly set.

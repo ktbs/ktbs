@@ -3,13 +3,14 @@ Serializers and Parsers for kTBS
 """
 
 from rdflib import RDF
+
 from rdfrest.parsers import wrap_exceptions
 from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
     register_serializer, SerializeError
-from rdfrest.serializers_html import serialize_htmlized_turtle, \
+from rdfrest.serializers.html import serialize_htmlized_turtle, \
     generate_htmlized_turtle
-
 from ..namespace import KTBS
+
 
 ## HTML for obsel collections
 

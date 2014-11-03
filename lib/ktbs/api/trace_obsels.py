@@ -22,7 +22,7 @@
 I provide the pythonic interface to kTBS obsel collections.
 """
 from rdfrest.cores import ICore
-from rdfrest.utils import cache_result
+from rdfrest.util import cache_result
 
 from ..namespace import KTBS
 from rdfrest.wrappers import register_wrapper

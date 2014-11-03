@@ -25,7 +25,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 #from rdfrest.parsers import wrap_exceptions
 from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
     register_serializer, SerializeError
-from rdfrest.utils import coerce_to_uri, wrap_exceptions
+from rdfrest.util import coerce_to_uri, wrap_exceptions
 from re import compile as Regex
 
 from ..namespace import KTBS, KTBS_NS_URI

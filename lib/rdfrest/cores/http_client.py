@@ -20,21 +20,25 @@ I implement :class:`.interface.ICore` over HTTP.
 """
 import atexit
 from contextlib import contextmanager
+from tempfile import mkdtemp
+from weakref import WeakValueDictionary
+
 from httplib2 import Http
 from os import listdir, rmdir, unlink
 from os.path import exists, isdir, join
 from rdflib import Graph, RDF
-from tempfile import mkdtemp 
-from weakref import WeakValueDictionary
 
-from .exceptions import CanNotProceedError, InvalidDataError, \
+from ..exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
+from ..cores import ICore
+from ..util.proxystore import ProxyStore, ResourceAccessError
+from ..wrappers import get_wrapped
+from ..util import add_uri_params, coerce_to_uri, ReadOnlyGraph
 from .factory import register_implementation
-from .cores import ICore
 from .hosted import HostedCore
-from .proxystore import ProxyStore, ResourceAccessError
-from rdfrest.wrappers import get_wrapped
-from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph
+
+
+
 
 # fix a bug(?) in httplib2 preventing *any* retry;
 # some servers (e.g. uWSGI) are quite hasty to close sockets,

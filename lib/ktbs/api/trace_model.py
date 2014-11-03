@@ -22,14 +22,15 @@
 I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF
-from rdfrest.factory import factory as universal_factory
-from rdfrest.utils import coerce_to_uri, parent_uri
 
+from rdfrest.cores.factory import factory as universal_factory
+from rdfrest.util import coerce_to_uri, parent_uri
 from .base import InBaseMixin
 from rdfrest.wrappers import register_wrapper
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api, mint_uri_from_label, SKOS
+
 
 @register_wrapper(KTBS.TraceModel)
 @extend_api

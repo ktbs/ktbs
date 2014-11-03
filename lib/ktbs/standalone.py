@@ -21,16 +21,16 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
-from rdfrest.config import apply_global_config
-from rdfrest.http_server import SparqlHttpFrontend
-from rdfrest.serializers import bind_prefix, get_prefix_bindings
-from .config import get_ktbs_configuration
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
+from rdfrest.util.config import apply_global_config
+from rdfrest.http_server import SparqlHttpFrontend
+from .config import get_ktbs_configuration
+
+
 #from .namespace import KTBS
 from .engine.service import KtbsService
-from .utils import SKOS
 
 LOG = logging.getLogger("ktbs")
 

@@ -27,7 +27,7 @@ class IMethod(object):
 
         :param computed_trace: a :class:`..engine.trace.ComputedTrace`
 
-        :rtype: :class:`rdfrest.utils.Diagnosis`
+        :rtype: :class:`rdfrest.util.Diagnosis`
 
         The returned diagnosis must be non-empty if the model and/or the origin
         could not be set, or if it is predicatable that compute_obsels will
@@ -44,7 +44,7 @@ class IMethod(object):
 
         :param computed_trace: a :class:`..engine.trace.ComputedTrace`
 
-        :rtype: :class:`rdfrest.utils.Diagnosis`
+        :rtype: :class:`rdfrest.util.Diagnosis`
 
         """
         raise NotImplementedError

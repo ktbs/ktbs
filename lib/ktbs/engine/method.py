@@ -19,14 +19,16 @@
 I provide the implementation of ktbs:Method .
 """
 from logging import getLogger
-from rdflib import Literal, URIRef
-from rdfrest.local import compute_added_and_removed
-from rdfrest.utils import parent_uri
 
+from rdflib import Literal, URIRef
+
+from rdfrest.cores.local import compute_added_and_removed
+from rdfrest.util import parent_uri
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from ..api.method import MethodMixin
 from ..namespace import KTBS
+
 
 LOG = getLogger(__name__)
 
@@ -49,7 +51,7 @@ class Method(MethodMixin, InBase):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`~rdfrest.local.ILocalCore.create`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
         """
         super(Method, cls).create(service, uri, new_graph)
         parent_method_uri = new_graph.value(uri, KTBS.hasParentMethod)
@@ -91,7 +93,7 @@ class Method(MethodMixin, InBase):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I overrides :meth:`rdfrest.local.ILocalCore.check_new_graph`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.check_new_graph`
 
         I check that parent and parameters are acceptable
         """
@@ -147,7 +149,7 @@ class Method(MethodMixin, InBase):
         return diag
 
     def prepare_edit(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalCore.prepare_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
 
         I store old values of some properties (parent, parameters)
         to handle the change in :meth:`ack_edit`.
@@ -158,7 +160,7 @@ class Method(MethodMixin, InBase):
         return ret
 
     def ack_edit(self, parameters, prepared):
-        """I overrides :meth:`rdfrest.local.ILocalCore.ack_edit`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
 
         I reflect changes in the related resources (parent method)
         """
@@ -171,14 +173,14 @@ class Method(MethodMixin, InBase):
             self._ack_parameter_change()
     
     def ack_delete(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalCore.ack_delete`
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.ack_delete`
         """
         parent_method_uri = self.state.value(self.uri, KTBS.hasParentMethod)
         self._ack_parent_change(parent_method_uri, None)
         super(Method, self).ack_delete(parameters)
 
     def check_deletable(self, parameters):
-        """I implement :meth:`~rdfrest.local.ILocalCore.check_deletable`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_deletable`
 
         I refuse to be deleted if I am used by a trace.
         """

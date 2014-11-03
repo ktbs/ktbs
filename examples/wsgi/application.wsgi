@@ -14,8 +14,8 @@ you should normally not have to modify this file (the .wsgi file).
 import atexit
 
 from ktbs.engine.service import get_ktbs_configuration, KtbsService
-from rdfrest.config import apply_global_config
-from rdfrest.http_server import HttpFrontend, SparqlHttpFrontend
+from rdfrest.util.config import apply_global_config
+from rdfrest.http_server import SparqlHttpFrontend
 
 
 ktbs_config_path = __file__ + ".conf"

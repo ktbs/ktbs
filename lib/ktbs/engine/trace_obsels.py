@@ -20,16 +20,18 @@ I provide the implementation of kTBS obsel collections.
 """
 from itertools import chain
 from logging import getLogger
+
 from rdflib import Graph, Literal, RDF
 from rdflib.plugins.sparql.processor import prepareQuery
+
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
-from rdfrest.local import NS as RDFREST
-
+from rdfrest.cores.local import NS as RDFREST
 from .resource import KtbsResource, METADATA
 from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
+
 
 LOG = getLogger(__name__)
 
@@ -237,7 +239,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     ######## ILocalCore (and mixins) implementation  ########
 
     def check_parameters(self, parameters, method):
-        """I implement :meth:`~rdfrest.local.ILocalCore.check_parameters`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
@@ -259,7 +261,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
     
     def ack_edit(self, parameters, prepared, _query_cache=[None]):
-        """I override :meth:`.local.ILocalCore.ack_edit`
+        """I override :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
         to update bookkeeping metadata and force transformed trace to refresh.
         """
         # using lists as default value     #pylint: disable=W0102
@@ -324,7 +326,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     # we should check that the graph only contains well formed obsels
 
     def iter_etags(self, parameters=None):
-        """I override :meth:`rdfrest.mixins.BookkeepingMixin._iter_etags`
+        """I override :meth:`rdfrest.cores.mixins.BookkeepingMixin._iter_etags`
 
         I return self.etag, plus the appropriate monotonicity tag depending
         on the given parameters.
@@ -348,7 +350,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     @classmethod
     def _update_bk_metadata_in(cls, uri, graph):
         """I override
-        :meth:`rdfrest.mixins.BookkeepingMixin._update_bk_metadata_in`
+        :meth:`rdfrest.cores.mixins.BookkeepingMixin._update_bk_metadata_in`
 
         I additionnally generate monotonicity tags.
         """
