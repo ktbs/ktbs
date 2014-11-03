@@ -57,7 +57,7 @@ its instances. However, you should check before you call :func:`factory` that:
 
 from bisect import bisect, insort
 
-from .core import ICore
+from .cores import ICore
 from .utils import coerce_to_uri
 
 
@@ -140,7 +140,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
         assert isinstance(returned_object, expected_class)
     
     Note that the expected class will usually be an abstract class (a
-    `registered <register_mixin>`:func: mix-in class) rather than a specific
+    `registered <register_wrapper>`:func: mix-in class) rather than a specific
     implementation.
     """
     uri = coerce_to_uri(uri)

@@ -21,13 +21,15 @@
 """
 I provide the pythonic interface to kTBS obsel collections.
 """
-from rdfrest.core import register_mixin, ICore
+from rdfrest.cores import ICore
 from rdfrest.utils import cache_result
 
 from ..namespace import KTBS
+from rdfrest.wrappers import register_wrapper
 
-@register_mixin(KTBS.StoredTraceObsels)
-@register_mixin(KTBS.ComputedTraceObsels)
+
+@register_wrapper(KTBS.StoredTraceObsels)
+@register_wrapper(KTBS.ComputedTraceObsels)
 class AbstractTraceObselsMixin(ICore):
     """I provide the pythonic interface common to all kTBS obsel collections.
     """

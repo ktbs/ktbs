@@ -30,9 +30,10 @@ from weakref import WeakValueDictionary
 from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_implementation
-from .core import get_subclass, ICore
+from .cores import ICore
 from .hosted import HostedCore
 from .proxystore import ProxyStore, ResourceAccessError
+from rdfrest.wrappers import get_wrapped
 from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph
 
 # fix a bug(?) in httplib2 preventing *any* retry;
@@ -130,9 +131,9 @@ class HttpClientCore(ICore):
                 return None
             if _rdf_type is not None and _rdf_type not in types:
                 types.append(_rdf_type)
-            py_class = get_subclass(HttpClientCore, types)
+            py_class = get_wrapped(HttpClientCore, types)
             # use HttpClientCore above and *not* cls, as cls may already
-            # be a class produced by get_subclass
+            # be a class produced by get_wrapped
             resource = py_class(uri, graph)
             _RESOURCE_CACHE[uri] = resource
         return resource

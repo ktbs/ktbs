@@ -54,7 +54,7 @@ from rdfrest.exceptions import CanNotProceedError
 from rdfrest.factory import factory as universal_factory
 from rdfrest.http_client import HttpClientCore
 from rdfrest.http_server import HttpFrontend
-from rdfrest.core import register_mixin, ICore
+from rdfrest.cores import ICore
 from rdfrest.local import EditableCore, Service
 from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
@@ -62,11 +62,12 @@ from rdfrest.utils import coerce_to_uri, parent_uri
 from rdfrest.config import get_service_configuration
 
 # INTERFACE
+from rdfrest.wrappers import register_wrapper
 
 EXAMPLE = Namespace("http://example.org/example/")
 bind_prefix("ex", "http://example.org/example/")
 
-@register_mixin(EXAMPLE.Item)
+@register_wrapper(EXAMPLE.Item)
 class ItemMixin(ICore):
     """Interface of a simple item"""
     
@@ -173,7 +174,7 @@ class ItemMixin(ICore):
         assert isinstance(ret, GroupMixin)
         return ret
 
-@register_mixin(EXAMPLE.Group)
+@register_wrapper(EXAMPLE.Group)
 class GroupMixin(ItemMixin):
     """Interface of a group"""
 

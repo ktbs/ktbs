@@ -41,7 +41,6 @@ from wsgiref.simple_server import make_server
 
 from rdfrest.exceptions import MethodNotAllowedError
 from rdfrest.http_server import HttpFrontend
-from rdfrest.core import register_mixin
 from rdfrest.local import Service
 from rdfrest.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin
@@ -52,9 +51,11 @@ from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
 
 # ex:Item2 has the same API as ex:Item
-register_mixin(EXAMPLE.Item2)(ItemMixin)
+from rdfrest.wrappers import register_wrapper
 
-@register_mixin(EXAMPLE.Group2)
+register_wrapper(EXAMPLE.Item2)(ItemMixin)
+
+@register_wrapper(EXAMPLE.Group2)
 class Group2Mixin(GroupMixin):
     """Interface definition of Group2.
 

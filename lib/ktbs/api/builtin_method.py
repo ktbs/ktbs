@@ -21,13 +21,13 @@
 """
 I provide the pythonic interface to kTBS built-in methods.
 """
-from rdfrest.core import register_mixin
+from rdfrest.wrappers import register_wrapper
 
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS
 from ..utils import extend_api
 
-@register_mixin(KTBS.BuiltinMethod)
+@register_wrapper(KTBS.BuiltinMethod)
 @extend_api
 class MethodBuiltinMixin(KtbsResourceMixin):
     """

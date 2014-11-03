@@ -16,13 +16,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I define the uniform interface of RDF-REST resources, and a registry of mix-in
-classes augmenting it.
-
-Uniform interface
-=================
-
-It is defined by class `ICore`:class:.
+I define the uniform interface of RDF-REST resources `ICore`:class:.
 
 **Optimisation arguments.** Several of the methods defined in :class:`ICore`
 have so called *optimisation arguments*. The caller can provide optimisation
@@ -55,38 +49,8 @@ implementation do all the work and not use optimisation arguments.
 
 .. autoclass:: ICore
     :members:
-
-Mix-in registry
-===============
-
-While REST resource provide a `uniform interface <.interface.ICore>`:class:,
-it is often useful to augment this interface with additional methods. In order
-to respect the REST philosophy, those methods must not extend the uniform
-interface, but merely provide *shortcuts* above it. In other word, they can all
-be implemented atop the uniform interface.
-
-In python parlance, this means that those methods can be implemented in a
-mix-in class, relying on the `uniform interface <.interface.ICore>`:class:,
-but independant on the underlying implementation.
-
-The mix-in registry aims at being a central repository of such mix-in classes;
-mix-in classes but be registered with :func:`register_mixin`.
-Functions :func:`get_subclass` can then be used to build subclasses of a given
-implementation. This is useful to implement :meth:`.interface.ICore.factory`
-and :func:`.factory.factory`.
-
-.. autofunction:: register_mixin
-
-.. autofunction:: get_subclass
-
 """
 
-from types import ClassType
-
-################################################################
-#
-# Uniform interface for REST resources
-#
 
 class ICore(object):
     """
@@ -102,7 +66,7 @@ class ICore(object):
         """I return an instance for the resource identified by `uri`.
 
         The returned instance will inherit all the 
-        `registered <register_mixin>`:meth: mix-in classes corresponding to the
+        `registered <register_wrapper>`:meth: mix-in classes corresponding to the
         ``rdf:type``\s of the resource.
 
         :param basestring uri: the URI of the resource to instanciate
@@ -129,9 +93,9 @@ class ICore(object):
             assert isinstance(returned_object, expected_class)
 
         Note that, when describing a mix-in class decorated with
-        :func:`register_mixin`, one does not know the exact implementation that
+        :func:`register_wrapper`, one does not know the exact implementation that
         :meth:`factory` will return, so the expected class will usually be
-        another `registered <register_mixin>`:func: mix-in class.
+        another `registered <register_wrapper>`:func: mix-in class.
 
         .. note::
 
@@ -263,62 +227,6 @@ class ICore(object):
         raise NotImplementedError
 
 
-################################################################
-#
-# Mix-in registry
-#
 
-_MIXIN_REGISTRY = {}
-_CLASS_CACHE = {} # TODO LATER may be use a WeakValueDict instead?
 
-def register_mixin(rdf_type):
-    """I return a decorator to register mix-in classes in the mix-in registry.
-
-    :param rdf_type: the RDF type implemented by the decorated mix-in class
-    :type  rdf_type: :class:`rdflib.URIRef`
-
-    No two registered mix-in  classes can implement the same RDF type.
-
-    :see also: :funcet_subclass`
-    """
-    assert isinstance(rdf_type, basestring), \
-        "syntax: @register_mixin(rdf_type) -- you forgot the rdf_type"
-    assert rdf_type not in _MIXIN_REGISTRY, \
-        "<%s> already registered" % rdf_type
-    def register_mixin_decorator(mixin_class):
-        """The decorator returned by register_mixin"""
-        assert issubclass(mixin_class, ICore)
-        _MIXIN_REGISTRY[rdf_type] = mixin_class
-        return mixin_class
-    return register_mixin_decorator
-
-def get_subclass(cls, rdf_types):
-    """I return an appropriate subclass of `cls` for the given `rdf_types`.
-
-    "Appropriate" means that the subclass will inherit the
-    `registered mixin <register_mixin>`:func: class associated with
-    `rdf_types`.
-
-    When inheriting several classes, the rdf types will first be sorted in
-    lexicographic order; this ensures for deterministic behaviour when several
-    mix-in classes define the same method.
-    """
-    rdf_types = tuple(sorted(rdf_types))
-    ret = _CLASS_CACHE.get((cls, rdf_types))
-    if ret is None:
-        parents = [cls]
-        cls_name = cls.__name__
-        for typ in rdf_types:
-            mixin = _MIXIN_REGISTRY.get(typ)
-            if mixin is None:
-                continue
-            else:
-                parents.append(mixin)
-                cls_name = "%s_%s" % (cls_name, mixin.__name__)
-        if len(parents) == 1:
-            ret = cls
-        else:
-            ret = ClassType(cls_name, tuple(parents), {})
-        _CLASS_CACHE[(cls, rdf_types)] = ret
-    return ret
 

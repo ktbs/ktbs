@@ -52,7 +52,8 @@ from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_service, unregister_service
 from .hosted import HostedCore
-from .core import get_subclass, ICore
+from .cores import ICore
+from rdfrest.wrappers import get_wrapped
 from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
 from .config import get_service_configuration, build_service_root_uri
@@ -210,7 +211,7 @@ class Service(object):
             # derive subclass bas
             graph = Graph(self.store, uri)
             types = [ i for i in graph.objects(uri, RDF.type) if i != typ ]
-            py_class = get_subclass(py_class, types)
+            py_class = get_wrapped(py_class, types)
             # make resource and store it in "cache"
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
@@ -539,8 +540,8 @@ class LocalCore(ILocalCore):
         # be used instead
         assert uri.startswith(self.service.root_uri), uri
 
-        # we do not use rdfrest.get_subclasses
-        # (see comment at the top of the file for explainations)
+        # we do not use rdfrest.get_wrapped
+        # (see comment at the top of the file for explanations)
         return self.service.get(coerce_to_uri(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):

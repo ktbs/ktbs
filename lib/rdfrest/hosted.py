@@ -22,7 +22,8 @@ from functools import wraps
 from rdflib import RDF, URIRef
 
 from .exceptions import MethodNotAllowedError
-from .core import get_subclass, ICore
+from .cores import ICore
+from rdfrest.wrappers import get_wrapped
 from .utils import coerce_to_uri, urisplit
 
 class HostedCore(ICore):
@@ -155,7 +156,7 @@ class HostedCore(ICore):
                                _no_spawn)
                 if host is not None:
                     types = host.get_state().objects(uri, RDF.type)
-                    py_class = get_subclass(cls, types)
+                    py_class = get_wrapped(cls, types)
                     return py_class(host, uri)
                 else:
                     return None

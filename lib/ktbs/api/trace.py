@@ -27,13 +27,13 @@ from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.term import Node
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.factory import factory as universal_factory
-from rdfrest.core import get_subclass, register_mixin
 from rdfrest.iso8601 import parse_date, ParseError, UTC
 from rdfrest.utils import cache_result, coerce_to_node, coerce_to_uri
 
 from .base import InBaseMixin
 from .method import WithParametersMixin
 from .obsel import ObselMixin, ObselProxy
+from rdfrest.wrappers import get_wrapped, register_wrapper
 from .trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 from ..utils import extend_api
@@ -179,7 +179,7 @@ class AbstractTraceMixin(InBaseMixin):
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for _, _, obs_uri in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
-            cls = get_subclass(ObselProxy, types)
+            cls = get_wrapped(ObselProxy, types)
             yield cls(obs_uri, collection, obsels_graph, parameters)
 
     def iter_source_traces(self):
@@ -272,7 +272,7 @@ class AbstractTraceMixin(InBaseMixin):
             editable.set((self.uri, KTBS.hasPseudoMonRange, Literal(val)))
 
 
-@register_mixin(KTBS.StoredTrace)
+@register_wrapper(KTBS.StoredTrace)
 @extend_api
 class StoredTraceMixin(AbstractTraceMixin):
     """
@@ -435,7 +435,7 @@ class StoredTraceMixin(AbstractTraceMixin):
             assert isinstance(ret, ObselMixin)
             return ret
 
-@register_mixin(KTBS.ComputedTrace)
+@register_wrapper(KTBS.ComputedTrace)
 @extend_api
 class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
     """
@@ -524,7 +524,7 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
 
 @extend_api
 class OpportunisticObselCollection(AbstractTraceObselsMixin):
-    """I implement :class:`rdfrest.core.ICore` for obsel collections.
+    """I implement :class:`rdfrest.cores.ICore` for obsel collections.
 
     Obsel collections in kTBS can become very big, possibly to the point where
     a server will refuse to serve the full graph at once. Fortunately, they
@@ -576,14 +576,14 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
     ######## ICore implementation ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.core.ICore.factory`.
+        """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on the factory of my trace.
         """
         return self.actual.factory(uri, _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.core.ICore.get_state`.
+        """I implement :meth:`.cores.ICore.get_state`.
         """
         return self.actual.get_state(parameters)
 
@@ -595,7 +595,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
         return self.actual.force_state_refresh(parameters)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.core.ICore.edit`.
+        """I implement :meth:`.cores.ICore.edit`.
 
         I try to edit the whole graph.
         """
@@ -611,7 +611,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.core.ICore.post_graph`.
+        """I implement :meth:`.cores.ICore.post_graph`.
 
         Obsel collection do not support post_graph.
         """
@@ -620,7 +620,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
                                     % self)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.core.ICore.delete`.
+        """I implement :meth:`.cores.ICore.delete`.
 
         Delegate to proper obsel resource.
         """

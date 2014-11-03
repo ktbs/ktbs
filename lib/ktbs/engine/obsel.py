@@ -62,14 +62,14 @@ class _ObselImpl(ILocalCore):
     ######## ICore implementation  ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.core.ICore.factory`.
+        """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on my service's get method.
         """
         return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement `.core.ICore.get_state`.
+        """I implement `.cores.ICore.get_state`.
 
         I return the subgraph of the obsel collection representing this obsel.
         """
@@ -96,7 +96,7 @@ class _ObselImpl(ILocalCore):
         return
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement `.core.ICore.edit`.
+        """I implement `.cores.ICore.edit`.
 
         Not supported (for the moment?).
         """
@@ -108,7 +108,7 @@ class _ObselImpl(ILocalCore):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.core.ICore.post_graph`.
+        """I implement :meth:`.cores.ICore.post_graph`.
 
         No data can be posted to an obsel.
         """
@@ -116,7 +116,7 @@ class _ObselImpl(ILocalCore):
         raise MethodNotAllowedError("Can not post to obsel <%s>" % self.uri)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.core.ICore.delete`.
+        """I implement :meth:`.cores.ICore.delete`.
 
         Not supported (for the moment?).
         """
