@@ -22,16 +22,16 @@ classes augmenting it.
 Uniform interface
 =================
 
-It is defined by class `IResource`:class:.
+It is defined by class `ICore`:class:.
 
-**Optimisation arguments.** Several of the methods defined in :class:`IResource`
+**Optimisation arguments.** Several of the methods defined in :class:`ICore`
 have so called *optimisation arguments*. The caller can provide optimisation
 arguments if they think they can help the implementation, by sparing it the work
 of either checking data that is known to be correct, or re-computing data that
 the caller already has. This puts a high responsibility on the caller, who
 should only set those arguments *if they know for certain what they are doing*.
 This is why those arguments have a default value and are semi-private (their
-name begins with ``'_'``): typically, only subclasses of :class:`IResource`
+name begins with ``'_'``): typically, only subclasses of :class:`ICore`
 should use them, and not in all circumstances.
 
 On the other hand, implementations are free to ignore those arguments in
@@ -53,26 +53,26 @@ it with information at hand. If they have to rely on the implementation (*i.e.*
 call methods from the uniform interface), then they should rather let the
 implementation do all the work and not use optimisation arguments.
 
-.. autoclass:: IResource
+.. autoclass:: ICore
     :members:
 
 Mix-in registry
 ===============
 
-While REST resource provide a `uniform interface <.interface.IResource>`:class:,
+While REST resource provide a `uniform interface <.interface.ICore>`:class:,
 it is often useful to augment this interface with additional methods. In order
 to respect the REST philosophy, those methods must not extend the uniform
 interface, but merely provide *shortcuts* above it. In other word, they can all
 be implemented atop the uniform interface.
 
 In python parlance, this means that those methods can be implemented in a
-mix-in class, relying on the `uniform interface <.interface.IResource>`:class:,
+mix-in class, relying on the `uniform interface <.interface.ICore>`:class:,
 but independant on the underlying implementation.
 
 The mix-in registry aims at being a central repository of such mix-in classes;
 mix-in classes but be registered with :func:`register_mixin`.
 Functions :func:`get_subclass` can then be used to build subclasses of a given
-implementation. This is useful to implement :meth:`.interface.IResource.factory`
+implementation. This is useful to implement :meth:`.interface.ICore.factory`
 and :func:`.factory.factory`.
 
 .. autofunction:: register_mixin
@@ -88,7 +88,7 @@ from types import ClassType
 # Uniform interface for REST resources
 #
 
-class IResource(object):
+class ICore(object):
     """
     Abstract interface of an RDF-REST resource.
 
@@ -106,7 +106,7 @@ class IResource(object):
         ``rdf:type``\s of the resource.
 
         :param basestring uri: the URI of the resource to instanciate
-        :rtype: :class:`IResource`
+        :rtype: :class:`ICore`
 
         Note that this method is only intended to access resources relying on
         the *same implementation* as self (i.e. "neighbour" resources). If this
@@ -287,7 +287,7 @@ def register_mixin(rdf_type):
         "<%s> already registered" % rdf_type
     def register_mixin_decorator(mixin_class):
         """The decorator returned by register_mixin"""
-        assert issubclass(mixin_class, IResource)
+        assert issubclass(mixin_class, ICore)
         _MIXIN_REGISTRY[rdf_type] = mixin_class
         return mixin_class
     return register_mixin_decorator

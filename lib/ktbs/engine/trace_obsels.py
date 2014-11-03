@@ -123,7 +123,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         """Add all the arcs in `graph` to this obsel collection's state.
 
         This should be used instead of the
-        `~rdfrest.core.IResource.edit`:meth: context when no arc has to
+        `~rdfrest.core.ICore.edit`:meth: context when no arc has to
         be removed, as it will not change the
         `log_mon_tag`:meth`.
         """
@@ -166,16 +166,16 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             self.metadata.set((self.uri, METADATA.str_mon_tag, old_str_mon_tag))
 
 
-    ######## IResource implementation  ########
+    ######## ICore implementation  ########
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.core.IResource.get_state`:meth:
+        """I override `~rdfrest.core.ICore.get_state`:meth:
 
         I support some parameters to get "slices" of the obsel collection.
         Note that, contrarily to what the interface specifies, slice graphs are
         static copies of the data; they are not automatically updated, and
         the slicing parameters are not supported by
-        `~rdfrest.core.IResource.force_state_refresh`:meth.
+        `~rdfrest.core.ICore.force_state_refresh`:meth.
 
         I consider an empty dict as equivalent to no dict.
         """
@@ -234,10 +234,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             return graph
 
 
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     def check_parameters(self, parameters, method):
-        """I implement :meth:`~rdfrest.local.ILocalResource.check_parameters`
+        """I implement :meth:`~rdfrest.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
@@ -259,7 +259,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
     
     def ack_edit(self, parameters, prepared, _query_cache=[None]):
-        """I override :meth:`.local.ILocalResource.ack_edit`
+        """I override :meth:`.local.ILocalCore.ack_edit`
         to update bookkeeping metadata and force transformed trace to refresh.
         """
         # using lists as default value     #pylint: disable=W0102
@@ -404,23 +404,23 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 class StoredTraceObsels(AbstractTraceObsels):
     """I provide the implementation of ktbs:StoredTraceObsels
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.StoredTraceObsels
 
 class ComputedTraceObsels(AbstractTraceObsels):
     """I provide the implementation of ktbs:ComputedTraceObsels
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.ComputedTraceObsels
 
-    ######## IResource implementation  ########
+    ######## ICore implementation  ########
 
     __forcing_state_refresh = False
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.core.IResource.get_state`:meth:
+        """I override `~rdfrest.core.ICore.get_state`:meth:
 
         I support parameter 'quick' to bypass the updating of the obsels.
         """
@@ -430,7 +430,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
-        """I override `~rdfrest.core.IResource.force_state_refresh`:meth:
+        """I override `~rdfrest.core.ICore.force_state_refresh`:meth:
 
         I recompute the obsels if needed.
         """

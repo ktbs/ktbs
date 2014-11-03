@@ -17,7 +17,7 @@
 
 """I provide a general resource factory.
 
-While :meth:`IResource.factory <rdfrest.interface.IResource.factory>` aims at
+While :meth:`ICore.factory <rdfrest.interface.ICore.factory>` aims at
 producing a resource of the *same kind* as the target, it may be necessary, in
 some cases, to navigate a link to a resource of another kind:
 
@@ -31,7 +31,7 @@ For this, this module provides its own :func:`factory` function.
 .. autofunction:: factory
 
 But this function needs to know all the implementations of
-:class:`.interface.IResource` and all implemented
+:class:`.interface.ICore` and all implemented
 `services <.local.Service>`:class:. This is what :func:`register_implementation`
 and :func:`register_service` are about, respectively.
 
@@ -57,7 +57,7 @@ its instances. However, you should check before you call :func:`factory` that:
 
 from bisect import bisect, insort
 
-from .core import IResource
+from .core import ICore
 from .utils import coerce_to_uri
 
 
@@ -65,12 +65,12 @@ _IMPL_REG_KEYS = []
 _IMPL_REGISTRY = {}
 
 def register_implementation(uri_prefix):
-    """Registers a subclass of :class:`.interface.IResource`.
+    """Registers a subclass of :class:`.interface.ICore`.
 
     This is to be used as a decorator generator, as in::
 
         @register_implementation("xtp://")
-        class XtpResource(rdfrest.interface.IResource):
+        class XtpResource(rdfrest.interface.ICore):
             '''Implementation of REST resource over the XTP protocol.'''
             #...
 
@@ -78,12 +78,12 @@ def register_implementation(uri_prefix):
     :return: the class decorator
 
     The decorated class must implement
-    :meth:`factory <rdfrest.interface.IResource.factory>` as a class method.b
+    :meth:`factory <rdfrest.interface.ICore.factory>` as a class method.b
     """
     uri_prefix = str(uri_prefix)
     def decorator(cls):
         """Decorator created by :func:`register_implementation`"""
-        assert issubclass(cls, IResource)
+        assert issubclass(cls, ICore)
         assert cls.factory.im_self is cls, \
             "%s.factory should be a classmethod" % cls.__name__
         assert uri_prefix not in _IMPL_REGISTRY
@@ -131,7 +131,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
                       returned (may not be honnored by all implementations)
     :type  _no_spawn: bool
 
-    :rtype: :class:`.interface.IResource`
+    :rtype: :class:`.interface.ICore`
 
     When using this function, it is a good practice to indicate the expected
     return type, either informally (with a comment) or formally, with a

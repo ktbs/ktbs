@@ -138,7 +138,7 @@ class HttpFrontend(object):
 
         CAUTION: the conversion of exceptions to HTTP status codes  should be
         maintained consistent with
-        :meth:`.http_client.HttpResource._http_to_exception`.
+        :meth:`.http_client.HttpClientCore._http_to_exception`.
         """
         request = MyRequest(environ)
         resource_uri, request.uri_extension = extsplit(request.path_url)
@@ -440,7 +440,7 @@ class HttpFrontend(object):
         :param request:  the request being processed
         :type  request:  MyRequest
         :param resource: the resource being addressed (can be None)
-        :type  resource: rdfrest.local.ILocalResource
+        :type  resource: rdfrest.local.ILocalCore
         :param message:  the payload of the error response
         :type  message:  str
         :param kw:       header fields to add to the response

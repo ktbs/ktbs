@@ -33,7 +33,7 @@ from StringIO import StringIO
 from rdflib import Graph, plugin as rdflib_plugin, RDF, URIRef
 from rdflib.store import Store
 from rdflib.namespace import ClosedNamespace
-from rdfrest.local import StandaloneResource, Service
+from rdfrest.local import LocalCore, Service
 
 KTBS_NS_URI = "http://liris.cnrs.fr/silex/2009/ktbs"
 KTBS_NS_URIREF = URIRef(KTBS_NS_URI)
@@ -480,7 +480,7 @@ KTBS = ClosedNamespace(KTBS_NS_URI + "#",
                        KTBS_IDENTIFIERS,
                        )
 
-class _KtbsNsResource(StandaloneResource):
+class _KtbsNsResource(LocalCore):
     """I am the only resource class of KTBS_NS_SERVICE.
 
     KTBS_NS_SERVICE provides a local copy of the kTBS namespace.

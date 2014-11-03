@@ -524,7 +524,7 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
 
 @extend_api
 class OpportunisticObselCollection(AbstractTraceObselsMixin):
-    """I implement :class:`rdfrest.core.IResource` for obsel collections.
+    """I implement :class:`rdfrest.core.ICore` for obsel collections.
 
     Obsel collections in kTBS can become very big, possibly to the point where
     a server will refuse to serve the full graph at once. Fortunately, they
@@ -564,7 +564,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
     # open slice completeing it.
 
     def __init__(self, trace):
-        # not calling IResource.__init__ #pylint: disable=W0231
+        # not calling ICore.__init__ #pylint: disable=W0231
         self.uri = trace.state.value(trace.uri, KTBS.hasObselCollection)
         self.actual = trace.factory(self.uri)
         self.slices = None
@@ -573,29 +573,29 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
     def __str__(self):
         return "<%s>" % self.uri
 
-    ######## IResource implementation ########
+    ######## ICore implementation ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.core.IResource.factory`.
+        """I implement :meth:`.core.ICore.factory`.
 
         I simply rely on the factory of my trace.
         """
         return self.actual.factory(uri, _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.core.IResource.get_state`.
+        """I implement :meth:`.core.ICore.get_state`.
         """
         return self.actual.get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
-        """I implement `interface.IResource.force_state_refresh`.
+        """I implement `interface.ICore.force_state_refresh`.
 
         I simply force a state refresh on my trace.
         """
         return self.actual.force_state_refresh(parameters)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.core.IResource.edit`.
+        """I implement :meth:`.core.ICore.edit`.
 
         I try to edit the whole graph.
         """
@@ -611,7 +611,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.core.IResource.post_graph`.
+        """I implement :meth:`.core.ICore.post_graph`.
 
         Obsel collection do not support post_graph.
         """
@@ -620,7 +620,7 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
                                     % self)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.core.IResource.delete`.
+        """I implement :meth:`.core.ICore.delete`.
 
         Delegate to proper obsel resource.
         """

@@ -19,7 +19,7 @@
 I provide the common implementation of all local KTBS resources.
 """
 from rdflib import Namespace, URIRef
-from rdfrest.local import EditableResource
+from rdfrest.local import EditableCore
 from rdfrest.mixins import BookkeepingMixin, FolderishMixin, \
     GraphPostableMixin, WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
@@ -34,18 +34,18 @@ METADATA = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.ktbs.metadata:")
 
 class KtbsResource(KtbsResourceMixin, WithCardinalityMixin,
                    WithReservedNamespacesMixin, WithTypedPropertiesMixin,
-                   BookkeepingMixin, EditableResource):
+                   BookkeepingMixin, EditableCore):
     """I provide common methods and class parameters for all KTBS Resources.
 
     Especially, I include a number of of required other mixins.
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_RESERVED_NS = [KTBS]
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
-        """I override :meth:`rdfrest.local.ILocalResource.mint_uri`.
+        """I override :meth:`rdfrest.local.ILocalCore.mint_uri`.
 
         I use the skos:prefLabel of the resource to mint a URI, else the
         basename (if provided), else the class name.

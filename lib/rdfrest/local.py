@@ -16,7 +16,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I provide a local implementation of `.interface.IResource`:class:.
+I provide a local implementation of `.interface.ICore`:class:.
 
 "Local" means either standalone or server-side. The difference with a "remote"
 implementation (*e.g.* client-side) is that the local implementation must
@@ -24,20 +24,20 @@ implement the concerns of the server.
 
 * A :class:`Service` is the central component managing a set of local resources
   with a common URI prefix (the service's root). When initialized, a service is
-  passed a list of the `~.interface.IResource`:class: implementations it will
+  passed a list of the `~.interface.ICore`:class: implementations it will
   manage.
 
 * More precisely, the classes passed to a `Service`:class: must implement
-  :class:`ILocalResource`, a sub-interface of `~.interface.Resource`:class:
+  :class:`ILocalCore`, a sub-interface of `~.interface.Resource`:class:
   augmenting it with attributes and hooks methods aimed at managing the concerns
   of the server (integrity checking, update propagations...).
 
-* This module provides default implementations of :class:`ILocalResource`:
-  :class:`StandaloneResource` (supporting only "read" operations) and
-  :class:`EditableResource` (supporting :meth:`~.interface.Resource.edit` and
+* This module provides default implementations of :class:`ILocalCore`:
+  :class:`LocalCore` (supporting only "read" operations) and
+  :class:`EditableCore` (supporting :meth:`~.interface.Resource.edit` and
   :meth:`~.interface.Resource.delete`).
 
-* Subclasses of :class:`ILocalResource` can also benefit from a number of mix-in
+* Subclasses of :class:`ILocalCore` can also benefit from a number of mix-in
   classes provided in the `.mixins`:mod: module.
 """
 from os.path import exists
@@ -51,8 +51,8 @@ from weakref import WeakValueDictionary
 from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
 from .factory import register_service, unregister_service
-from .hosted import HostedResource
-from .core import get_subclass, IResource
+from .hosted import HostedCore
+from .core import get_subclass, ICore
 from .utils import coerce_to_uri, Diagnosis, make_fresh_uri, ReadOnlyGraph, \
     urisplit
 from .config import get_service_configuration, build_service_root_uri
@@ -67,7 +67,7 @@ NS = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.rdfrest:")
 #
 
 class Service(object):
-    """I manage a set of related :class:`ILocalResource`'s.
+    """I manage a set of related :class:`ILocalCore`'s.
 
     All the resources in a service are stored in the same
     `rdflib.store.Store`:class:.
@@ -85,7 +85,7 @@ class Service(object):
     its sole argument.
 
     The classes passed to this service should all be subclasses of
-    :class:`ILocalResource`, and all have an attribute `RDF_MAIN_TYPE`
+    :class:`ILocalCore`, and all have an attribute `RDF_MAIN_TYPE`
     indicating the RDF type they implement.
     """
     # too few public methods (1/2) #pylint: disable=R0903
@@ -124,7 +124,7 @@ class Service(object):
         self.store = store
         self.class_map = class_map = {}
         for cls in classes:
-            assert issubclass(cls, ILocalResource)
+            assert issubclass(cls, ILocalCore)
             assert cls.RDF_MAIN_TYPE not in class_map, \
                 "duplicate RDF_MAIN_TYPE <%s>" % cls.RDF_MAIN_TYPE
             class_map[cls.RDF_MAIN_TYPE] = cls
@@ -156,7 +156,7 @@ class Service(object):
         except BaseException:
             pass
 
-    @HostedResource.handle_fragments
+    @HostedCore.handle_fragments
     def get(self, uri, _rdf_type=None, _no_spawn=False):
         """Get a resource from this service.
 
@@ -169,12 +169,12 @@ class Service(object):
         :type  _no_spawn: bool
 
         :return: the resource, or None
-        :rtype:  :class:`ILocalResource` or :class:`~.hosted.HostedResource`
+        :rtype:  :class:`ILocalCore` or :class:`~.hosted.HostedCore`
 
         TODO NOW: if no resource is found, try to get it from parent resource
 
         NB: if uri contains a fragment-id, the returned resource will be a
-        `~.hosted.HostedResource`:class: hosted by a resource from this
+        `~.hosted.HostedCore`:class: hosted by a resource from this
         service.
 
         When using this function, it is a good practice to indicate the expected
@@ -186,7 +186,7 @@ class Service(object):
         assert isinstance(uri, URIRef)
         querystr, fragid = urisplit(uri)[3:]
         if querystr is not None  or  fragid is not None:
-            # fragid is managed by the decorator HostedResource.handle_fragment
+            # fragid is managed by the decorator HostedCore.handle_fragment
             return None
         resource = self._resource_cache.get(uri)
         if resource is None  and  not _no_spawn:
@@ -271,19 +271,19 @@ class Service(object):
 
 ################################################################
 #
-# :class:`.interface.IResource` implementation.
+# :class:`.interface.ICore` implementation.
 #
 
-class ILocalResource(IResource):
+class ILocalCore(ICore):
     """
     A RESTful resource implemented by a local :class:`Service`.
 
     I merely define the interface that service resources must implement,
-    in addition to implementing :class:`.interface.IResource`.
+    in addition to implementing :class:`.interface.ICore`.
 
     The attributes and methods it defines must, of course, be only used in
     implementation-related code; API-related code must only rely on the uniform
-    interface of :class:`.interface.IResource`.
+    interface of :class:`.interface.ICore`.
 
     .. py:attribute:: service
 
@@ -295,7 +295,7 @@ class ILocalResource(IResource):
         """I checks whether parameters are acceptable.
 
         This hook method is to be called whenever a method from
-        :class:`.interface.IResource` is invoked, and raises an
+        :class:`.interface.ICore` is invoked, and raises an
         `~.exceptions.InvalidParametersError`:class: if the given
         parameters are not acceptable for the given method.
 
@@ -392,7 +392,7 @@ class ILocalResource(IResource):
         calling it directly is usually not required.
 
         :param target:    the resource to which `new_graph` has been posted
-        :type  target:    :class:`ILocalResource`
+        :type  target:    :class:`ILocalCore`
         :param new_graph: a description of the resource for which to mint a URI
         :type  new_graph: rdflib.Graph
         :param created:   the non-URIRef node representing the resource in
@@ -493,16 +493,16 @@ class ILocalResource(IResource):
         raise NotImplementedError
 
 
-class StandaloneResource(ILocalResource):
-    """I provide a default implementation of :class:`ILocalResource`.
+class LocalCore(ILocalCore):
+    """I provide a default implementation of :class:`ILocalCore`.
 
-    The state of a standalone resource is stored in the service's store as an
-    individual graph, identified by the resource's URI.
+    The state of a local core is stored in the service's store
+    as an individual graph, identified by the resource's URI.
 
     .. attribute:: metadata
 
         A graph containing some metadat about this resource, for internal use
-        (not exposed by :meth:`~interface.IResource.get_state`).
+        (not exposed by :meth:`~interface.ICore.get_state`).
 
     .. method:: __init__(service, uri, graph_uri=None)
 
@@ -531,7 +531,7 @@ class StandaloneResource(ILocalResource):
     #
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.interface.ICore.factory`.
         """
         # while it is not technically an error to violate the assertion below
         # (factory should simply return None in that case)
@@ -544,7 +544,7 @@ class StandaloneResource(ILocalResource):
         return self.service.get(coerce_to_uri(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.interface.ICore.get_state`.
 
         I will first invoke :meth:`check_parameters`.
 
@@ -558,7 +558,7 @@ class StandaloneResource(ILocalResource):
             return self._graph
 
     def force_state_refresh(self, parameters=None):
-        """I implement :meth:`.interface.IResource.force_state_refresh`.
+        """I implement :meth:`.interface.ICore.force_state_refresh`.
 
         I will first invoke :meth:`check_parameters`.
         """
@@ -566,16 +566,16 @@ class StandaloneResource(ILocalResource):
         # nothing to do, there is no cache involved
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.interface.ICore.edit`.
 
         By default, I do not support it.
-        See :class:`EditableResource` to add support.
+        See :class:`EditableCore` to add support.
         """
         raise MethodNotAllowedError("resource is read-only")
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`interface.IResource.post_graph`.
+        """I implement :meth:`interface.ICore.post_graph`.
 
         By default, I do not support it.
         See :class:`GraphPostableMixin` to add support.
@@ -583,19 +583,19 @@ class StandaloneResource(ILocalResource):
         raise MethodNotAllowedError("post_graph not supported")
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`interface.IResource.delete`.
+        """I implement :meth:`interface.ICore.delete`.
 
         By default, I do not support it.
-        See :class:`EditableResource` to add support.
+        See :class:`EditableCore` to add support.
         """
         raise MethodNotAllowedError("delete not supported")
 
     #
-    # ILocalResource implementation
+    # ILocalCore implementation
     #
 
     def check_parameters(self, parameters, method):
-        """I implement :meth:`ILocalResource.check_parameters`.
+        """I implement :meth:`ILocalCore.check_parameters`.
 
         I accepts no parameter (not even an empty query string).
         """
@@ -613,7 +613,7 @@ class StandaloneResource(ILocalResource):
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,
                            resource=None):
-        """I implement :meth:`ILocalResource.complete_new_graph`.
+        """I implement :meth:`ILocalCore.complete_new_graph`.
 
         I leave the graph unchanged.
         """
@@ -622,7 +622,7 @@ class StandaloneResource(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`ILocalResource.check_new_graph`.
+        """I implement :meth:`ILocalCore.check_new_graph`.
 
         I accept any graph.
         """
@@ -631,7 +631,7 @@ class StandaloneResource(ILocalResource):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
-        """I implement :meth:`ILocalResource.mint_uri`.
+        """I implement :meth:`ILocalCore.mint_uri`.
 
         I generate a child URI of `target`'s uri, with a name derived from
         the basename (defaulting to the class name converted to lower case),
@@ -648,7 +648,7 @@ class StandaloneResource(ILocalResource):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`ILocalResource.create`.
+        """I implement :meth:`ILocalCore.create`.
 
         I store `new_graph` as is in this resource's graph, and adds a hint to
         this class in the metadata graph.
@@ -664,16 +664,16 @@ class StandaloneResource(ILocalResource):
     RDF_MAIN_TYPE = RDFS.Resource
 
 
-class EditableResource(StandaloneResource):
-    """I implement `edit` and `delete` from :class:`.interface.IResource`.
+class EditableCore(LocalCore):
+    """I implement `edit` and `delete` from :class:`.interface.ICore`.
 
     In addition to the helper and hook methods defined by
-    :class:`ILocalResource`, this class defines a few others that are
+    :class:`ILocalCore`, this class defines a few others that are
     specific to :meth:`edit` and :meth:`delete`.
     """
 
     def __init__(self, service, uri):
-        StandaloneResource.__init__(self, service, uri)
+        LocalCore.__init__(self, service, uri)
         self._edit_context = None
 
     #
@@ -681,7 +681,7 @@ class EditableResource(StandaloneResource):
     #
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.interface.ICore.edit`.
 
         On entering the context, I will invoke :meth:`check_parameters`,
         then I will invoke :meth:`prepare_edit`.
@@ -734,7 +734,7 @@ class EditableResource(StandaloneResource):
             return self._edit_untrusted(parameters, clear)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.interface.ICore.delete`.
 
         I will first invoke :meth:`check_parameters`. I will then invoke
         :meth:`check_deletable` to check whether this resource can be deleted.
@@ -754,11 +754,11 @@ class EditableResource(StandaloneResource):
         _mark_as_deleted(self)
 
     #
-    # ILocalResource implementation
+    # ILocalCore implementation
     #
 
     def prepare_edit(self, parameters):
-        """I implement :meth:`.ILocalResource.prepare_edit`.
+        """I implement :meth:`.ILocalCore.prepare_edit`.
 
         The default implementation returns an empty object.
         """
@@ -767,14 +767,14 @@ class EditableResource(StandaloneResource):
         return _Plain()
 
     def ack_edit(self, parameters, prepared):
-        """I implement :meth:`.ILocalResource.ack_edit`.
+        """I implement :meth:`.ILocalCore.ack_edit`.
 
         The default implementation does nothing.
         """
         pass
 
     def check_deletable(self, parameters):
-        """I implement :meth:`.ILocalResource.check_deletable`.
+        """I implement :meth:`.ILocalCore.check_deletable`.
 
         The default always accepts.
         """
@@ -783,7 +783,7 @@ class EditableResource(StandaloneResource):
         return Diagnosis("check_deletable")
 
     def ack_delete(self, parameters):
-        """I implement :meth:`.ILocalResource.ack_delete`.
+        """I implement :meth:`.ILocalCore.ack_delete`.
 
         The default implementation does nothing.
         """
@@ -927,9 +927,9 @@ def compute_added_and_removed(new_graph, old_graph, added=None, removed=None):
 # Private functions and classes
 #
 
-class _DeletedResource(IResource):
+class _DeletedCore(ICore):
     """
-    A deleted RDF-REST resource that is not usable anymore.
+    A deleted RDF-REST core that is not usable anymore.
     """
 
     _stack = None
@@ -945,38 +945,38 @@ class _DeletedResource(IResource):
     
     @property
     def uri(self):
-        """I implement `interface.IResource.uri`.
+        """I implement `interface.ICore.uri`.
         """
         raise TypeError(self._message)
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement `interface.IResource.factory`.
+        """I implement `interface.ICore.factory`.
         """
         raise TypeError(self._message)
 
     def get_state(self, parameters=None):
-        """I implement `interface.IResource.get_state`.
+        """I implement `interface.ICore.get_state`.
         """
         raise TypeError(self._message)
 
     def force_state_refresh(self, parameters=None):
-        """I implement `interface.IResource.force_state_refresh`.
+        """I implement `interface.ICore.force_state_refresh`.
         """
         raise TypeError(self._message)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement `interface.IResource.edit`.
+        """I implement `interface.ICore.edit`.
         """
         raise TypeError(self._message)
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _create=None, _rdf_type=None):
-        """I implement `interface.IResource.post_graph`.
+        """I implement `interface.ICore.post_graph`.
         """
         raise TypeError(self._message)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement `interface.IResource.delete`.
+        """I implement `interface.ICore.delete`.
         """
         raise TypeError(self._message)
 
@@ -994,7 +994,7 @@ def _mark_as_deleted(resource):
     del srvc_rsrc_cache[resource.uri]
     
     resource.__dict__.clear()
-    resource.__class__ = _DeletedResource
+    resource.__class__ = _DeletedCore
     if __debug__:
         resource._stack = traceback.extract_stack()[:-1]
 

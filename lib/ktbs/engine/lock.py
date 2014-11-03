@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from rdfrest.local import _mark_as_deleted
 from os import getpid
 
-from rdfrest.local import ILocalResource
+from rdfrest.local import ILocalCore
 
 LOG = getLogger(__name__)
 PID = getpid()
@@ -44,7 +44,7 @@ def get_semaphore_name(resource_uri):
     return str('/' + resource_uri.replace('/', '-'))
 
 
-class WithLockMixin(ILocalResource):
+class WithLockMixin(ILocalCore):
     """ I provide methods to lock a resource.
 
     :cvar int __locking_thread_id: id of the thread
@@ -125,7 +125,7 @@ class WithLockMixin(ILocalResource):
 
     @contextmanager
     def edit(self, parameters=None, clear=None, _trust=False):
-        """I override :meth:`rdfrest.core.IResource.edit`.
+        """I override :meth:`rdfrest.core.ICore.edit`.
         """
         with self.lock(self), super(WithLockMixin, self).edit(parameters, clear, _trust) as editable:
             yield editable
@@ -139,21 +139,21 @@ class WithLockMixin(ILocalResource):
                                                          _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """I override :meth:`rdfrest.local.EditableCore.delete`.
         """
         root = self.get_root()
         with root.lock(self), self.lock(self):
             super(WithLockMixin, self).delete(parameters, _trust)
 
     def ack_delete(self, parameters):
-        """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
+        """I override :meth:`rdfrest.util.EditableCore.ack_delete`.
         """
         super(WithLockMixin, self).ack_delete(parameters)
         self._get_semaphore().unlink()  # remove the semaphore from this resource as it no longer exists
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """ I implement :meth:`rdfrest.local.ILocalResource.creare`.
+        """ I implement :meth:`rdfrest.local.ILocalCore.creare`.
 
         After checking that the resource we create is correct,
         I ensure that the corresponding lock exists and is correctly set.

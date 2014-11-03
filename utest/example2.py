@@ -89,7 +89,7 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`ILocalResource.create`.
+        """I implement :meth:`ILocalCore.create`.
 
         I update the special property number_of_tags"""
         tag_nb = 0

@@ -31,7 +31,7 @@ interface: :class:`ItemMixin` and :class:`GroupMixin`.
 We then define local implementations of those resources:
 :class:`ItemImplementation` and :class:`GroupImplementation`. Note that those
 implementation inherit the mix-in classes defined above, but also override
-:class:`rdfrest.local.ILocalResource` methods to check and enforce local
+:class:`rdfrest.local.ILocalCore` methods to check and enforce local
 integrity.
 
 We also define custom serializers (HTML view of simple items, and tag list).
@@ -52,10 +52,10 @@ from wsgiref.simple_server import make_server
 
 from rdfrest.exceptions import CanNotProceedError
 from rdfrest.factory import factory as universal_factory
-from rdfrest.http_client import HttpResource
+from rdfrest.http_client import HttpClientCore
 from rdfrest.http_server import HttpFrontend
-from rdfrest.core import register_mixin, IResource
-from rdfrest.local import EditableResource, Service
+from rdfrest.core import register_mixin, ICore
+from rdfrest.local import EditableCore, Service
 from rdfrest.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
 from rdfrest.utils import coerce_to_uri, parent_uri
@@ -67,7 +67,7 @@ EXAMPLE = Namespace("http://example.org/example/")
 bind_prefix("ex", "http://example.org/example/")
 
 @register_mixin(EXAMPLE.Item)
-class ItemMixin(IResource):
+class ItemMixin(ICore):
     """Interface of a simple item"""
     
     __state = None
@@ -310,7 +310,7 @@ def check_ident(ident):
     if not _IDENT_RE.match(ident):
         raise ValueError("Invalid identifier '%s'" % ident)
 
-class ItemImplementation(ItemMixin, EditableResource):
+class ItemImplementation(ItemMixin, EditableCore):
     """Implementation of Item resource"""
 
     BASENAME = "item"
@@ -318,7 +318,7 @@ class ItemImplementation(ItemMixin, EditableResource):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename=None, suffix=""):
-        """I overrides :meth:`.local.ILocalResource.mint_uri`
+        """I overrides :meth:`.local.ILocalCore.mint_uri`
 
         to use cls.BASENAME instead of cls.__classname__.
         """
@@ -328,7 +328,7 @@ class ItemImplementation(ItemMixin, EditableResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`rdfrest.local.ILocalResource.check_new_graph`
+        """I implement :meth:`rdfrest.local.ILocalCore.check_new_graph`
         """
         diag = super(ItemImplementation, cls).check_new_graph(
             service, uri, parameters, new_graph, resource, added, removed)
@@ -337,7 +337,7 @@ class ItemImplementation(ItemMixin, EditableResource):
         return diag 
 
     def ack_delete(self, parameters):
-        """I implement :meth:`rdfrest.local.EditableResource.ack_delete`.
+        """I implement :meth:`rdfrest.local.EditableCore.ack_delete`.
         """
         super(ItemImplementation, self).ack_delete(parameters)
         parent = self.parent
@@ -390,7 +390,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
             graph.add((created, RDF.type, rdf_type))
 
     def check_deletable(self, parameters):
-        """I implement :meth:`rdfrest.local.EditableResource.check_deletable`.
+        """I implement :meth:`rdfrest.local.EditableCore.check_deletable`.
         """
         diag = super(GroupImplementation, self).check_deletable(parameters)
         if self.uri == self.service.root_uri:
@@ -482,7 +482,7 @@ def main():
     thread, _httpd = make_example1_httpd(serv)
     try:
         if test:
-            remote_root = HttpResource.factory(root_uri, EXAMPLE.Group)
+            remote_root = HttpClientCore.factory(root_uri, EXAMPLE.Group)
             assert isinstance(remote_root, GroupMixin)
             do_tests(remote_root)
             print "Remote tests passed"

@@ -21,7 +21,7 @@
 """I provide an implementation of the `abstract-ktbs-api`:ref:.
 
 This implementation is defined as a set of mix-in classes that rely on the
-uniform interface of `rdfrest.core.IResource`:class:. This allows to use
+uniform interface of `rdfrest.core.ICore`:class:. This allows to use
 those classes in different ways:
 
 * as local instances (for a standalone kTBS embeded in one's application),

@@ -34,7 +34,7 @@ LOG = getLogger(__name__)
 class Method(MethodMixin, InBase):
     """I provide the implementation of ktbs:Method .
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.Method
 
@@ -49,7 +49,7 @@ class Method(MethodMixin, InBase):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`~rdfrest.local.ILocalResource.create`
+        """I implement :meth:`~rdfrest.local.ILocalCore.create`
         """
         super(Method, cls).create(service, uri, new_graph)
         parent_method_uri = new_graph.value(uri, KTBS.hasParentMethod)
@@ -63,7 +63,7 @@ class Method(MethodMixin, InBase):
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,
                            resource=None):
-        """I implement :meth:`ILocalResource.complete_new_graph`.
+        """I implement :meth:`ILocalCore.complete_new_graph`.
 
         I handle the deprecated property ktbs:inherits, replacing it with
         ktbs:hasParentMethod
@@ -91,7 +91,7 @@ class Method(MethodMixin, InBase):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I overrides :meth:`rdfrest.local.ILocalResource.check_new_graph`
+        """I overrides :meth:`rdfrest.local.ILocalCore.check_new_graph`
 
         I check that parent and parameters are acceptable
         """
@@ -147,7 +147,7 @@ class Method(MethodMixin, InBase):
         return diag
 
     def prepare_edit(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalResource.prepare_edit`
+        """I overrides :meth:`rdfrest.local.ILocalCore.prepare_edit`
 
         I store old values of some properties (parent, parameters)
         to handle the change in :meth:`ack_edit`.
@@ -158,7 +158,7 @@ class Method(MethodMixin, InBase):
         return ret
 
     def ack_edit(self, parameters, prepared):
-        """I overrides :meth:`rdfrest.local.ILocalResource.ack_edit`
+        """I overrides :meth:`rdfrest.local.ILocalCore.ack_edit`
 
         I reflect changes in the related resources (parent method)
         """
@@ -171,14 +171,14 @@ class Method(MethodMixin, InBase):
             self._ack_parameter_change()
     
     def ack_delete(self, parameters):
-        """I overrides :meth:`rdfrest.local.ILocalResource.ack_delete`
+        """I overrides :meth:`rdfrest.local.ILocalCore.ack_delete`
         """
         parent_method_uri = self.state.value(self.uri, KTBS.hasParentMethod)
         self._ack_parent_change(parent_method_uri, None)
         super(Method, self).ack_delete(parameters)
 
     def check_deletable(self, parameters):
-        """I implement :meth:`~rdfrest.local.ILocalResource.check_deletable`
+        """I implement :meth:`~rdfrest.local.ILocalCore.check_deletable`
 
         I refuse to be deleted if I am used by a trace.
         """
