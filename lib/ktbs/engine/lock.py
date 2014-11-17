@@ -20,6 +20,9 @@ I provide a locking mechanism for resource that needs protection in the context 
 
 """
 import posix_ipc
+import sys
+from md5 import md5
+
 from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
@@ -43,7 +46,14 @@ def get_semaphore_name(resource_uri):
     :return: safe semaphore name.
     :rtype: str
     """
-    return str('/' + resource_uri.replace('/', '-'))
+
+    sem_name = ""
+    if sys.platform.lower().find('darwin') != -1:
+        sem_name = md5(resource_uri).hexdigest()[:31]
+    else:
+        sem_name = str('/' + resource_uri.replace('/', '-'))
+
+    return sem_name
 
 
 class WithLockMixin(ILocalCore):
