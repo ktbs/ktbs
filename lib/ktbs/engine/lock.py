@@ -49,7 +49,7 @@ def get_semaphore_name(resource_uri):
 
     sem_name = ""
     if sys.platform.lower().find('darwin') != -1:
-        sem_name = md5(resource_uri).hexdigest()[:31]
+        sem_name = md5(resource_uri).hexdigest()[:29]
     else:
         sem_name = str('/' + resource_uri.replace('/', '-'))
 
