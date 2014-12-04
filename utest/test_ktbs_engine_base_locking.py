@@ -10,7 +10,7 @@ import posix_ipc
 
 
 # Set the lock timeout to 1 s in order to speed up the tests
-WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
+WithLockMixin.LOCK_DEFAULT_TIMEOUT = 0
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
 
