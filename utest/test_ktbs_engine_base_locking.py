@@ -32,6 +32,20 @@ class KtbsBaseTestCase(KtbsTestCase):
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
+    """Test lock creation with long names"""
+
+    tmp_base_name = ('x'*512)+'/'
+
+    def test_lock_created(self):
+        """Test if Base._get_semaphore() works even with a very long name."""
+
+        try:
+            assert self.tmp_base._get_semaphore()
+        except ValueError, ex:
+            assert 0, ex.message
+
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):
     """Test locking in the kTBS context."""
 

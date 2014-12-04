@@ -27,7 +27,7 @@ from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
 
-from os import getpid
+from os import getpid, pathconf
 
 from rdfrest.cores.local import _mark_as_deleted
 from rdfrest.cores.local import ILocalCore
@@ -36,24 +36,34 @@ from rdfrest.cores.local import ILocalCore
 LOG = getLogger(__name__)
 PID = getpid()
 
-def get_semaphore_name(resource_uri):
-    """Return a safe semaphore name for a resource.
+if sys.platform.lower().find('darwin') != -1:
+    def get_semaphore_name(resource_uri):
+        """Return a safe semaphore name for a resource.
 
-    posix_ipc doesn't accept '/' inside the semaphore name but the name must
-    begin with '/'.
+        :param basestring resource_uri: the URI of the resource.
+        :return: safe semaphore name.
+        :rtype: str
+        """
 
-    :param basestring resource_uri: the URI of the resource.
-    :return: safe semaphore name.
-    :rtype: str
-    """
-
-    sem_name = ""
-    if sys.platform.lower().find('darwin') != -1:
         sem_name = md5(resource_uri).hexdigest()[:29]
-    else:
-        sem_name = str('/' + resource_uri.replace('/', '-'))
+        return sem_name
+else:
+    NAME_MAX_SEM = pathconf("/", 'PC_NAME_MAX') - 4 # according to man 7 sem_overview
+    def get_semaphore_name(resource_uri):
+        """Return a safe semaphore name for a resource.
 
-    return sem_name
+        posix_ipc doesn't accept '/' inside the semaphore name but the name must
+        begin with '/'.
+
+        :param basestring resource_uri: the URI of the resource.
+        :return: safe semaphore name.
+        :rtype: str
+        """
+
+        sem_name = str('/' + resource_uri.replace('/', '-'))
+        if len(sem_name) > NAME_MAX_SEM:
+            sem_name = '/' + md5(resource_uri).hexdigest()
+        return sem_name
 
 
 class WithLockMixin(ILocalCore):
