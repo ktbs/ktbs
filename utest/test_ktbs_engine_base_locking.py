@@ -16,7 +16,7 @@ SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value
 
 
 # Tests for BASE
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsBaseTestCase(KtbsTestCase):
 
     tmp_base = None
@@ -155,7 +155,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
 
 # Tests for MODEL
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
@@ -218,7 +218,7 @@ class TestKtbsModelLocking(KtbsModelTestCase):
 
 
 # Tests for METHOD
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
@@ -277,7 +277,7 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
 
 
 # Tests Trace
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None
