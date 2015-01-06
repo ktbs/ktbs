@@ -12,7 +12,14 @@ and a few adaptation on MacOS or MS Windows [#]_.
 Installing kTBS
 +++++++++++++++
 
+Prerequisites
+~~~~~~~~~~~~~
+
 kTBS is a Python_ application, so you need python installed; more precisely, you need **version 2.7** of Python. kTBS is not compatible with older version, nor with the newer Python 3. Python 2.7 will typically be already pre-installed on your Linux distribution.
+
+As some dependencies need to be compiled, you also need python developer files. You can get them with::
+
+  sudo apt-get install python2.7-dev
 
 We also advise you to use Virtualenv_; this tool creates an autonomous environment for Python programs, so that kTBS and its dependencies can be installed without interference with Python packages installed in your system. To install Virtualenv, type::
 
