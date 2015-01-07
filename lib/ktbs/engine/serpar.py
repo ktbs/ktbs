@@ -1,5 +1,5 @@
 """
-Serializers and Parsers for kTBS
+Serializers and Parsers for the kTBS engine
 """
 
 from rdflib import RDF
@@ -10,6 +10,7 @@ from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
 from rdfrest.serializers.html import serialize_htmlized_turtle, \
     generate_htmlized_turtle
 from ..namespace import KTBS
+import ktbs.serpar
 
 
 ## HTML for obsel collections
@@ -32,7 +33,6 @@ def generate_obsels(graph, resource, bindings, ctypes):
 @register_serializer("text/html", "html", 81, KTBS.StoredTraceObsels)
 @wrap_exceptions(SerializeError)
 def serialize_html(graph, resource, bindings=None):
-    """Wiki rendering"""
     if bindings is None:
         bindings = get_prefix_bindings()
         for prefix in ( "", "m", "model"):

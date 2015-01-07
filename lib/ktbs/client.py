@@ -27,6 +27,9 @@ import ktbs.api.obsel # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace_model # reimport ktbs #pylint: disable=W0404
 import ktbs.api.trace_obsels # reimport ktbs #pylint: disable=W0404
+# import serializers and parsers to ensure they are registered
+import ktbs.serpar
+
 from rdfrest.cores.factory import factory
 
 
