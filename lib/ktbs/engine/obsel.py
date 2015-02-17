@@ -31,7 +31,7 @@ from rdfrest.cores.mixins import WithCardinalityMixin, WithReservedNamespacesMix
 from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, \
     parent_uri
 from ..api.obsel import ObselMixin
-from ..namespace import KTBS
+from ..namespace import KTBS, RDF
 from ..utils import SKOS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
 
@@ -186,6 +186,11 @@ class _ObselImpl(ILocalCore):
 
         # add link to trace in case it is missing
         new_graph.add((uri, KTBS.hasTrace, trace.uri))
+
+        # add default type of none is provided
+        obsel_type = new_graph.value(uri, RDF.type)
+        if obsel_type is None:
+            new_graph.add((uri, RDF.type, KTBS.Obsel))
 
         # add default subject if no subject is provided
         subject = new_graph.value(uri, KTBS.hasSubject)
