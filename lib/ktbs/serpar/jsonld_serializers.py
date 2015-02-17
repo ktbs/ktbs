@@ -343,7 +343,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
         parents = [ valconv_uri(coerce_to_uri(i)) for i in parents ]
         yield u""",\n            "hasParentModel": %s""" % dumps(parents)
 
-    for i in iter_other_arcs(graph, tmodel.uri, valconv, "            "):
+    for i in iter_other_arcs(graph, tmodel.uri, valconv, "\n            "):
         yield i
 
     for otype in tmodel.iter_obsel_types(False):
@@ -359,7 +359,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasSuperObselType": %s """ \
               % dumps(stypes)
 
-        for i in iter_other_arcs(graph, otype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, otype.uri, valconv, "\n            "):
             yield i
 
     for atype in tmodel.iter_attribute_types(False):
@@ -377,7 +377,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasAttributeDatatype": "%s" """ \
                 % valconv_uri(atype.data_type)
 
-        for i in iter_other_arcs(graph, atype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, atype.uri, valconv, "\n            "):
             yield i
 
     for rtype in tmodel.iter_relation_types(False):
@@ -401,7 +401,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasRelationDestination": "%s" """ \
                 % valconv_uri(coerce_to_uri(rtype.destination),)
 
-        for i in iter_other_arcs(graph, rtype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, rtype.uri, valconv, "\n            "):
             yield i
 
 
@@ -534,10 +534,10 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
             "end": %s""" % (valconv_uri(obs), valconv_uri(otype),
                             subject, begin, end)
 
-        for i in iter_obsel_arcs(graph, obs, valconv, "            "):
+        for i in iter_obsel_arcs(graph, obs, valconv, "\n            "):
             yield i
 
-        for i in iter_other_arcs(graph, obs, valconv, "            ", True):
+        for i in iter_other_arcs(graph, obs, valconv, "\n            ", True):
             yield i
 
         yield u"""
@@ -588,7 +588,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
         obsel.get_subject(),
         )
 
-    for i in iter_obsel_arcs(graph, obsel.uri, valconv, "            "):
+    for i in iter_obsel_arcs(graph, obsel.uri, valconv, "\n            "):
         yield i
 
     for i in iter_other_arcs(graph, obsel.uri, valconv, obsel=True):
