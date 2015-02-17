@@ -207,7 +207,7 @@ def serialize_json_root(graph, root, bindings=None):
     except StopIteration:
         ktbs_version = "Unknwown"
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "KtbsRoot",
@@ -239,7 +239,7 @@ def serialize_json_base(graph, base, bindings=None):
 
     valconv = ValueConverter(base.uri)
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "Base" """ % base.uri
@@ -286,7 +286,7 @@ def serialize_json_method(graph, method, bindings=None):
     valconv = ValueConverter(method.uri)
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "Method",
@@ -326,7 +326,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
     valconv = ValueConverter(tmodel.uri, { XSD: "xsd" })
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@graph": [
         {
@@ -504,7 +504,7 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     valconv = ValueConverter(trace_uri, { model_uri: "m" })
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": [
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }
@@ -567,7 +567,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     if len(otypes) == 1:
         otypes = otypes[0]
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": [
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }

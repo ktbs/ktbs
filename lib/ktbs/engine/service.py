@@ -37,7 +37,7 @@ from ..namespace import KTBS
 from ..config import get_ktbs_configuration
 from .. import __version__ as ktbs_version
 from .. import __commitno__ as ktbs_commit
-import serpar
+import ktbs.serpar
 
 
 # make ktbs:/ URIs use relative, query, fragments
