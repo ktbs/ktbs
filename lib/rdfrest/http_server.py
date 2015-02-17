@@ -298,7 +298,9 @@ class HttpFrontend(object):
             headerlist.append(("last-modified", last_modified.isoformat()))
 
         # get graph and redirect if needed
-        graph = resource.get_state(request.GET.mixed() or None)
+        params = request.GET.mixed()
+        params.pop("_", None) # dummy param used by JQuery to invalidate cache
+        graph = resource.get_state(params or None)
         redirect = getattr(graph, "redirect_to", None)
         if redirect is not None:
             return self.issue_error(303, request, None,
