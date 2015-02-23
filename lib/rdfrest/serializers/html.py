@@ -23,9 +23,10 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 <html>
   <head>
     <meta charset="utf-8"></meta>
+    <base href="" />
     <title>REST-Console</title>
     <style type="text/css">
-/* importing rest-console.css */
+/* importing gereco.css */
 #addressbar {
     width: 100%;
 }
@@ -83,7 +84,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 #response.loading {
     border-color: darkGrey;
     background-color: lightGrey;
-    color: darkGrey;
+    color: black;
 }
 
 #response.error {
@@ -105,11 +106,11 @@ REST_CONSOLE = r"""<!DOCTYPE html>
   </head>
   <body>
 
-    <input id="addressbar">
+    <input id="addressbar" />
     <div>
 
       <span id="method" class="combo">
-        <input placeholder="GET" disabled>
+        <input placeholder="GET" disabled="" />
         <select>
           <option>GET</option>
           <option>PUT</option>
@@ -120,7 +121,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
       </span>
 
       <span id="ctype" class="combo">
-        <input placeholder="*/*" disabled>
+        <input placeholder="*/*" disabled="" />
         <select>
           <option>*/*</option>
           <option>application/json</option>
@@ -136,7 +137,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
     </div>
 
-    <textarea id="payload" disabled></textarea>
+    <textarea id="payload" disabled=""></textarea>
 
     <pre id="response"></pre>
 
@@ -144,12 +145,13 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
     <script type="application/javascript" 
 >
-/* importing rest-console.js */
+/* importing gereco.js */
 // jshint browser:true, devel: true
 
 (function() {
     window.addEventListener("load", function() {
-        var addressbar = document.getElementById("addressbar"),
+        var base = document.getElementsByTagName("base")[0],
+            addressbar = document.getElementById("addressbar"),
             methodCombo = document.getElementById("method"),
             methodInput = methodCombo.children[0],
             methodSelect = methodCombo.children[1],
@@ -205,20 +207,11 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 } else if (options[i].value === "custom") {
                     ctypeSelect.selectedIndex = i;
                     ctypeInput.value = newCtype;
-                    console.log(ctypeInput.value);
                 }
             }
             updateCombo({ target: ctypeSelect });
         }
 
-
-        var LOADING_NEXT = {
-            "": "loading |",
-            "loading |": "loading /",
-            "loading /": "loading —",
-            "loading —": "loading \\",
-            "loading \\": "loading |"
-        };
 
         function sendRequest(evt) {
             if (!evt) evt = {};
@@ -230,6 +223,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             var req = new XMLHttpRequest(),
                 method = methodInput.value || "GET",
                 url = addressbar.value;
+            base.href = addressbar.value;
             url = url.split("#", 1)[0];
             if (method === "GET" || method === "HEAD") {
                 // use JQuery hack to prevent cache
@@ -257,45 +251,70 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 }
                 catch(err) {
                     if (err.name !== "SecurityError") throw err;
-                    console.log("SecurityError prevented to pushState REST Console " +
-                                addressbar.value);
-                    // TODO is this ok or should we manage history more cleverly?
+                    // if this is just a SecurityError, then pushState with "safe" URL
+                    var newUrl = String(window.location).split("#", 1)[0];
+                    newUrl += "#" + addressbar.value ;
+                    window.history.pushState({}, newUrl, newUrl);
                 }
             }
             response.textContent = "";
             response.classList.remove("error");
             response.classList.add("loading");
+            response.textContent = "loading...";
             responseHeaders.innerHTML = "";
 
             req.onreadystatechange = function() {
-                response.textContent = LOADING_NEXT[response.textContent];
                 if (req.readyState === 2) {
-                    etag = null;
+
+                    // display response headers
                     req.getAllResponseHeaders().split("\n").forEach(function(rh) {
                         if (!rh) return;
                         var match = /([^:]+): *(.*)/.exec(rh);
                         var key = match[1];
                         var val = match[2];
+
+                        var row = responseHeaders.appendChild(document.createElement("tr"));
+                        var th = row.appendChild(document.createElement("th"));
+                        var td = row.appendChild(document.createElement("td"));
+
+                        th.textContent = key;
+
+                        // custom presentation of some header fields
                         if (/location/i.test(key) || /link/i.test(key)) {
-                            val = '<a href="' + val + '">' + val + '</a>';
+                            var linka = td.appendChild(document.createElement("a"));
+                            if (val[0] === "<") {
+                                linka.href = val.substr(1).split(">", 1)[0];
+                            } else {
+                                linka.href = val;
+                            }
+                            linka.textContent = val;
+                        } else {
+                            td.textContent = val;
                         }
-                        if (/etag/i.test(key)) {
-                            etag = val;
-                        }
-                        if (/content-type/i.test(key)) {
-                            updateCtypeSelect(val.split(";", 1)[0]);
-                        }
-                        var row = document.createElement("tr");
-                        row.innerHTML = "<th>" + key + "</th><td>" + val + "</th>";
-                        responseHeaders.appendChild(row);
                     });
+
+                    // additional processing of some response headers
+                    if (Math.floor(req.status / 100) === 2) {
+                        // etag
+                        etag = req.getResponseHeader("etag");
+
+                        // content-type
+                        var ctype = req.getResponseHeader("content-type");
+                        if (ctype) {
+                            updateCtypeSelect(ctype.split(";", 1)[0]);
+                        }
+                    }
+                } else if (req.readyState === 3) {
+                    response.textContent = req.responseText;
                 } else if (req.readyState === 4) {
-                    document.title = "REST Console - " + window.location;
+                    document.title = "REST Console - " + addressbar.value;
                     response.classList.remove("loading");
                     if (Math.floor(req.status / 100) === 2) {
                         response.classList.remove("error");
                         response.textContent = req.responseText;
-                        enhanceResponse(req);
+                        if (req.responseText.length < 1000000) {
+                            enhanceResponse(req);
+                        }
                     } else {
                         response.classList.add("error");
                         if (req.statusText) {
@@ -313,17 +332,25 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         }
 
         function interceptLinks (evt) {
-            if (evt.target.nodeName === "A") {
+            if (evt.target.nodeName === "A" && !evt.ctrlKey) {
                 evt.preventDefault();
                 addressbar.value = evt.target.href;
                 sendRequest({ forceget: true });
             }
         }
 
+        function updateAddressBar() {
+            if (window.location.hash) {
+                addressbar.value = window.location.hash.substr(1);
+            } else {
+                addressbar.value = window.location;
+            }
+        }
+
         // add event listeners
 
         window.addEventListener("popstate", function(e) {
-            addressbar.value = window.location;
+            updateAddressBar();
             sendRequest({ forceget: true, poppingState: true });
         });        
 
@@ -356,10 +383,12 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
         // do immediately on load
 
-        addressbar.value = window.location;
+        updateAddressBar();
         updateCombo({ target: methodSelect });
         updateCombo({ target: ctypeSelect });
         sendRequest({ forceget: true });
+
+        
 
     });
 })();
