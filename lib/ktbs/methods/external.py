@@ -88,8 +88,9 @@ class _ExternalMethod(IMethod):
         command_line = parameters["command-line"] % parameters
         if parameters.get("feed-to-stdin"):
             stdin = PIPE
-            stdin_data = sources[0].obsel_collection.get_state({"quick":1}) \
-                .serialize(format=rdfformat, encoding="utf-8")
+            stdin_data = (sources[0].obsel_collection
+                          .get_state({"refresh":"no"})
+                          .serialize(format=rdfformat, encoding="utf-8"))
         else:
             stdin = None
             stdin_data = None

@@ -186,7 +186,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # is provided, and http_server does not require dynamic graphs, so...
 
         if (not parameters # empty dict is equivalent to no dict
-            or "quick" in parameters and len(parameters) == 1): 
+            or "refresh" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, "get_state")
@@ -246,14 +246,19 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         if parameters is not None \
         and method in ("get_state", "force_state_refresh"):
             for key, val in parameters.items():
-                if key in ("minb", "maxb", "mine", "maxe", "limit"):
+                if key in ("minb", "maxb", "mine", "maxe", "limit",):
                     try:
                         parameters[key] = int(val)
                     except ValueError:
                         raise InvalidParametersError("%s should be an integer"
                                                      "(got %s" % (key, val))
-                elif key in ("quick"):
-                    pass
+                elif key == "refresh":
+                    if val not in _REFRESH_VALUES:
+                        raise InvalidParametersError("Invalid value for"
+                                                     "'refresh' (%s)" % val)
+                elif key == "quick":
+                    raise InvalidParameterError("Deprecated parameter 'quick',"
+                                                "use refresh=no instead")
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
                                                  % key)
@@ -424,11 +429,10 @@ class ComputedTraceObsels(AbstractTraceObsels):
     def get_state(self, parameters=None):
         """I override `~rdfrest.cores.ICore.get_state`:meth:
 
-        I support parameter 'quick' to bypass the updating of the obsels.
+        I support parameter 'refresh' to bypass the updating of the obsels,
+        or force a recomputation of the trace.
         """
-        quick = (parameters and "quick" in parameters) # even with empty value
-        if not quick:
-            self.force_state_refresh(parameters)
+        self.force_state_refresh(parameters)
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
@@ -436,7 +440,9 @@ class ComputedTraceObsels(AbstractTraceObsels):
 
         I recompute the obsels if needed.
         """
-        if self.__forcing_state_refresh:
+        refresh_param = (_REFRESH_VALUES[parameters.get("refresh")]
+                         if parameters else 1)
+        if refresh_param == 0 or self.__forcing_state_refresh:
             return
         self.__forcing_state_refresh = True
         try:
@@ -445,7 +451,9 @@ class ComputedTraceObsels(AbstractTraceObsels):
             trace = self.trace
             for src in trace.iter_source_traces():
                 src.obsel_collection.force_state_refresh(parameters)
-            if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+            if (self.metadata.value(self.uri, METADATA.dirty, None) is not None
+                or refresh_param >= 2):
+
                 LOG.info("recomputing <%s>", self.uri)
                 # we *first* unset the dirty bit, so that recursive calls to
                 # get_state do not result in an infinite recursion
@@ -483,3 +491,12 @@ class ComputedTraceObsels(AbstractTraceObsels):
             trace_uri = editable.value(None, KTBS.hasObselCollection, self.uri)
             editable.remove((None, None, None))
             self.init_graph(editable, self.uri, trace_uri)
+
+_REFRESH_VALUES = {
+    "no": 0,
+    "default": 1,
+    "yes": 2,
+    "force": 2,
+    "recursive": 3,
+    None: 1,
+}

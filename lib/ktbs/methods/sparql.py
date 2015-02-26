@@ -66,7 +66,9 @@ class _SparqlMethod(IMethod):
 
         try:
             sparql = parameters["sparql"] % parameters
-            result = source.obsel_collection.get_state({"quick":1}).query(sparql).graph
+            result = (source.obsel_collection
+                      .get_state({"refresh":"no"})
+                      .query(sparql).graph)
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except KeyError, exc:
             diag.append(str(exc))

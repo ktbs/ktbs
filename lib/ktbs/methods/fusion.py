@@ -127,8 +127,8 @@ class _FusionMethod(IMethod):
             target_add = editable.add
             for src in computed_trace.source_traces:
                 src_uri = src.uri
-                src_triples = src.obsel_collection.get_state({"quick":1}).triples
-                for obs in src.iter_obsels(begin=last_seens.get(src_uri), quick=True):
+                src_triples = src.obsel_collection.get_state({"refresh":"no"}).triples
+                for obs in src.iter_obsels(begin=last_seens.get(src_uri), refresh="no"):
                     last_seens[src_uri] = obs.begin
 
                     new_obs_uri = translate_node(obs.uri, computed_trace,

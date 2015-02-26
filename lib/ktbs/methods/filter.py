@@ -153,7 +153,7 @@ class _FilterMethod(IMethod):
             target_contains = editable.__contains__
             target_add = editable.add
 
-            for obs in source.iter_obsels(begin=begin, bgp=bgp, quick=True):
+            for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
                 cstate["last_seen"] = obs.begin
                 if after  and  obs.begin < after:
                     LOG.debug("--- dropping %s", obs)
