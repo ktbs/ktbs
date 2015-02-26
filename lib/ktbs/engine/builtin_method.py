@@ -65,7 +65,7 @@ class _FakeMethod(IMethod):
         """
         return self.diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`..method.interface.IMethod.compute_obsels`.
         """
         return self.diag

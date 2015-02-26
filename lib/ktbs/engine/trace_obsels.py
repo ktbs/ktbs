@@ -460,7 +460,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
                 self.metadata.remove((self.uri, METADATA.dirty, None))
                 trace.force_state_refresh()
                 impl = trace._method_impl # friend #pylint: disable=W0212
-                diag = impl.compute_obsels(trace)
+                diag = impl.compute_obsels(trace, refresh_param >= 2)
                 if not diag:
                     self.metadata.set((self.uri, METADATA.dirty,
                                           Literal("yes")))

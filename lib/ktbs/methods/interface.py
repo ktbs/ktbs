@@ -39,10 +39,12 @@ class IMethod(object):
         """
         raise NotImplementedError
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I update the obsels of the given computed trace
 
         :param computed_trace: a :class:`..engine.trace.ComputedTrace`
+        :param from_scratch: force a complete recalculation,
+                             regardless of the state of the sources
 
         :rtype: :class:`rdfrest.util.Diagnosis`
 

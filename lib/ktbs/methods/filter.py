@@ -49,6 +49,7 @@ class _FilterMethod(IMethod):
                    "before": None,
                    "after": None,
                    "otypes": None,
+                   "bgp": None,
                    "finished": False,
                    "last_seen": None,
                    "log_mon_tag": None,
@@ -102,13 +103,16 @@ class _FilterMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("filter.compute_obsels")
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
+        if from_scratch:
+            for key in ("finished", "last_seen", "log_mon_tag", "str_mon_tag"):
+                cstate[key] = None
         errors = cstate.get("errors")
         if errors:
             for i in errors:

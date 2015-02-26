@@ -89,13 +89,16 @@ class _FusionMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("fusion.compute_obsels")
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
+        if from_scratch:
+            for key in ("last_seens", "old_log_mon_tags"):
+                cstate[key] = {}
         errors = cstate.get("errors")
         if errors:
             for i in errors:

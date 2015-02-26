@@ -54,7 +54,7 @@ class _SparqlMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("sparql.compute_obsels")
