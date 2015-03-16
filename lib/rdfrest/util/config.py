@@ -182,6 +182,16 @@ def apply_logging_config(service_config):
                 loggingConfig['handlers']['filelog']['level'] = service_config.get('logging', 'file-level', 1)
                 loglevels.append(loggingConfig['handlers']['filelog']['level'])
 
+        if service_config.has_option('logging', 'ktbs-logurl') and \
+           len(service_config.get('logging', 'ktbs-logurl', 1)) > 0:
+            # Add a 'kTBS log handler'
+            loggingConfig['handlers']['ktbslog'] = {}
+            loggingConfig['handlers']['ktbslog']['class'] = 'rdfrest.util.ktbsloghandler.kTBSHandler'
+            loggingConfig['handlers']['ktbslog']['url'] =  service_config.get('logging', 'ktbs-logurl', 1)
+            if service_config.has_option('logging', 'ktbs-level'):
+                loggingConfig['handlers']['ktbslog']['level'] = service_config.get('logging', 'ktbs-level', 1)
+                loglevels.append(loggingConfig['handlers']['ktbslog']['level'])
+
     if loggingConfig.has_key('loggers'):
         for logger in loggingConfig['loggers'].keys():
             loggingConfig['loggers'][logger]['level'] = min(loglevels)
@@ -189,12 +199,17 @@ def apply_logging_config(service_config):
             if loggingConfig['handlers'].has_key('filelog'):
                 loggingConfig['loggers'][logger]['handlers'].append('filelog')
 
+            if loggingConfig['handlers'].has_key('ktbslog'):
+                loggingConfig['loggers'][logger]['handlers'].append('ktbslog')
+
     if loggingConfig.has_key('root'):
         loggingConfig['root']['level'] = min(loglevels)
 
         if loggingConfig['handlers'].has_key('filelog'):
             loggingConfig['root']['handlers'].append('filelog')
 
+        if loggingConfig['handlers'].has_key('ktbslog'):
+            loggingConfig['root'][logger]['handlers'].append('ktbslog')
     try:
         # Load config
         logging.config.dictConfig(loggingConfig)
