@@ -158,7 +158,7 @@ class HttpFrontend(object):
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
             resp = self.issue_error(405, request, resource,
-                                    allow="HEAD, GET, PUT, POST, DELETE")
+                                    allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
         try:
             with self._service:
@@ -229,14 +229,18 @@ class HttpFrontend(object):
                            or "*" in self.cors_allow_origin):
                 response.headerlist.extend([
                     ("access-control-allow-origin", origin),
-                    ("access-control-allow-methods",
-                     "GET, HEAD, PUT, POST, DELETE"),
                     ("access-control-allow-credentials", "true"),
+                    ("access-control-expose-headers", "etag"),
                 ])
-                acrh = request.headers.get("access-control-request-headers")
-                if acrh:
+                if request.method.lower() == "options":
                     response.headerlist.append(
-                        ("access-control-allow-headers", acrh),
+                        ("access-control-allow-methods",
+                         "GET, HEAD, PUT, POST, DELETE")
+                    )
+                    acrh = request.headers.get("access-control-request-headers")
+                    if acrh:
+                        response.headerlist.append(
+                            ("access-control-allow-headers", acrh)
                         )
             
         return response(environ, start_response)
