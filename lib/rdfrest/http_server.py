@@ -476,6 +476,20 @@ class SparqlHttpFrontend(HttpFrontend):
 
     POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
 
+    SELECT_CTYPES = {
+        "application/sparql-results+json": "json",
+        "application/sparql-results+xml": "xml",
+        "text/csv": "csv",
+        #"text/tab-separated-values": "tsv", ## NOT IMPLEMENTED YET in rdflib
+    }
+
+    CONSTRUCT_CTYPES = [
+        "text/turtle",
+        "application/rdf+xml",
+        "application/n-triples",
+        "text/plain",
+    ]
+
     def http_get(self, request, resource):
         if request.GET.getall("query"):
             return self.handle_sparql(request, resource)
@@ -519,11 +533,15 @@ class SparqlHttpFrontend(HttpFrontend):
         result = graph.query(query)
         # TODO LATER use content negociation to decide on the output format
         if result.graph is not None:
-            serfmt = "xml"
-            ctype = "application/rdf+xml"
+            ctype = serfmt = (
+                request.accept.best_match(self.CONSTRUCT_CTYPES)
+                or "text/turtle"
+            )
         else:
-            serfmt = "json"
-            ctype = "application/sparql-results+json"
+            ctype = request.accept.best_match(self.SELECT_CTYPES)
+            if ctype is None:
+                ctype = "application/sparql-results+json"
+            serfmt = self.SELECT_CTYPES[ctype]
         return MyResponse(result.serialize(format=serfmt),
                           status="200 Ok",
                           content_type=ctype,
