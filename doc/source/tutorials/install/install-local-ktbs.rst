@@ -1,7 +1,7 @@
 Installing a local kTBS
 =======================
 
-Make sure you have read and executed :doc:`prerequisite section <../install>` instructions, i.e installed **python developer files** and **virtualenv** system packages.
+Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **python developer files** and **virtualenv** system packages.
 
 Create the Python vitual environment
 ++++++++++++++++++++++++++++++++++++
@@ -109,15 +109,15 @@ You can send HTTP requests to kTBS with the `wget <http://man7.org/linux/man-pag
 Make the trace bases persistent
 +++++++++++++++++++++++++++++++
 
-By default, kTBS stores the trace bases in memory, so they will not be retained after you stop kTBS.  To make the trace bases persistent, you need to **configure a store**. 
+By default, kTBS stores the trace bases in memory, so they will not be retained after you stop kTBS.  To make the trace bases persistent, you need to **configure a repository**. 
 
 This can be done with the ``-r`` option.
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs -r <storename>
+    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs -r <dirname>
 
-A directory named ``<storename>`` will be used to store the trace bases; if it does not exist, it will be automatically created and initialized.
+A directory named ``<dirname>`` will be used to store the trace bases; if it does not exist, it will be automatically created and initialized.
 
 .. note::
 
@@ -153,6 +153,7 @@ There are a number of other options for configuring kTBS; to display them with t
       Advanced options:
       ...
 
+.. _ktbs-configuration-file:
 
 kTBS configuration file
 +++++++++++++++++++++++
@@ -167,9 +168,6 @@ Here is kTBS configuration file example that you find in kTBS source code [3]_.
 
 .. literalinclude:: ../../../../examples/conf/ktbs.conf
     :language: ini
-
-.. [#] a tutorial for installing Python and Virtualenv on Windows is available
-       at http://www.tylerbutler.com/2012/05/how-to-install-python-pip-and-virtualenv-on-windows-with-powershell/
 
 .. [1] Python Package Installer
 

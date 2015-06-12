@@ -1,31 +1,84 @@
 Installing kTBS behing an Apache HTTP server
 ============================================
 
-kTBS can be used behing an Apache HTTP server; this has a number of advantages:
+kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 
-* kTBS does not have to listen on a separate port;
-* Apache takes care or running/restarting kTBS when needed;
-* kTBS can benefit from the functionalities provided by Apache modules, for example HTTPS support or user authentication.
+* kTBS does not have to listen on a separate port
+* Apache takes care or running/restarting kTBS when needed
+* kTBS can benefit from the functionalities provided by Apache modules, for example **HTTPS support** or **user authentication**
 
-To communicate with Apache, kTBS uses the WSGI_ protocol, so you need to install the corresponding Apache module.
+To communicate with Apache, kTBS uses the WSGI_ interface, so you need to install the corresponding Apache module : `mod_wsgi <https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide>`_.
+
+Python Web Server Gateway Interface (WSGI)
+++++++++++++++++++++++++++++++++++++++++++
+
+The Python Web Server Gateway Interface (WSGI) is a Python **standard** which proposes a simple and universal interface between web servers and web applications or frameworks.
+
+.. image:: server-app.png
+
+*Image from Ian Bicking "WSGI a series of tubes" presentation*
+
+Installing and configuring Apache mod_wsgi
+++++++++++++++++++++++++++++++++++++++++++
+
+Installing mod_wsgi
+~~~~~~~~~~~~~~~~~~~
+
+The simplest way is to use the system package manager.
 
 .. code-block:: bash
 
     $ sudo apt-get install libapache2-mod-wsgi
 
-You also need to write a dedicated WSGI script that Apache will be able to call (this is nothing but a Python script, declaring a function called ``application`` complying with the WSGI interface). An example of such a script is provided in the kTBS source tree at ``examples/wsgi/application.wsgi``. It is also available `online <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi>`_. You must copy it together with its companion file `application.wsgi.conf <https://raw.github.com/ktbs/ktbs/develop/examples/wsgi/application.wsgi.conf>`_ which you need to adapt to your own configuration.
+.. Note::
 
-Then, you need to change the apache configuration file; this would typically be ``/etc/apache2/sites-available/default`` or ``/etc/apache2/sites-available/default-ssl``. Those changes are twofold.
+    When using the module packaged in the system, it is linked to a given Python version but it does not matter for the current version of kTBS.
 
-Just before the line ``</VirtualHost>`` add the following lines:
+    This limitation can be solved using the new `mod_wsgi-express <http://blog.dscpl.com.au/2015/04/introducing-modwsgi-express.html>`_ project.
+ 
+Creating a kTBS WSGI application interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Apache needs to be able to **call kTBS** through a `WSGI application interface <http://webpython.codepoint.net/wsgi_application_interface>`_ that can be just a **Python script** declaring a function called ``application`` which must be compliant to this specified interface.
+
+The following example script is provided in the kTBS source tree [1]_ at ``examples/wsgi/application.wsgi``.
+
+.. literalinclude:: ../../../../examples/wsgi/application.wsgi
+    :language: python
+    :emphasize-lines: 22,30
+
+This script makes use of a :ref:`ktbs-configuration-file` as the following one which is also provided in the kTBS source tree [1]_ at ``examples/wsgi/application.wsgi.conf``. Don't forget to adapt it to your own configuration.
+
+.. literalinclude:: ../../../../examples/wsgi/application.wsgi.conf
+    :language: ini
+
+.. warning::
+
+    The WSGI application will be run **as the user that Apache runs as**. As such, the user that Apache runs as **must have read access** to both the WSGI application script file and all the parent directories that contain it [2]_.
+
+Configuring Apache 
+~~~~~~~~~~~~~~~~~~
+
+Once the WSGI application interface script is done, you need to add some mod_wsgi directives to Apache configuration files.
+
+On Debian-Ubuntu, this would typically be in ``/etc/apache2/sites-available/default`` or ``/etc/apache2/sites-available/default-ssl`` for https configuration. *Those changes are twofold*.
+
+For a server configuration, we have assumed that you installed kTBS in ``/opt`` folder
+
+Inside the VirtualHost configuration, add the following lines :
 
 .. code-block:: apache
 
-    <IfModule mod_wsgi.c>
-        WSGIScriptAlias /ktbs /home/user/ktbs-env/application.wsgi
-        WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/home/user/ktbs-env/ktbs/lib
-        WSGIProcessGroup myktbs
-    </IfModule>
+    <VirtualHost *:80>
+
+        <IfModule mod_wsgi.c>
+            WSGIScriptAlias /ktbs /opt/ktbs-env/application.wsgi
+            WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/opt/ktbs-env/ktbs/lib
+            WSGIProcessGroup myktbs
+        </IfModule>
+
+    </VirtualHost>
+
 
 and at the end of the file (you can adjust the number of threads to your needs), add the following lines:
 
@@ -50,7 +103,7 @@ The configuration above may require some adaptation. Specifically, it assumes th
     (in two places).
     This is only required if you installed kTBS from GitHub, but it does no harm if you installed it from PyPI.
 
-For more information on the WSGI directives, see the `mod_wsgi documentation <https://code.google.com/p/modwsgi/wiki/ConfigurationGuidelines>`_.
+For a detailed information on the WSGI directives, please refer to the mod_wsgi documentation [2]_.
 
 Restricting access to kTBS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -125,4 +178,8 @@ Note that, whenever you want to use HTTP authentication with such a plugin, you 
 
 .. [#] the protocol, server name and port number depend on the enclosing ``VirtualHost`` directive
 
-.. _WSGI: http://wsgi.org/
+.. _WSGI: http://webpython.codepoint.net/wsgi_tutorial
+
+.. [1] https://github.com/ktbs/ktbs
+
+.. [2] https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide
