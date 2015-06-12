@@ -4,9 +4,9 @@
 """Runs kTBS behind a WSGI-enabled HTTP server.
 
 This file MUST be accompanied, in the same directory,
-by a file with the same name plus the ".ini" extension.
+by a file with the same name plus the ".conf" extension.
 
-All configuration happens in the .ini file,
+All configuration happens in the .conf file,
 you should normally not have to modify this file (the .wsgi file).
 """
 

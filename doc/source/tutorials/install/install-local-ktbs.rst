@@ -3,6 +3,8 @@ Installing a local kTBS
 
 Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **python developer files** and **virtualenv** system packages.
 
+.. _create-python-virtual_env:
+
 Create the Python vitual environment
 ++++++++++++++++++++++++++++++++++++
 

@@ -32,12 +32,6 @@ We also advise you to use virtualenv_, this tool creates an isolated Python envi
 
     $ sudo apt-get install python-virtualenv 
 
-.. TODO::
-
-    Explain how to:
-
-    * configure several kTBS in the same VirtualHost.
-
 .. rubric:: Notes
 
 .. [#] a tutorial for installing Python and Virtualenv on Windows is available

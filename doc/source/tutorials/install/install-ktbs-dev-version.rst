@@ -14,7 +14,7 @@ The source code of kTBS is hosted on GitHub_.  This allows you to get the latest
 
     $ sudo apt-get install git
 
-Also look at :doc:`Installing a local kTBS <install-local-ktbs>` for a detailed explanation on how to create your isolated Python virtual environment.
+Also look for a detailed explanation on how to :ref:`create a Python virtual environment <create-python-virtual_env>`.
 
 Installing kTBS
 +++++++++++++++
