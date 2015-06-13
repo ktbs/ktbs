@@ -25,7 +25,7 @@ from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
 from rdfrest.util.config import apply_global_config
-from rdfrest.http_server import SparqlHttpFrontend
+from rdfrest.http_server import HttpFrontend
 from .config import get_ktbs_configuration
 
 
@@ -53,7 +53,7 @@ def main():
     ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())
 
-    application = SparqlHttpFrontend(ktbs_service, ktbs_config)
+    application = HttpFrontend(ktbs_service, ktbs_config)
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)

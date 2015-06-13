@@ -488,85 +488,6 @@ Service info
         res = MyResponse(body, status, kw.items())
         return res
 
-class SparqlHttpFrontend(HttpFrontend):
-    """
-    I derive :class:`HttpFrontend` by adding support for the SPARQL protocol.
-    """
-
-    POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
-
-    SELECT_CTYPES = {
-        "application/sparql-results+json": "json",
-        "application/sparql-results+xml": "xml",
-        "text/csv": "csv",
-        #"text/tab-separated-values": "tsv", ## NOT IMPLEMENTED YET in rdflib
-    }
-
-    CONSTRUCT_CTYPES = [
-        "text/turtle",
-        "application/rdf+xml",
-        "application/n-triples",
-        "text/plain",
-    ]
-
-    def http_get(self, request, resource):
-        if request.GET.getall("query"):
-            return self.handle_sparql(request, resource)
-        else:
-            return super(SparqlHttpFrontend, self).http_get(request, resource)
-
-    def http_post(self, request, resource):
-        if request.content_type in self.POST_CTYPES:
-            return self.handle_sparql(request, resource)
-        else:
-            return super(SparqlHttpFrontend, self).http_post(request, resource)
-
-    def handle_sparql(self, request, resource):
-        """
-        I handle a SPARQL request
-        """
-        if request.method == "GET" \
-        or request.content_type == "application/sparql-query":
-            params = request.GET
-        else:
-            params = request.POST
-        default_graph_uri = params.getall("default-graph-uri")
-        named_graph_uri = params.getall("named-graph-uri")
-
-        if request.content_type != "application/sparql-query":
-            lst = params.getall("query")
-            if len(lst) == 0:
-                # NB: not rejecting several queries, because some services
-                # provide the same query several times (YASGUI)
-                return MyResponse("400 Bad Request\nQuery not provided",
-                                  status="400 Bad Request",
-                                  request=request)
-            query = lst[0]
-        else:
-            query = request.body
-
-        # TODO LATER do something with default_graph_uri and named_graph_uri ?
-
-        resource.force_state_refresh()
-        graph = resource.get_state()
-        result = graph.query(query)
-        # TODO LATER use content negociation to decide on the output format
-        if result.graph is not None:
-            ctype = serfmt = (
-                request.accept.best_match(self.CONSTRUCT_CTYPES)
-                or "text/turtle"
-            )
-        else:
-            ctype = request.accept.best_match(self.SELECT_CTYPES)
-            if ctype is None:
-                ctype = "application/sparql-results+json"
-            serfmt = self.SELECT_CTYPES[ctype]
-        return MyResponse(result.serialize(format=serfmt),
-                          status="200 Ok",
-                          content_type=ctype,
-                          request=request)
-
-
 
 def taint_etag(etag, ctype):
     """I taint etag with the given content-type.
@@ -669,6 +590,14 @@ def register_middleware(level, middleware, quiet=False):
     """
     Register a middleware for HTTP requests.
 
+    In addition to standard WSGI entries,
+    the ``environ`` passed to middlewares will include:
+
+    * ``rdfrest.resource``: the requested resource; may be None
+    * ``rdfrest.requested.uri``: the URI (as an ``rdflib.URIRef``)
+      requested by the client, without its extension (see below)
+    * ``rdfrest.requested.extension``: the requested extension; may be ``""``
+
     :param level: a level governing the order of execution of pre-processors;
       predefined levels are AUTHENTICATION, AUTHORIZATION
 
@@ -689,7 +618,7 @@ def unregister_middleware(middleware, quiet=False):
     Unregister a middleware for HTTP requests.
     """
     for i, pair in enumerate(_MIDDLEWARE_REGISTRY):
-        if pair[1] == preproc:
+        if pair[1] == middleware:
             del _MIDDLEWARE_REGISTRY[i]
             global _MIDDLEWARE_STACK_VERSION
             _MIDDLEWARE_STACK_VERSION += 1
@@ -739,6 +668,8 @@ def unregister_pre_processor(preproc, quiet=False):
     if not quiet:
         raise ValueError("pre-processor not registered")
 
-SESSION = 0
-AUTHENTICATION = 200
-AUTHORIZATION = 400
+TOP = 0
+SESSION = 200
+AUTHENTICATION = 400
+AUTHORIZATION = 600
+BOTTOM = 800
