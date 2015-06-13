@@ -129,6 +129,13 @@ class HttpFrontend(object):
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
         """
+        requested_uri, requested_extension = extsplit(Request(environ).path_url)
+        requested_uri = URIRef(requested_uri)
+        resource = self._service.get(requested_uri)
+        environ['rdfrest.requested.uri'] = requested_uri
+        environ['rdfrest.requested.extension'] = requested_extension
+        environ['rdfrest.resource'] = resource
+
         if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
             self._middleware_stack = build_middleware_stack(self._core_call)
             self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
@@ -145,9 +152,10 @@ class HttpFrontend(object):
         :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
         request = MyRequest(environ)
-        resource_uri, request.uri_extension = extsplit(request.path_url)
-        resource_uri = URIRef(resource_uri)
-        resource = self._service.get(resource_uri)
+        resource = environ['rdfrest.resource']
+        resource_uri = environ['rdfrest.requested.uri']
+        request.uri_extension = environ['rdfrest.requested.extension']
+
         if resource is None:
             resp = self.issue_error(404, request, None)
             return resp(environ, start_response)
