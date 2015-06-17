@@ -126,7 +126,9 @@ def parse_configuration_options(options=None):
             config.set('server', 'max-triples', str(options.max_triples))
 
         if options.cors_allow_origin is not None:
-            config.set('server', 'cors-allow-origin', str(options.cors_allow_origin))
+            if "cors" not in config.sections():
+                config.add_section("cors")
+            config.set('cors', 'allow-origin', str(options.cors_allow_origin))
 
         if options.force_init is not None:
             config.set('rdf_database', 'force-init', 'true')
@@ -182,7 +184,7 @@ def build_cmdline_options():
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
-                   help="space separated list of allowed origins")
+                   help="space separated list of allowed origins (requires the cors plugin)")
     ogr.add_option("--force-init", action="store_true",
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)

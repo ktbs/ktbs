@@ -116,11 +116,6 @@ class HttpFrontend(object):
         else:
             self.max_triples = None
 
-        #self.cors_allow_origin = set(
-        #    options.pop("cors_allow_origin", "").split(" ")
-        #    )
-        self.cors_allow_origin = service_config.get('server', 'cors-allow-origin', 1).split(" ")
-
         # HttpFrondend does not receive a dictionary any more
         # Other options should be explicitely set
         #self._options = options or {}
@@ -139,6 +134,7 @@ class HttpFrontend(object):
         if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
             self._middleware_stack = build_middleware_stack(self._core_call)
             self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+
         return self._middleware_stack(environ, start_response)
 
     def _core_call(self, environ, start_response):
@@ -228,26 +224,6 @@ class HttpFrontend(object):
                                   status=status,
                                   request=request)
 
-        if self.cors_allow_origin:
-            origin = request.headers.get("origin")
-            if origin and (origin in self.cors_allow_origin
-                           or "*" in self.cors_allow_origin):
-                response.headerlist.extend([
-                    ("access-control-allow-origin", origin),
-                    ("access-control-allow-credentials", "true"),
-                    ("access-control-expose-headers", "etag"),
-                ])
-                if request.method.lower() == "options":
-                    response.headerlist.append(
-                        ("access-control-allow-methods",
-                         "GET, HEAD, PUT, POST, DELETE")
-                    )
-                    acrh = request.headers.get("access-control-request-headers")
-                    if acrh:
-                        response.headerlist.append(
-                            ("access-control-allow-headers", acrh)
-                        )
-            
         return response(environ, start_response)
 
     def http_delete(self, request, resource):
