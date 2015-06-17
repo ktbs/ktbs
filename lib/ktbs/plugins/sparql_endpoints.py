@@ -35,13 +35,13 @@ class SparqlEndpointMiddleware(object):
     POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
 
     ASK_CTYPES = {
-        "application/sparql-results+json": "json",
         "application/sparql-results+xml": "xml",
+        "application/sparql-results+json": "json",
     }
 
     SELECT_CTYPES = {
-        "application/sparql-results+json": "json",
         "application/sparql-results+xml": "xml",
+        "application/sparql-results+json": "json",
         "text/csv": "csv",
         #"text/tab-separated-values": "tsv", ## NOT IMPLEMENTED YET in rdflib
     }
