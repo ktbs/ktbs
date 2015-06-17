@@ -228,9 +228,6 @@ class HttpFrontend(object):
                                   status=status,
                                   request=request)
 
-        cache_control = self.cache_control(resource)
-        if cache_control:
-            response.cache_control = cache_control
         if self.cors_allow_origin:
             origin = request.headers.get("origin")
             if origin and (origin in self.cors_allow_origin
@@ -333,7 +330,14 @@ class HttpFrontend(object):
                                         % self.max_bytes )
             app_iter = [payload]
 
-        return MyResponse(headerlist=headerlist, app_iter=app_iter)
+        response = MyResponse(headerlist=headerlist, app_iter=app_iter)
+        
+        cache_control = self.cache_control(resource)
+        if cache_control:
+            response.cache_control = cache_control
+
+        return response
+            
 
     def http_head(self, request, resource):
         """Process a HEAD request on the given resource.
