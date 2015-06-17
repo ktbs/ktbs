@@ -28,7 +28,7 @@ from rdfrest.http_server import \
 import os
 from webob import Request
 
-class SparqlEndpointWrapper(object):
+class SparqlEndpointMiddleware(object):
     #pylint: disable=R0903
     #  too few public methods
 
@@ -119,8 +119,8 @@ class SparqlEndpointWrapper(object):
                           request=request)
 
 def start_plugin(_config):
-    register_middleware(BOTTOM, SparqlEndpointWrapper)
+    register_middleware(BOTTOM, SparqlEndpointMiddleware)
 
 
 def stop_plugin():
-    unregister_middleware(SparqlEndpointWrapper)
+    unregister_middleware(SparqlEndpointMiddleware)
