@@ -233,7 +233,7 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 autodoc_member_order='bysource'
 
 # this is work in progress; let the TODOs show
-todo_include_todos=True
+todo_include_todos=False
 
 # -- ReadTheDocs specific ------------------------------------------------------
 
