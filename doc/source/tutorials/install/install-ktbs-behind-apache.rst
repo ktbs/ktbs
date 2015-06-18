@@ -199,6 +199,13 @@ Replace the ``WSGIScriptAlias`` WSGI directive to point to this ``hello.wsgi`` s
 
         ...
 
+Invalid data in the repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It may take some steps to tune kTBS configuration as you want (changing port, base-url, ...) and this may lead to store invalid data to kTBS repository if configured.
+
+In that case try to remove the created repository, kTBS will create a new one.
+
 Do not use mod_python and mod_wsgi on the same server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

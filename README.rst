@@ -27,6 +27,8 @@ Documentation
 =============
 
 .. image:: https://readthedocs.org/projects/kernel-for-trace-based-systems/badge/?version=latest
+    :target: https://readthedocs.org/projects/kernel-for-trace-based-systems/?badge=latest
+    :alt: Documentation Status
 
 Tests
 =====
