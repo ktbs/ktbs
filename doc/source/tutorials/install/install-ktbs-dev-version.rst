@@ -6,7 +6,7 @@ Instead of installing a stable kTBS version from the **PyPI** repository, you ma
 Prerequisites
 +++++++++++++
 
-Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **python developer files** and **virtualenv** system packages.
+Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **gcc**, **python developer files** and **virtualenv** system packages.
 
 The source code of kTBS is hosted on GitHub_.  This allows you to get the latest developer version.  For this, you need to have `Git <http://git-scm.com/>`_ installed; if you don't, type.
 

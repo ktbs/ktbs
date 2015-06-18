@@ -81,7 +81,7 @@ You stop kTBS with ``Ctrl-C``.
 REST console
 ~~~~~~~~~~~~
 
-Enter the kTBS root URL in a browser and use the built-in web interface to interact with kTBS.
+Enter the kTBS root URL in a browser and use the built-in web interface, named *REST console*,  to interact with kTBS.
 
 .. image:: ktbs-rest-console.png
 
@@ -95,6 +95,26 @@ You can send HTTP requests to kTBS with the `wget <http://man7.org/linux/man-pag
 
     $ wget -qO- --header="Accept: text/turtle" http://localhost:8001/
 
+    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+    @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+    @prefix xml: <http://www.w3.org/XML/1998/namespace> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <> a :KtbsRoot ;
+        :hasBuiltinMethod :external,
+            :filter,
+            :fusion,
+            :sparql ;
+        :hasVersion "0.3" .
+
+The same request with curl :
+
+.. code-block:: bash
+    :emphasize-lines: 1
+
+    $ curl -H "Accept: text/turtle" http://localhost:8001/
+    @prefix : <http://liris.cnrs.fr/silex/2009/ktbs#> .
     @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
     @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
     @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
