@@ -35,8 +35,8 @@ The simplest way is to use the system package manager, the module is automatical
 
     When using the module packaged in the system, it is linked to a given Python version but it does not matter for the current version of kTBS. This limitation can be solved using the new `mod_wsgi-express <http://blog.dscpl.com.au/2015/04/introducing-modwsgi-express.html>`_ project.
  
-Creating a kTBS WSGI application interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Setting up a kTBS WSGI application interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Apache needs to be able to **call kTBS** through a `WSGI application interface`_ - that is just a **Python script** declaring a function called ``application`` which must be compliant to this specified interface.
 
@@ -55,7 +55,7 @@ A configuration file example is provided in the kTBS source tree [2]_ at ``examp
 
 .. warning::
 
-    The WSGI application will be run **as the user that Apache runs as**. As such, the user that Apache runs as **must have read access** to both the WSGI application script file and all the parent directories that contain it [3]_.
+    The WSGI application will be run **as the user that Apache runs as**. As such, the user that Apache runs as **must have read access** to the WSGI application script file, to all the parent directories that contain it and to the rdf database [3]_.
 
 Configuring Apache 
 ~~~~~~~~~~~~~~~~~~
@@ -76,7 +76,7 @@ For a server configuration, we strongly advise you to use the ``/opt`` folder in
 
     <IfModule mod_wsgi.c>
         WSGIScriptAlias /ktbs /opt/ktbs-env/application.wsgi
-        WSGIDaemonProcess myktbs processes=1 threads=2 display-name=myktbs python-path=/opt/ktbs-env/ktbs/lib
+        WSGIDaemonProcess myktbs processes=1 threads=2 display-name=myktbs python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages
         WSGIProcessGroup myktbs
     </IfModule>
 
@@ -86,7 +86,6 @@ and at the end of the file, **outside the** ``<VirtualHost xxx>`` **Apache direc
 
     <IfModule mod_wsgi.c>
         WSGIPythonHome /opt/ktbs-env
-        WSGIPythonPath /opt/ktbs-env/ktbs/lib
     </IfModule>
 
 The configuration above may require some adaptation :
@@ -103,12 +102,6 @@ The configuration above may require some adaptation :
 - It assumes that your Python virtual environment is in ``/opt/ktbs-env``; if it has a different name, change all occurences of that path accordingly
 
 For a detailed information on the WSGI directives, please refer to the mod_wsgi documentation [4]_.
-
-.. note::
-
-    In the apache configuration above, the directory ``/opt/ktbs-env/ktbs/lib`` is added to the python path
-    (in two places).
-    This is only required if you installed kTBS from GitHub, but it does no harm if you installed it from PyPI.
 
 Restricting access to kTBS
 ++++++++++++++++++++++++++
@@ -192,15 +185,19 @@ Use the basic ``examples/wsgi/hello.wsgi`` script provided in the kTBS source tr
 Replace the ``WSGIScriptAlias`` WSGI directive to point to this ``hello.wsgi`` script.
 
 .. code-block:: apache
-    :emphasize-lines: 4
+    :emphasize-lines: 6
 
     <VirtualHost *:80>
 
+        ...
+
         <IfModule mod_wsgi.c>
             WSGIScriptAlias /ktbs /opt/ktbs-env/hello.wsgi
-            WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/opt/ktbs-env/ktbs/lib
+            WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages
             WSGIProcessGroup myktbs
         </IfModule>
+
+        ...
 
 Do not use mod_python and mod_wsgi on the same server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
