@@ -28,6 +28,7 @@ from rdfrest.util.config import apply_global_config
 from rdfrest.http_server import HttpFrontend
 from .config import get_ktbs_configuration
 
+from os import getpid
 
 #from .namespace import KTBS
 from .engine.service import KtbsService
@@ -49,6 +50,8 @@ def main():
 
     ktbs_config.set("logging", "loggers", "rdfrest ktbs");
     apply_global_config(ktbs_config)
+
+    LOG.info("KTBS pid: %d" % getpid())
 
     ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())

@@ -23,6 +23,11 @@ See the tutorial_.
 
 .. _tutorial: https://kernel-for-trace-based-systems.readthedocs.org/en/latest/tutorials/install.html
 
+Documentation
+=============
+
+.. image:: https://readthedocs.org/projects/kernel-for-trace-based-systems/badge/?version=latest
+
 Tests
 =====
 
