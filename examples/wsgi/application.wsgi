@@ -15,7 +15,7 @@ import atexit
 
 from ktbs.engine.service import get_ktbs_configuration, KtbsService
 from rdfrest.util.config import apply_global_config
-from rdfrest.http_server import SparqlHttpFrontend
+from rdfrest.http_server import HttpFrontend
 
 
 ktbs_config_path = __file__ + ".conf"
@@ -25,7 +25,5 @@ apply_global_config(ktbs_config)
 ktbs_service = KtbsService(ktbs_config)
 atexit.register(lambda: ktbs_service.store.close())
 
-#application = HttpFrontend(ktbs_service, ktbs_config)
-# or, if you want SPARQL support:
-application = SparqlHttpFrontend(ktbs_service, ktbs_config)
+application = HttpFrontend(ktbs_service, ktbs_config)
 

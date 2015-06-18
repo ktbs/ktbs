@@ -44,7 +44,7 @@ That script is provided in the kTBS source tree [2]_ at ``examples/wsgi/applicat
 
 .. literalinclude:: ../../../../examples/wsgi/application.wsgi
     :language: python
-    :emphasize-lines: 22,30
+    :emphasize-lines: 22,28
 
 As indicated in the header, this script is supposed to be used **as is** and should not be modified: customization is performed through a :ref:`ktbs-configuration-file`.
 
