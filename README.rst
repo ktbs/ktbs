@@ -27,14 +27,14 @@ Documentation
 =============
 
 .. image:: https://readthedocs.org/projects/kernel-for-trace-based-systems/badge/?version=latest
-    :target: https://readthedocs.org/projects/kernel-for-trace-based-systems/?badge=latest
-    :alt: Documentation Status
+    :target: http://kernel-for-trace-based-systems.readthedocs.org/en/latest/index.html
+    :alt: Latest documentation
 
 Tests
 =====
 
 .. image:: https://travis-ci.org/ktbs/ktbs.png?branch=develop
-        :target: https://travis-ci.org/ktbs/ktbs
+    :target: https://travis-ci.org/ktbs/ktbs
 
 Licence
 =======
