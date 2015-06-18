@@ -464,8 +464,19 @@ class HttpFrontend(object):
 
         status = "%s %s" % (status, status_reasons[status])
         body = status
-        if message is None:
+        if message is not None:
             body = "%s\n%s" % (body, message)
+
+        body = """%s
+
+Service info
+  class name: %s
+  root URI  : %s
+        """ % (
+            body,
+            self._service.__class__.__name__,
+            self._service.root_uri,
+        )
         res = MyResponse(body, status, kw.items())
         return res
 
