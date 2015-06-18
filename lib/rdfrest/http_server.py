@@ -39,6 +39,10 @@ from .serializers import get_serializer_by_content_type, \
     get_serializer_by_extension, iter_serializers
 from .util import extsplit
 
+from logging import getLogger
+import traceback
+
+LOG = getLogger(__name__)
 
 class MyRequest(Request):
     """I override webob.Request by allowing weak etags.
@@ -454,6 +458,8 @@ class HttpFrontend(object):
         body = status
         if message is not None:
             body = "%s\n%s" % (body, message)
+        
+        LOG.debug("HttpFrontend.issue_error - %s\n%s\n%s\n", status, body, "\n".join(traceback.format_stack()))
 
         body = """%s
 
