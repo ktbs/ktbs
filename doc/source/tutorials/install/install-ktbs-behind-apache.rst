@@ -103,27 +103,82 @@ The configuration above may require some adaptation :
 
 For a detailed information on the WSGI directives, please refer to the mod_wsgi documentation [4]_.
 
-Restricting access to kTBS
-++++++++++++++++++++++++++
+Restricting access to kTBS with Apache
+++++++++++++++++++++++++++++++++++++++
 
-Traces can contain very sensitive information, so you will probably want to restrict access to your kTBS.  To do this, you will need to add the following section to your Apache configuration files:
+Traces can contain very sensitive information, so you will probably want to restrict access to your kTBS. To do this, you will need to add some **access control directives** to your Apache configuration files.
+
+For the following examples, we use the htpasswd_ utility provided with Apache to create (``-c``) a **password file** that will be used as source for `Apache authentication`_.
+
+.. code-block:: bash
+    :emphasize-lines: 2
+
+    $ cd /opt/ktbs-data
+    $ htpasswd -c ktbs-users jdoe
+    New password: 
+    Re-type new password: 
+    Adding password for user jdoe
+
+Later on, you can add users to your password file with the same utility:
+
+.. code-block:: bash
+
+    $ htpasswd /opt/ktbs-data/ktbs-users aduran
+    New password: 
+
+Basic global restriction
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Assuming that ``/ktbs`` is the root url of your kTBS (as specified in the ``WSGIScriptAlias`` directive above), you can use a Location_ directive to require that access to kTBS is only granted to authenticated users configured in the password file:
 
 .. code-block:: apache
 
     <Location /ktbs>
-        # here some access control directives
+        AuthType Basic
+        AuthName "Restricted area"
+        AuthBasicProvider file
+        AuthUserFile /opt/ktbs-data/ktbs-users
+        Require valid-user
     </Location>
 
-where ``/ktbs`` is the ``WSGIScriptAlias`` that you chose (see above).  To do this, you can either use Apache's authorization mechanisms, or use some kTBS plugin (to come).
+Restricting access only to obsel "viewing"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Managing access control with Apache
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Still assuming that ``/ktbs`` is the root url of your kTBS, we use here the LocationMatch_ directive to set up different rules for kTBS root, bases and traces access than for obsels access. LocationMatch_ applies the enclosed directives to URLs matching the given "regular expressions".
 
-Apache provides `a number of directives`__ that you can use inside the ``Location`` section to restrict access based on various authorization schemes.
+The first group of directives let any user send GET and POST request to kTBS root, bases and traces. Any other HTTP request type, such as PUT or DELETE, is only allowed for user "jdoe" once authenticated.
 
-__ https://httpd.apache.org/docs/2.4/howto/access.html
+The second group of directives let any user send POST request to kTBS traces. Any other HTTP request type, GET, PUT or DELETE, is only allowed for user "jdoe" once authenticated. Thus the obsels can only be viewed, changed or deleted by "jdoe".
 
-If you want fine grained access control (on a per Base or per Trace basis), you can do this by adding further ``Location`` directives, for example:
+.. code-block:: apache
+
+    <LocationMatch "^/(ktbs|ktbs/|ktbs/.+/|ktbs/.+/.+/)$">
+        AuthType Basic
+        AuthName "Restricted area"
+        AuthBasicProvider file
+        AuthUserFile /opt/ktbs-data/ktbs-users
+
+        <LimitExcept GET POST>
+            Require user jdoe
+        </LimitExcept>
+    </LocationMatch>
+
+    <LocationMatch "^/ktbs/.+/.+/.+">
+        AuthType Basic
+        AuthName "Restricted area"
+        AuthBasicProvider file
+        AuthUserFile /opt/ktbs-data/ktbs-users
+
+        <LimitExcept POST>
+            Require user jdoe
+        </LimitExcept>
+    </LocationMatch>
+
+
+per Base or per Trace access control with Apache
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to define access control on a per Base or per Trace basis, you can do this by adding several Location_ or LocationMatch_ directives using `various authorization schemes`_ that Apache provides. For example:
 
 .. code-block:: apache
 
@@ -145,18 +200,18 @@ If you want fine grained access control (on a per Base or per Trace basis), you 
 
 .. warning::
 
-   Note that `access control in Apache 2.2`__ differs significantly from Apache 2.4, so check your version and use the appropriate documentation.
+   Note that `access control in Apache 2.4`__ differs significantly from Apache 2.2, so check your version and use the appropriate documentation.
 
-__ https://httpd.apache.org/docs/2.2/howto/access.html
+__ https://httpd.apache.org/docs/2.4/
 
 Managing access control with kTBS plugins
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++++++++
 
 The ``authx`` plugin handles authentication (based on OAuth2) and authorization.
 
 Eventually, kTBS may provide more such plugins.
 
-Note that, whenever you want to use HTTP authentication with such a plugin, you will need the following directive:
+Note that, whenever you want to use HTTP authentication with such a plugin, you will need the mod_wsgi WSGIPassAuthorization_ directive:
 
 .. code-block:: apache
 
@@ -232,3 +287,9 @@ Check that Python 2.7 is used for main Python, python-dev, virtualenv and mod_ws
 .. _WSGIDaemonProcess: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIDaemonProcess 
 .. _WSGIProcessGroup: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIProcessGroup
 .. _Process_group: https://en.wikipedia.org/wiki/Process_group
+.. _`Apache authentication`: https://httpd.apache.org/docs/2.2/en/howto/auth.html
+.. _htpasswd: https://httpd.apache.org/docs/2.2/programs/htpasswd.html
+.. _Location: https://httpd.apache.org/docs/2.2/en/mod/core.html#location
+.. _`various authorization schemes`: https://httpd.apache.org/docs/2.2/en/howto/access.html
+.. _LocationMatch: https://httpd.apache.org/docs/2.2/en/mod/core.html#locationmatch
+.. _WSGIPassAuthorization: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIPassAuthorization

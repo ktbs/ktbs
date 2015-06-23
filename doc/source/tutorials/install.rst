@@ -6,7 +6,7 @@ These tutorials aim at helping you install kTBS and running it, either as a stan
 It has been written using Debian like systems : Debian wheezy (> 7.n) and `Ubuntu server`_ (from 12.10 to 14.10), but should be applicable with only minor changes (if any) to other flavours of Linux, and a few adaptation on MacOS or MS Windows [#]_.
 
 .. toctree::
-    :maxdepth: 1 
+    :maxdepth: 1
     
     install/install-local-ktbs
     install/install-ktbs-dev-version
