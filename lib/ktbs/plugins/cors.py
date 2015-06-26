@@ -67,6 +67,7 @@ class CorsMiddleware(object):
 def start_plugin(config):
     #pylint: disable=W0603
     
+    global ALLOW_ORIGIN
     default = defaultdict(lambda: None)
     
     deprecated_allow_origin = config.get('server', 'cors-allow-origin',
@@ -76,7 +77,6 @@ def start_plugin(config):
                     "use cors.allow-origin instead")
         ALLOW_ORIGIN = deprecated_allow_origin.split(" ")
         
-    global ALLOW_ORIGIN
     allow_origin = config.get('cors', 'allow-origin', raw=False, vars=default)
     if allow_origin:
         ALLOW_ORIGIN = allow_origin.split(" ")
