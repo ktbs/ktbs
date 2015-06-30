@@ -202,7 +202,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
-            query_epilogue = ""
+            query_epilogue = "ORDER BY ?e ?b"
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
@@ -217,7 +217,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 query_filter.append("?e <= %s" % maxe)
             limit = parameters.get("limit")
             if limit is not None:
-                query_epilogue = "ORDER BY ?b LIMIT %s" % limit
+                query_epilogue += " LIMIT %s" % limit
+            offset = parameters.get("offset")
+            if offset is not None:
+                query_epilogue += " OFFSET %s" % offset
             if query_filter:
                 query_filter = "FILTER(%s)" % (" && ".join(query_filter))
             else:
@@ -246,7 +249,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         if parameters is not None \
         and method in ("get_state", "force_state_refresh"):
             for key, val in parameters.items():
-                if key in ("minb", "maxb", "mine", "maxe", "limit",):
+                if key in ("minb", "maxb", "mine", "maxe", "limit", "offset"):
                     try:
                         parameters[key] = int(val)
                     except ValueError:
