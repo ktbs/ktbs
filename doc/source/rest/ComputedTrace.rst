@@ -26,4 +26,16 @@ It can optionally have the following properties:
 GET
 ---
 
-In addition to the query-string parameters accepted by any trace, computed traces allow for the parameter ``quick`` to force the retrieval of the *current* state of the trace, even if its content is not up to date.
+In addition to the query-string parameters accepted by any trace,
+computed traces allow for the parameter ``refresh``
+to control the computation process.
+Recognized values are:
+
+* ``default`` (which is the default value!)
+    will refresh the trace only if needed
+    (i.e. if its method, its parameters or its sources have changed).
+* ``no`` will prevent any re-computation.
+* ``yes`` or ``force`` will force the re-computation of the trace,
+  even if nothing has changed.
+* ``recursive`` will recursively force the re-computation of all the sources of the trace,
+  then of the trace itself.

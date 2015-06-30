@@ -44,12 +44,14 @@ This aspect resource stands for the obsel collection of the trace.
 GET
 ---
 
-Return the description of all the obsels of the trace. This description can be filtered by passing the following query-string arguments:
+Return the description of all the obsels of the trace.
+This description can be filtered by passing the following query-string arguments:
 
 :minb: minimum begin
 :mine: minimum end
 :maxb: maximum begin
 :maxe: maximum end
-:id: will only describe the obsel(s) with the given identifier(s) 
+:limit: maximum number of obsels to return (see `offset`)
+:offset: number of obsels to skip
 
-For example http://localhost:8001/base1/t01/@obsels?minb=42&maxe101 will return only those obsel beginning at or after 42 and ending at or before 101.
+For example http://localhost:8001/base1/t01/@obsels?minb=42&maxe=101 will return only those obsel beginning at or after 42 and ending at or before 101.
