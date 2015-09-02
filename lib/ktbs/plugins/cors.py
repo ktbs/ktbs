@@ -21,7 +21,6 @@ to all the resources exposed by kTBS.
 
 [1] http://www.w3.org/TR/sparql11-protocol/
 """
-from collections import defaultdict
 import logging
 from rdfrest.http_server import \
     register_middleware, unregister_middleware, TOP
@@ -68,16 +67,14 @@ def start_plugin(config):
     #pylint: disable=W0603
     
     global ALLOW_ORIGIN
-    default = defaultdict(lambda: None)
     
-    deprecated_allow_origin = config.get('server', 'cors-allow-origin',
-                                         raw=False, vars=default)
-    if deprecated_allow_origin is not None:
+    deprecated_allow_origin = config.get('server', 'cors-allow-origin')
+    if deprecated_allow_origin:
         LOG.warning("configuration server.cors-allow-origin is deprecated; "
                     "use cors.allow-origin instead")
         ALLOW_ORIGIN = deprecated_allow_origin.split(" ")
         
-    allow_origin = config.get('cors', 'allow-origin', raw=False, vars=default)
+    allow_origin = config.get('cors', 'allow-origin')
     if allow_origin:
         ALLOW_ORIGIN = allow_origin.split(" ")
 
