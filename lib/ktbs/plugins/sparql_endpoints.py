@@ -25,6 +25,7 @@ to all the resources exposed by kTBS.
 from rdfrest.http_server import \
     register_middleware, unregister_middleware, MyResponse, BOTTOM
 
+from rdflib.graph import ConjunctiveGraph
 import os
 from webob import Request
 
@@ -52,6 +53,8 @@ class SparqlEndpointMiddleware(object):
         "application/n-triples",
         "text/plain",
     ]
+
+    FULL_DATASET = False
 
 
     def __init__(self, app):
@@ -95,8 +98,16 @@ class SparqlEndpointMiddleware(object):
         # TODO LATER do something with default_graph_uri and named_graph_uri ?
 
         resource.force_state_refresh()
-        graph = resource.get_state()
-        result = graph.query(query)
+        if SparqlEndpointMiddleware.FULL_DATASET:
+            cg = ConjunctiveGraph(resource.service.store,
+                                  resource.uri)
+            cg.default_union = False
+            # NB: we are not interested in the 'conjunctive' part of
+            # ConjunctiveGraph here...
+            result = cg.query(query, base=resource.uri)
+        else:
+            graph = resource.get_state()
+            result = graph.query(query)
         # TODO LATER use content negociation to decide on the output format
         if result.graph is not None:
             ctype = serfmt = (
@@ -118,9 +129,10 @@ class SparqlEndpointMiddleware(object):
                           content_type=ctype,
                           request=request)
 
-def start_plugin(_config):
+def start_plugin(config):
     register_middleware(BOTTOM, SparqlEndpointMiddleware)
-
+    if config.has_section('sparql') and config.has_option('sparql', 'full_dataset'):
+        SparqlEndpointMiddleware.FULL_DATASET = config.getboolean('sparql', 'full_dataset')
 
 def stop_plugin():
     unregister_middleware(SparqlEndpointMiddleware)
