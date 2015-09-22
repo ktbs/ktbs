@@ -107,7 +107,7 @@ class SparqlEndpointMiddleware(object):
             result = cg.query(query, base=resource.uri)
         else:
             graph = resource.get_state()
-            result = graph.query(query)
+            result = graph.query(query, base=resource.uri)
         # TODO LATER use content negociation to decide on the output format
         if result.graph is not None:
             ctype = serfmt = (
