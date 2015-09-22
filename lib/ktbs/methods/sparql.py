@@ -78,13 +78,7 @@ class _SparqlMethod(IMethod):
             sparql = parameters["sparql"] % parameters
             result = source.query(sparql).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
-        except KeyError, exc:
-            diag.append(str(exc))
-        except TypeError, exc:
-            diag.append(str(exc))
-        except ParseException, exc:
-            diag.append(str(exc))
-        except AttributeError, exc:
+        except Exception, exc:
             diag.append(str(exc))
 
         return diag
