@@ -72,11 +72,11 @@ class _SparqlMethod(IMethod):
         
         try:
             if full_state:
-                source = ConjunctiveGraph(source.service.store, source.uri)
+                data = ConjunctiveGraph(source.service.store, source.uri)
             else:
-                source = source.obsel_collection.get_state({"refresh":"no"})
+                data = source.obsel_collection.get_state({"refresh":"no"})
             sparql = parameters["sparql"] % parameters
-            result = source.query(sparql).graph
+            result = data.query(sparql, base=source.obsel_collection.uri).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except Exception, exc:
             diag.append(str(exc))
