@@ -22,6 +22,7 @@ from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.util import Diagnosis
 from rdflib import Literal, URIRef
+from rdflib.graph import ConjunctiveGraph
 import rdflib.plugins.sparql.algebra
 
 from .interface import IMethod
@@ -64,11 +65,18 @@ class _SparqlMethod(IMethod):
         parameters["__destination__"] = computed_trace.uri
         parameters["__source__"] = source.uri
 
+        config = computed_trace.service.config
+        full_state = config.has_section("sparql") \
+                     and config.has_option("sparql", "full_dataset") \
+                     and config.getboolean("sparql", "full_dataset")
+        
         try:
+            if full_state:
+                source = ConjunctiveGraph(source.service.store, source.uri)
+            else:
+                source = source.obsel_collection.get_state({"refresh":"no"})
             sparql = parameters["sparql"] % parameters
-            result = (source.obsel_collection
-                      .get_state({"refresh":"no"})
-                      .query(sparql).graph)
+            result = source.query(sparql).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except KeyError, exc:
             diag.append(str(exc))
