@@ -101,9 +101,6 @@ class SparqlEndpointMiddleware(object):
         if SparqlEndpointMiddleware.FULL_DATASET:
             cg = ConjunctiveGraph(resource.service.store,
                                   resource.uri)
-            cg.default_union = False
-            # NB: we are not interested in the 'conjunctive' part of
-            # ConjunctiveGraph here...
             result = cg.query(query, base=resource.uri)
         else:
             graph = resource.get_state()
