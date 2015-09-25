@@ -21,7 +21,7 @@ Implementation of the sparql builtin methods.
 from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.util import Diagnosis
-from rdflib import Literal, URIRef
+from rdflib import BNode, Literal, URIRef
 from rdflib.graph import ConjunctiveGraph
 import rdflib.plugins.sparql.algebra
 
@@ -138,13 +138,18 @@ _PARAMETERS_TYPE = {
 }
 
 # monkeypatch to fix a bug in rdflib.plugins.sparql
-def my_triples(l): 
-    l=reduce(lambda x,y: x+y, l)
-    #if (len(l) % 3) != 0: 
-    #    #import pdb ; pdb.set_trace()
-    #    raise Exception('these aint triples')
-    return sorted([(l[x],l[x+1],l[x+2]) for x in range(0,len(l)-2,3)])
+from rdflib.plugins.sparql.algebra import triples as original_triples
+def my_triples(l):
+    try:
+        return original_triples(l)
+    except Exception, e:
+        if e.message == "these aint triples":
+            raise Exception("You have a spurious semicolon (';') in your SPARQL query. "
+                            "This is syntactically correct, but RDFlib parses it incorrectly, "
+                            "so please remove it")
+        else:
+            raise
 rdflib.plugins.sparql.algebra.triples = my_triples
-
+# this is in wait of a proper fix for https://github.com/RDFLib/rdflib/issues/381
 
 register_builtin_method_impl(_SparqlMethod())

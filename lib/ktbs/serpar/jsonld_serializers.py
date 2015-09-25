@@ -518,8 +518,7 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
         SELECT ?obs ?otype ?subject ?begin ?end
         {
             ?obs a ?otype ; :hasSubject ?subject ; :hasBegin ?begin ;
-                 :hasEnd ?end ;
-            .
+                 :hasEnd ?end .
         } ORDER BY ?begin ?end
     """ % KTBS_NS_URI)
 
