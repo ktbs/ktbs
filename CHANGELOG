@@ -1,3 +1,25 @@
+0.4 2015-09-14	
+
+    * for users
+	* improved HTML console
+	* SPARQL endpoints now support content-negociation (includes CSV)
+	* SPARQL endpoints ans SPARQL method can now access multiple graphs (full_dataset option)
+	* new CSV serializer for obsel lists (still beta)
+	* ETags now exposed on CORS, allowing PUT queries <issue #20>
+	* now supports the JQuery hack for overriding cache (using ?_=xxxxx) in AJAX queries
+	* <@obsels?quick> now must be <@obsels?refresh=no>,
+	see https://github.com/ktbs/ktbs/blob/d471528098e8d3fb5ccf1f617b35b158d26e44d3/lib/ktbs/api/trace.py#L110
+	for more documentation
+
+    * for developpers
+	* refactored rdfrest to align terminology with the SALAD paper
+
+    * for admins
+	* IMPORTANT: CORS support and SPARQL endpoint support are now plugins;
+	you MUST change your configuration accordingly
+	* better Install documentation
+
+
 0.3 2014-10-28
 
     * for developpers

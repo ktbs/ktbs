@@ -20,7 +20,7 @@ KTBS: Kernel for Trace-Based Systems.
 """
 
 
-__version__  = "0.3"
+__version__  = "0.4"
 __commitno__ = ""
 
 try:
