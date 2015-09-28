@@ -20,31 +20,53 @@ I provide a locking mechanism for resource that needs protection in the context 
 
 """
 import posix_ipc
+import sys
+from md5 import md5
+
 from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
-from rdfrest.local import _mark_as_deleted
-from os import getpid
 
-from rdfrest.local import ILocalResource
+from os import getpid, pathconf
+
+from rdfrest.cores.local import _mark_as_deleted
+from rdfrest.cores.local import ILocalCore
+
 
 LOG = getLogger(__name__)
 PID = getpid()
 
-def get_semaphore_name(resource_uri):
-    """Return a safe semaphore name for a resource.
+if sys.platform.lower().find('darwin') != -1:
+    def get_semaphore_name(resource_uri):
+        """Return a safe semaphore name for a resource.
 
-    posix_ipc doesn't accept '/' inside the semaphore name but the name must
-    begin with '/'.
+        :param basestring resource_uri: the URI of the resource.
+        :return: safe semaphore name.
+        :rtype: str
+        """
 
-    :param basestring resource_uri: the URI of the resource.
-    :return: safe semaphore name.
-    :rtype: str
-    """
-    return str('/' + resource_uri.replace('/', '-'))
+        sem_name = md5(resource_uri).hexdigest()[:29]
+        return sem_name
+else:
+    NAME_MAX_SEM = pathconf("/", 'PC_NAME_MAX') - 4 # according to man 7 sem_overview
+    def get_semaphore_name(resource_uri):
+        """Return a safe semaphore name for a resource.
+
+        posix_ipc doesn't accept '/' inside the semaphore name but the name must
+        begin with '/'.
+
+        :param basestring resource_uri: the URI of the resource.
+        :return: safe semaphore name.
+        :rtype: str
+        """
+
+        sem_name = str('/' + resource_uri.replace('/', '-'))
+        if len(sem_name) > NAME_MAX_SEM:
+            sem_name = '/' + md5(resource_uri).hexdigest()
+        return sem_name
 
 
-class WithLockMixin(ILocalResource):
+class WithLockMixin(ILocalCore):
     """ I provide methods to lock a resource.
 
     :cvar int __locking_thread_id: id of the thread
@@ -125,35 +147,35 @@ class WithLockMixin(ILocalResource):
 
     @contextmanager
     def edit(self, parameters=None, clear=None, _trust=False):
-        """I override :meth:`rdfrest.interface.IResource.edit`.
+        """I override :meth:`rdfrest.cores.ICore.edit`.
         """
         with self.lock(self), super(WithLockMixin, self).edit(parameters, clear, _trust) as editable:
             yield editable
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I override :meth:`rdfrest.mixins.GraphPostableMixin.post_graph`.
+        """I override :meth:`rdfrest.cores.mixins.GraphPostableMixin.post_graph`.
         """
         with self.lock(self):
             return super(WithLockMixin, self).post_graph(graph, parameters,
                                                          _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=False):
-        """I override :meth:`rdfrest.local.EditableResource.delete`.
+        """I override :meth:`rdfrest.cores.local.EditableCore.delete`.
         """
         root = self.get_root()
         with root.lock(self), self.lock(self):
             super(WithLockMixin, self).delete(parameters, _trust)
 
     def ack_delete(self, parameters):
-        """I override :meth:`rdfrest.util.EditableResource.ack_delete`.
+        """I override :meth:`rdfrest.util.EditableCore.ack_delete`.
         """
         super(WithLockMixin, self).ack_delete(parameters)
         self._get_semaphore().unlink()  # remove the semaphore from this resource as it no longer exists
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """ I implement :meth:`rdfrest.local.ILocalResource.creare`.
+        """ I implement :meth:`rdfrest.cores.local.ILocalCore.creare`.
 
         After checking that the resource we create is correct,
         I ensure that the corresponding lock exists and is correctly set.

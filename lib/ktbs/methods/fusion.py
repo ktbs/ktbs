@@ -20,15 +20,17 @@ Implementation of the fusion builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, URIRef
-from rdfrest.iso8601 import ParseError
-from rdfrest.utils import Diagnosis
 
+from rdflib import Literal, URIRef
+
+from rdfrest.util.iso8601 import ParseError
+from rdfrest.util import Diagnosis
 from .interface import IMethod
 from .utils import translate_node
 from ..namespace import KTBS
 from ..engine.builtin_method import register_builtin_method_impl
 from ..engine.resource import METADATA
+
 
 LOG = logging.getLogger(__name__)
 
@@ -87,13 +89,16 @@ class _FusionMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("fusion.compute_obsels")
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
+        if from_scratch:
+            for key in ("last_seens", "old_log_mon_tags"):
+                cstate[key] = {}
         errors = cstate.get("errors")
         if errors:
             for i in errors:
@@ -125,8 +130,8 @@ class _FusionMethod(IMethod):
             target_add = editable.add
             for src in computed_trace.source_traces:
                 src_uri = src.uri
-                src_triples = src.obsel_collection.get_state({"quick":1}).triples
-                for obs in src.iter_obsels(begin=last_seens.get(src_uri), quick=True):
+                src_triples = src.obsel_collection.get_state({"refresh":"no"}).triples
+                for obs in src.iter_obsels(begin=last_seens.get(src_uri), refresh="no"):
                     last_seens[src_uri] = obs.begin
 
                     new_obs_uri = translate_node(obs.uri, computed_trace,

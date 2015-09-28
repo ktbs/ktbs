@@ -27,23 +27,14 @@ TODO use setup and teardown methods for test fixture teardown could remove
 the http cache.
 """
 
-from rdflib import Namespace, BNode, Literal, URIRef
-from rdflib.graph import Graph
-from rdflib.store import VALID_STORE, CORRUPTED_STORE, NO_STORE, UNKNOWN
-
-from nose.tools import raises
-from os.path import abspath, dirname, join
-from subprocess import Popen, PIPE
-from time import sleep
 from unittest import skip
 
-from rdfrest.proxystore import ProxyStore
-from rdfrest.proxystore import StoreIdentifierError, GraphChangedError
-from rdfrest.proxystore import PS_CONFIG_URI, PS_CONFIG_HTTP_CX
-from rdfrest.proxystore import PS_CONFIG_HTTP_RESPONSE
+from rdflib.graph import Graph
+from nose.tools import raises
 
-import logging
-
+from rdfrest.util.proxystore import ProxyStore
+from rdfrest.util.proxystore import StoreIdentifierError
+from rdfrest.util.proxystore import PS_CONFIG_URI, PS_CONFIG_HTTP_CX
 from .example1 import make_example1_httpd
 
 THREAD = None

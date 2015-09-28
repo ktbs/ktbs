@@ -20,17 +20,19 @@ Implementation of the filter builtin methods.
 """
 from json import dumps as json_dumps, loads as json_loads
 import logging
-from rdflib import Literal, RDF, URIRef
-from rdfrest.iso8601 import parse_date, ParseError
-from rdfrest.utils import check_new, Diagnosis
 
+from rdflib import Literal, RDF, URIRef
+
+from rdfrest.util.iso8601 import parse_date, ParseError
+from rdfrest.util import check_new, Diagnosis
 from .interface import IMethod
 from .utils import translate_node
 from ..engine.builtin_method import register_builtin_method_impl
 from ..engine.resource import METADATA
 from ..namespace import KTBS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
-    # pylint is confused by a module named time (as built-in module)
+
+# pylint is confused by a module named time (as built-in module)
 
 LOG = logging.getLogger(__name__)
 
@@ -47,6 +49,7 @@ class _FilterMethod(IMethod):
                    "before": None,
                    "after": None,
                    "otypes": None,
+                   "bgp": None,
                    "finished": False,
                    "last_seen": None,
                    "log_mon_tag": None,
@@ -100,13 +103,16 @@ class _FilterMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("filter.compute_obsels")
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
+        if from_scratch:
+            for key in ("finished", "last_seen", "log_mon_tag", "str_mon_tag"):
+                cstate[key] = None
         errors = cstate.get("errors")
         if errors:
             for i in errors:
@@ -151,7 +157,7 @@ class _FilterMethod(IMethod):
             target_contains = editable.__contains__
             target_add = editable.add
 
-            for obs in source.iter_obsels(begin=begin, bgp=bgp, quick=True):
+            for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
                 cstate["last_seen"] = obs.begin
                 if after  and  obs.begin < after:
                     LOG.debug("--- dropping %s", obs)

@@ -21,16 +21,17 @@ This is a standalone version of an HTTP-based KTBS.
 import atexit
 import logging
 from optparse import OptionParser, OptionGroup
-from rdfrest.config import apply_global_config
-from rdfrest.http_server import SparqlHttpFrontend
-from rdfrest.serializers import bind_prefix, get_prefix_bindings
-from .config import get_ktbs_configuration
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
+from rdfrest.util.config import apply_global_config
+from rdfrest.http_server import HttpFrontend
+from .config import get_ktbs_configuration
+
+from os import getpid
+
 #from .namespace import KTBS
 from .engine.service import KtbsService
-from .utils import SKOS
 
 LOG = logging.getLogger("ktbs")
 
@@ -50,10 +51,12 @@ def main():
     ktbs_config.set("logging", "loggers", "rdfrest ktbs");
     apply_global_config(ktbs_config)
 
+    LOG.info("KTBS pid: %d" % getpid())
+
     ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())
 
-    application = SparqlHttpFrontend(ktbs_service, ktbs_config)
+    application = HttpFrontend(ktbs_service, ktbs_config)
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
@@ -126,7 +129,9 @@ def parse_configuration_options(options=None):
             config.set('server', 'max-triples', str(options.max_triples))
 
         if options.cors_allow_origin is not None:
-            config.set('server', 'cors-allow-origin', str(options.cors_allow_origin))
+            if "cors" not in config.sections():
+                config.add_section("cors")
+            config.set('cors', 'allow-origin', str(options.cors_allow_origin))
 
         if options.force_init is not None:
             config.set('rdf_database', 'force-init', 'true')
@@ -182,7 +187,7 @@ def build_cmdline_options():
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
     ogr.add_option("--cors-allow-origin",
-                   help="space separated list of allowed origins")
+                   help="space separated list of allowed origins (requires the cors plugin)")
     ogr.add_option("--force-init", action="store_true",
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)

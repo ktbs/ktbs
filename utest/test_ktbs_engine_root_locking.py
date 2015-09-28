@@ -9,12 +9,12 @@ from ktbs.engine.service import make_ktbs
 import posix_ipc
 
 # Set the lock timeout to 1 s in order to speed up the tests
-WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
+WithLockMixin.LOCK_DEFAULT_TIMEOUT = 0
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsRootTestCase(KtbsTestCase):
 
     def setUp(self):

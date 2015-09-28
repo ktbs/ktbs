@@ -20,8 +20,9 @@ Implementation of the sparql builtin methods.
 """
 from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
-from rdfrest.utils import Diagnosis
-from rdflib import Literal, URIRef
+from rdfrest.util import Diagnosis
+from rdflib import BNode, Literal, URIRef
+from rdflib.graph import ConjunctiveGraph
 import rdflib.plugins.sparql.algebra
 
 from .interface import IMethod
@@ -54,7 +55,7 @@ class _SparqlMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("sparql.compute_obsels")
@@ -64,17 +65,20 @@ class _SparqlMethod(IMethod):
         parameters["__destination__"] = computed_trace.uri
         parameters["__source__"] = source.uri
 
+        config = computed_trace.service.config
+        full_state = config.has_section("sparql") \
+                     and config.has_option("sparql", "full_dataset") \
+                     and config.getboolean("sparql", "full_dataset")
+        
         try:
+            if full_state:
+                data = ConjunctiveGraph(source.service.store, source.uri)
+            else:
+                data = source.obsel_collection.get_state({"refresh":"no"})
             sparql = parameters["sparql"] % parameters
-            result = source.obsel_collection.get_state({"quick":1}).query(sparql).graph
+            result = data.query(sparql, base=source.obsel_collection.uri).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
-        except KeyError, exc:
-            diag.append(str(exc))
-        except TypeError, exc:
-            diag.append(str(exc))
-        except ParseException, exc:
-            diag.append(str(exc))
-        except AttributeError, exc:
+        except Exception, exc:
             diag.append(str(exc))
 
         return diag
@@ -133,14 +137,22 @@ _PARAMETERS_TYPE = {
     "inherit": str,
 }
 
-# monkeypatch to fix a bug in rdflib.plugins.sparql
-def my_triples(l): 
-    l=reduce(lambda x,y: x+y, l)
-    #if (len(l) % 3) != 0: 
-    #    #import pdb ; pdb.set_trace()
-    #    raise Exception('these aint triples')
-    return sorted([(l[x],l[x+1],l[x+2]) for x in range(0,len(l)-2,3)])
-rdflib.plugins.sparql.algebra.triples = my_triples
-
+# monkeypatch to fix issue #381 in rdflib.plugins.sparql
+from rdflib.plugins.sparql import parser as sparql_parser
+original_expandTriples = sparql_parser.expandTriples
+def clean_terms(terms):
+    for i, t in enumerate(terms):
+        if t == ';':
+            if i == len(terms)-1 or terms[i+1] == ';' or terms[i+1] == '.':
+                continue # spurious ';'
+        yield t
+def my_expandTriples(terms):
+    terms = list(clean_terms(terms))
+    return original_expandTriples(terms)
+sparql_parser.expandTriples = my_expandTriples
+sparql_parser.TriplesSameSubject.setParseAction(my_expandTriples)
+sparql_parser.TriplesSameSubjectPath.setParseAction(my_expandTriples)
+    
+# this is in wait of a proper fix for https://github.com/RDFLib/rdflib/issues/381
 
 register_builtin_method_impl(_SparqlMethod())

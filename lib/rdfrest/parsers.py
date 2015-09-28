@@ -29,7 +29,7 @@ from bisect import insort
 from rdflib import BNode, Graph
 
 from .exceptions import ParseError
-from .utils import coerce_to_uri, wrap_exceptions
+from .util import coerce_to_uri, wrap_exceptions
 
 ################################################################
 #

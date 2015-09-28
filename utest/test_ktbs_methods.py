@@ -385,7 +385,7 @@ class TestSparql(KtbsTestCase):
               [ k:hasSourceObsel ?sobs ;
                 a :ot2 ;
                 :at "overridden" ;
-                k:hasEnd ?end ;
+                k:hasEnd ?end
               ] .
           }
           WHERE {

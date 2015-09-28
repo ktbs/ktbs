@@ -30,12 +30,12 @@ from ..namespace import KTBS
 class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:KtbsRoot .
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
 
     def delete(self, parameters=None, _trust=True):
-        """I override :meth:`rdfrest.util.EditableResource.delete`.
+        """I override :meth:`rdfrest.util.EditableCore.delete`.
 
         A kTBS root can never be deleted.
         """

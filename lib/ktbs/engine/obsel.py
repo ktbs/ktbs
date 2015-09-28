@@ -18,40 +18,43 @@
 """
 I provide the implementation of ktbs:Obsel .
 """
-from datetime import datetime
-from rdflib import Literal, RDF, URIRef, XSD
+from rdflib import Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
-from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
-from rdfrest.iso8601 import UTC
-from rdfrest.local import ILocalResource
-from rdfrest.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
-    WithTypedPropertiesMixin
-from rdfrest.utils import bounded_description, Diagnosis, make_fresh_uri, \
-    parent_uri
 import re
 
+from datetime import datetime
+from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
+from rdfrest.util.iso8601 import UTC
+from rdfrest.cores.local import ILocalCore
+from rdfrest.cores.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
+    WithTypedPropertiesMixin
+from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, \
+    parent_uri
 from ..api.obsel import ObselMixin
-from ..namespace import KTBS
+from ..namespace import KTBS, RDF
 from ..utils import SKOS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
-    # pylint is confused by a module named time (as built-in module)
+
+
+
+# pylint is confused by a module named time (as built-in module)
     
 
-class _ObselImpl(ILocalResource):
-    """A specific :class:`~.local.ILocalResource` implementation for Obsel.
+class _ObselImpl(ILocalCore):
+    """A specific :class:`rdfrest.cores.local.ILocalCore` implementation for Obsel.
 
-    This is necessary because :class:`~.local.StandaloneResource` is not
+    This is necessary because :class:`rdfrest.cores.local.LocalCore` is not
     appropriate, as obsels do not have their own graph: they are stored in
     the trace's obsel collection instead.
 
-    **Important:** contrary to other implementations of :class:`ILocalResource`,
+    **Important:** contrary to other implementations of :class:`ILocalCore`,
     :meth:`complete_new_graph` and :meth:`check_new_graph` will only be called
     at create time, but **not** at edit time, as `edit` is handled by the host
     resource (obsel collection).
     """
 
     def __init__(self, trace, uri):
-        # not calling ILocalResource __init__ #pylint: disable=W0231
+        # not calling ILocalCore __init__ #pylint: disable=W0231
         assert trace.RDF_MAIN_TYPE in (KTBS.StoredTrace, KTBS.ComputedTrace)
         assert parent_uri(uri) == str(trace.uri)
         self.uri = uri
@@ -59,17 +62,17 @@ class _ObselImpl(ILocalResource):
         self.home = trace.obsel_collection
         self._state = None
 
-    ######## IResource implementation  ########
+    ######## ICore implementation  ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on my service's get method.
         """
         return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement `.interface.IResource.get_state`.
+        """I implement `.cores.ICore.get_state`.
 
         I return the subgraph of the obsel collection representing this obsel.
         """
@@ -86,7 +89,7 @@ class _ObselImpl(ILocalResource):
         return ret
 
     def force_state_refresh(self, parameters=None):
-        """I override `.hosted.HostedResource.force_state_refresh`.
+        """I override `.cores.hosted.HostedCore.force_state_refresh`.
         """
         # nothing to do, there is no cache involved
         self.check_parameters(parameters, "force_state_refresh")
@@ -96,7 +99,7 @@ class _ObselImpl(ILocalResource):
         return
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement `.interface.IResource.edit`.
+        """I implement `.cores.ICore.edit`.
 
         Not supported (for the moment?).
         """
@@ -108,7 +111,7 @@ class _ObselImpl(ILocalResource):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.cores.ICore.post_graph`.
 
         No data can be posted to an obsel.
         """
@@ -116,7 +119,7 @@ class _ObselImpl(ILocalResource):
         raise MethodNotAllowedError("Can not post to obsel <%s>" % self.uri)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.cores.ICore.delete`.
 
         Not supported (for the moment?).
         """
@@ -125,7 +128,7 @@ class _ObselImpl(ILocalResource):
         raise MethodNotAllowedError("Can not delete obsel <%s>" % self.uri)
 
 
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.Obsel
 
@@ -153,7 +156,7 @@ class _ObselImpl(ILocalResource):
     # this will violate the cardinality constraint.
 
     def check_parameters(self, parameters, method):
-        """I implement :meth:`ILocalResource.check_parameters`.
+        """I implement :meth:`ILocalCore.check_parameters`.
 
         I accepts no parameter (not even an empty query string).
         """
@@ -172,7 +175,7 @@ class _ObselImpl(ILocalResource):
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,
                            resource=None):
-        """I implement :meth:`ILocalResource.complete_new_graph`.
+        """I implement :meth:`ILocalCore.complete_new_graph`.
 
         I add some information than can be infered from new_graph and from
         the trace of the obsel.
@@ -183,6 +186,11 @@ class _ObselImpl(ILocalResource):
 
         # add link to trace in case it is missing
         new_graph.add((uri, KTBS.hasTrace, trace.uri))
+
+        # add default type of none is provided
+        obsel_type = new_graph.value(uri, RDF.type)
+        if obsel_type is None:
+            new_graph.add((uri, RDF.type, KTBS.Obsel))
 
         # add default subject if no subject is provided
         subject = new_graph.value(uri, KTBS.hasSubject)
@@ -226,7 +234,7 @@ class _ObselImpl(ILocalResource):
     @classmethod
     def check_new_graph(cls, service, uri, parameters, new_graph,
                         resource=None, added=None, removed=None):
-        """I implement :meth:`ILocalResource.check_new_graph`.
+        """I implement :meth:`ILocalCore.check_new_graph`.
 
         I check what the mixins can not check.
         """
@@ -253,7 +261,7 @@ class _ObselImpl(ILocalResource):
 
     @classmethod
     def mint_uri(cls, target, new_graph, created, basename="o", suffix=""):
-        """I implement :meth:`rdfrest.local.ILocalResource.mint_uri`.
+        """I implement :meth:`rdfrest.cores.local.ILocalCore.mint_uri`.
 
         I use the skos:prefLabel of the resource to mint a URI, else the
         basename.
@@ -266,7 +274,7 @@ class _ObselImpl(ILocalResource):
 
     @classmethod
     def create(cls, service, uri, new_graph):
-        """I implement :meth:`ILocalResource.create`.
+        """I implement :meth:`ILocalCore.create`.
 
         I store `new_graph` in the obsel collection of the obsel's trace.
         """
@@ -296,7 +304,7 @@ class Obsel(ObselMixin, WithCardinalityMixin, WithReservedNamespacesMixin,
     I provide the implementation of ktbs:Obsel .
     """
     # NB: the only rationale for having this class separate from _ObselImpl
-    # is that _ObselImpl provides the base implementation for ILocalResource,
+    # is that _ObselImpl provides the base implementation for ILocalCore,
     # so it must be *after* all mix-in classes in the MRO.
     pass
 

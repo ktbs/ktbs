@@ -22,7 +22,7 @@ from rdflib import Namespace, URIRef
 import re
 
 from rdfrest.exceptions import InvalidDataError
-from rdfrest.utils import coerce_to_uri, check_new, make_fresh_uri
+from rdfrest.util import coerce_to_uri, check_new, make_fresh_uri
 
 # useful namespaces
 

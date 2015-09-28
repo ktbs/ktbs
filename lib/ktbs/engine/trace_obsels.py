@@ -20,16 +20,18 @@ I provide the implementation of kTBS obsel collections.
 """
 from itertools import chain
 from logging import getLogger
+
 from rdflib import Graph, Literal, RDF
 from rdflib.plugins.sparql.processor import prepareQuery
+
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
-from rdfrest.local import NS as RDFREST
-
+from rdfrest.cores.local import NS as RDFREST
 from .resource import KtbsResource, METADATA
 from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
+
 
 LOG = getLogger(__name__)
 
@@ -123,7 +125,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         """Add all the arcs in `graph` to this obsel collection's state.
 
         This should be used instead of the
-        `~rdfrest.interface.IResource.edit`:meth: context when no arc has to
+        `~rdfrest.cores.ICore.edit`:meth: context when no arc has to
         be removed, as it will not change the
         `log_mon_tag`:meth`.
         """
@@ -166,16 +168,16 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             self.metadata.set((self.uri, METADATA.str_mon_tag, old_str_mon_tag))
 
 
-    ######## IResource implementation  ########
+    ######## ICore implementation  ########
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.get_state`:meth:
+        """I override `~rdfrest.cores.ICore.get_state`:meth:
 
         I support some parameters to get "slices" of the obsel collection.
         Note that, contrarily to what the interface specifies, slice graphs are
         static copies of the data; they are not automatically updated, and
         the slicing parameters are not supported by
-        `~rdfrest.interface.IResource.force_state_refresh`:meth.
+        `~rdfrest.cores.ICore.force_state_refresh`:meth.
 
         I consider an empty dict as equivalent to no dict.
         """
@@ -184,7 +186,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # is provided, and http_server does not require dynamic graphs, so...
 
         if (not parameters # empty dict is equivalent to no dict
-            or "quick" in parameters and len(parameters) == 1): 
+            or "refresh" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, "get_state")
@@ -200,7 +202,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
-            query_epilogue = ""
+            query_epilogue = "ORDER BY ?e ?b"
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
@@ -215,7 +217,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 query_filter.append("?e <= %s" % maxe)
             limit = parameters.get("limit")
             if limit is not None:
-                query_epilogue = "ORDER BY ?b LIMIT %s" % limit
+                query_epilogue += " LIMIT %s" % limit
+            offset = parameters.get("offset")
+            if offset is not None:
+                query_epilogue += " OFFSET %s" % offset
             if query_filter:
                 query_filter = "FILTER(%s)" % (" && ".join(query_filter))
             else:
@@ -234,24 +239,29 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             return graph
 
 
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     def check_parameters(self, parameters, method):
-        """I implement :meth:`~rdfrest.local.ILocalResource.check_parameters`
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
         if parameters is not None \
         and method in ("get_state", "force_state_refresh"):
             for key, val in parameters.items():
-                if key in ("minb", "maxb", "mine", "maxe", "limit"):
+                if key in ("minb", "maxb", "mine", "maxe", "limit", "offset"):
                     try:
                         parameters[key] = int(val)
                     except ValueError:
                         raise InvalidParametersError("%s should be an integer"
                                                      "(got %s" % (key, val))
-                elif key in ("quick"):
-                    pass
+                elif key == "refresh":
+                    if val not in _REFRESH_VALUES:
+                        raise InvalidParametersError("Invalid value for"
+                                                     "'refresh' (%s)" % val)
+                elif key == "quick":
+                    raise InvalidParameterError("Deprecated parameter 'quick',"
+                                                "use refresh=no instead")
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
                                                  % key)
@@ -259,7 +269,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         super(AbstractTraceObsels, self).check_parameters(parameters, method)
     
     def ack_edit(self, parameters, prepared, _query_cache=[None]):
-        """I override :meth:`.local.ILocalResource.ack_edit`
+        """I override :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
         to update bookkeeping metadata and force transformed trace to refresh.
         """
         # using lists as default value     #pylint: disable=W0102
@@ -324,7 +334,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     # we should check that the graph only contains well formed obsels
 
     def iter_etags(self, parameters=None):
-        """I override :meth:`rdfrest.mixins.BookkeepingMixin._iter_etags`
+        """I override :meth:`rdfrest.cores.mixins.BookkeepingMixin._iter_etags`
 
         I return self.etag, plus the appropriate monotonicity tag depending
         on the given parameters.
@@ -348,7 +358,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     @classmethod
     def _update_bk_metadata_in(cls, uri, graph):
         """I override
-        :meth:`rdfrest.mixins.BookkeepingMixin._update_bk_metadata_in`
+        :meth:`rdfrest.cores.mixins.BookkeepingMixin._update_bk_metadata_in`
 
         I additionnally generate monotonicity tags.
         """
@@ -404,37 +414,38 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 class StoredTraceObsels(AbstractTraceObsels):
     """I provide the implementation of ktbs:StoredTraceObsels
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.StoredTraceObsels
 
 class ComputedTraceObsels(AbstractTraceObsels):
     """I provide the implementation of ktbs:ComputedTraceObsels
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.ComputedTraceObsels
 
-    ######## IResource implementation  ########
+    ######## ICore implementation  ########
 
     __forcing_state_refresh = False
 
     def get_state(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.get_state`:meth:
+        """I override `~rdfrest.cores.ICore.get_state`:meth:
 
-        I support parameter 'quick' to bypass the updating of the obsels.
+        I support parameter 'refresh' to bypass the updating of the obsels,
+        or force a recomputation of the trace.
         """
-        quick = (parameters and "quick" in parameters) # even with empty value
-        if not quick:
-            self.force_state_refresh(parameters)
+        self.force_state_refresh(parameters)
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
-        """I override `~rdfrest.interface.IResource.force_state_refresh`:meth:
+        """I override `~rdfrest.cores.ICore.force_state_refresh`:meth:
 
         I recompute the obsels if needed.
         """
-        if self.__forcing_state_refresh:
+        refresh_param = (_REFRESH_VALUES[parameters.get("refresh")]
+                         if parameters else 1)
+        if refresh_param == 0 or self.__forcing_state_refresh:
             return
         self.__forcing_state_refresh = True
         try:
@@ -443,14 +454,16 @@ class ComputedTraceObsels(AbstractTraceObsels):
             trace = self.trace
             for src in trace.iter_source_traces():
                 src.obsel_collection.force_state_refresh(parameters)
-            if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+            if (self.metadata.value(self.uri, METADATA.dirty, None) is not None
+                or refresh_param >= 2):
+
                 LOG.info("recomputing <%s>", self.uri)
                 # we *first* unset the dirty bit, so that recursive calls to
                 # get_state do not result in an infinite recursion
                 self.metadata.remove((self.uri, METADATA.dirty, None))
                 trace.force_state_refresh()
                 impl = trace._method_impl # friend #pylint: disable=W0212
-                diag = impl.compute_obsels(trace)
+                diag = impl.compute_obsels(trace, refresh_param >= 2)
                 if not diag:
                     self.metadata.set((self.uri, METADATA.dirty,
                                           Literal("yes")))
@@ -481,3 +494,12 @@ class ComputedTraceObsels(AbstractTraceObsels):
             trace_uri = editable.value(None, KTBS.hasObselCollection, self.uri)
             editable.remove((None, None, None))
             self.init_graph(editable, self.uri, trace_uri)
+
+_REFRESH_VALUES = {
+    "no": 0,
+    "default": 1,
+    "yes": 2,
+    "force": 2,
+    "recursive": 3,
+    None: 1,
+}

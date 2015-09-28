@@ -27,7 +27,7 @@ class IMethod(object):
 
         :param computed_trace: a :class:`..engine.trace.ComputedTrace`
 
-        :rtype: :class:`rdfrest.utils.Diagnosis`
+        :rtype: :class:`rdfrest.util.Diagnosis`
 
         The returned diagnosis must be non-empty if the model and/or the origin
         could not be set, or if it is predicatable that compute_obsels will
@@ -39,12 +39,14 @@ class IMethod(object):
         """
         raise NotImplementedError
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I update the obsels of the given computed trace
 
         :param computed_trace: a :class:`..engine.trace.ComputedTrace`
+        :param from_scratch: force a complete recalculation,
+                             regardless of the state of the sources
 
-        :rtype: :class:`rdfrest.utils.Diagnosis`
+        :rtype: :class:`rdfrest.util.Diagnosis`
 
         """
         raise NotImplementedError

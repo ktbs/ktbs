@@ -20,11 +20,12 @@
 I provide a mechanism for registering time units.
 """
 
-from datetime import timedelta
 from rdflib import URIRef
-from rdfrest.iso8601 import parse_date, ParseError
 
+from datetime import timedelta
+from rdfrest.util.iso8601 import parse_date, ParseError
 from .namespace import KTBS
+
 
 def register_unit(uri, unit2timedelta, timedelta2unit):
     """I register converter functions for a unit URI.

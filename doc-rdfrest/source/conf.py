@@ -25,7 +25,12 @@ sys.path.insert(0, os.path.abspath('../../lib'))
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.pngmath', 'sphinx.ext.viewcode']
+extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.pngmath',
+              'sphinx.ext.viewcode', 'sphinx.ext.intersphinx',]
+
+intersphinx_mapping = {
+    "rdflib": ("http://rdflib.readthedocs.org/en/latest/", None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -103,10 +108,10 @@ html_theme = 'default'
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-#html_title = None
+html_title = "RDF-REST homepage"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-#html_short_title = None
+#html_short_title = "RDF-REST"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.

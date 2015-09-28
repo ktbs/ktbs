@@ -25,7 +25,7 @@ from ..namespace import KTBS
 class TraceModel(TraceModelMixin, InBase):
     """I provide the implementation of ktbs:TraceModel .
     """
-    ######## ILocalResource (and mixins) implementation  ########
+    ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.TraceModel
 
@@ -39,7 +39,7 @@ class TraceModel(TraceModelMixin, InBase):
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,
                            resource=None):
-        """I implement :meth:`ILocalResource.complete_new_graph`.
+        """I implement :meth:`ILocalCore.complete_new_graph`.
 
         At create time, I add default values for missing information about the
         trace model.

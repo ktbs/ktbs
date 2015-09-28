@@ -123,6 +123,7 @@ class ProxyStore(Store):
         of the response). If the parameters are in a string, the
         format should be "key1:value1;key2:value2".  May be passed to
         __init__() or to open().  Optionnal.
+
     :param identifier:
         URIRef identifying the graph to cache in the store.
 

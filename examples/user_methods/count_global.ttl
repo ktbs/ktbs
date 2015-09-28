@@ -19,7 +19,7 @@ CONSTRUCT {
 }
 WHERE {
   SELECT (count(?o) as ?nbo) (min(?b) as ?begin) (max(?e) as ?end) {
-    ?o :hasBegin ?b ; :hasEnd ?e .
+    ?o :hasBegin ?b ; :hasEnd ?e ; :hasTrace <%(__source__)s> .
   }
 }
         """.

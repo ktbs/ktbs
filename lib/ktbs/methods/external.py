@@ -21,7 +21,7 @@ Implementation of the external builtin methods.
 import logging
 from os import getenv
 from rdflib import Literal, Graph, URIRef
-from rdfrest.utils import Diagnosis
+from rdfrest.util import Diagnosis
 from rdfrest.exceptions import ParseError
 from subprocess import Popen, PIPE
 
@@ -73,7 +73,7 @@ class _ExternalMethod(IMethod):
 
         return diag
 
-    def compute_obsels(self, computed_trace):
+    def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
         diag = Diagnosis("external.compute_obsels")
@@ -88,8 +88,9 @@ class _ExternalMethod(IMethod):
         command_line = parameters["command-line"] % parameters
         if parameters.get("feed-to-stdin"):
             stdin = PIPE
-            stdin_data = sources[0].obsel_collection.get_state({"quick":1}) \
-                .serialize(format=rdfformat, encoding="utf-8")
+            stdin_data = (sources[0].obsel_collection
+                          .get_state({"refresh":"no"})
+                          .serialize(format=rdfformat, encoding="utf-8"))
         else:
             stdin = None
             stdin_data = None

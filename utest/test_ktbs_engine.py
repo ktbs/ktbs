@@ -18,21 +18,21 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from datetime import datetime, timedelta
-from nose.tools import assert_equal, assert_raises, eq_
-from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
-from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
-    MethodNotAllowedError, RdfRestException
-from rdfrest.factory import unregister_service
-from rdfrest.local import StandaloneResource
-from rdfrest.http_client import HttpResource
-from rdfrest.http_server import HttpFrontend
-from rdfrest.iso8601 import UTC
 from threading import Thread
-from time import sleep
 from wsgiref.simple_server import make_server
 import unittest
 
+from nose.tools import assert_equal, assert_raises, eq_
+from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
+
+from datetime import datetime, timedelta
+from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
+    MethodNotAllowedError, RdfRestException
+from rdfrest.cores.factory import unregister_service
+from rdfrest.cores.local import LocalCore
+from rdfrest.cores.http_client import HttpClientCore
+from rdfrest.http_server import HttpFrontend
+from rdfrest.util.iso8601 import UTC
 from ktbs.api.ktbs_root import KtbsRootMixin
 from ktbs.engine.resource import METADATA
 from ktbs.engine.service import KtbsService
@@ -41,8 +41,8 @@ from ktbs.namespace import KTBS
 from ktbs.time import lit2datetime
 from ktbs.config import get_ktbs_configuration
 from ktbs.engine.service import make_ktbs
-
 from .utils import StdoutHandler
+
 
 cmdline = "echo"
 
@@ -85,7 +85,7 @@ class HttpKtbsTestCaseMixin(object):
         self.httpd = httpd
 
         try:
-            self.my_ktbs = HttpResource.factory("http://localhost:12345/")
+            self.my_ktbs = HttpClientCore.factory("http://localhost:12345/")
             assert isinstance(self.my_ktbs, KtbsRootMixin)
         except:
             self.tearDown()
@@ -481,9 +481,9 @@ class TestKtbsSynthetic(KtbsTestCase):
             # parent is neither in same base nor built-in
         method2 = base.create_method(None, method1, {"foo": "FOO"},
                                      label="m2")
-        if not isinstance(method2, HttpResource):
+        if not isinstance(method2, HttpClientCore):
             ## the test above fails in TestHttpKtbs, because method2.parent
-            ## returns a rdfrest.local.StandaloneResource -- this is a side
+            ## returns a rdfrest.cores.local.LocalCore -- this is a side
             ## effect of having the HTTP server in the same process as the
             ## client
             assert method2.parent is method1
@@ -518,16 +518,16 @@ class TestKtbsSynthetic(KtbsTestCase):
             # trace already exists
         print "--- trace1:", trace1
         assert_equal(base.traces, [trace1])
-        if not isinstance(trace1, HttpResource):
+        if not isinstance(trace1, HttpClientCore):
             ## see similar exception above
             assert trace1.model is model2
         assert_equal(trace1.model_uri, model2.uri)
         trace1.model = str(model1.uri)
-        if not isinstance(trace1, HttpResource):
+        if not isinstance(trace1, HttpClientCore):
             ## see similar exception above
             assert trace1.model is model1
         assert_equal(trace1.model_uri, model1.uri)
-        if isinstance(trace1, StandaloneResource):
+        if isinstance(trace1, LocalCore):
             ## only the local implementation of AbstractTrace has a unit prop
             assert_equal(trace1.unit, model1.unit)
         assert_equal(lit2datetime(trace1.origin), None)
@@ -570,7 +570,7 @@ class TestKtbsSynthetic(KtbsTestCase):
             # trace already exists
         print "--- ctr:", ctr
         assert_equal(len(base.traces), 2)
-        if not isinstance(ctr, HttpResource):
+        if not isinstance(ctr, HttpClientCore):
             ## see similar exception above
             assert ctr.method is method1
         assert_equal(ctr.method.uri, method1.uri)

@@ -20,7 +20,7 @@ KTBS: Kernel for Trace-Based Systems.
 """
 
 
-__version__  = "0.3"
+__version__  = "0.4"
 __commitno__ = ""
 
 try:
@@ -79,5 +79,5 @@ if GIT_LIBRARY_INSTALLED:
             # __file__ is not define in py2exe
             pass
 
-    if (KTBS_WD) > 0:
+    if len(KTBS_WD) > 0:
         __commitno__ = get_git_infos(KTBS_WD)

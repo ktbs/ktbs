@@ -15,9 +15,9 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-"""I provide a general resource factory.
+"""I provide a general core factory.
 
-While :meth:`IResource.factory <rdfrest.interface.IResource.factory>` aims at
+While :meth:`ICore.factory <rdfrest.interface.ICore.factory>` aims at
 producing a resource of the *same kind* as the target, it may be necessary, in
 some cases, to navigate a link to a resource of another kind:
 
@@ -31,7 +31,7 @@ For this, this module provides its own :func:`factory` function.
 .. autofunction:: factory
 
 But this function needs to know all the implementations of
-:class:`.interface.IResource` and all implemented
+:class:`.interface.ICore` and all implemented
 `services <.local.Service>`:class:. This is what :func:`register_implementation`
 and :func:`register_service` are about, respectively.
 
@@ -57,20 +57,20 @@ its instances. However, you should check before you call :func:`factory` that:
 
 from bisect import bisect, insort
 
-from .interface import IResource
-from .utils import coerce_to_uri
+from ..cores import ICore
+from ..util import coerce_to_uri
 
 
 _IMPL_REG_KEYS = []
 _IMPL_REGISTRY = {}
 
 def register_implementation(uri_prefix):
-    """Registers a subclass of :class:`.interface.IResource`.
+    """Registers a subclass of :class:`.interface.ICore`.
 
     This is to be used as a decorator generator, as in::
 
         @register_implementation("xtp://")
-        class XtpResource(rdfrest.interface.IResource):
+        class XtpResource(rdfrest.interface.ICore):
             '''Implementation of REST resource over the XTP protocol.'''
             #...
 
@@ -78,12 +78,12 @@ def register_implementation(uri_prefix):
     :return: the class decorator
 
     The decorated class must implement
-    :meth:`factory <rdfrest.interface.IResource.factory>` as a class method.b
+    :meth:`factory <rdfrest.interface.ICore.factory>` as a class method.b
     """
     uri_prefix = str(uri_prefix)
     def decorator(cls):
         """Decorator created by :func:`register_implementation`"""
-        assert issubclass(cls, IResource)
+        assert issubclass(cls, ICore)
         assert cls.factory.im_self is cls, \
             "%s.factory should be a classmethod" % cls.__name__
         assert uri_prefix not in _IMPL_REGISTRY
@@ -98,7 +98,7 @@ def register_service(service):
     NB: this need normally not be called directly, as
     :meth:`.local.Serice.__init__` already does it.
     """
-    assert isinstance(service, rdfrest.local.Service)
+    assert isinstance(service, rdfrest.cores.local.Service)
     assert service.root_uri not in _IMPL_REGISTRY
     _IMPL_REGISTRY[service.root_uri] = service.get
     insort(_IMPL_REG_KEYS, service.root_uri)
@@ -109,7 +109,7 @@ def unregister_service(service):
     NB: this beed normally not be called directlt, as
     :meth:`.local.Serice.__del__` already does it.
     """
-    assert isinstance(service, rdfrest.local.Service)
+    assert isinstance(service, rdfrest.cores.local.Service)
     if service.root_uri in _IMPL_REGISTRY:
         assert _IMPL_REGISTRY[service.root_uri] == service.get
         del _IMPL_REGISTRY[service.root_uri]
@@ -131,7 +131,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
                       returned (may not be honnored by all implementations)
     :type  _no_spawn: bool
 
-    :rtype: :class:`.interface.IResource`
+    :rtype: :class:`.interface.ICore`
 
     When using this function, it is a good practice to indicate the expected
     return type, either informally (with a comment) or formally, with a
@@ -140,7 +140,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
         assert isinstance(returned_object, expected_class)
     
     Note that the expected class will usually be an abstract class (a
-    `registered <register_mixin>`:func: mix-in class) rather than a specific
+    `registered <register_wrapper>`:func: mix-in class) rather than a specific
     implementation.
     """
     uri = coerce_to_uri(uri)
@@ -154,7 +154,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
         return None
     
 # ensure all shipped implementations are registered
-import http_client  # unused import #pylint: disable=W0611
+import rdfrest.cores.http_client  # unused import #pylint: disable=W0611
 
 # needed by some assertions
-import rdfrest.local
+import rdfrest.cores.local

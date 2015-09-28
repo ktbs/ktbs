@@ -25,7 +25,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 #from rdfrest.parsers import wrap_exceptions
 from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
     register_serializer, SerializeError
-from rdfrest.utils import coerce_to_uri, wrap_exceptions
+from rdfrest.util import coerce_to_uri, wrap_exceptions
 from re import compile as Regex
 
 from ..namespace import KTBS, KTBS_NS_URI
@@ -207,7 +207,7 @@ def serialize_json_root(graph, root, bindings=None):
     except StopIteration:
         ktbs_version = "Unknwown"
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "KtbsRoot",
@@ -239,7 +239,7 @@ def serialize_json_base(graph, base, bindings=None):
 
     valconv = ValueConverter(base.uri)
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "Base" """ % base.uri
@@ -286,7 +286,7 @@ def serialize_json_method(graph, method, bindings=None):
     valconv = ValueConverter(method.uri)
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@id": "%s",
     "@type": "Method",
@@ -326,7 +326,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
     valconv = ValueConverter(tmodel.uri, { XSD: "xsd" })
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
     "@graph": [
         {
@@ -343,7 +343,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
         parents = [ valconv_uri(coerce_to_uri(i)) for i in parents ]
         yield u""",\n            "hasParentModel": %s""" % dumps(parents)
 
-    for i in iter_other_arcs(graph, tmodel.uri, valconv, "            "):
+    for i in iter_other_arcs(graph, tmodel.uri, valconv, "\n            "):
         yield i
 
     for otype in tmodel.iter_obsel_types(False):
@@ -359,7 +359,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasSuperObselType": %s """ \
               % dumps(stypes)
 
-        for i in iter_other_arcs(graph, otype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, otype.uri, valconv, "\n            "):
             yield i
 
     for atype in tmodel.iter_attribute_types(False):
@@ -377,7 +377,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasAttributeDatatype": "%s" """ \
                 % valconv_uri(atype.data_type)
 
-        for i in iter_other_arcs(graph, atype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, atype.uri, valconv, "\n            "):
             yield i
 
     for rtype in tmodel.iter_relation_types(False):
@@ -401,7 +401,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasRelationDestination": "%s" """ \
                 % valconv_uri(coerce_to_uri(rtype.destination),)
 
-        for i in iter_other_arcs(graph, rtype.uri, valconv, "            "):
+        for i in iter_other_arcs(graph, rtype.uri, valconv, "\n            "):
             yield i
 
 
@@ -504,7 +504,7 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     valconv = ValueConverter(trace_uri, { model_uri: "m" })
     valconv_uri = valconv.uri
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": [
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }
@@ -518,8 +518,7 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
         SELECT ?obs ?otype ?subject ?begin ?end
         {
             ?obs a ?otype ; :hasSubject ?subject ; :hasBegin ?begin ;
-                 :hasEnd ?end ;
-            .
+                 :hasEnd ?end .
         } ORDER BY ?begin ?end
     """ % KTBS_NS_URI)
 
@@ -534,10 +533,10 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
             "end": %s""" % (valconv_uri(obs), valconv_uri(otype),
                             subject, begin, end)
 
-        for i in iter_obsel_arcs(graph, obs, valconv, "            "):
+        for i in iter_obsel_arcs(graph, obs, valconv, "\n            "):
             yield i
 
-        for i in iter_other_arcs(graph, obs, valconv, "            ", True):
+        for i in iter_other_arcs(graph, obs, valconv, "\n            ", True):
             yield i
 
         yield u"""
@@ -567,7 +566,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     if len(otypes) == 1:
         otypes = otypes[0]
 
-    yield u"""\n{\n
+    yield u"""{
     "@context": [
         "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
         { "m": "%s" }
@@ -588,7 +587,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
         obsel.get_subject(),
         )
 
-    for i in iter_obsel_arcs(graph, obsel.uri, valconv, "            "):
+    for i in iter_obsel_arcs(graph, obsel.uri, valconv, "\n            "):
         yield i
 
     for i in iter_other_arcs(graph, obsel.uri, valconv, obsel=True):

@@ -10,13 +10,13 @@ import posix_ipc
 
 
 # Set the lock timeout to 1 s in order to speed up the tests
-WithLockMixin.LOCK_DEFAULT_TIMEOUT = 1
+WithLockMixin.LOCK_DEFAULT_TIMEOUT = 0
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
 
 
 # Tests for BASE
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsBaseTestCase(KtbsTestCase):
 
     tmp_base = None
@@ -30,6 +30,20 @@ class KtbsBaseTestCase(KtbsTestCase):
         super(KtbsBaseTestCase, self).tearDown()
         self.tmp_base.delete()
 
+
+@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
+    """Test lock creation with long names"""
+
+    tmp_base_name = ('x'*512)+'/'
+
+    def test_lock_created(self):
+        """Test if Base._get_semaphore() works even with a very long name."""
+
+        try:
+            assert self.tmp_base._get_semaphore()
+        except ValueError, ex:
+            assert 0, ex.message
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):
@@ -141,7 +155,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
 
 # Tests for MODEL
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
@@ -204,7 +218,7 @@ class TestKtbsModelLocking(KtbsModelTestCase):
 
 
 # Tests for METHOD
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
@@ -263,7 +277,7 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
 
 
 # Tests Trace
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
+#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None

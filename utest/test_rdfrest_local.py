@@ -19,13 +19,12 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 from nose.tools import raises
-from rdflib import URIRef
 
 import example1 # can not import do_tests directly, nose tries to run it...
 from example1 import GroupMixin, make_example1_service
 from rdfrest.exceptions import RdfRestException
-from rdfrest.factory import unregister_service
-from rdfrest.config import get_service_configuration
+from rdfrest.cores.factory import unregister_service
+from rdfrest.util.config import get_service_configuration
 
 
 class TestExample1:

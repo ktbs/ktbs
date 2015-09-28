@@ -23,15 +23,16 @@ I provide the pythonic interface ktbs:Obsel .
 """
 from rdflib import Literal, RDF
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
-from rdfrest.interface import IResource, register_mixin
-from rdfrest.utils import coerce_to_uri, ReadOnlyGraph
+from rdfrest.cores import ICore
+from rdfrest.util import coerce_to_uri, ReadOnlyGraph
+from rdfrest.wrappers import register_wrapper
 
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS
 from ..utils import extend_api
 from ..time import lit2datetime #pylint: disable=E0611
 
-@register_mixin(KTBS.Obsel)
+@register_wrapper(KTBS.Obsel)
 @extend_api
 class ObselMixin(KtbsResourceMixin):
     """
@@ -206,7 +207,7 @@ class ObselMixin(KtbsResourceMixin):
     # TODO SOON implement attribute and relation methods (set_, del_, add_)
 
 
-class ObselProxy(ObselMixin, IResource):
+class ObselProxy(ObselMixin, ICore):
     """I provide a lightweight implementation of ktbs:Obsel.
 
     As obsel descriptions can be found in obsel collections, this class provides
@@ -225,17 +226,17 @@ class ObselProxy(ObselMixin, IResource):
     def __str__(self):
         return "<%s>" % self.uri
 
-    ######## IResource implementation ########
+    ######## ICore implementation ########
 
     def factory(self, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on the factory of my obsel collection.
         """
         return self.collection.factory(uri, _rdf_type, _no_spawn)
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.cores.ICore.get_state`.
 
         I simply return
         """
@@ -247,7 +248,7 @@ class ObselProxy(ObselMixin, IResource):
             return self.host_graph
 
     def force_state_refresh(self, parameters=None):
-        """I implement `interface.IResource.force_state_refresh`.
+        """I implement `interface.ICore.force_state_refresh`.
 
         I simply force a state refresh on my host.
         """
@@ -256,7 +257,7 @@ class ObselProxy(ObselMixin, IResource):
         self.collection.force_state_refresh(self.host_parameters)
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.cores.ICore.edit`.
 
         If `self.host_graph` is the complete obsel collection (`host_parameters`
         is None), edit it directly;
@@ -290,7 +291,7 @@ class ObselProxy(ObselMixin, IResource):
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.cores.ICore.post_graph`.
 
         Obsels do not support post_graph.
         """
@@ -298,7 +299,7 @@ class ObselProxy(ObselMixin, IResource):
         raise MethodNotAllowedError("Can not post to obsel %s" % self)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.cores.ICore.delete`.
 
         Delegate to proper obsel resource.
         """

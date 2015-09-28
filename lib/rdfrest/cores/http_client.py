@@ -16,24 +16,29 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I implement :class:`.interface.IResource` over HTTP.
+I implement :class:`.interface.ICore` over HTTP.
 """
 import atexit
 from contextlib import contextmanager
+from tempfile import mkdtemp
+from weakref import WeakValueDictionary
+
 from httplib2 import Http
 from os import listdir, rmdir, unlink
 from os.path import exists, isdir, join
 from rdflib import Graph, RDF
-from tempfile import mkdtemp 
-from weakref import WeakValueDictionary
 
-from .exceptions import CanNotProceedError, InvalidDataError, \
+from ..exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
+from ..cores import ICore
+from ..util.proxystore import ProxyStore, ResourceAccessError
+from ..wrappers import get_wrapped
+from ..util import add_uri_params, coerce_to_uri, ReadOnlyGraph
 from .factory import register_implementation
-from .interface import get_subclass, IResource
-from .hosted import HostedResource
-from .proxystore import ProxyStore, ResourceAccessError
-from .utils import add_uri_params, coerce_to_uri, ReadOnlyGraph
+from .hosted import HostedCore
+
+
+
 
 # fix a bug(?) in httplib2 preventing *any* retry;
 # some servers (e.g. uWSGI) are quite hasty to close sockets,
@@ -50,7 +55,7 @@ _HTTPLIB2_CERTIFICATES = []
 def set_http_option(key, value):
     """I set an option for future HTTP connexions.
 
-    Those options will be passed to httplib2.Http for all future HttpResources.
+    Those options will be passed to httplib2.Http for all future HttpClientCores.
     Note that resources can be cached, so it is only safe to call this function
     before any resource is created.
     """
@@ -60,7 +65,7 @@ def add_http_credentials(username, password):
     """I add credentials to future HTTP connexions.
 
     Those credentials will be added to the underlying httplib2.Http
-    of all future HttpResources.
+    of all future HttpClientCores.
     Note that resources can be cached, so it is only safe to call this function
     before any resource is created.
     """
@@ -70,7 +75,7 @@ def add_http_certificate(key, cert, domain):
     """I add a certificate to future HTTP connexions.
 
     Those credentials will be added to the underlying httplib2.Http
-    of all future HttpResources.
+    of all future HttpClientCores.
     Note that resources can be cached, so it is only safe to call this function
     before any resource is created.
     """
@@ -87,7 +92,7 @@ def _http():
 
 @register_implementation("http://")
 @register_implementation("https://")
-class HttpResource(IResource):
+class HttpClientCore(ICore):
     """
     A RESTful resource over HTTP
 
@@ -95,27 +100,27 @@ class HttpResource(IResource):
 
     .. attribute:: uri
 
-        I implement :attr:`.interface.IResource.uri`.
+        I implement :attr:`.interface.ICore.uri`.
 
         I hold this resource's URI as defined at `__init__` time.
     """
 
     @classmethod
-    @HostedResource.handle_fragments
+    @HostedCore.handle_fragments
     def factory(cls, uri, _rdf_type=None, _no_spawn=False):
-        """I implement :meth:`.interface.IResource.factory`.
+        """I implement :meth:`.interface.ICore.factory`.
 
         Note that I implement it as a class method, so a first resource can be
         created from its URI without prior knowledge with::
 
-            res = HttpResource.factory(uri)
+            res = HttpClientCore.factory(uri)
 
         Note also that `_rdf_type` is ignored.
 
-        :rtype: :class:`HttpResource` or :class:`~.hosted.HostedResource`
+        :rtype: :class:`HttpClientCore` or :class:`~.hosted.HostedCore`
 
         NB: if uri contains a fragment-id, the returned resource will be a
-        `~.hosted.HostedResource`:class: hosted by a `HttpResource`:class: .
+        `~.hosted.HostedCore`:class: hosted by a `HttpClientCore`:class: .
         """
         uri = coerce_to_uri(uri)
         resource = _RESOURCE_CACHE.get(uri)
@@ -130,9 +135,9 @@ class HttpResource(IResource):
                 return None
             if _rdf_type is not None and _rdf_type not in types:
                 types.append(_rdf_type)
-            py_class = get_subclass(HttpResource, types)
-            # use HttpResource above and *not* cls, as cls may already
-            # be a class produced by get_subclass
+            py_class = get_wrapped(HttpClientCore, types)
+            # use HttpClientCore above and *not* cls, as cls may already
+            # be a class produced by get_wrapped
             resource = py_class(uri, graph)
             _RESOURCE_CACHE[uri] = resource
         return resource
@@ -159,18 +164,18 @@ class HttpResource(IResource):
         if __debug__:
             self._readonly_state = ReadOnlyGraph(graph)
         # NB: self._state is so named to be different from
-        # .local.StandaloneResource._graph ; this is in order to detect bugs:
+        # .local.LocalCore._graph ; this is in order to detect bugs:
         #
         # Imagine a mix-in class using the _graph attribute instead of the
-        # uniform interface; it will work with StandaloneResource, but fail
-        # with HttpResource -- and conversely if it uses _state.
+        # uniform interface; it will work with LocalCore, but fail
+        # with HttpClientCore -- and conversely if it uses _state.
 
 
     def __str__(self):
         return "<%s>" % self.uri
 
     def get_state(self, parameters=None):
-        """I implement :meth:`.interface.IResource.get_state`.
+        """I implement :meth:`.interface.ICore.get_state`.
         """
         if parameters is None:
             if __debug__:
@@ -181,7 +186,7 @@ class HttpResource(IResource):
             return self.get_subresource(parameters).get_state()
 
     def force_state_refresh(self, parameters=None):
-        """I implement `interface.IResource.force_state_refresh`.
+        """I implement `interface.ICore.force_state_refresh`.
         """
         if parameters is None:
             self._state.store.force_refresh()
@@ -189,7 +194,7 @@ class HttpResource(IResource):
             return self.get_subresource(parameters).force_state_refresh()
 
     def edit(self, parameters=None, clear=False, _trust=False):
-        """I implement :meth:`.interface.IResource.edit`.
+        """I implement :meth:`.interface.ICore.edit`.
         """
         if parameters is None:
             return self._make_edit_context(clear)
@@ -198,7 +203,7 @@ class HttpResource(IResource):
  
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
-        """I implement :meth:`.interface.IResource.post_graph`.
+        """I implement :meth:`.interface.ICore.post_graph`.
         """
         if parameters is None:
             content_type, rdflib_format = self._state.store.prefered_format
@@ -220,7 +225,7 @@ class HttpResource(IResource):
                 graph, None, _trust, _created, _rdf_type)
 
     def delete(self, parameters=None, _trust=False):
-        """I implement :meth:`.interface.IResource.delete`.
+        """I implement :meth:`.interface.ICore.delete`.
         """
         if parameters is None:
             rheaders, rcontent = self._http.request(str(self.uri), 'DELETE')

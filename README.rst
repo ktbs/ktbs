@@ -23,11 +23,18 @@ See the tutorial_.
 
 .. _tutorial: https://kernel-for-trace-based-systems.readthedocs.org/en/latest/tutorials/install.html
 
+Documentation
+=============
+
+.. image:: https://readthedocs.org/projects/kernel-for-trace-based-systems/badge/?version=latest
+    :target: http://kernel-for-trace-based-systems.readthedocs.org/en/latest/index.html
+    :alt: Latest documentation
+
 Tests
 =====
 
 .. image:: https://travis-ci.org/ktbs/ktbs.png?branch=develop
-        :target: https://travis-ci.org/ktbs/ktbs
+    :target: https://travis-ci.org/ktbs/ktbs
 
 Licence
 =======

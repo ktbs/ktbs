@@ -101,7 +101,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -233,7 +233,7 @@ intersphinx_mapping = {'http://docs.python.org/': None}
 autodoc_member_order='bysource'
 
 # this is work in progress; let the TODOs show
-todo_include_todos=True
+todo_include_todos=False
 
 # -- ReadTheDocs specific ------------------------------------------------------
 

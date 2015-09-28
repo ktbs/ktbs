@@ -16,25 +16,33 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I implement a WSGI-based HTTP server wrapping a given :class:`.local.Service`.
+I implement a WSGI-based HTTP server
+wrapping a given :class:`.cores.local.Service`.
 """
 from bisect import insort
-from datetime import datetime
+from time import time
+
 from pyparsing import ParseException
 from rdflib import URIRef
-from time import time
 from webob import Request, Response
 from webob.etag import AnyETag, etag_property
+
 from webob.response import status_reasons
 
+from datetime import datetime
 from .exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, ParseError, \
     RdfRestException, SerializeError
-from .iso8601 import UTC
+from .util.iso8601 import UTC
 from .parsers import get_parser_by_content_type
 from .serializers import get_serializer_by_content_type, \
     get_serializer_by_extension, iter_serializers
-from .utils import extsplit
+from .util import extsplit
+
+from logging import getLogger
+import traceback
+
+LOG = getLogger(__name__)
 
 class MyRequest(Request):
     """I override webob.Request by allowing weak etags.
@@ -52,8 +60,8 @@ class HttpFrontend(object):
     from the service through the HTTP protocol.
 
     For parsing and serializing payloads to and from RDF graphs, HttpFrontend
-    relies on the functions registered in `.local.parsers`:mod: and
-    `.local.serializers`:mod:.
+    relies on the functions registered in `.cores.local.parsers`:mod: and
+    `.cores.local.serializers`:mod:.
     
     In the future, WsgiFrontent may also include on-the-fly translation of
     contents, for changing internal URIs into URIs served by the
@@ -72,7 +80,7 @@ class HttpFrontend(object):
         """See class docstring.
 
         :param service: the service to expose over HTTP
-        :type  service: :class:`.local.Service`
+        :type  service: :class:`.cores.local.Service`
 
         :param service_config: An object containing kTBS configuration options
         :type service_config: configParser object
@@ -112,11 +120,6 @@ class HttpFrontend(object):
         else:
             self.max_triples = None
 
-        #self.cors_allow_origin = set(
-        #    options.pop("cors_allow_origin", "").split(" ")
-        #    )
-        self.cors_allow_origin = service_config.get('server', 'cors-allow-origin', 1).split(" ")
-
         # HttpFrondend does not receive a dictionary any more
         # Other options should be explicitely set
         #self._options = options or {}
@@ -125,9 +128,17 @@ class HttpFrontend(object):
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
         """
+        requested_uri, requested_extension = extsplit(Request(environ).path_url)
+        requested_uri = URIRef(requested_uri)
+        resource = self._service.get(requested_uri)
+        environ['rdfrest.requested.uri'] = requested_uri
+        environ['rdfrest.requested.extension'] = requested_extension
+        environ['rdfrest.resource'] = resource
+
         if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
             self._middleware_stack = build_middleware_stack(self._core_call)
             self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+
         return self._middleware_stack(environ, start_response)
 
     def _core_call(self, environ, start_response):
@@ -138,12 +149,13 @@ class HttpFrontend(object):
 
         CAUTION: the conversion of exceptions to HTTP status codes  should be
         maintained consistent with
-        :meth:`.http_client.HttpResource._http_to_exception`.
+        :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
         request = MyRequest(environ)
-        resource_uri, request.uri_extension = extsplit(request.path_url)
-        resource_uri = URIRef(resource_uri)
-        resource = self._service.get(resource_uri)
+        resource = environ['rdfrest.resource']
+        resource_uri = environ['rdfrest.requested.uri']
+        request.uri_extension = environ['rdfrest.requested.extension']
+
         if resource is None:
             resp = self.issue_error(404, request, None)
             return resp(environ, start_response)
@@ -154,7 +166,7 @@ class HttpFrontend(object):
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
             resp = self.issue_error(405, request, resource,
-                                    allow="HEAD, GET, PUT, POST, DELETE")
+                                    allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
         try:
             with self._service:
@@ -216,25 +228,6 @@ class HttpFrontend(object):
                                   status=status,
                                   request=request)
 
-        cache_control = self.cache_control(resource)
-        if cache_control:
-            response.cache_control = cache_control
-        if self.cors_allow_origin:
-            origin = request.headers.get("origin")
-            if origin and (origin in self.cors_allow_origin
-                           or "*" in self.cors_allow_origin):
-                response.headerlist.extend([
-                    ("access-control-allow-origin", origin),
-                    ("access-control-allow-methods",
-                     "GET, HEAD, PUT, POST, DELETE"),
-                    ("access-control-allow-credentials", "true"),
-                ])
-                acrh = request.headers.get("access-control-request-headers")
-                if acrh:
-                    response.headerlist.append(
-                        ("access-control-allow-headers", acrh),
-                        )
-            
         return response(environ, start_response)
 
     def http_delete(self, request, resource):
@@ -294,7 +287,9 @@ class HttpFrontend(object):
             headerlist.append(("last-modified", last_modified.isoformat()))
 
         # get graph and redirect if needed
-        graph = resource.get_state(request.GET.mixed() or None)
+        request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
+        params = request.GET.mixed()
+        graph = resource.get_state(params or None)
         redirect = getattr(graph, "redirect_to", None)
         if redirect is not None:
             return self.issue_error(303, request, None,
@@ -315,7 +310,14 @@ class HttpFrontend(object):
                                         % self.max_bytes )
             app_iter = [payload]
 
-        return MyResponse(headerlist=headerlist, app_iter=app_iter)
+        response = MyResponse(headerlist=headerlist, app_iter=app_iter)
+        
+        cache_control = self.cache_control(resource)
+        if cache_control:
+            response.cache_control = cache_control
+
+        return response
+            
 
     def http_head(self, request, resource):
         """Process a HEAD request on the given resource.
@@ -358,7 +360,7 @@ class HttpFrontend(object):
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
-            content = "\n".join(results)
+            content = "\n".join( "<{}>".format(r) for r in results )
             headerlist = [
                 ("location", str(results[0])),
                 ]
@@ -373,7 +375,7 @@ class HttpFrontend(object):
             If `resource` has an `iter_etags` properties, then it is
             required that `request` include an ``If-Match`` header
             field. Note that those etags are *weak* etags (see
-            :class:`~rdfrest.mixins.BookkeepingMixin`), which are not
+            :class:`~rdfrest.cores.mixins.BookkeepingMixin`), which are not
             allowed in ``If-Match`` according to :RFC:`2616`. However,
             this limitation will probably be dropped in future
             versions of HTTP, so do not follow it.
@@ -440,7 +442,7 @@ class HttpFrontend(object):
         :param request:  the request being processed
         :type  request:  MyRequest
         :param resource: the resource being addressed (can be None)
-        :type  resource: rdfrest.local.ILocalResource
+        :type  resource: rdfrest.cores.local.ILocalCore
         :param message:  the payload of the error response
         :type  message:  str
         :param kw:       header fields to add to the response
@@ -454,71 +456,23 @@ class HttpFrontend(object):
 
         status = "%s %s" % (status, status_reasons[status])
         body = status
-        if message is None:
+        if message is not None:
             body = "%s\n%s" % (body, message)
+        
+        LOG.debug("HttpFrontend.issue_error - %s\n%s\n%s\n", status, body, "\n".join(traceback.format_stack()))
+
+        body = """%s
+
+Service info
+  class name: %s
+  root URI  : %s
+        """ % (
+            body,
+            self._service.__class__.__name__,
+            self._service.root_uri,
+        )
         res = MyResponse(body, status, kw.items())
         return res
-
-class SparqlHttpFrontend(HttpFrontend):
-    """
-    I derive :class:`HttpFrontend` by adding support for the SPARQL protocol.
-    """
-
-    POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
-
-    def http_get(self, request, resource):
-        if request.GET.getall("query"):
-            return self.handle_sparql(request, resource)
-        else:
-            return super(SparqlHttpFrontend, self).http_get(request, resource)
-
-    def http_post(self, request, resource):
-        if request.content_type in self.POST_CTYPES:
-            return self.handle_sparql(request, resource)
-        else:
-            return super(SparqlHttpFrontend, self).http_post(request, resource)
-
-    def handle_sparql(self, request, resource):
-        """
-        I handle a SPARQL request
-        """
-        if request.method == "GET" \
-        or request.content_type == "application/sparql-query":
-            params = request.GET
-        else:
-            params = request.POST
-        default_graph_uri = params.getall("default-graph-uri")
-        named_graph_uri = params.getall("named-graph-uri")
-
-        if request.content_type != "application/sparql-query":
-            lst = params.getall("query")
-            if len(lst) == 0:
-                # NB: not rejecting several queries, because some services
-                # provide the same query several times (YASGUI)
-                return MyResponse("400 Bad Request\nQuery not provided",
-                                  status="400 Bad Request",
-                                  request=request)
-            query = lst[0]
-        else:
-            query = request.body
-
-        # TODO LATER do something with default_graph_uri and named_graph_uri ?
-
-        resource.force_state_refresh()
-        graph = resource.get_state()
-        result = graph.query(query)
-        # TODO LATER use content negociation to decide on the output format
-        if result.graph is not None:
-            serfmt = "xml"
-            ctype = "application/rdf+xml"
-        else:
-            serfmt = "json"
-            ctype = "application/sparql-results+json"
-        return MyResponse(result.serialize(format=serfmt),
-                          status="200 Ok",
-                          content_type=ctype,
-                          request=request)
-
 
 
 def taint_etag(etag, ctype):
@@ -622,6 +576,14 @@ def register_middleware(level, middleware, quiet=False):
     """
     Register a middleware for HTTP requests.
 
+    In addition to standard WSGI entries,
+    the ``environ`` passed to middlewares will include:
+
+    * ``rdfrest.resource``: the requested resource; may be None
+    * ``rdfrest.requested.uri``: the URI (as an ``rdflib.URIRef``)
+      requested by the client, without its extension (see below)
+    * ``rdfrest.requested.extension``: the requested extension; may be ``""``
+
     :param level: a level governing the order of execution of pre-processors;
       predefined levels are AUTHENTICATION, AUTHORIZATION
 
@@ -642,7 +604,7 @@ def unregister_middleware(middleware, quiet=False):
     Unregister a middleware for HTTP requests.
     """
     for i, pair in enumerate(_MIDDLEWARE_REGISTRY):
-        if pair[1] == preproc:
+        if pair[1] == middleware:
             del _MIDDLEWARE_REGISTRY[i]
             global _MIDDLEWARE_STACK_VERSION
             _MIDDLEWARE_STACK_VERSION += 1
@@ -692,6 +654,8 @@ def unregister_pre_processor(preproc, quiet=False):
     if not quiet:
         raise ValueError("pre-processor not registered")
 
-SESSION = 0
-AUTHENTICATION = 200
-AUTHORIZATION = 400
+TOP = 0
+SESSION = 200
+AUTHENTICATION = 400
+AUTHORIZATION = 600
+BOTTOM = 800

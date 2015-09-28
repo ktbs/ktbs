@@ -33,10 +33,11 @@ serializers may not honnor them).
 from rdflib import Graph, RDF, RDFS, URIRef
 from rdflib.plugins.serializers.nt import _nt_row
 
-from .exceptions import SerializeError
-from .parsers import _FormatRegistry
-from .serializers_html import serialize_htmlized_turtle
-from .utils import coerce_to_uri, wrap_generator_exceptions
+from ..exceptions import SerializeError
+from ..parsers import _FormatRegistry
+from ..util import coerce_to_uri, wrap_generator_exceptions
+from .html import REST_CONSOLE
+
 
 ################################################################
 #
@@ -222,21 +223,7 @@ def serialize_ntriples(graph, uri, bindings=None):
 @register_serializer("text/html", "html", 60)
 @wrap_generator_exceptions(SerializeError)
 def serialize_html(graph, resource, bindings=None):
-    """I serialize graph in a HTMLized simple turtle form.
+    """I return a JS based REST console,
+       that will then load the graph from the default serializer.
     """
-    ctypes = {}
-    #rdf_types = list(graph.objects(resource.uri, RDF.type)) + [None]
-    # Obsels may have another type than the RDF_MAIN_TYPE of the class
-    # and the serializer may be registered with this type
-    rdf_types = list(graph.objects(resource.uri, RDF.type))
-    main_type = getattr(resource, "RDF_MAIN_TYPE")
-    if main_type and main_type not in rdf_types:
-        rdf_types.append(main_type)
-    rdf_types.append(None)
-
-    for typ in rdf_types:
-        for _, ctype, ext in iter_serializers(typ):
-            if ext is not None  and  ctype not in ctypes:
-                ctypes[ctype] = ext
-    return serialize_htmlized_turtle(graph, resource, bindings or _NAMESPACES,
-                                     ctypes)
+    yield REST_CONSOLE

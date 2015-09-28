@@ -37,7 +37,7 @@ from datetime import datetime
 
 from rdflib import Namespace
 
-from rdfrest.utils import coerce_to_uri, parent_uri, urisplit
+from rdfrest.util import coerce_to_uri, parent_uri, urisplit
 
 from ktbs.api.base import BaseMixin as KtbsBase
 from ktbs.api.trace import StoredTraceMixin as StoredTrace

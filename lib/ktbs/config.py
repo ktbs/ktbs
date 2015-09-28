@@ -21,7 +21,7 @@
 I provide configuration functions for the kTBS.
 """
 
-from rdfrest.config import get_service_configuration
+from rdfrest.util.config import get_service_configuration
 
 from .namespace import KTBS
 from .utils import SKOS
