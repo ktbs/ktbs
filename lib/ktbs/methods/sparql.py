@@ -137,19 +137,19 @@ _PARAMETERS_TYPE = {
     "inherit": str,
 }
 
-# monkeypatch to fix a bug in rdflib.plugins.sparql
-from rdflib.plugins.sparql.algebra import triples as original_triples
-def my_triples(l):
-    try:
-        return original_triples(l)
-    except Exception, e:
-        if e.message == "these aint triples":
-            raise Exception("You have a spurious semicolon (';') in your SPARQL query. "
-                            "This is syntactically correct, but RDFlib parses it incorrectly, "
-                            "so please remove it")
-        else:
-            raise
-rdflib.plugins.sparql.algebra.triples = my_triples
+# monkeypatch to fix issue #381 in rdflib.plugins.sparql
+from rdflib.plugins.sparql.parser import expandTriples as original_expandTriples
+def clean_terms(terms):
+    for i, t in enumerate(terms):
+        if t == ';':
+            if i == len(terms)-1 or terms[i+1] == ';' or terms[i+1] == '.':
+                continue # spurious ';'
+        yield t
+def my_expandTriples(terms):
+    terms = list(clean_terms(terms))
+    return original_expandTriples(terms)
+rdflib.plugins.sparql.parser.expandTriples = my_expandTriples
+    
 # this is in wait of a proper fix for https://github.com/RDFLib/rdflib/issues/381
 
 register_builtin_method_impl(_SparqlMethod())
