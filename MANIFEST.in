@@ -1,3 +1,6 @@
 include README.rst
+include requirements.d/README
 include requirements.d/base.txt
+include requirements.d/dev.txt
+include requirements.d/plugin-authx.txt
 include LICENSE.txt
