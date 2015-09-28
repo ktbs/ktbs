@@ -138,7 +138,8 @@ _PARAMETERS_TYPE = {
 }
 
 # monkeypatch to fix issue #381 in rdflib.plugins.sparql
-from rdflib.plugins.sparql.parser import expandTriples as original_expandTriples
+from rdflib.plugins.sparql import parser as sparql_parser
+original_expandTriples = sparql_parser.expandTriples
 def clean_terms(terms):
     for i, t in enumerate(terms):
         if t == ';':
@@ -148,7 +149,9 @@ def clean_terms(terms):
 def my_expandTriples(terms):
     terms = list(clean_terms(terms))
     return original_expandTriples(terms)
-rdflib.plugins.sparql.parser.expandTriples = my_expandTriples
+sparql_parser.expandTriples = my_expandTriples
+sparql_parser.TriplesSameSubject.setParseAction(my_expandTriples)
+sparql_parser.TriplesSameSubjectPath.setParseAction(my_expandTriples)
     
 # this is in wait of a proper fix for https://github.com/RDFLib/rdflib/issues/381
 
