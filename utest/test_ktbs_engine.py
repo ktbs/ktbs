@@ -43,6 +43,9 @@ from ktbs.config import get_ktbs_configuration
 from ktbs.engine.service import make_ktbs
 from .utils import StdoutHandler
 
+# plugin must be loaded for all kTBS tests
+import ktbs.plugins.meth_external
+ktbs.plugins.meth_external.start_plugin(get_ktbs_configuration())
 
 cmdline = "echo"
 

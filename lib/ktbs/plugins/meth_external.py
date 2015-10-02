@@ -17,6 +17,10 @@
 
 """
 Implementation of the external builtin methods.
+
+IMPORTANT: this method allows kTBS users to run arbitrary commands
+on the server, with the priviledges of the user running kTBS.
+Therefore, it is mostly intended for single-user localhost instances of kTBS.
 """
 import logging
 from os import getenv
@@ -25,10 +29,10 @@ from rdfrest.util import Diagnosis
 from rdfrest.exceptions import ParseError
 from subprocess import Popen, PIPE
 
-from .interface import IMethod
-from .utils import replace_obsels
-from ..engine.builtin_method import register_builtin_method_impl
-from ..namespace import KTBS
+from ktbs.methods.interface import IMethod
+from ktbs.methods.utils import replace_obsels
+from ktbs.engine.builtin_method import register_builtin_method_impl
+from ktbs.namespace import KTBS
 
 LOG = logging.getLogger(__name__)
 
@@ -179,5 +183,10 @@ _PARAMETERS_TYPE = {
     "format": str,
 }
 
+def start_plugin(_config):
+    """I get the configuration values from the main kTBS configuration.
 
-register_builtin_method_impl(_ExternalMethod())
+    .. note:: This function is called automatically by the kTBS.
+              It is called once when the kTBS starts, not at each request.
+    """
+    register_builtin_method_impl(_ExternalMethod())
