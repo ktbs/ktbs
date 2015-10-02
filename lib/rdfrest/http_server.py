@@ -289,7 +289,7 @@ class HttpFrontend(object):
             headerlist.append(("last-modified", last_modified.isoformat()))
 
         # get graph and redirect if needed
-        request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
+        cache_bypass = request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
         params = request.GET.mixed()
         graph = resource.get_state(params or None)
         redirect = getattr(graph, "redirect_to", None)
@@ -313,10 +313,13 @@ class HttpFrontend(object):
             app_iter = [payload]
 
         response = MyResponse(headerlist=headerlist, app_iter=app_iter)
-        
-        cache_control = self.cache_control(resource)
-        if cache_control:
-            response.cache_control = cache_control
+
+        if cache_bypass:
+            response.cache_control = "no-cache"
+        else:
+            cache_control = self.cache_control(resource)
+            if cache_control:
+                response.cache_control = cache_control
 
         return response
             
