@@ -241,6 +241,8 @@ class HttpFrontend(object):
     def http_get(self, request, resource):
         """Process a GET request on the given resource.
         """
+        headerlist = []
+
         # find serializer
         rdf_type = resource.RDF_MAIN_TYPE
         ext = request.uri_extension
@@ -249,6 +251,7 @@ class HttpFrontend(object):
             if serializer is None:
                 return self.issue_error(404, request, resource, "Bad extension")
         else:
+            headerlist.append(("vary", "accept"))
             serializer = None
             ctype = request.accept.best_match( 
                 ser[1] for ser in iter_serializers(rdf_type) )
@@ -268,7 +271,6 @@ class HttpFrontend(object):
             serializer, ext = get_serializer_by_content_type(ctype, rdf_type)
 
         # populate response header according to serializer
-        headerlist = []
         if ctype[:5] == "text/":
             headerlist.append(("content-type", ctype+";charset=utf-8"))
         else:
