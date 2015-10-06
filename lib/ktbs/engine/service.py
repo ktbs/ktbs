@@ -121,14 +121,13 @@ class KtbsService(Service):
         Service.__init__(self, classes, service_config, self.init_ktbs)
 
         root = self.get(URIRef(self.root_uri))
-
-        # testing that all built-in methods are still supported
-        for uri in root.state.objects(self.root_uri, KTBS.hasBuiltinMethod):
-            if not get_builtin_method_impl(uri):
-                raise Exception("No implementation for built-in method <%s>"
-                                % uri)
-        # updating version number
+        
         with root.edit(_trust=True) as graph:
+            # updating hasBuiltinMethod with registered implementations
+            graph.remove((self.root_uri, KTBS.hasBuiltinMethod, None))
+            for bim in iter_builtin_method_impl():
+                graph.add((self.root_uri, KTBS.hasBuiltinMethod, bim.uri))
+            # updating version number
             graph.set((self.root_uri,
                        KTBS.hasVersion,
                        Literal("%s%s" % (ktbs_version, ktbs_commit))))
@@ -155,8 +154,6 @@ class KtbsService(Service):
         root_uri = service.root_uri
         graph = Graph(identifier=root_uri)
         graph.add((root_uri, RDF.type, KTBS.KtbsRoot))
-        for bim in iter_builtin_method_impl():
-            graph.add((root_uri, KTBS.hasBuiltinMethod, bim.uri))
         KtbsRoot.create(service, root_uri, graph)
 
 # unused import #pylint: disable=W0611
