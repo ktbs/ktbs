@@ -213,18 +213,21 @@ class TestKtbs(KtbsTestCase):
         eq_(get_change_monotonicity(trace, tags), 3)
         eq_(last_obsel(trace), o300.uri)
         o350 = trace.create_obsel("o350", myot, 350, relations=[(myrt, o200)])
-        eq_(get_change_monotonicity(trace, tags), 1)
+        eq_(get_change_monotonicity(trace, tags), 2)
         eq_(last_obsel(trace), o350.uri)
+        o375 = trace.create_obsel("o375", myot, 375, relations=[(myrt, o150)])
+        eq_(get_change_monotonicity(trace, tags), 1)
+        eq_(last_obsel(trace), o375.uri)
         o400 = trace.create_obsel("o400", myot, 400,
-                                  inverse_relations=[(o350, myrt)])
-        eq_(get_change_monotonicity(trace, tags), 3)
+                                  inverse_relations=[(o375, myrt)])
+        eq_(get_change_monotonicity(trace, tags), 2)
         eq_(last_obsel(trace), o400.uri)
         o450 = trace.create_obsel("o450", myot, 450,
                                   inverse_relations=[(o350, myrt)])
         eq_(get_change_monotonicity(trace, tags), 2)
         eq_(last_obsel(trace), o450.uri)
         o45b = trace.create_obsel("o45b", myot, 450)
-        eq_(get_change_monotonicity(trace, tags), 3)
+        eq_(get_change_monotonicity(trace, tags), 2)
         with obsels.edit() as editable:
             editable.remove((o45b.uri, None, None))
             editable.remove((None, None, o45b.uri))
@@ -237,6 +240,23 @@ class TestKtbs(KtbsTestCase):
             set(obsels.iter_etags({"maxe": 400})))
         eq_(set([obsels.etag, obsels.str_mon_tag, obsels.pse_mon_tag]),
             set(obsels.iter_etags({"maxe": 300})))
+
+        # testing monotonicity on durative obsels
+        o1k26 = trace.create_obsel("o1k26", myot, 1200, 1600)
+        eq_(get_change_monotonicity(trace, tags), 3)
+        eq_(last_obsel(trace), o1k26.uri)
+        o1k56 = trace.create_obsel("o1k56", myot, 1500, 1600)
+        eq_(get_change_monotonicity(trace, tags), 3)
+        eq_(last_obsel(trace), o1k56.uri)
+        o1k46 = trace.create_obsel("o1k46", myot, 1400, 1600)
+        eq_(get_change_monotonicity(trace, tags), 2)
+        eq_(last_obsel(trace), o1k56.uri)
+        o1k36 = trace.create_obsel("o1k36", myot, 1300, 1600)
+        eq_(get_change_monotonicity(trace, tags), 1)
+        eq_(last_obsel(trace), o1k56.uri)
+        o1k17 = trace.create_obsel("o1k17", myot, 1100, 1700)
+        eq_(get_change_monotonicity(trace, tags), 3)
+        eq_(last_obsel(trace), o1k17.uri)
 
         trace.pseudomon_range = 200
         eq_(get_change_monotonicity(trace, tags), 0)

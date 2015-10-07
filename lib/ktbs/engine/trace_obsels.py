@@ -142,10 +142,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 _add(triple)
             
             # find the last obsel (this is quicker than what ack_edit does;
-            # by setting self._in_add_graph, we thus inform ack_edit to skip
-            # its own search)
-            new_last_obsel, new_last_end = self._get_new_last_obsel(
-                graph, old_last_obsel)
+            # we thus inform ack_edit to skip its own search,
+            # by setting self._in_add_graph to True
+            new_last_obsel, new_last_begin, new_last_end = \
+                self._get_new_last_obsel(graph, old_last_obsel)
             self.metadata.set((self.uri, METADATA.last_obsel, new_last_obsel))
             self._in_add_graph = True
 
@@ -154,10 +154,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # all obsels are new, so change is monotonic
             str_mon, pse_mon = True, True
         else:
-            old_last_end = int(self.state.value(old_last_obsel, KTBS.hasEnd))
-            pse_mon_limit = new_last_end - self.trace.pseudomon_range
-            str_mon, pse_mon = self._detect_mon_change(graph, old_last_end,
-                                                       pse_mon_limit)
+            str_mon, pse_mon = self._detect_mon_change(graph, old_last_obsel,
+                                                       new_last_begin,
+                                                       new_last_end)
 
         # ...and reset monotonicity tags accordingly
         # NB: log_mon would always be true, as we only *add* triples
@@ -260,7 +259,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                         raise InvalidParametersError("Invalid value for"
                                                      "'refresh' (%s)" % val)
                 elif key == "quick":
-                    raise InvalidParameterError("Deprecated parameter 'quick',"
+                    raise InvalidParametersError("Deprecated parameter 'quick',"
                                                 "use refresh=no instead")
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
@@ -371,31 +370,45 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     def _get_new_last_obsel(self, graph, last_obsel):
         """Find the new last obsel once this graph is added.
 
-        Return the obsel URI and its end timestamp.
+        Return the obsel URI and its timestamps.
         """
         if last_obsel is not None:
+            last_begin = int(self.state.value(last_obsel, KTBS.hasBegin))
             last_end = int(self.state.value(last_obsel, KTBS.hasEnd))
         else:
+            last_begin = None
             last_end = None
+        graph_value = graph.value
         for obs, _, end in graph.triples((None, KTBS.hasEnd, None)):
             end = int(end)
-            if last_end is None or end > last_end:
-                last_end = end
+            begin = int(graph_value(obs, KTBS.hasBegin))
+            if last_end is None \
+            or end > last_end \
+            or end == last_end and begin > last_begin:
                 last_obsel = obs
-        return last_obsel, last_end
+                last_begin = begin
+                last_end = end
+        return last_obsel, last_begin, last_end
 
-    def _detect_mon_change(self, graph, old_last_end, pse_mon_limit):
+    def _detect_mon_change(self, graph, old_last_obsel, new_last_begin, new_last_end):
         """Detect monotonicity changed induced by 'graph'.
         
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
+        old_last_begin = int(self.state.value(old_last_obsel, KTBS.hasBegin))
+        old_last_end = int(self.state.value(old_last_obsel, KTBS.hasEnd))
+        pse_mon_b_limit = old_last_begin - self.trace.pseudomon_range
+        pse_mon_e_limit = old_last_end - self.trace.pseudomon_range
+
         str_mon = True
         pse_mon = True
         trace_uri = self.trace.uri
         self_state_value = self.state.value
         # we used a SPARQL query before, but this seems to be more efficient
         for new_obs in graph.subjects(KTBS.hasTrace, trace_uri):
+            # check all new obsels, but also their *related* obsels
+            # (as the relation changes *both* obsels)
             for obs in chain( [new_obs],
                               graph.objects(new_obs, None),
                               graph.subjects(None, new_obs)):
@@ -405,8 +418,14 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 end = int(end)
                 if end < old_last_end:
                     str_mon = False
-                    if end < pse_mon_limit:
+                    if end < pse_mon_e_limit:
                         pse_mon = False
+                elif end == old_last_end:
+                    begin = int(self_state_value(obs, KTBS.hasBegin))
+                    if begin <= old_last_begin:
+                        str_mon = False
+                        if begin < pse_mon_b_limit:
+                            pse_mon = False
         return str_mon, pse_mon
 
 
