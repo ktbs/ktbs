@@ -129,6 +129,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         be removed, as it will not change the
         `log_mon_tag`:meth`.
         """
+        assert not self._edit_context, \
+            "No point in calling add_graph *inside* an edit context"
+
         old_str_mon_tag = self.metadata.value(self.uri, METADATA.str_mon_tag)
         old_pse_mon_tag = self.metadata.value(self.uri, METADATA.pse_mon_tag)
         old_log_mon_tag = self.metadata.value(self.uri, METADATA.log_mon_tag)
