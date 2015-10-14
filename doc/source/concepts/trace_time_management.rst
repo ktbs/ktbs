@@ -8,9 +8,9 @@ There are several areas where you manipulate timestamps, and we will focus at fi
 Use ISO 8601 format for datetimes
 ---------------------------------
 
-When you want to specify a timestamp that is specific date / time, you MUST use the ISO-8601_ format, with punctuation, see W3C_NOTE-datetime_.
+When you want to specify a timestamp that is a real datetime, you MUST use the ISO-8601_ format, with punctuation, see W3C_NOTE-datetime_.
 
-You should **specify the timezone**: if you don't specify anything (1) or if you end the datetime string with "Z" character (2), the timestamp will be considered as an **UTC datetime**.
+You should **specify the timezone**: if you don't specify anything (1) the timestamp will be considered as an **UTC datetime** as when you end the datetime string with "Z" character (2).
 
 ::
 
@@ -81,7 +81,7 @@ If the trace model unit is ``:sequence``, an automatic integer numbering could b
 Integer begin timestamp
 +++++++++++++++++++++++
 
-The integet value must be passed in the ``:hasBegin`` rdf parameter or in the ``"begin":`` parameter if passed in json format.
+The integer value must be passed in the ``:hasBegin`` rdf parameter or in the ``"begin":`` parameter if passed in json format.
 
 The kTBS keeps the integer as ``:hasBegin`` value.
 
@@ -90,5 +90,5 @@ Datetime begin timestamp
 
 The datetime value must be passed in the ``:hasBeginDT`` rdf parameter or in the ``"beginDT":`` parameter if passed in json format.
 
-The kTBS keeps the datetime as ``:hasBeginDT`` value and computes ``:hasBegin`` as the difference between the current datetime and the trace origin using the trace model unit.
+The kTBS keeps the datetime as ``:hasBeginDT`` value and computes ``:hasBegin`` as the difference between the ``:hasBeginDT`` value and the trace origin using the trace model unit.
 
