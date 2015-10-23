@@ -16,10 +16,14 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-This kTBS plugin provides SPARQL endpoint [1] capabilities
-to all the resources exposed by kTBS.
+This kTBS plugin allows to run the profiler on a per-request basis.
 
-[1] http://www.w3.org/TR/sparql11-protocol/
+To enable the profiler, simply add 'profiler' as a URL parameter.
+
+Note that the profiler does not run the exact same code as the normal code:
+it converts to a list the iterable returned by the WSGI application,
+to ensure that all the code is actually ran in the profiler
+(rather than differed by a generator).
 """
 
 from cProfile import runctx as run_in_profiler
@@ -43,18 +47,22 @@ class ProfilerMiddleware(object):
         do_profiling = params.pop('profiler', None)
         if do_profiling is None:
             resp = req.get_response(self.app)
+            return resp(environ, start_response)
         else:
             filename = '%s--%s--%s.profiler.dat' % (
-                datetime.now().strftime('%Y-%m-%d-%H-%M-%S'),
+                datetime.now().strftime('%Y-%m-%d-%H:%M:%S'),
                 req.method,
                 req.url.replace('/', '_'),
             )
             my_globals = dict(globals())
-            run_in_profiler("global RESP; RESP = req.get_response(self.app)",
+            run_in_profiler("""
+global RET
+resp = req.get_response(self.app)
+RET = list(resp(environ, start_response))
+""",
                             my_globals, locals(),
                             join(self.DIRECTORY, filename))
-            resp = my_globals['RESP']
-        return resp(environ, start_response)
+            return my_globals['RET']
 
 def start_plugin(config):
     register_middleware(TOP, ProfilerMiddleware)
