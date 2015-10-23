@@ -34,7 +34,8 @@ if len(argv) < 2 or argv[1].startswith("-"):
    %s <profiler-dat-file> [<sort-key>]
 
    where <sort-key> is a comma (,) separated list of values in
-   stdname, calls, time, cumulative
+     'cumulative', 'filename', 'ncalls', 'pcalls', 'line', 'name', 'nfl',
+     'stdname', 'time' (plus some aliases)
 """
    exit()
 
