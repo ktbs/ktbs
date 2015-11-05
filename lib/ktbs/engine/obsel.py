@@ -28,8 +28,7 @@ from rdfrest.util.iso8601 import UTC
 from rdfrest.cores.local import ILocalCore
 from rdfrest.cores.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
-from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, \
-    parent_uri
+from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, parent_uri
 from ..api.obsel import ObselMixin
 from ..namespace import KTBS, RDF
 from ..utils import SKOS
@@ -280,9 +279,8 @@ class _ObselImpl(ILocalCore):
         """
         # Do NOT call super method, as this is the base implementation.
 
-        bdesc = bounded_description(uri, new_graph)
         trace = cls._get_trace_from_uri(service, uri)
-        trace.obsel_collection.add_graph(bdesc, True)
+        trace.obsel_collection.add_graph(new_graph, True)
 
     ######## Private methods ########
 

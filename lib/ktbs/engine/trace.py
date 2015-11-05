@@ -20,13 +20,13 @@ I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 from logging import getLogger
 
-from rdflib import Graph, Literal, URIRef, XSD
+from rdflib import BNode, Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
-from rdfrest.util import cache_result, random_token
+from rdfrest.util import bounded_description, cache_result, random_token, replace_node
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from .obsel import Obsel
@@ -286,15 +286,29 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         post_single_obsel = super(StoredTrace, self).post_graph
         binding = { "trace": self.uri }
         ret = []
-        candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
-                                 initBindings=binding)
+        candidates = [ i[0] for i in graph.query(_SELECT_CANDIDATE_OBSELS,
+                                                 initBindings=binding) ]
+        bnode_candidates = { i for i in candidates
+                               if isinstance(i, BNode) }
         with base.lock(self):
-            for candidate, _, _ in candidates:
-                ret1 = post_single_obsel(graph, parameters, _trust, candidate,
+            for candidate in candidates:
+                if isinstance(candidate, BNode):
+                    bnode_candidates.remove(candidate)
+                obs_graph = bounded_description(candidate, graph, prune=bnode_candidates)
+                for other in bnode_candidates:
+                    obs_graph.remove((candidate, None, other))
+                    obs_graph.remove((other, None, candidate))
+
+                ret1 = post_single_obsel(obs_graph, parameters, _trust, candidate,
                                          KTBS.Obsel)
                 if ret1:
                     assert len(ret1) == 1
-                    ret.append(ret1[0])
+                    new_obs = ret1[0]
+                    ret.append(new_obs)
+                    if new_obs != candidate:
+                        replace_node(graph, candidate, new_obs)
+
+        assert not bnode_candidates, bnode_candidates
         if not ret:
             raise InvalidDataError("No obsel found in posted graph")
         return ret

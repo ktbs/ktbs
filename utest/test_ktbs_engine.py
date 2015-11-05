@@ -337,6 +337,48 @@ class TestKtbs(KtbsTestCase):
         eq_(obsN.subject, "alice")
         eq_(obsN.obsel_type, otypeN)
 
+    def test_post_multiple_bnode_obsels_w_relations(self):
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        rtype0 = model.create_relation_type("#MyRel0")
+        trace = base.create_stored_trace(None, model, "1970-01-01T00:00:00Z",
+                                         "alice")
+        graph = Graph()
+        obs1 = BNode()
+        obs2 = BNode()
+        obs3 = BNode()
+        graph.add((obs1, KTBS.hasTrace, trace.uri))
+        graph.add((obs1, RDF.type, otype0.uri))
+        graph.add((obs1, KTBS.hasBegin, Literal(1)))
+        graph.add((obs1, rtype0.uri, obs2))
+        graph.add((obs2, KTBS.hasTrace, trace.uri))
+        graph.add((obs2, RDF.type, otype0.uri))
+        graph.add((obs2, KTBS.hasBegin, Literal(2)))
+        graph.add((obs2, rtype0.uri, obs3))
+        graph.add((obs3, KTBS.hasTrace, trace.uri))
+        graph.add((obs3, RDF.type, otype0.uri))
+        graph.add((obs3, KTBS.hasBegin, Literal(3)))
+        graph.add((obs3, rtype0.uri, obs1))
+
+        created = trace.post_graph(graph)
+
+        eq_(len(created), 3)
+
+        obs1 = trace.get_obsel(created[0])
+        obs2 = trace.get_obsel(created[1])
+        obs3 = trace.get_obsel(created[2])
+
+        eq_(obs1.begin, 1)
+        eq_(obs2.begin, 2)
+        eq_(obs3.begin, 3)
+        eq_(obs1.list_related_obsels(rtype0), [obs2])
+        eq_(obs2.list_related_obsels(rtype0), [obs3])
+        eq_(obs3.list_related_obsels(rtype0), [obs1])
+        eq_(obs1.list_relating_obsels(rtype0), [obs3])
+        eq_(obs2.list_relating_obsels(rtype0), [obs1])
+        eq_(obs3.list_relating_obsels(rtype0), [obs2])
+
     def test_post_no_obsels(self):
         base = self.my_ktbs.create_base()
         model = base.create_model()

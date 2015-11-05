@@ -53,13 +53,16 @@ def add_uri_params(uri, parameters):
     split[3] = "&".join(lst)
     return uriunsplit(split)
 
-def bounded_description(node, graph, fill=None):
+def bounded_description(node, graph, fill=None, prune=None):
     """Extract from graph a bounded description of node.
 
     :param node: the node (uri or blank) to return a description of
     :param graph: the graph from which to retrieve the description
     :param fill: if provided, fill this graph rather than a fresh one, and return it
+    :param prune: if provided, a container of bnodes that should not be recursed into
     """
+    if prune is None:
+        prune = []
     triples = graph.triples
     if fill is None:
         ret = Graph()
@@ -73,13 +76,13 @@ def bounded_description(node, graph, fill=None):
         for t_in in triples((None, None, node)):
             add(t_in)
             s = t_in[0]
-            if isinstance(s, BNode):
+            if isinstance(s, BNode) and s not in prune:
                 if s not in seen:
                     waiting.add(s)
         for t_out in triples((node, None, None)):
             add(t_out)
             o = t_out[2]
-            if isinstance(o, BNode):
+            if isinstance(o, BNode) and o not in prune:
                 if o not in seen:
                     waiting.add(o)
         seen.add(node)
