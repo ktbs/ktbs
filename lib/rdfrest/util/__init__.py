@@ -194,25 +194,55 @@ def random_token(length, characters="0123456789abcdefghijklmnopqrstuvwxyz",
         + [ choice(characters) for _ in range(length-1) ]
     return "".join(lst)
 
-def replace_node(graph, old_node, new_node):
+def replace_node_dense(graph, old_node, new_node):
     """Replace a node by another in `graph`.
 
     :type graph:    rdflib.Graph
     :type old_node: rdflib.Node
     :type new_node: rdflib.Node
+
+    IMPORTANT: this method assumes that old_node will be used in most triples,
+    so performs the replacement on all triples.
+
+    You might want to consider using :func:`replace_node_sparse` instead.
+
     """
     add_triple = graph.add
     rem_triple = graph.remove
     subst = lambda x: (x == old_node) and new_node or x
     all_triples = list(graph) # required as we will modify the graph
     for triple in all_triples:
-        # heuristics: most triple will involve old_node,
-        # (this method is used with posted graphs to name the created resource)
-        # so we transform all triples,
-        # without even checking if they contain old_node
         rem_triple(triple)
         add_triple([ subst(i) for i in triple ])
-    old_node = new_node
+
+def replace_node_sparse(graph, old_node, new_node):
+    """Replace a node by another in `graph`.
+
+    :type graph:    rdflib.Graph
+    :type old_node: rdflib.Node
+    :type new_node: rdflib.Node
+
+    IMPORTANT: this method assumes that old_node will be used in few triples,
+    so it searches for those triples in order to replace them.
+
+    You might want to consider using :func:`replace_node_dense` instead.
+    """
+    subst = lambda x: (x == old_node) and new_node or x
+    todel = []
+    toadd = []
+    for triple in graph.triples((old_node, None, None)):
+        todel.append(triple)
+        toadd.append([ subst(i) for i in triple ])
+    for triple in graph.triples((None, None, old_node)):
+        if triple[0] == old_node: continue
+        todel.append(triple)
+        toadd.append([ subst(i) for i in triple ])
+    rem_triple = graph.remove
+    for triple in todel:
+        rem_triple(triple)
+    add_triple = graph.add
+    for triple in toadd:
+        add_triple(triple)
 
 def urisplit(url):
     """A better urlsplit.

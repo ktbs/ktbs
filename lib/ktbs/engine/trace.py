@@ -26,7 +26,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
-from rdfrest.util import bounded_description, cache_result, random_token, replace_node
+from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from .obsel import Obsel
@@ -306,7 +306,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                     new_obs = ret1[0]
                     ret.append(new_obs)
                     if new_obs != candidate:
-                        replace_node(graph, candidate, new_obs)
+                        replace_node_sparse(graph, candidate, new_obs)
 
         assert not bnode_candidates, bnode_candidates
         if not ret:

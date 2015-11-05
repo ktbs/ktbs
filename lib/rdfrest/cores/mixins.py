@@ -29,7 +29,7 @@ from time import time
 from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
 
 from ..exceptions import InvalidDataError
-from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node
+from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node_dense
 from .local import compute_added_and_removed, ILocalCore, NS as RDFREST
 
 
@@ -209,7 +209,7 @@ class GraphPostableMixin(ILocalCore):
 
         if not isinstance(created, URIRef):
             new_uri = cls.mint_uri(self, graph, created)
-            replace_node(graph, created, new_uri)
+            replace_node_dense(graph, created, new_uri)
             created = new_uri
         if not _trust:
             cls.complete_new_graph(self.service, created, None, graph)
