@@ -35,15 +35,16 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
 
     RDF_MAIN_TYPE = KTBS.Base
 
-    RDF_CREATABLE_IN = [ KTBS.hasBase, ]
+    RDF_CREATABLE_IN = [ KTBS.hasBase, KTBS.contains, ]
 
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableCore.ack_delete`.
         """
         super(Base, self).ack_delete(parameters)
-        root = self.get_root()
-        with root.edit(_trust=True) as editable:
-            editable.remove((root.uri, KTBS.hasBase, self.uri))
+        parent = self.get_parent()
+        with parent.edit(_trust=True) as editable:
+            editable.remove((parent.uri, KTBS.hasBase, self.uri))
+            editable.remove((parent.uri, KTBS.contains, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
 
     def ack_post(self, parameters, created, new_graph):
@@ -54,7 +55,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
             editable.add((self.uri, KTBS.contains, created))
             for typ in new_graph.objects(created, RDF.type):
                 if typ.startswith(KTBS_NS_URI):
-                    assert typ in (KTBS.TraceModel, KTBS.Method,
+                    assert typ in (KTBS.Base, KTBS.TraceModel, KTBS.Method,
                                    KTBS.StoredTrace, KTBS.ComputedTrace)
                     editable.add((created, RDF.type, typ))
                     break
@@ -80,6 +81,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         query = """PREFIX ktbs: <%s>
                    SELECT DISTINCT ?c
                    WHERE { <%s> ktbs:contains ?c .
+                           { ?c a ktbs:Base} UNION
                            { ?c a ktbs:TraceModel } UNION
                            { ?c a ktbs:Method } UNION
                            { ?c a ktbs:StoredTrace } UNION

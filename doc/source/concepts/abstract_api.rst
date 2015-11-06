@@ -100,7 +100,7 @@ Base (Base)
 
     Return the element of this base identified by the given URI, or null.
 
-    :rtype: Trace|Model|Method
+    :rtype: Trace|Model|Method|Base
 
 .. function:: list_traces()
 
@@ -111,6 +111,18 @@ Base (Base)
     List the models stored in that base.
 
     :rtype: [Model]
+
+.. function:: list_methods()
+
+    List the methods stored in that base.
+
+    :rtype: [Method]
+
+.. function:: list_bases()
+
+    List the bases stored in that base.
+
+    :rtype: [Base]
 
 .. function:: create_stored_trace(id:uri?, model:Model, origin:str?, default_subject:str?, label:str?, )
 
@@ -133,7 +145,10 @@ Base (Base)
 
     :rtype: Method
 
-    
+.. function:: create_base(id:uri?, label:str?)
+
+    :rtype: Base
+
 Trace (Resource)
 ----------------
 

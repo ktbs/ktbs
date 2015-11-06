@@ -163,8 +163,8 @@ class WithLockMixin(ILocalCore):
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`rdfrest.cores.local.EditableCore.delete`.
         """
-        root = self.get_root()
-        with root.lock(self), self.lock(self):
+        parent = self.get_parent()
+        with parent.lock(self), self.lock(self):
             super(WithLockMixin, self).delete(parameters, _trust)
 
     def ack_delete(self, parameters):

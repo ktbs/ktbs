@@ -23,6 +23,7 @@ I provide the pythonic interface of ktbs:Base .
 """
 
 from rdflib import Graph, Literal, RDF, URIRef
+from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.util import coerce_to_node, coerce_to_uri, parent_uri
@@ -45,6 +46,15 @@ class BaseMixin(KtbsResourceMixin):
             yield self_factory(uri, typ)
 
     ######## Abstract kTBS API ########
+
+    def iter_bases(self):
+        """
+        Iter over all the traces (stored or computed) of this base.
+        """
+        self_factory = self.factory
+        for uri, typ in self._iter_contained():
+            if typ == KTBS.Base:
+                yield self_factory(uri, typ)
 
     def iter_traces(self):
         """
@@ -87,16 +97,50 @@ class BaseMixin(KtbsResourceMixin):
         #  Redefining built-in id #pylint: disable-msg=W0622
         elt_uri = coerce_to_uri(id, self.uri)
         ret = self.factory(elt_uri)
-        assert ret is None  or  isinstance(ret, InBaseMixin)
+        assert ret is None  or  isinstance(ret, InBaseMixin)  or  isinstance(ret, BaseMixin)
         return ret
 
-    def get_root(self):
+    def get_parent(self):
         """
         Return the root of the KTBS containing this base.
         """
-        root_uri = URIRef("..", self.uri)
-        return self.factory(root_uri, KTBS.KtbsRoot)
-        # assert must be .ktbs_root.KtbsRootMixin
+        parent_uri = (self.state.value(None, KTBS.hasBase, self.uri) or
+                      self.state.value(None, KTBS.contains, self.uri))
+        return self.factory(parent_uri)
+
+    def get_depth(self):
+        """
+        Return the distance of this base to the kTBS root.
+        """
+        p = self.get_parent()
+        if p.state.value(p.uri, RDF.type) == KTBS.KtbsRoot:
+            return 1
+        else:
+            return p.get_depth()+1
+
+
+    def create_base(self, id=None, label=None, graph=None):
+        """Create a new base in this kTBS.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param label: TODO DOC explain
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `ktbs.client.base.Base`
+        """
+        # redefining built-in 'id' #pylint: disable-msg=W0622
+        trust = graph is None  and  id is None
+        node = coerce_to_node(id, self.uri)
+        if graph is None:
+            graph = Graph()
+        graph.add((self.uri, KTBS.contains, node))
+        graph.add((node, RDF.type, KTBS.Base))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+        uris = self.post_graph(graph, None, trust, node, KTBS.Base)
+        assert len(uris) == 1
+        return self.factory(uris[0], KTBS.Base)
+        # must be a BaseMixin
 
     def create_model(self, id=None, parents=None, label=None, graph=None):
         """Create a new model in this trace base.
@@ -302,9 +346,9 @@ class BaseMixin(KtbsResourceMixin):
     def remove(self):
         """Delete this base from the kTBS.
         """
-        root = self.get_root()
+        parent = self.get_parent()
         super(BaseMixin, self).remove()
-        root.force_state_refresh()
+        parent.force_state_refresh()
 
     ######## Private methods ########
 
@@ -312,12 +356,14 @@ class BaseMixin(KtbsResourceMixin):
         """
         Yield the URI and type of every element of this base.
         """
-        query_template = """
-            PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT DISTINCT ?s ?t
-            WHERE { <%s> k:contains ?s . ?s a ?t . }
-        """
-        return iter(self.state.query(query_template % self.uri))
+        return iter(self.state.query(_ITER_CONTAINED_QUERY,
+                    initBindings={"base": self.uri}))
+
+_ITER_CONTAINED_QUERY = prepareQuery("""
+    PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+    SELECT DISTINCT ?s ?t
+    WHERE { $base k:contains ?s . ?s a ?t . }
+""")
             
 
 

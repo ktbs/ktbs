@@ -248,7 +248,8 @@ def serialize_json_base(graph, base, bindings=None):
     contained = list(chain(
         base.iter_traces(),
         base.iter_models(),
-        base.iter_methods()
+        base.iter_methods(),
+        base.iter_bases(),
     ))
 
     if contained:
@@ -275,7 +276,10 @@ def serialize_json_base(graph, base, bindings=None):
     for i in iter_other_arcs(graph, base.uri, valconv):
         yield i
 
-    yield u""",\n    "inRoot": ".."\n}\n"""
+    if (None, KTBS.hasBase, base.uri) in graph:
+        yield u""",\n    "inRoot": ".."\n}\n"""
+    else:
+        yield u""",\n    "inBase": ".."\n}\n"""
 
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Method)
