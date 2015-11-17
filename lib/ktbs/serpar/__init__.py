@@ -22,3 +22,4 @@ Serializers and parsers for kTBS
 import jsonld_parser
 import jsonld_serializers
 import csv_serializers
+import geojson_serializers
