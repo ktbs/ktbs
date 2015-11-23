@@ -24,6 +24,8 @@ https://en.wikipedia.org/wiki/GeoJSON
 from string import maketrans
 import json
 
+from collections import OrderedDict
+
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
@@ -54,15 +56,14 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
     """ % KTBS_NS_URI)
 
     # geojson export stucture
-    geodict = {"type": "FeatureCollection",
-               "crs": {
-                   "type": "name",
-                   "properties": {
-                       "name": "urn:ogc:def:crs:OSG:2:84"
-                   }
-               },
-               "features": [
-                   {
+    geodict = OrderedDict()
+    geodict['type'] = 'FeatureCollection'
+    geodict['crs'] = {'crs': {
+                         'type': 'name',
+                        'properties': {'name': 'urn:ogc:def:crs:OSG:2:84'}
+                        }
+                    }
+    geodict['features'] = [{
                        "type": "Feature",
                        "properties": {
                            "name": "Marqueurs enseignant"
@@ -71,8 +72,7 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
                            "type": "Multipoint",
                            "coordinates": []
                        }
-                   }
-               ]}
+                   }]
 
     try:
         # Try to set a meaningfull name to the geojson export
