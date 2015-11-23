@@ -24,7 +24,7 @@ https://en.wikipedia.org/wiki/GeoJSON
 from string import maketrans
 import json
 
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdfrest.serializers import register_serializer, SerializeError
@@ -44,35 +44,33 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
     """
     """
 
+    geoObsel = namedtuple('GeoObsel', ['id', 'lat', 'long', 'begin', 'end', 'subject'])
+
     # TODO : How to manage other coordinates systems ?
     obsels = graph.query("""
-        PREFIX : <%s#>
+        PREFIX : <{0:s}#>
         PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
 
-        SELECT DISTINCT ?obs ?long ?lat
-        {
-            ?obs :hasTrace [] ; geo:long ?long ; geo:lat ?lat .
-        }
-    """ % KTBS_NS_URI)
+        SELECT DISTINCT ?obs ?long ?lat ?begin ?end ?subject
+        {{
+            ?obs :hasTrace [] ;
+            geo:long ?long ;
+            geo:lat ?lat ;
+            :hasBegin ?begin;
+            :hasEnd ?end;
+            :hasSubject ?subject .
+        }}
+        ORDER BY ?begin
+    """.format(KTBS_NS_URI))
 
     # geojson export stucture
     geodict = OrderedDict()
     geodict['type'] = 'FeatureCollection'
-    geodict['crs'] = {'crs': {
-                         'type': 'name',
-                        'properties': {'name': 'urn:ogc:def:crs:OSG:2:84'}
-                        }
-                    }
-    geodict['features'] = [{
-                       "type": "Feature",
-                       "properties": {
-                           "name": "Marqueurs enseignant"
-                       },
-                       "geometry": {
-                           "type": "Multipoint",
-                           "coordinates": []
-                       }
-                   }]
+    geodict['crs'] = {
+                      'type': 'name',
+                      'properties': {'name': 'urn:ogc:def:crs:OSG:2:84'}
+                      }
+    geodict['features'] = []
 
     try:
         # Try to set a meaningfull name to the geojson export
@@ -80,9 +78,19 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
     except:
         pass
 
-    for o in obsels:
+    for o in map(geoObsel._make, obsels):
         try:
-            geodict["features"][0]["geometry"]["coordinates"].append([float(o[1]), float(o[2])])
+            f = OrderedDict()
+            f['type'] = 'Feature'
+            f['geometry'] = {'type': 'Point'}
+            f['geometry']['coordinates'] = [float(o.lat), float(o.long)]
+
+            f['properties'] = {}
+            f['properties']['begin'] = o.begin
+            f['properties']['end'] = o.end
+            f['properties']['subject'] = o.subject
+
+            geodict['features'].append(f)
 
         except ValueError:
             # Do not keep the point
