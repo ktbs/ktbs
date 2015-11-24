@@ -37,6 +37,22 @@ from ..utils import SKOS
 
 GEOJSON = "application/vnd.geo+json"
 
+def create_geodict_structure(gd=None):
+    """
+    Creates the geojson dictionnary structure.
+
+    :param gd: an empty OrderedDict
+    :return: None
+    """
+    if gd is not None:
+        gd['type'] = 'FeatureCollection'
+        gd['crs'] = {
+                    'type': 'name',
+                    'properties': {'name': 'urn:ogc:def:crs:OSG:2:84'}
+                    }
+        gd['features'] = []
+
+
 @register_serializer(GEOJSON, "geojson", 85, KTBS.ComputedTraceObsels)
 @register_serializer(GEOJSON, "geojson", 85, KTBS.StoredTraceObsels)
 @wrap_exceptions(SerializeError)
@@ -51,7 +67,7 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
         PREFIX : <{0:s}#>
         PREFIX geo: <http://www.w3.org/2003/01/geo/wgs84_pos#>
 
-        SELECT DISTINCT ?obs ?long ?lat ?begin ?end ?subject
+        SELECT DISTINCT ?obs ?lat ?long ?begin ?end ?subject
         {{
             ?obs :hasTrace [] ;
             geo:long ?long ;
@@ -65,12 +81,7 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
 
     # geojson export stucture
     geodict = OrderedDict()
-    geodict['type'] = 'FeatureCollection'
-    geodict['crs'] = {
-                      'type': 'name',
-                      'properties': {'name': 'urn:ogc:def:crs:OSG:2:84'}
-                      }
-    geodict['features'] = []
+    create_geodict_structure(geodict)
 
     try:
         # Try to set a meaningfull name to the geojson export
@@ -86,8 +97,8 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
             f['geometry']['coordinates'] = [float(o.lat), float(o.long)]
 
             f['properties'] = {}
-            f['properties']['begin'] = o.begin
-            f['properties']['end'] = o.end
+            f['properties']['begin'] = int(o.begin)
+            f['properties']['end'] = int(o.end)
             f['properties']['subject'] = o.subject
 
             geodict['features'].append(f)
