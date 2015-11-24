@@ -55,31 +55,17 @@ def serialize_csv_trace_obsels(graph, tobsels, bindings=None):
 
     # Build meaningfull sparql variables without special chars
     all_attr = {}
-    intab = u'#:'
-    outtab = u'_'
-    # maketrans(intab, outtab) does not work with unicode
-    transtab = dict((ord(char), u'_') for char in intab)
+
     for attr in obsels:
-        abr = None
+        abr = attr[0].split('#')[-1]
 
-        # TODO do a clean thing for type
-        if attr[0].find("22-rdf-syntax-ns#type") != -1:
-            abr = "type"
-        else:
-            # TODO Dirty hack to remove hasTrace attribute : improve
-            if attr[0].find("ktbs#hasTrace") == - 1:
-                abr = valconv_uri(attr[0]).translate(transtab)
+        if abr.find('/') != -1:
+            abr = attr[0].split('/')[-1]
 
+        # TODO Should we remove hasTrace ?
         if abr is not None:
             if all_attr.get(abr) is None:
                 all_attr[abr] = attr[0]
-
-            # TODO : at least a warning if we have several variables with
-            # the same name
-            #else:
-            #    raise Something
-        
-        #yield u"{0} : {1}\n".format(abr, attr[0]).encode('utf-8)
 
     opt_attr = []
     for abr, attr in all_attr.items():
