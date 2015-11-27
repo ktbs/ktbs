@@ -444,6 +444,19 @@ class TestKtbs(KtbsTestCase):
         t2 = b.get("t2/")
         eq_(len(t2.obsels), 4)
 
+    def test_create_subbase(self):
+        base1 = self.my_ktbs.create_base()
+        new_base_graph = Graph()
+        new_base = BNode()
+        new_base_graph.add((new_base, RDF.type, KTBS.Base))
+        new_base_graph.add((base1.uri, KTBS.contains, new_base))
+        uris = base1.post_graph(new_base_graph)
+        assert len(uris) == 1
+        base2 = base1.factory(uris[0])
+        assert (base1.uri, KTBS.contains, base2.uri) in base2.state
+        base1.force_state_refresh()
+        assert (base1.uri, KTBS.contains, base2.uri) in base1.state
+
 
 class TestKtbsSynthetic(KtbsTestCase):
 
@@ -748,4 +761,6 @@ class TestMakeKtbs(unittest.TestCase):
 
     def test_ktbs_default_scheme(self):
         assert self.my_ktbs.uri.startswith('ktbs:')
+
+
 

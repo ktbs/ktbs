@@ -56,6 +56,12 @@ class TestKtbsBase(KtbsTestCase):
     def test_get_base_label(self):
         eq_(self.base.get_label(), "Test base")
 
+    def test_get_base_depth(self):
+        eq_(self.base.get_depth(), 1)
+
+    def test_get_base_parent(self):
+        eq_(self.base.get_parent(), self.my_ktbs)
+
     ######## set information ########
 
     def test_set_base_label(self):
@@ -65,6 +71,55 @@ class TestKtbsBase(KtbsTestCase):
     def test_reset_base_label(self):
         self.base.reset_label()
         eq_(self.base.get_label(), "BaseTest")
+
+    ######## add base ########
+
+    def test_create_base_no_id_no_label(self):
+        mod = self.base.create_base()
+        # it should just work, but we don't really care about the URI
+
+        # check duplicate URI
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id=mod.uri)
+
+    def test_create_base_with_folderish_id(self):
+        mod = self.base.create_base(id="BaseWithID/")
+        generated_uri = URIRef(KTBS_ROOT + "BaseTest/BaseWithID/")
+        eq_(mod.get_uri(), generated_uri)
+
+        # check duplicate URI
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id="BaseWithID/")
+
+    def test_create_base_with_label(self):
+        mod = self.base.create_base(label="Base with label")
+        # it should just work, but we don't really care about the URI
+
+        # check duplicate URI
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id=mod.uri)
+
+    def test_create_two_bases(self):
+        # check that independantly created bases have different URIs,
+        # even if they have the same label
+        mod1 = self.base.create_base(label="Duplicate label")
+        mod2 = self.base.create_base(label="Duplicate label")
+        eq_(mod1.label, mod2.label)
+        assert mod1.uri != mod2.uri
+
+    def test_create_bad_base_id(self):
+        # ID not inside this base
+        other_base = self.my_ktbs.create_base()
+        wrong_uri = URIRef("WrongID", other_base.uri)
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id=wrong_uri)
+        # wrong ID
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id="WrongID")
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id="@WrongID")
+        with assert_raises(InvalidDataError):
+            self.base.create_base(id="Wrong/ID")
 
     ######## add model ########
 
@@ -333,6 +388,8 @@ class TestKtbsBasePopulated(KtbsTestCase):
     def setUp(self):
         KtbsTestCase.setUp(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
+        self.subbase = self.base.create_base(id="BaseWithId/",
+                                            label="Test subbase")
         self.model = self.base.create_model(id="ModelWithID",
                                             label="Test model")
         self.stored_trace = self.base.create_stored_trace(
@@ -348,6 +405,14 @@ class TestKtbsBasePopulated(KtbsTestCase):
 
     ######## get element information ########
 
+    def test_list_bases(self):
+        lmod = self.base.list_bases()
+        eq_(lmod, [self.subbase])
+
+    def test_get_base(self):
+        mod = self.base.get("BaseWithId/")
+        eq_(mod, self.subbase)
+        
     def test_list_models(self):
         lmod = self.base.list_models()
         eq_(lmod, [self.model])
@@ -375,6 +440,15 @@ class TestKtbsBasePopulated(KtbsTestCase):
     def test_get_method(self):
         meth = self.base.get("MethodWithID")
         eq_(meth, self.method)
+
+    ######## get subbase information ########
+
+    def test_get_subbase_depth(self):
+        eq_(self.subbase.get_depth(), 2)
+
+    def test_get_subbase_parent(self):
+        eq_(self.subbase.get_parent(), self.base)
+
 
 FAKE_PARAMETERS = {
     "command-line": "echo",
