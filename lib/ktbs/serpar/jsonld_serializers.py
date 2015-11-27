@@ -216,8 +216,9 @@ def serialize_json_root(graph, root, bindings=None):
 
     yield """
     "hasBuiltinMethod" : %s
-    """ % dumps([ "%s" % valconv_uri(bm.uri)
-                  for bm in root.iter_builtin_methods()])
+    """ % dumps([ "%s" % valconv_uri(bm_uri)
+                  for bm_uri in root.state.objects(root.uri,
+                                                   KTBS.hasBuiltinMethod)])
 
     len_root_uri = len(root.uri)
     bases = [ "%s" % b.uri[len_root_uri:] for b in root.iter_bases()]
