@@ -81,13 +81,13 @@ class HttpKtbsTestCaseMixin(object):
         ktbs_config = get_ktbs_configuration()
         app = HttpFrontend(self.service, ktbs_config)
         #app = HttpFrontend(self.service, cache_control="max-age=60")
-        httpd = make_server("localhost", 12345, app,
-                            handler_class=StdoutHandler)
-        thread = Thread(target=httpd.serve_forever)
-        thread.start()
-        self.httpd = httpd
 
         try:
+            httpd = make_server("localhost", 12345, app,
+                                handler_class=StdoutHandler)
+            thread = Thread(target=httpd.serve_forever)
+            thread.start()
+            self.httpd = httpd
             self.my_ktbs = HttpClientCore.factory("http://localhost:12345/")
             assert isinstance(self.my_ktbs, KtbsRootMixin)
         except:
