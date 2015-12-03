@@ -118,7 +118,7 @@ class _FilterMethod(AbstractMonosourceMethod):
         begin = mintime
         if monotonicity is NOT_MON:
             LOG.debug("non-monotonic %s", computed_trace)
-            passed_maxtime = None
+            passed_maxtime = False
             last_seen = None
             target_obsels._empty() # friend #pylint: disable=W0212
         elif monotonicity is STRICT_MON:
@@ -126,7 +126,7 @@ class _FilterMethod(AbstractMonosourceMethod):
             if last_seen:
                 begin = last_seen
         elif monotonicity is PSEUDO_MON:
-            LOG.debug("strictly temporally monotonic %s", computed_trace)
+            LOG.debug("pseudo temporally monotonic %s", computed_trace)
             if last_seen:
                 begin = last_seen - source.get_pseudomon_range()
         else:
@@ -141,14 +141,11 @@ class _FilterMethod(AbstractMonosourceMethod):
             target_add = editable.add
 
             for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
-                cstate["last_seen"] = obs.begin
-                if mintime  and  obs.begin < mintime:
-                    LOG.debug("--- dropping %s", obs)
-                    continue
+                last_seen = obs.begin
                 if maxtime:
                     if obs.begin > maxtime:
                         LOG.debug("--- passing maxtime on %s", obs)
-                        cstate["passed_maxtime"] = True
+                        passed_maxtime = True
                         break
                     elif obs.end > maxtime:
                         LOG.debug("--- dropping %s", obs)

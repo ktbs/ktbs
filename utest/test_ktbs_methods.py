@@ -18,14 +18,25 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
+from json import loads
 from nose.tools import eq_, raises
 from unittest import skip
 
+from ktbs.engine.resource import METADATA
 from ktbs.methods.fusion import LOG as FUSION_LOG
 from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS, KTBS_NS_URI
 
 from .test_ktbs_engine import KtbsTestCase, HttpKtbsTestCaseMixin
+
+def get_custom_state(computed_trace, key=None):
+        jsonstr = computed_trace.metadata.value(computed_trace.uri,
+                                                METADATA.computation_state)
+        jsonobj = loads(jsonstr)
+        ret = jsonobj.get('custom')
+        if ret is not None and key is not None:
+            ret = ret.get(key)
+        return ret
 
 
 class TestFilter(KtbsTestCase):
@@ -42,51 +53,81 @@ class TestFilter(KtbsTestCase):
         ctr = base.create_computed_trace("ctr/", KTBS.filter,
                                          {"after": "10", "before": "20"},
                                          [src],)
+        eq_(get_custom_state(ctr, 'last_seen'), None)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
 
-        self.log.info(">strictly temporally monotonic change: add o00")
+        self.log.info(">first change (considered non-monotonic): add o00")
         o00 = src.create_obsel("o00", otype, 0)
         eq_(len(ctr.obsels), 0)
+        eq_(get_custom_state(ctr, 'last_seen'), None) # not even looked at
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype, 5)
         eq_(len(ctr.obsels), 0)
+        eq_(get_custom_state(ctr, 'last_seen'), None) # not event looked at
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype, 10)
         eq_(len(ctr.obsels), 1)
+        eq_(get_custom_state(ctr, 'last_seen'), 10)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype, 15)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 15)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype, 20)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'last_seen'), 20)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype, 25)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype, 30)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype, 27)
         eq_(len(ctr.obsels), 3)
+
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype, 17)
         eq_(len(ctr.obsels), 4)
+
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype, 7)
         eq_(len(ctr.obsels), 4)
 
+
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype, 35)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
 
     def test_filter_otypes(self):
         base = self.my_ktbs.create_base("b/")
@@ -104,48 +145,66 @@ class TestFilter(KtbsTestCase):
         self.log.info(">strictly temporally monotonic change: add o00")
         o00 = src.create_obsel("o00", otype1, 0)
         eq_(len(ctr.obsels), 1)
+        eq_(get_custom_state(ctr, 'last_seen'), 0)
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype2, 5)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 5)
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype3, 10)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 10)
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype1, 15)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'last_seen'), 15)
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype2, 20)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'last_seen'), 20)
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype3, 25)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'last_seen'), 25)
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype1, 30)
         eq_(len(ctr.obsels), 5)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype2, 27)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
         eq_(len(ctr.obsels), 6)
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype1, 17)
         eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype2, 7)
         eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype1, 35)
         eq_(len(ctr.obsels), 9)
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
         eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         eq_(len(ctr.obsels), 8)
-        
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
+        self.log.info(">non-monotonic change: removing o35")
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o35.uri, None, None))
+        eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
+
           
 class TestFusion(KtbsTestCase):
 
