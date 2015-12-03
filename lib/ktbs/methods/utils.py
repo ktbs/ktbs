@@ -68,7 +68,7 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
         for triple in raw_graph:
             add_triple(triple)
 
-def translate_node(node, transformed_trace, src_uri, multiple_sources):
+def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=None):
     """
     If node is a URI, translate its URI to put it in transfored_trace. Else,
     leave it unchanged.
@@ -82,5 +82,8 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources):
         new_id = "%s_%s" % (tid, oid)
     else:
         _, new_id = node.rsplit("/", 1)
-    return URIRef("%s%s" % (transformed_trace.uri, new_id))
+    ret = URIRef("%s%s" % (transformed_trace.uri, new_id))
+    if prevent is not None and prevent(ret):
+        ret = None
+    return ret
 

@@ -139,6 +139,7 @@ class _FilterMethod(AbstractMonosourceMethod):
         with target_obsels.edit(_trust=True) as editable:
             target_contains = editable.__contains__
             target_add = editable.add
+            check_new_obs = lambda uri: check_new(editable, uri)
 
             for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
                 last_seen = obs.begin
@@ -174,17 +175,17 @@ class _FilterMethod(AbstractMonosourceMethod):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_obj = translate_node(obj, computed_trace, source_uri,
-                                             False)
-                    if new_obj != obj and check_new(editable, new_obj):
-                        continue # skip relations to node that are filtered out
+                                             False, check_new_obs)
+                    if new_obj is None:
+                        continue # skip relations to nodes that are filtered out or not created yet
                     target_add((new_obs_uri, pred, new_obj))
                 for subj, pred, _ in source_triples((None, None, obs.uri)):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_subj = translate_node(subj, computed_trace, source_uri,
                                               False)
-                    if new_subj != subj and check_new(editable, new_subj):
-                        continue # skip relations to node that are filtered out
+                    if new_subj is None:
+                        continue # skip relations from nodes that are filtered out or not created yet
                     target_add((new_subj, pred, new_obs_uri))
 
         cstate["passed_maxtime"] = passed_maxtime
