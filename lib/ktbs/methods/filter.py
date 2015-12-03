@@ -20,8 +20,7 @@ Implementation of the filter builtin methods.
 """
 import logging
 
-from rdflib import Literal, RDF, URIRef
-
+from rdflib import Literal, RDF, URIRef, Graph
 from rdfrest.util.iso8601 import parse_date
 from rdfrest.util import check_new
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
@@ -136,57 +135,63 @@ class _FilterMethod(AbstractMonosourceMethod):
         target_uri = computed_trace.uri
         source_state = source_obsels.state
         source_triples = source_state.triples
-        with target_obsels.edit(_trust=True) as editable:
-            target_contains = editable.__contains__
-            target_add = editable.add
-            check_new_obs = lambda uri: check_new(editable, uri)
+        target_contains = target_obsels.state.__contains__
+        target_add_graph = target_obsels.add_graph
+        check_new_obs = lambda uri, g=target_obsels.state: check_new(g, uri)
 
-            for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
-                last_seen = obs.begin
-                if maxtime:
-                    if obs.begin > maxtime:
-                        LOG.debug("--- passing maxtime on %s", obs)
-                        passed_maxtime = True
+        for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
+            last_seen = obs.begin
+            if maxtime:
+                if obs.begin > maxtime:
+                    LOG.debug("--- passing maxtime on %s", obs)
+                    passed_maxtime = True
+                    break
+                elif obs.end > maxtime:
+                    LOG.debug("--- dropping %s", obs)
+                    continue
+            if otypes:
+                obs_uri = obs.uri
+                obs_state = obs.state
+                for otype in otypes:
+                    if (obs_uri, RDF.type, otype) in obs_state:
                         break
-                    elif obs.end > maxtime:
-                        LOG.debug("--- dropping %s", obs)
-                        continue
-                if otypes:
-                    obs_uri = obs.uri
-                    obs_state = obs.state
-                    for otype in otypes:
-                        if (obs_uri, RDF.type, otype) in obs_state:
-                            break
-                    else: # goes with the for (NOT the if)
-                        LOG.debug("--- dropping %s", obs)
-                        continue
+                else: # goes with the for (NOT the if)
+                    LOG.debug("--- dropping %s", obs)
+                    continue
 
-                new_obs_uri = translate_node(obs.uri, computed_trace,
-                                             source_uri, False)
-                if target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
-                    LOG.debug("--- skipping %s", new_obs_uri)
-                    continue # already added
-                    
-                LOG.debug("--- keeping %s", obs)
-                target_add((new_obs_uri, KTBS.hasTrace, target_uri))
-                target_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
+            new_obs_uri = translate_node(obs.uri, computed_trace,
+                                         source_uri, False)
+            if target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
+                LOG.debug("--- skipping %s", new_obs_uri)
+                continue # already added
 
-                for _, pred, obj in source_triples((obs.uri, None, None)):
-                    if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
-                        continue
-                    new_obj = translate_node(obj, computed_trace, source_uri,
-                                             False, check_new_obs)
-                    if new_obj is None:
-                        continue # skip relations to nodes that are filtered out or not created yet
-                    target_add((new_obs_uri, pred, new_obj))
-                for subj, pred, _ in source_triples((None, None, obs.uri)):
-                    if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
-                        continue
-                    new_subj = translate_node(subj, computed_trace, source_uri,
-                                              False)
-                    if new_subj is None:
-                        continue # skip relations from nodes that are filtered out or not created yet
-                    target_add((new_subj, pred, new_obs_uri))
+
+            LOG.debug("--- keeping %s", obs)
+            new_obs_graph = Graph()
+            new_obs_add = new_obs_graph.add
+
+            new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
+            new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
+
+            for _, pred, obj in source_triples((obs.uri, None, None)):
+                if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
+                    continue
+                new_obj = translate_node(obj, computed_trace, source_uri,
+                                         False, check_new_obs)
+                if new_obj is None:
+                    continue # skip relations to nodes that are filtered out or not created yet
+                new_obs_add((new_obs_uri, pred, new_obj))
+
+            for subj, pred, _ in source_triples((None, None, obs.uri)):
+                if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
+                    continue
+                new_subj = translate_node(subj, computed_trace, source_uri,
+                                          False)
+                if new_subj is None:
+                    continue # skip relations from nodes that are filtered out or not created yet
+                new_obs_add((new_subj, pred, new_obs_uri))
+
+            target_add_graph(new_obs_graph)
 
         cstate["passed_maxtime"] = passed_maxtime
         cstate["last_seen"] = last_seen
