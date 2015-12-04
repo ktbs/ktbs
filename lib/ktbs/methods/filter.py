@@ -142,13 +142,10 @@ class _FilterMethod(AbstractMonosourceMethod):
         for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
             last_seen = obs.begin
             if maxtime:
-                if obs.begin > maxtime:
+                if obs.end > maxtime:
                     LOG.debug("--- passing maxtime on %s", obs)
                     passed_maxtime = True
                     break
-                elif obs.end > maxtime:
-                    LOG.debug("--- dropping %s", obs)
-                    continue
             if otypes:
                 obs_uri = obs.uri
                 obs_state = obs.state
@@ -186,7 +183,7 @@ class _FilterMethod(AbstractMonosourceMethod):
                 if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                     continue
                 new_subj = translate_node(subj, computed_trace, source_uri,
-                                          False)
+                                          False, check_new_obs)
                 if new_subj is None:
                     continue # skip relations from nodes that are filtered out or not created yet
                 new_obs_add((new_subj, pred, new_obs_uri))

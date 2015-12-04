@@ -44,7 +44,7 @@ class TestFilter(KtbsTestCase):
     def __init__(self):
         KtbsTestCase.__init__(self)
         self.log = FILTER_LOG
-    
+
     def test_filter_temporal(self):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -119,14 +119,57 @@ class TestFilter(KtbsTestCase):
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
+            editable.remove((None, None, o15.uri))
         eq_(len(ctr.obsels), 3)
         eq_(get_custom_state(ctr, 'passed_maxtime'), True)
 
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
+            editable.remove((None, None, o25.uri))
         eq_(len(ctr.obsels), 3)
         eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
+
+    def test_filter_temporal_intervals(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"after": "10", "before": "20"},
+                                         [src],)
+
+        self.log.info(">first change (considered non-monotonic): add o00")
+        o8_15 = src.create_obsel("o8_15", otype, 8, 15)
+        eq_(len(ctr.obsels), 0)
+        o9_15 = src.create_obsel("o9_15", otype, 9, 15)
+        eq_(len(ctr.obsels), 0)
+        o10_15 = src.create_obsel("o10_15", otype, 10, 15)
+        eq_(len(ctr.obsels), 1)
+        o11_15 = src.create_obsel("o11_15", otype, 11, 15)
+        eq_(len(ctr.obsels), 2)
+        o13_15 = src.create_obsel("o13_15", otype, 13, 15)
+        eq_(len(ctr.obsels), 3)
+        o13_15a = src.create_obsel("o13_15a", otype, 13, 15)
+        eq_(len(ctr.obsels), 4)
+        o15_15 = src.create_obsel("o15_15", otype, 15, 15)
+        eq_(len(ctr.obsels), 5)
+        o15_17 = src.create_obsel("o15_17", otype, 15, 17)
+        eq_(len(ctr.obsels), 6)
+        o15_20 = src.create_obsel("o15_20", otype, 15, 20)
+        eq_(len(ctr.obsels), 7)
+        o15_21 = src.create_obsel("o15_21", otype, 15, 21)
+        eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        o15_19 = src.create_obsel("o15_19", otype, 15, 19)
+        eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o15_21.uri, None, None))
+            editable.remove((None, None, o15_21.uri))
+        eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
 
 
     def test_filter_otypes(self):
@@ -204,6 +247,45 @@ class TestFilter(KtbsTestCase):
             editable.remove((o35.uri, None, None))
         eq_(len(ctr.obsels), 7)
         eq_(get_custom_state(ctr, 'last_seen'), 30)
+
+
+    def test_filter_relations(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        rtype = model.create_relation_type("#rt")
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"after": "10", "before": "20"},
+                                         [src],)
+
+        o00 = src.create_obsel("o00", otype, 0)
+        o05 = src.create_obsel("o05", otype, 5)
+        o25 = src.create_obsel("o25", otype, 25)
+        o30 = src.create_obsel("o30", otype, 30)
+        eq_(len(ctr.obsels), 0)
+
+        count_relations = lambda: \
+            len(list(ctr.obsel_collection.state.triples((None, rtype.uri, None))))
+
+        o10 = src.create_obsel("o10", otype, 10, relations=[(rtype, o00)])
+        eq_(len(ctr.obsels), 1)
+        eq_(count_relations(), 0)
+        o11 = src.create_obsel("o11", otype, 11, inverse_relations=[(o05, rtype)])
+        eq_(len(ctr.obsels), 2)
+        eq_(count_relations(), 0)
+        o12 = src.create_obsel("o12", otype, 12, relations=[(rtype, o25)])
+        eq_(len(ctr.obsels), 3)
+        eq_(count_relations(), 0)
+        o13 = src.create_obsel("o13", otype, 13, inverse_relations=[(o30, rtype)])
+        eq_(len(ctr.obsels), 4)
+        eq_(count_relations(), 0)
+        o14 = src.create_obsel("o14", otype, 14, relations=[(rtype, o12)])
+        eq_(len(ctr.obsels), 5)
+        eq_(count_relations(), 1)
+        o15 = src.create_obsel("o15", otype, 15, inverse_relations=[(o13, rtype)])
+        eq_(len(ctr.obsels), 6)
+        eq_(count_relations(), 2)
 
           
 class TestFusion(KtbsTestCase):
