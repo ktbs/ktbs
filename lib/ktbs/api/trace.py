@@ -21,8 +21,8 @@
 """
 I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
+import logging
 from numbers import Integral, Real
-
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from rdflib.term import Node
 
@@ -38,6 +38,8 @@ from rdfrest.wrappers import get_wrapped, register_wrapper
 from .trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 from ..utils import extend_api
+
+LOG = logging.getLogger(__name__)
 
 
 @extend_api
@@ -91,7 +93,7 @@ class AbstractTraceMixin(InBaseMixin):
             origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, reverse=False, bgp=None, refresh=None):
+    def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, refresh=None):
         """
         Iter over the obsels of this trace.
 
@@ -103,8 +105,10 @@ class AbstractTraceMixin(InBaseMixin):
         boundaries of an interval; only obsels entirely contained in this
         interval will be yielded.
 
-        * begin: an int, datetime or Obsel
-        * end: an int, datetime or Obsel
+        * begin: an int, datetime
+        * end: an int, datetime
+        * after: an obsel
+        * before: an obsel
         * reverse: an object with a truth value
         * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
         * refresh: 
@@ -133,8 +137,6 @@ class AbstractTraceMixin(InBaseMixin):
             elif isinstance(begin, datetime):
                 raise NotImplementedError(
                     "datetime as begin is not implemented yet")
-            elif isinstance(begin, ObselMixin):
-                begin = begin.begin
             else:
                 raise ValueError("Invalid value for `begin` (%r)" % begin)
             filters.append("?b >= %s" % begin)
@@ -145,16 +147,30 @@ class AbstractTraceMixin(InBaseMixin):
             elif isinstance(end, datetime):
                 raise NotImplementedError(
                     "datetime as end is not implemented yet")
-            elif isinstance(end, ObselMixin):
-                end = end.end
             else:
                 raise ValueError("Invalid value for `end` (%r)" % end)
             filters.append("?e <= %s" % end)
             parameters["maxe"] = end
+        if after is not None:
+            if not isinstance(after, ObselMixin):
+                raise ValueError("Invalid value for `after` (%r)" % after)
+            filters.append("?e > {2} || "
+                           "?e = {2} && ?b > {1} || "
+                           "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
+                                after.uri, after.begin, after.end,
+            ))
+        if before is not None:
+            if not isinstance(before, ObselMixin):
+                raise ValueError("Invalid value for `before` (%r)" % before)
+            filters.append("?e < {2} || "
+                           "?e = {2} && ?b < {1} || "
+                           "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
+                                before.uri, before.begin, before.end
+            ))
         if reverse:
             postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
         else:
-            postface += "ORDER BY ?b ?e ?obs"
+            postface += "ORDER BY ?e ?b ?obs"
         if bgp is None:
             bgp = ""
         else:
