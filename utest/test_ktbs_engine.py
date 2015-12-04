@@ -227,7 +227,7 @@ class TestKtbs(KtbsTestCase):
         eq_(get_change_monotonicity(trace, tags), 2)
         eq_(last_obsel(trace), o450.uri)
         o45b = trace.create_obsel("o45b", myot, 450)
-        eq_(get_change_monotonicity(trace, tags), 2)
+        eq_(get_change_monotonicity(trace, tags), 3)
         with obsels.edit() as editable:
             editable.remove((o45b.uri, None, None))
             editable.remove((None, None, o45b.uri))

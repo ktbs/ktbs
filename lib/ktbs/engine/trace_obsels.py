@@ -417,7 +417,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                               graph.subjects(None, new_obs)):
                 end = self_state_value(obs, KTBS.hasEnd)
                 if end is None:
-                    continue
+                    continue # not an obsel, skip it
                 end = int(end)
                 if end < old_last_end:
                     str_mon = False
@@ -425,10 +425,14 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                         pse_mon = False
                 elif end == old_last_end:
                     begin = int(self_state_value(obs, KTBS.hasBegin))
-                    if begin <= old_last_begin:
+                    if begin < old_last_begin:
                         str_mon = False
                         if begin < pse_mon_b_limit:
                             pse_mon = False
+                    elif begin == old_last_begin:
+                        if obs <= old_last_obsel:
+                            str_mon = False
+
         return str_mon, pse_mon
 
 
