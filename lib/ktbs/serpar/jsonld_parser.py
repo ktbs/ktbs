@@ -203,6 +203,7 @@ CONTEXT_JSON = """{"@context":{
 
     "external": "k:external",
     "filter": "k:filter",
+    "fsa": "k:fsa",
     "fusion": "k:fusion",
     "sparql": "k:sparql",
 

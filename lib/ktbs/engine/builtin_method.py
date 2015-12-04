@@ -33,6 +33,7 @@ def iter_builtin_method_impl():
 def register_builtin_method_impl(implementation):
     """I register the implementation of a builtin method.
     """
+    assert isinstance(implementation, IMethod) # check that we have an instance, not a class
     uri = str(implementation.uri)
     _BUILTIN_METHODS[uri] = implementation
 
@@ -75,7 +76,8 @@ class _FakeMethod(IMethod):
 import ktbs.api.builtin_method # unused import #pylint: disable=W0611
 
 # ensure that all shipped built-in method implementations are registered
-import ktbs.methods.filter    # reimport(?) #pylint: disable=W0404
+import ktbs.methods.filter   # reimport(?) #pylint: disable=W0404
+import ktbs.methods.fsa      # reimport(?) #pylint: disable=W0404
 import ktbs.methods.fusion   # reimport(?) #pylint: disable=W0404
 import ktbs.methods.sparql   # reimport(?) #pylint: disable=W0404
 

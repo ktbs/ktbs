@@ -454,10 +454,16 @@ KTBS_NS_TTL = """
 #
 ################################################################
 
-:external a :BuiltinMethod ; rdfs:label "external"@en, "externe"@fr .
-:filter   a :BuiltinMethod ; rdfs:label "filter"@en,   "filtre"@fr .
-:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,   "fusion"@fr .
-:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,   "SPARQL"@fr .
+:external a :BuiltinMethod ; rdfs:label "external"@en,
+                                        "externe"@fr .
+:filter   a :BuiltinMethod ; rdfs:label "filter"@en,
+                                        "filtre"@fr .
+:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,
+                                        "fusion"@fr .
+:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,
+                                        "SPARQL"@fr .
+:fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
+                                        "Automate à états fini"@fr .
 
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .

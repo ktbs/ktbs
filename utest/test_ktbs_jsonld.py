@@ -84,7 +84,7 @@ class TestJsonRoot(KtbsTestCase):
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
                 'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
@@ -124,7 +124,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
@@ -154,7 +154,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],

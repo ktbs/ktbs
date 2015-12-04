@@ -212,9 +212,10 @@ class AbstractMonosourceMethod(IMethod):
             else:
                 try:
                     params[key] = datatype(val)
-                except Exception:
-                    diag.append("Parameter %s has illegal value: %s"
-                                % (key, val))
+                except Exception as e:
+                    diag.append("Parameter %s has illegal value: %s.\n"
+                                "    Reason: %s"
+                                % (key, val, e.message))
                     critical = True
 
         for key in self.required_parameters:
