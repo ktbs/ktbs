@@ -121,7 +121,7 @@ class AbstractMonosourceMethod(IMethod):
     def compute_trace_description(self, computed_trace):
         """I implement :meth:`.interface.IMethod.compute_trace_description`.
         """
-        diag = Diagnosis("<%s> .compute_trace_description" % self.uri)
+        diag = Diagnosis("compute_trace_description for <{}>".format(self.uri))
 
         cstate = {
             'errors': None,
@@ -133,7 +133,7 @@ class AbstractMonosourceMethod(IMethod):
 
         params =  self._prepare_params(computed_trace, diag)
         if len(computed_trace.source_traces) != 1:
-            diag.append("Method ktbs:filter expects exactly one source")
+            diag.append("Method <{}> expects exactly one source".format(self.uri))
             params = None
         if params is not None:
             model = self.compute_model(computed_trace, params, diag)
@@ -156,7 +156,7 @@ class AbstractMonosourceMethod(IMethod):
     def compute_obsels(self, computed_trace, from_scratch=False):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
-        diag = Diagnosis("filter.compute_obsels")
+        diag = Diagnosis("compute_obsels for <{}>".format(self.uri))
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
