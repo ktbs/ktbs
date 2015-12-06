@@ -48,7 +48,6 @@ def main():
     if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
 
-    ktbs_config.set("logging", "loggers", "rdfrest ktbs");
     apply_global_config(ktbs_config)
 
     LOG.info("KTBS pid: %d" % getpid())
