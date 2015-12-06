@@ -116,8 +116,7 @@ which should look like:
         "@id": "t01/",
         "@type": "StoredTrace",
         "hasModel": "http://liris.cnrs.fr/silex/2011/simple-trace-model/",
-        "origin": "1970-01-01T00:00:00Z",
-        "defaultSubject": "me"
+        "origin": "1970-01-01T00:00:00Z"
     }
 
 
@@ -168,10 +167,6 @@ More precisely:
     based on the moment you posted the obsel;
     this is expressed in milliseconds since the origin of the trace.
 
-  * The ``subject`` of the obsel has been set based on the default subject
-    of the trace. If we had not provided a default subject for the trace,
-    then specifying the subject of each new obsel would be mandatory.
-
   * The ``hasTrace`` links the obsel to the trace containing it.
 
   * The ``@context`` property.
@@ -189,8 +184,7 @@ and POST the following content to it:
         "@id": "obs0",
         "@type": "m:SimpleObsel",
         "begin": 1361462605000,
-        "end":   1361462647000,
-        "subject": "someone else"
+        "end":   1361462647000
     }
 
 We also note that, as with the base and the trace earlier,
@@ -244,14 +238,12 @@ __ http://localhost:8001/base1/t01/@obsels
             {
                 "@id": "obs0",
                 "@type": "m:SimpleObsel",
-                "subject": "someone else",
                 "begin": 1361462605000,
                 "end": 1361462647000
             },
             {
                 "@id": "obs1",
                 "@type": "m:SimpleObsel",
-                "subject": "me",
                 "begin": 1394791006055,
                 "end": 1394791006055,
                 "@reverse": {
@@ -261,7 +253,6 @@ __ http://localhost:8001/base1/t01/@obsels
             {
                 "@id": "o-8g",
                 "@type": "m:SimpleObsel",
-                "subject": "me",
                 "begin": 1394791489228,
                 "end": 1394791489228,
                 "m:hasRelatedObsel": {"hasTrace": "./", "@id": "obs1"},
@@ -331,7 +322,7 @@ and create a new computed trace by POSTing the following:
         "@type": "ComputedTrace",
         "hasMethod": "sparql",
         "hasSource": [ "t01/" ],
-        "parameter": [ "sparql=    PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>\nPREFIX m:  <http://liris.cnrs.fr/silex/2011/simple-trace-model/>\n\nCONSTRUCT {\n    [ a m:SimpleObsel ;\n      m:value ?value ;\n      :hasTrace <%(__destination__)s> ;\n      :hasSubject ?subject ;\n      :hasBegin ?begin ;\n      :hasEnd ?end ;\n      :hasSourceObsel ?o1, ?o2 ;\n    ] .\n} WHERE {\n    ?o2 :hasSubject ?subject ;\n        :hasEnd ?end ;\n        m:hasRelatedObsel ?o1 .\n    ?o1 :hasBegin ?begin .\n    OPTIONAL { ?o2 m:value ?value }\n}\n" ]
+        "parameter": [ "sparql=    PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>\nPREFIX m:  <http://liris.cnrs.fr/silex/2011/simple-trace-model/>\n\nCONSTRUCT {\n    [ a m:SimpleObsel ;\n      m:value ?value ;\n      :hasTrace <%(__destination__)s> ;\n      :hasBegin ?begin ;\n      :hasEnd ?end ;\n      :hasSourceObsel ?o1, ?o2 ;\n    ] .\n} WHERE {\n    ?o1 :hasBegin ?begin .\n    ?o2 :hasEnd ?end ;\n        m:hasRelatedObsel ?o1 .\n    OPTIONAL { ?o2 m:value ?value }\n}\n" ]
     }
 
 This create a computed trace named ``joinRelated1``
@@ -351,16 +342,14 @@ it is provided below:
         [ a m:SimpleObsel ;
           m:value ?value ;
           :hasTrace <%(__destination__)s> ;
-          :hasSubject ?subject ;
           :hasBegin ?begin ;
           :hasEnd ?end ;
           :hasSourceObsel ?o1, ?o2 ;
         ] .
     } WHERE {
-        ?o2 :hasSubject ?subject ;
-            :hasEnd ?end ;
-            m:hasRelatedObsel ?o1 .
         ?o1 :hasBegin ?begin .
+        ?o2 :hasEnd ?end ;
+            m:hasRelatedObsel ?o1 .
         OPTIONAL { ?o2 m:value ?value }
     }
 

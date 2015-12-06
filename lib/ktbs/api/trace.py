@@ -380,9 +380,6 @@ class StoredTraceMixin(AbstractTraceMixin):
             end = begin
         if subject is None:
             subject = self.get_default_subject()
-            if subject is None:
-                raise ValueError("subject is mandatory since trace has no "
-                                 "default subject")
 
         trust = False # TODO SOON decide if we can trust anything
         # this would imply verifying that begin and end are mutually consistent

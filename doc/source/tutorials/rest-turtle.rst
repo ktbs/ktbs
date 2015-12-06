@@ -114,8 +114,7 @@ which should look like:
     <t01/>
         a :StoredTrace ;
         :hasModel <http://liris.cnrs.fr/silex/2011/simple-trace-model/> ;
-        :hasOrigin "1970-01-01T00:00:00Z" ;
-        :hasDefaultSubject "me" .
+        :hasOrigin "1970-01-01T00:00:00Z" .
 
 
 As previously, ensure that the selected content-type is ``text/turtle``,
@@ -149,15 +148,10 @@ and POST the following content to it:
 Being redirected to the description of the new obsel,
 you will notice that this time the kTBS added a number of properties
 in addition to the ones you specified above.
-More precisely:
-
-  * The ``begin`` and ``end`` of the obsel have been automatically set
-    based on the moment you posted the obsel;
-    this is expressed in milliseconds since the origin of the trace.
-
-  * The ``subject`` of the obsel has been set based on the default subject
-    of the trace. If we had not provided a default subject for the trace,
-    then specifying the subject of each new obsel would be mandatory.
+More precisely,
+the ``begin`` and ``end`` of the obsel have been automatically set
+based on the moment you posted the obsel;
+this is expressed in milliseconds since the origin of the trace.
 
 It would have been possible to specify those properties explicitly,
 if we wanted to override the values automatically computed by the kTBS.
@@ -173,8 +167,7 @@ and POST the following content to it:
     <obs0> a m:SimpleObsel ;
         :hasTrace <> ;
         :hasBegin 1361462605000 ;
-        :hasEnd   1361462647000 ;
-        :hasSubject "someone else" .
+        :hasEnd   1361462647000 .
 
 We also note that, as with the base and the trace earlier,
 we had to mint a URI for our new obsels.
@@ -226,19 +219,16 @@ __ http://localhost:8001/base1/t01/@obsels
     <obs0> a m:SimpleObsel;
         :hasBegin 1361462605000;
         :hasEnd 1361462647000;
-        :hasSubject "someone else";
-        :hasTrace <.> .    
+        :hasTrace <.> .
     
     <obs1> a m:SimpleObsel;
         :hasBegin 1361462685837;
         :hasEnd 1361462685837;
-        :hasSubject "me";
         :hasTrace <.> .
 
     <o-3k> a m:SimpleObsel;
         :hasBegin 1361462707201;
         :hasEnd 1361462707201;
-        :hasSubject "me";
         :hasTrace <.>;
         m:hasRelatedObsel <obs1>;
         m:value "a new obsel" .
@@ -317,16 +307,14 @@ and create a new computed trace by POSTing the following:
         [ a m:SimpleObsel ;
           m:value ?value ;
           :hasTrace <%(__destination__)s> ;
-          :hasSubject ?subject ;
           :hasBegin ?begin ;
           :hasEnd ?end ;
           :hasSourceObsel ?o1, ?o2 ;
         ] .
     } WHERE {
-        ?o2 :hasSubject ?subject ;
-            :hasEnd ?end ;
-            m:hasRelatedObsel ?o1 .
         ?o1 :hasBegin ?begin .
+        ?o2 :hasEnd ?end ;
+            m:hasRelatedObsel ?o1 .
         OPTIONAL { ?o2 m:value ?value }
     }""" .
 

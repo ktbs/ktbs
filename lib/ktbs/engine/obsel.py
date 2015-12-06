@@ -140,7 +140,7 @@ class _ObselImpl(ILocalCore):
                             (KTBS.hasBeginDT, 0, 1),
                             (KTBS.hasEnd, 1, 1),
                             (KTBS.hasEndDT, 0, 1),
-                            (KTBS.hasSubject, 1, 1),
+                            (KTBS.hasSubject, 0, 1),
                             (KTBS.hasTrace, 1, 1),
                             ]
     RDF_TYPED_PROP =      [ (KTBS.hasBegin,   "literal", XSD.integer),

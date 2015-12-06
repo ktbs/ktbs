@@ -87,7 +87,8 @@ class TestGeojsonObselsSerialization(KtbsTestCase):
             f['properties'] = {}
             f['properties']['begin'] = o.begin
             f['properties']['end'] = o.end
-            f['properties']['subject'] = o.subject
+            if o.subject is not None:
+                f['properties']['subject'] = o.subject
 
             geodict['features'].append(f)
         geoRefSerialized = json.dumps(geodict)

@@ -520,23 +520,27 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
 
     obsels = graph.query("""
         PREFIX : <%s#>
-        SELECT ?obs ?otype ?subject ?begin ?end
+        SELECT ?obs ?otype ?begin ?end ?subject
         {
-            ?obs a ?otype ; :hasSubject ?subject ; :hasBegin ?begin ;
+            ?obs a ?otype ;
+                 :hasBegin ?begin ;
                  :hasEnd ?end .
+            OPTIONAL{ ?obs :hasSubject ?subject }
         } ORDER BY ?begin ?end
     """ % KTBS_NS_URI)
 
     comma = u""
-    for obs, otype, subject, begin, end in obsels:
+    for obs, otype, begin, end, subject in obsels:
         yield comma + u"""
         {
             "@id": "%s",
             "@type": "%s",
-            "subject": "%s",
             "begin": %s,
             "end": %s""" % (valconv_uri(obs), valconv_uri(otype),
-                            subject, begin, end)
+                            begin, end)
+
+        if subject:
+            yield ',\n            "subject": "%s"' % subject
 
         for i in iter_obsel_arcs(graph, obs, valconv, "\n            "):
             yield i
@@ -580,8 +584,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     "@type": %s, 
     "hasTrace": "%s",
     "begin": %s,
-    "end": %s,
-    "subject": "%s"
+    "end": %s
     """ % (
         model_uri,
         obsel.uri,
@@ -589,8 +592,11 @@ def serialize_json_obsel(graph, obsel, bindings=None):
         valconv_uri(trace_uri),
         obsel.get_begin(),
         obsel.get_end(),
-        obsel.get_subject(),
         )
+
+    subject = obsel.get_subject()
+    if subject is not None:
+        yield ',\n    "subject": "%s"' % subject
 
     for i in iter_obsel_arcs(graph, obsel.uri, valconv, "\n            "):
         yield i

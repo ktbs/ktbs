@@ -73,8 +73,8 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
             geo:long ?long ;
             geo:lat ?lat ;
             :hasBegin ?begin;
-            :hasEnd ?end;
-            :hasSubject ?subject .
+            :hasEnd ?end.
+            OPTIONAL {{ ?obs :hasSubject ?subject }}
         }}
         ORDER BY ?begin
     """.format(KTBS_NS_URI))
@@ -99,7 +99,8 @@ def serialize_geojson_trace_obsels(graph, tobsels, bindings=None):
             f['properties'] = {}
             f['properties']['begin'] = int(o.begin)
             f['properties']['end'] = int(o.end)
-            f['properties']['subject'] = o.subject
+            if o.subject is not None:
+                f['properties']['subject'] = o.subject
 
             geodict['features'].append(f)
 

@@ -996,7 +996,7 @@ class TestJsonObsels(KtbsTestCase):
     def populate(self):
         # create obsel in wrong order, to check that they are serialized in
         # the correct order nonetheless
-        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, "baz",
+        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, None,
                                        {self.at1: "hello world" })
         self.o2 = self.t1.create_obsel("o2", self.ot1, 2000, 3000, "bar",
                                        {self.at2: 42}, [(self.rt1, self.o3)])
@@ -1074,7 +1074,6 @@ class TestJsonObsels(KtbsTestCase):
                     '@type': 'm:OT1',
                     'begin': 3000,
                     'end': 4000,
-                    'subject': 'baz',
                     'm:at1': 'hello world',
                     '@reverse': {
                         'm:rt1': { '@id': 'o2', 'hasTrace': './' },
@@ -1142,7 +1141,6 @@ class TestJsonObsels(KtbsTestCase):
             '@type': 'm:OT1',
             'begin': 3000,
             'end': 4000,
-            'subject': 'baz',
             'm:at1': 'hello world',
             '@reverse': {
                 'm:rt1': { '@id': 'o2', 'hasTrace': './' },
