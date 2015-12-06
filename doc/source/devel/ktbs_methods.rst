@@ -9,12 +9,6 @@ Interface
 .. automodule:: ktbs.methods.interface
     :members:
 
-External
---------
-
-.. automodule:: ktbs.methods.external
-    :members:
-
 Filter
 ------
 
@@ -27,11 +21,24 @@ Fusion
 .. automodule:: ktbs.methods.fusion
     :members:
 
+FSA
+---
+
+.. automodule:: ktbs.methods.fsa
+    :members:
+
 SPARQL
 ------
 
 .. automodule:: ktbs.methods.sparql
     :members:
+
+External
+--------
+
+.. automodule:: ktbs.plugins.meth_external
+    :members:
+
 
 Utilities for implementing method
 ---------------------------------

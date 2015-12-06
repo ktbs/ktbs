@@ -67,6 +67,42 @@ and in that case the computed trace will have
 the same model (resp. origin) as its source(s).
 
 
+FSA
+```
+
+This method applies a Finite State Automaton to detect patterns of obsels in the source trace,
+and produce an obsel in the transformed trace for each pattern occurence.
+It is based on the FSA4streams_ library.
+
+.. _FSA4streams: https://pypi.python.org/pypi/fsa4streams
+
+:sources: 1
+:parameters:
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
+  :fsa: the description of the FSA
+:extensible: no
+
+If parameter ``model`` (resp. ``origin``) is not provided,
+the model (resp. origin) of the source trace will be used instead.
+
+The ``fsa`` parameter expects a JSON description of the FSA,
+as described in the `FSA4streams documentation <http://fsa4streams.readthedocs.org/en/latest/syntax.html>`_,
+with the following specificities:
+
+* When reaching a terminal state,
+  an obsel will be generated, with an obsel type named after the state identifier.
+  The latter must therefore *be a URI*,
+  either absolute or relative to the computed trace's model URI.
+
+  The produced obsel will have no attribute,
+  but will have ``ktbs:hasSourceObsel`` links to all the obsels participating in the pattern.
+
+* The default matcher (even if not explicitly specified) is ``obseltype``:
+  each ``transition.condition`` is interpreted as an obsel type URI
+  (either absolute or relative to the source trace's model URI),
+  and an obsel matches the transition if it has the corresponding obsel type.
+
 Sparql
 ``````
 
