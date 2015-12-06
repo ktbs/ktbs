@@ -119,6 +119,7 @@ class _FSAMethod(AbstractMonosourceMethod):
             for i, token in enumerate(matching_tokens):
                 source_obsels = [ URIRef(uri) for uri in token['history_events']]
                 otype_uri = URIRef(token['state'], target_model_uri)
+                LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
 
                 new_obs_uri = translate_node(source_obsels[-1], computed_trace,
                                              source_uri, False)
@@ -135,7 +136,7 @@ class _FSAMethod(AbstractMonosourceMethod):
 
                 target_add_graph(new_obs_graph)
 
-        cstate["last_seen"] = unicode(last_seen.uri)
+        cstate["last_seen"] = last_seen and unicode(last_seen.uri)
         cstate["tokens"] = fsa.export_tokens_as_dict()
 
 register_builtin_method_impl(_FSAMethod())
