@@ -457,6 +457,20 @@ class TestKtbs(KtbsTestCase):
         base1.force_state_refresh()
         assert (base1.uri, KTBS.contains, base2.uri) in base1.state
 
+    def test_trace_extension_dt(self):
+        k = self.my_ktbs
+        b = k.create_base("b/")
+        m = b.create_model("m")
+        t = b.create_stored_trace("t/", m, origin="1970-01-01T00:00:00Z")
+        t.trace_begin_dt = "1970-01-01T00:00:00Z"
+        assert t.trace_begin == 0
+        t.trace_begin_dt = "1970-01-01T01:00:00Z"
+        assert t.trace_begin == 3600000
+        t.trace_end_dt = "1970-01-01T02:00:00Z"
+        assert t.trace_end == 3600000*2
+        t.trace_end_dt = "1970-01-01T03:00:00Z"
+        assert t.trace_end == 3600000*3
+
 
 class TestKtbsSynthetic(KtbsTestCase):
 

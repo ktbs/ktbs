@@ -802,6 +802,7 @@ class TestJsonStoredTrace(KtbsTestCase):
         self.t1.origin = "alonglongtimeago"
         self.t1.default_subject = "pa"
         self.t1.model = "http://example.org/model"
+        self.t1.trace_begin = 42
         with self.t1.edit() as g:
             g.add((self.t1.uri,
                    URIRef("http://example.org/ns/strprop"),
@@ -819,8 +820,32 @@ class TestJsonStoredTrace(KtbsTestCase):
             'hasObselList': '@obsels',
             'hasModel': 'http://example.org/model',
             'origin': 'alonglongtimeago',
+            'traceBegin': 42,
             'defaultSubject': 'pa',
             'http://example.org/ns/strprop': 'Hello world',
+        })
+        assert_roundtrip(json_content, self.t1)
+
+    def test_customized_stored_trace_2(self):
+        self.t1.label = "My customized stored trace #2"
+        self.t1.trace_begin_dt = '2015-12-09T12:00:00Z'
+        self.t1.trace_end_dt = '2015-12-09T13:00:00Z'
+        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/t1/',
+            '@type': 'StoredTrace',
+            'label': 'My customized stored trace #2',
+            'inBase': '../',
+            'hasObselList': '@obsels',
+            'hasModel': '../modl',
+            'origin': '1970-01-01T00:00:00Z',
+            'traceBegin': 1449662400000,
+            'traceBeginDT': '2015-12-09T12:00:00+00:00',
+            'traceEnd': 1449666000000,
+            'traceEndDT': '2015-12-09T13:00:00+00:00',
         })
         assert_roundtrip(json_content, self.t1)
 

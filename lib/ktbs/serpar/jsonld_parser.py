@@ -195,7 +195,7 @@ CONTEXT_JSON = """{"@context":{
     "hasSuperObselType": { "@id": "k:hasSuperObselType", "@type": "@id" },
     "hasSuperRelationType": { "@id": "k:hasSuperRelationType", "@type": "@id" },
     "hasTrace": { "@id": "k:hasTrace", "@type": "@id" },
-    "traceBegin": { "@id": "k:hasTraceBeginse", "@type": "xsd:integer" },
+    "traceBegin": { "@id": "k:hasTraceBegin", "@type": "xsd:integer" },
     "traceBeginDT": { "@id": "k:hasTraceBeginDT", "@type": "xsd:dateTime" },
     "traceEnd": { "@id": "k:hasTraceEnd", "@type": "xsd:integer" },
     "traceEndDT": { "@id": "k:hasTraceEndDT", "@type": "xsd:dateTime" },

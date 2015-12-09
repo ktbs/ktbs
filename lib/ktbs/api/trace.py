@@ -23,10 +23,12 @@ I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
 import logging
 from numbers import Integral, Real
-from rdflib import Graph, Literal, RDF, RDFS, URIRef
+from rdflib import Graph, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.term import Node
 
 from datetime import datetime
+
+from ktbs.time import lit2datetime
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.util.iso8601 import parse_date, ParseError, UTC
@@ -296,6 +298,37 @@ class AbstractTraceMixin(InBaseMixin):
         with self.edit(_trust=True) as editable:
             editable.set((self.uri, KTBS.hasPseudoMonRange, Literal(val)))
 
+    def get_trace_begin(self):
+        """
+        I return the begin timestamp of the obsel.
+        """
+        ret = self.state.value(self.uri, KTBS.hasTraceBegin)
+        if ret is not None:
+            ret = int(ret)
+        return ret
+
+    def get_trace_begin_dt(self):
+        """
+        I return the begin dateteime of the obsel.
+        """
+        return lit2datetime(self.state.value(self.uri, KTBS.hasTraceBeginDT))
+
+    def get_trace_end(self):
+        """
+        I return the end timestamp of the obsel.
+        """
+        ret = self.state.value(self.uri, KTBS.hasTraceEnd)
+        if ret is not None:
+            ret = int(ret)
+        return ret
+
+    def get_trace_end_dt(self):
+        """
+        I return the end timestamp of the obsel.
+        """
+        return lit2datetime(self.state.value(self.uri, KTBS.hasTraceEndDT))
+
+
 
 @register_wrapper(KTBS.StoredTrace)
 @extend_api
@@ -340,6 +373,48 @@ class StoredTraceMixin(AbstractTraceMixin):
         subject = Literal(subject)
         with self.edit(_trust=True) as graph:
             graph.set((self.uri, KTBS.hasDefaultSubject, subject))
+
+    def set_trace_begin(self, val):
+        """
+        I set the begin timestamp of the obsel.
+        
+        This will automatically unset the trace_begin_dt property.
+        """
+        assert isinstance(val, int)
+        with self.edit(_trust=True) as graph:
+            graph.set((self.uri, KTBS.hasTraceBegin, Literal(val)))
+            graph.remove((self.uri, KTBS.hasTraceBeginDT, None))
+
+    def set_trace_begin_dt(self, val):
+        """
+        I return the begin datetime of the obsel.
+
+        This will automatically update the trace_begin property.
+        """
+        with self.edit() as graph:
+            graph.set((self.uri, KTBS.hasTraceBeginDT, Literal(val, datatype=XSD.dateTime)))
+            graph.remove((self.uri, KTBS.hasTraceBegin, None))
+            
+    def set_trace_end(self, val):
+        """
+        I set the end timestamp of the obsel.
+        
+        This will automatically unset the trace_end_dt property.
+        """
+        assert isinstance(val, int)
+        with self.edit(_trust=True) as graph:
+            graph.set((self.uri, KTBS.hasTraceEnd, Literal(val)))
+            graph.remove((self.uri, KTBS.hasTraceEndDT, None))
+
+    def set_trace_end_dt(self, val):
+        """
+        I return the end datetime of the obsel.
+
+        This will automatically update the trace_end property.
+        """
+        with self.edit() as graph:
+            graph.set((self.uri, KTBS.hasTraceEndDT, Literal(val, datatype=XSD.dateTime)))
+            graph.remove((self.uri, KTBS.hasTraceEnd, None))
 
     def create_obsel(self, id=None, type=None, begin=None, end=None, 
                      subject=None, attributes=None, relations=None, 

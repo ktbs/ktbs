@@ -166,6 +166,34 @@ Trace (Resource)
     two traces with the same origin can be temporally compared.
 
     :rtype: str
+    
+.. function:: get_trace_begin()
+
+    The timestamp from which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: int
+
+.. function:: get_trace_begin_dt()
+
+    The datetime from which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: str
+
+.. function:: get_trace_end()
+
+    The timestamp until which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: int
+
+.. function:: get_trace_end_dt()
+
+    The datetime until which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: str
 
 .. function:: list_source_traces()
 
@@ -196,6 +224,14 @@ StoredTrace (Trace)
 .. function:: set_model(model:Model)
 
 .. function:: set_origin(origin:str)
+
+.. function:: set_trace_begin(begin:int)
+
+.. function:: set_trace_begin_dt(begin_dt:str)
+
+.. function:: set_trace_end(end:int)
+
+.. function:: set_trace_end_dt(end_dt:str)
 
 .. function:: get_default_subject()
 

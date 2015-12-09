@@ -442,6 +442,21 @@ def serialize_json_trace(graph, trace, bindings=None):
         trace.origin,
         )
 
+    trace_begin = trace.get_trace_begin()
+    if trace_begin is not None:
+        yield ',\n    "traceBegin": %s' % trace_begin
+
+    trace_begin_dt = graph.value(trace.uri, KTBS.hasTraceBeginDT)
+    if trace_begin_dt is not None:
+        yield ',\n    "traceBeginDT": %s' % val2json(trace_begin_dt)
+
+    trace_end = trace.get_trace_end()
+    if trace_end is not None:
+        yield ',\n    "traceEnd": %s' % trace_end
+
+    trace_end_dt = graph.value(trace.uri, KTBS.hasTraceEndDT)
+    if trace_end_dt is not None:
+        yield ',\n    "traceEndDT": %s' % val2json(trace_end_dt)
     defsubject = trace.state.value(trace.uri, KTBS.hasDefaultSubject)
     if defsubject:
         yield u""",\n    "defaultSubject": %s """ % \

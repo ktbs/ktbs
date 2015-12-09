@@ -23,7 +23,9 @@ from logging import getLogger
 from rdflib import BNode, Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 
+from ktbs.time import lit2datetime, get_converter_to_unit
 from rdfrest.exceptions import InvalidDataError
+from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
 from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse
@@ -268,6 +270,23 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # start origin with a letter because if it starts with 4 digits,
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
+
+        # compute begin and/or end if beginDT and/or endDT are provided
+        begin_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceBeginDT))
+        end_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceEndDT))
+        if begin_dt or end_dt:
+            model = universal_factory(new_graph.value(uri, KTBS.hasModel))
+            delta2unit = get_converter_to_unit(model.unit)
+            origin = lit2datetime(new_graph.value(uri, KTBS.hasOrigin))
+            if origin is not None:
+                if delta2unit is not None:
+                    if begin_dt is not None:
+                        begin = delta2unit(begin_dt - origin)
+                        new_graph.add((uri, KTBS.hasTraceBegin, Literal(begin)))
+                    if end_dt is not None:
+                        end = delta2unit(end_dt - origin)
+                        new_graph.add((uri, KTBS.hasTraceEnd, Literal(end)))
+
 
     def check_new(self, created):
         """ I override :meth:`GraphPostableMixin.check_new`.
