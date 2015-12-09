@@ -140,10 +140,9 @@ def parse_configuration_options(options=None):
             config.set('server', 'resource-cache', 'true')
 
         if options.loggers is not None:
-            config.set('logging', 'loggers', str(options.loggers))
-
-        if options.loggers is not None:
             config.set('logging', 'loggers', ' '.join(options.loggers))
+        else:
+            config.set('logging', 'loggers', 'ktbs rdfrest')
 
         if options.console_level is not None:
             config.set('logging', 'console-level', str(options.console_level))
