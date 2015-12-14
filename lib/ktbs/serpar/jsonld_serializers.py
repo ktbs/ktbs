@@ -19,6 +19,7 @@
 I provide kTBS JSON-LD serializers.
 """
 from itertools import chain, groupby
+from collections import OrderedDict
 from json import dumps
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
@@ -80,33 +81,35 @@ class ValueConverter(object):
         return uri
 
     def val2json(self, val, indent=""):
-        """I convert a value into a JSON value.
+        return dumps(self.val2jsonobj(val), ensure_ascii=False, indent=4)
 
-        val can be an RDF node or a list of RDF nodes
+    def val2jsonobj(self, val):
+        """I convert a value into a JSON basic type.
+        val2json is a serialization of a JSON type !
+
+        :param val: The value to be converted, val can be an RDF node or a
+        list of RDF nodes
         """
         if isinstance(val, BNode):
-            return u"{}" # TODO recurse?
+            return OrderedDict()
         elif isinstance(val, URIRef):
-            return u"""{ "@id": "%s" }""" % self.uri(val)
+            return OrderedDict({'@id': '%s' % self.uri(val)})
         elif isinstance(val, Literal):
-           if val.datatype in (XSD.integer, XSD.double, XSD.decimal,
-                               XSD.boolean):
-               return unicode(val)
-           # TODO other datatypes?
-           else:
-               return dumps(unicode(val), ensure_ascii=False)
+            if val.datatype == XSD.integer:
+                return int(val)
+            elif val.datatype in (XSD.double, XSD.decimal):
+                return float(val)
+            elif val.datatype == XSD.boolean:
+                return unicode(val) in ('true', '1')
+            else:
+                return unicode(val)
         elif isinstance(val, list):
-            return "[%s%s]" % (
-                ", ".join(( "%s  %s" % (indent,
-                                        self.val2json(i, indent+"    "))
-                            for i in val )),
-                indent
-            )
-        elif isinstance(val, dict):
+            return [ self.val2jsonobj(i) for i in val ]
+        elif isinstance(val, dict) or isinstance(val, OrderedDict):
             # special case of obsel relations
-            return dumps(val)
-        assert False, "unexpected value type %s" % type(val)
+            return val
 
+        assert False, "unexpected value type %s" % type(val)
 
 def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
     "Yield JSON properties for all predicates outside the ktbs namespace."
@@ -174,6 +177,77 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
         comma = ","
     if comma is not None:
         yield u"%s}" % indent
+
+def other_arcs_to_dict(odict, graph, uri, valconv, obsel=False):
+    """
+    Add dictionary keys for all predicates outside the ktbs namespace.
+
+    :param odict: The ordered dictionnary to which keys must be added
+    :param graph:
+    :param uri:
+    :param valconv:
+    :param indent:
+    :param obsel:
+    :return:
+    """
+    val2jsonobj = valconv.val2jsonobj
+    valconv_uri = valconv.uri
+    if obsel:
+        pred_conv = valconv_uri
+    else:
+        pred_conv = lambda x: x
+
+    if not obsel:
+        types = [ i for i in graph.objects(uri, RDF.type)
+                  if not i.startswith(KTBS_NS_URI) ]
+        if types:
+            types = [ valconv_uri(i) for i in types ]
+            odict['additionalType'] = types
+
+    labels = list(graph.objects(uri, SKOS.prefLabel))
+    if labels:
+        odict['label'] = val2jsonobj(labels[0])
+
+        if len(labels) > 1:
+            # for the sake of regularity, we keep a single value for "label",
+            # and set the other values to the full URI
+            odict['%s' % SKOS.prefLabel] = val2jsonobj(labels[1:])
+
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"subj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if obsel:
+            # include k:hasTrace property of related obsels
+            obj = [ i[2]  if i[3] is None
+                    else OrderedDict({ u'@id': valconv_uri(i[2]),
+                                       u'hasTrace': u'./' })
+                    for i in tuples ]
+        else:
+            obj = [ i[2] for i in tuples ]
+        if len(obj) == 1:
+            obj = obj[0]
+        odict['%s' % pred_conv(pred)] = val2jsonobj(obj)
+
+    odict['@reverse'] = OrderedDict()
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"obj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if obsel:
+            # include k:hasTrace property of related obsels
+            subj = [ i[0]  if i[3] is None
+                     else OrderedDict({ u'@id': valconv_uri(i[0]),
+                                        u'hasTrace': u'./' })
+                     for i in tuples ]
+        else:
+            subj = [ i[0] for i in tuples ]
+        if len(subj) == 1:
+            subj = subj[0]
+
+        odict['@reverse']['%s' % pred_conv(pred)] = val2jsonobj(subj)
+    if len(odict['@reverse']) == 0:
+        del odict['@reverse']
 
 OTHER_ARCS = prepareQuery("""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -509,13 +583,16 @@ def iter_obsel_arcs(graph, obs, valconv, indent=""):
         yield u""",\n%s"endDT": %s """ % (indent, val2json(endDT))
 
 
-@register_serializer(JSONLD, "jsonld", 85, KTBS.ComputedTraceObsels)
-@register_serializer(JSONLD, "jsonld", 85, KTBS.StoredTraceObsels)
-@register_serializer(JSON, "json", 60, KTBS.ComputedTraceObsels)
-@register_serializer(JSON, "json", 60, KTBS.StoredTraceObsels)
-@wrap_exceptions(SerializeError)
-@encode_unicodes
-def serialize_json_trace_obsels(graph, tobsels, bindings=None):
+def trace_obsels_to_json(graph, tobsels, bindings=None):
+    """
+    I create an Ordered dictionary for a further json-ld serialization.
+
+    :param graph: Obsel collection graph - OpportunisticObselCollection.get_state() ?
+    :param tobsels: OpportunisticObselCollection(AbstractTraceObselsMixin) ktbs/api/trace.py
+    :param bindings: ?
+    :return: The dictionnary created.
+    """
+    tobsels_dict = OrderedDict()
 
     trace_uri = tobsels.trace.uri
     model_uri = tobsels.trace.model_uri
@@ -523,15 +600,20 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
         model_uri += "#"
     valconv = ValueConverter(trace_uri, { model_uri: "m" })
     valconv_uri = valconv.uri
+    val2jsonobj = valconv.val2jsonobj
 
-    yield u"""{
-    "@context": [
-        "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
-        { "m": "%s" }
-    ],
-    "@id": "./",
-    "hasObselList": {"@id":"", "@type": "StoredTraceObsels" },
-    "obsels": [""" % model_uri
+    # Est-ce qu'on a une constante, un namespace pour le contexte ktbs jsonld ?
+    tobsels_dict['@context'] = [
+        'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+        {'m': model_uri}
+    ]
+    tobsels_dict['@id'] = './'
+    tobsels_dict['hasObselList'] = {
+        '@id': '',
+        '@type': 'StoredTraceObsels'
+
+    }
+    tobsels_dict['obsels'] = []
 
     obsels = graph.query("""
         PREFIX : <%s#>
@@ -544,32 +626,53 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
         } ORDER BY ?begin ?end
     """ % KTBS_NS_URI)
 
-    comma = u""
     for obs, otype, begin, end, subject in obsels:
-        yield comma + u"""
-        {
-            "@id": "%s",
-            "@type": "%s",
-            "begin": %s,
-            "end": %s""" % (valconv_uri(obs), valconv_uri(otype),
-                            begin, end)
+        obs_dict = OrderedDict()
+        obs_dict['@id'] = valconv_uri(obs)
+        obs_dict['@type'] = valconv_uri(otype)
+        obs_dict['begin'] = val2jsonobj(begin)
+        obs_dict['end'] = val2jsonobj(end)
 
         if subject:
-            yield ',\n            "subject": "%s"' % subject
+            obs_dict['subject'] = val2jsonobj(subject)
 
-        for i in iter_obsel_arcs(graph, obs, valconv, "\n            "):
-            yield i
+        # iter_obsel_arcs
+        source_obsels = [ valconv_uri(i) for i in graph.objects(obs, KTBS.hasSourceObsel) ]
+        if source_obsels:
+            obs_dict['hasSourceObsel'] = source_obsels
+        beginDT = graph.value(obs, KTBS.hasBeginDT)
+        if beginDT:
+            obs_dict['beginDT'] = val2jsonobj(beginDT)
 
-        for i in iter_other_arcs(graph, obs, valconv, "\n            ", True):
-            yield i
+        endDT = graph.value(obs, KTBS.hasEndDT)
+        if endDT:
+            obs_dict['endDT'] = val2jsonobj(endDT)
 
-        yield u"""
-        }"""
-        comma = u"," # after first obsel, prefix others with a comma
+        # iter_other_arcs
+        other_arcs_to_dict(obs_dict, graph, obs, valconv, True)
 
-    yield """
-    ]\n}\n"""
+        tobsels_dict['obsels'].append(obs_dict)
 
+    return tobsels_dict
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.ComputedTraceObsels)
+@register_serializer(JSONLD, "jsonld", 85, KTBS.StoredTraceObsels)
+@register_serializer(JSON, "json", 60, KTBS.ComputedTraceObsels)
+@register_serializer(JSON, "json", 60, KTBS.StoredTraceObsels)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_trace_obsels(graph, tobsels, bindings=None):
+    """
+    I serialize the trace obsels to a json-ld string.
+
+    :param graph:
+    :param tobsels:
+    :param bindings:
+    :return:
+    """
+    tobsels_dict = trace_obsels_to_json(graph, tobsels, bindings)
+
+    yield dumps(tobsels_dict, ensure_ascii=False, indent=4)
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Obsel)
 @register_serializer(JSON, "json", 60, KTBS.Obsel)
