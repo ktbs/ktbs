@@ -48,7 +48,7 @@ class CorsMiddleware(object):
                 response.headerlist.extend([
                     ("access-control-allow-origin", origin),
                     ("access-control-allow-credentials", "true"),
-                    ("access-control-expose-headers", "etag"),
+                    ("access-control-expose-headers", "etag, location"),
                 ])
                 if request.method.lower() == "options":
                     response.headerlist.append(
