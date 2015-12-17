@@ -236,7 +236,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             }
             req.open(method, url);
             req.setRequestHeader("cache-control", "private;no-cache");
-            req.setRequestHeader("accept", ctypeInput.value);
+            req.setRequestHeader("accept", ctypeInput.value + ",application/json;q=0.8,*/*;q=0.1");
             if (method !== "GET") {
                 req.setRequestHeader("content-type", ctypeInput.value);
             }
