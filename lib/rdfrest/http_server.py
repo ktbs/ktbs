@@ -365,7 +365,7 @@ class HttpFrontend(object):
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
-            content = "\r\n".join( "{}".format(r) for r in results )
+            content = "\r\n".join( "{}".format(r) for r in results ) + "\r\n"
             headerlist = [
                 ("location", str(results[0])),
                 ("content-type", "text/uri-list"),
