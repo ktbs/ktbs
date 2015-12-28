@@ -21,7 +21,7 @@ I provide the implementation of kTBS obsel collections.
 from itertools import chain
 from logging import getLogger
 
-from rdflib import Graph, Literal, RDF
+from rdflib import Graph, Literal, RDF, URIRef
 from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
@@ -204,7 +204,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
-            query_epilogue = "ORDER BY ?e ?b"
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
@@ -217,26 +216,66 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             maxe = parameters.get("maxe")
             if maxe is not None:
                 query_filter.append("?e <= %s" % maxe)
+            after = parameters.get("after")
+            if after is not None:
+                query_filter.append(
+                    "?e > {2} || "
+                    "?e = {2} && ?b > {1} || "
+                    "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
+                        after.uri, after.begin, after.end,
+                    ))
+            before = parameters.get("before")
+            if before is not None:
+                query_filter.append(
+                    "?e < {2} || "
+                    "?e = {2} && ?b < {1} || "
+                    "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
+                        before.uri, before.begin, before.end
+                    ))
+            if query_filter:
+                query_filter = "FILTER((%s))" % (") && (".join(query_filter))
+            else:
+                query_filter = ""
+
+            query_epilogue = ""
+            reverse = (parameters.get("reverse", "no").lower()
+                       not in ("false", "no", "0"))
+            if reverse:
+                query_epilogue += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
+            else:
+                query_epilogue += "ORDER BY ?e ?b ?obs"
             limit = parameters.get("limit")
             if limit is not None:
                 query_epilogue += " LIMIT %s" % limit
             offset = parameters.get("offset")
             if offset is not None:
                 query_epilogue += " OFFSET %s" % offset
-            if query_filter:
-                query_filter = "FILTER(%s)" % (" && ".join(query_filter))
-            else:
-                query_filter = ""
+
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
             SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
             """ % (query_filter, query_epilogue)
 
             # add description of all matching obsels
-            # TODO LATER include bounded description of obsels
-            # rather than just adjacent arcs
             self_state = self.state
+            obs = None
             for obs, in self.state.query(query_str): #/!\ returns 1-uples
                 get_obsel_bounded_description(obs, self_state, graph)
+
+            if limit and obs:
+                obs_id = obs.rsplit("/", 1)[1]
+                if reverse:
+                    qstr = "?reverse&limit=%s&before=%s" % (limit, obs_id)
+                else:
+                    qstr = "?limit=%s&after=%s" % (limit, obs_id)
+                if minb:
+                    qstr += "&minb=%s" % minb
+                if maxb:
+                    qstr += "&maxb=%s" % maxb
+                if mine:
+                    qstr += "&mine=%s" % mine
+                if maxe:
+                    qstr += "&maxe=%s" % maxe
+                graph.next_link = self.uri + qstr
 
             return graph
 
@@ -264,6 +303,17 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 elif key == "quick":
                     raise InvalidParametersError("Deprecated parameter 'quick',"
                                                 "use refresh=no instead")
+                elif key in ("after", "before"):
+                    parameters[key] = obs = self.trace.get_obsel(val)
+                    try:
+                        begin = obs.begin
+                    except TypeError, AttributeError:
+                        obs = None
+                    if obs is None:
+                        raise InvalidParametersError("%s should be an existing obsel"
+                                                     "(got %s)" % (key, val))
+                elif key == "reverse":
+                    pass
                 else:
                     raise InvalidParametersError("Unsupported parameters %s"
                                                  % key)

@@ -296,6 +296,10 @@ class HttpFrontend(object):
         if redirect is not None:
             return self.issue_error(303, request, None,
                                     location=redirect)
+        # also insert navigation links if available
+        next_link = getattr(graph, "next_link", None)
+        if next_link is not None:
+            headerlist.append(("link", '<%s>;rel="next"' % next_link.encode("utf8")))
 
         # check triples & bytes limitations and serialize
         if self.max_triples is not None  and  len(graph) > self.max_triples:
@@ -397,7 +401,6 @@ class HttpFrontend(object):
                 parser, _ = get_parser_by_content_type(ctype)
             if parser is None:
                 return self.issue_error(404, request, resource, "Bad extension")
-            print "===", parser
         else:
             ctype = request.content_type or "text/turtle"
             iter_etags = getattr(resource, "iter_etags", None)
