@@ -258,10 +258,10 @@ OTHER_ARCS = prepareQuery("""
     {
         ?subj ?pred ?obj .
         OPTIONAL { ?obj :hasTrace ?trc. ?subj :hasTrace ?trc. }
-        FILTER( substr(str(?pred), 1, %s) != "%s#" &&
+        FILTER( !regex(str(?pred), "^%s") &&
                 ?pred NOT IN (rdf:type, skos:prefLabel) )
     } ORDER BY ?pred ?obj """
-    % (KTBS_NS_URI, LEN_KTBS, KTBS_NS_URI))
+    % (KTBS_NS_URI, KTBS_NS_URI))
 
 JSONLD = "application/ld+json"
 JSON = "application/json"

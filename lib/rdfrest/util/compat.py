@@ -16,7 +16,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-I ensure compatibility with older versions of python.
+I ensure compatibility with older versions of python and other dependencies.
 
 I am automatically loaded when importing `rdfrest`:mod:.
 """
@@ -25,6 +25,9 @@ I am automatically loaded when importing `rdfrest`:mod:.
 
 import sys
 assert sys.version_info[0] == 2 and sys.version_info[1] >= 5
+
+import logging
+LOG = logging.getLogger(__name__)
 
 if sys.version_info[1] < 6:
 
@@ -59,3 +62,29 @@ if sys.version_info[1] < 6:
 
     from subprocess import Popen
     Popen.terminate = terminate.__get__(None, Popen) #pylint: disable=E1101
+
+
+def monkeypatch_prepare_query():
+    """
+    ensures that rdflib.plugins.sparql.processor is uptodate, else monkeypatch it.
+    """
+    # pylint: disable=invalid-name
+    import rdflib.plugins.sparql.processor as sparql_processor
+    _TEST_PREPARED_QUERY = sparql_processor.prepareQuery("ASK { ?s ?p ?o }")
+    if not hasattr(_TEST_PREPARED_QUERY, "original_args"):
+        # monkey-patch 'prepare'
+        original_prepareQuery = sparql_processor.prepareQuery
+        def monkeypatched_prepareQuery(queryString, initNS=None, base=None):
+            """
+            A monkey-patched version of the original prepareQuery,
+            adding an attribute 'original_args' to the result.
+            """
+            if initNS is None:
+                initNS = {}
+            ret = original_prepareQuery(queryString, initNS, base)
+            ret.original_args = (queryString, initNS, base)
+            return ret
+        sparql_processor.prepareQuery = monkeypatched_prepareQuery
+        LOG.info("monkey-patched rdflib.plugins.sparql.processor.prepareQuery")
+monkeypatch_prepare_query()
+del monkeypatch_prepare_query

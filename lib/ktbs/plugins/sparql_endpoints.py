@@ -99,12 +99,11 @@ class SparqlEndpointMiddleware(object):
 
         resource.force_state_refresh()
         if SparqlEndpointMiddleware.FULL_DATASET:
-            cg = ConjunctiveGraph(resource.service.store,
-                                  resource.uri)
-            result = cg.query(query, base=resource.uri)
+            graph = ConjunctiveGraph(resource.service.store,
+                                     resource.uri)
         else:
             graph = resource.get_state()
-            result = graph.query(query, base=resource.uri)
+        result = graph.query(query, base=resource.uri)
         # TODO LATER use content negociation to decide on the output format
         if result.graph is not None:
             ctype = serfmt = (

@@ -23,7 +23,7 @@ WHERE {
     SELECT ?o (%(period)s as ?w) ((round(?b/?w)) as ?interval) {
       ?o :hasBegin ?b ; :hasTrace <%(__source__)s> .
     }
-  } GROUP BY ?interval
+  } GROUP BY ?w ?interval
 }
         """.
 
