@@ -602,6 +602,11 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     valconv_uri = valconv.uri
     val2jsonobj = valconv.val2jsonobj
 
+    if (tobsels.uri, RDF.type, KTBS.StoredTraceObsels) in graph:
+        tobsels_type = "StoredTraceObsels"
+    else:
+        tobsels_type = "ComputedTraceObsels"
+
     # Est-ce qu'on a une constante, un namespace pour le contexte ktbs jsonld ?
     tobsels_dict['@context'] = [
         'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
@@ -610,8 +615,7 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     tobsels_dict['@id'] = './'
     tobsels_dict['hasObselList'] = {
         '@id': '',
-        '@type': 'StoredTraceObsels'
-
+        '@type': tobsels_type
     }
     tobsels_dict['obsels'] = []
 
