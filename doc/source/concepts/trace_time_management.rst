@@ -8,25 +8,28 @@ There are several areas where you manipulate timestamps, and we will focus at fi
 Use ISO 8601 format for datetimes
 ---------------------------------
 
-When you want to specify a timestamp that is a real datetime, you MUST use the ISO-8601_ format, with punctuation, see W3C_NOTE-datetime_.
+When you want to specify a real datetime, you MUST use the ISO-8601_ format and you should **specify the timezone**.
 
-You should **specify the timezone**: if you don't specify anything (1) the timestamp will be considered as an **UTC datetime** as when you end the datetime string with "Z" character (2).
+If you don't specify anything the datetime string (1) will be considered as an **UTC datetime** as when the datetime string ends with "Z" character (2) because "Z" character is the zone designator for the **zero UTC offset**.
 
 ::
 
-    (1) "2015-03-18T08:15:00"
-    (2) "2015-03-18T08:15:00Z"
+    (1) "2016-01-06T08:15:00"
+    (2) "2016-01-06T08:15:00Z"
 
 The timezone is specified as an UTC-time-offset_, showing the difference in hours and minutes from Coordinated Universal Time (UTC), from the westernmost (−12:00) to the easternmost (+14:00).
 
-For example, to indicate that the above datetime is in a French timezone, add the UTC offset "+01:00" at the end of the datetime string (3).
+Suppose that it is "09:15 am" in French local time on January 6th 2016, the UTC time is then "08:15 am". To specify that your datetime string as a French datetime, you must use the UTC datetime and add the French UTC offset (+ 1 hour) at the end of the UTC datetime string (3).
 
 ::
 
-    (3) "2015-03-18T08:15:00+01:00"
+    (3) "2016-01-06T08:15:00+01:00"
+        "2016-01-06T08:15:00+0100"
+        "2016-01-06T08:15:00+01"
+
+See `ISO-8601 time zones representation <https://en.wikipedia.org/wiki/ISO_8601#Time_zone_designators>`_
 
 .. _ISO-8601: https://en.wikipedia.org/wiki/ISO_8601
-.. _W3C_NOTE-datetime: http://www.w3.org/TR/NOTE-datetime
 .. _UTC-time-offset: https://en.wikipedia.org/wiki/List_of_UTC_time_offsets
 
 Stored trace origin
