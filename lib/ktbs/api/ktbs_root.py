@@ -43,6 +43,8 @@ class KtbsRootMixin(KtbsResourceMixin):
     def iter_builtin_methods(self):
         """
         I list all the builtin methods implemented by this kTBS.
+
+        :rtype: an iterable of `~.builtin_method.MethodBuiltinMixin`:class:
         """
         for obs in self.state.objects(self.uri, KTBS.hasBuiltinMethod):
             yield universal_factory(obs, _rdf_type=KTBS.BuiltinMethod)
@@ -50,6 +52,8 @@ class KtbsRootMixin(KtbsResourceMixin):
     def iter_bases(self):
         """
         I iter over all elements owned by this base.
+
+        :rtype: an iterable of `~.base.BaseMixin`:class:
         """
         self_factory = self.factory
         for obs in self.state.objects(self.uri, KTBS.hasBase):
@@ -57,6 +61,8 @@ class KtbsRootMixin(KtbsResourceMixin):
 
     def get_builtin_method(self, uri):
         """I return the built-in method identified by `uri` if supported.
+
+        :rtype: `~.builtin_method.MethodBuiltinMixin`:class:
         """
         uri = coerce_to_uri(uri)
         if (self.uri, KTBS.hasBuiltinMethod, uri) in self.state:
@@ -67,6 +73,8 @@ class KtbsRootMixin(KtbsResourceMixin):
     def get_base(self, id):
         """
         I return the base corresponding to the given URI.
+
+        :rtype: `~.base.BaseMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
         base_uri = coerce_to_uri(id, self.uri)
@@ -80,7 +88,7 @@ class KtbsRootMixin(KtbsResourceMixin):
         :param label: TODO DOC explain
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.base.Base`
+        :rtype: `~.base.BaseMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
         trust = graph is None  and  id is None

@@ -49,7 +49,9 @@ class BaseMixin(KtbsResourceMixin):
 
     def iter_bases(self):
         """
-        Iter over all the traces (stored or computed) of this base.
+        Iter over all the sub-bases of this base.
+
+        :rtype: an iterable of `~.base.BaseMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
@@ -59,6 +61,8 @@ class BaseMixin(KtbsResourceMixin):
     def iter_traces(self):
         """
         Iter over all the traces (stored or computed) of this base.
+
+        :rtype: an iterable of `~.trace.AbstractTraceMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
@@ -68,6 +72,8 @@ class BaseMixin(KtbsResourceMixin):
     def iter_models(self):
         """
         Iter over all the trace models of this base.
+
+        :rtype: an iterable of `~.trace_model.TraceModelMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
@@ -77,6 +83,8 @@ class BaseMixin(KtbsResourceMixin):
     def iter_methods(self):
         """
         Iter over all the methods of this base.
+
+        :rtype: an iterable of `~.method.MethodMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
@@ -91,7 +99,7 @@ class BaseMixin(KtbsResourceMixin):
                    base
         :type  id: str
 
-        :rtype: `~.trace_model.TraceModelMixin`:class:,
+        :rtype: `~.base.BaseMixin`:class:, `~.trace_model.TraceModelMixin`:class:,
                 `~.method.Method`:class: or `~.trace.AbstractTraceMixin`:class:
         """
         #  Redefining built-in id #pylint: disable-msg=W0622
@@ -103,6 +111,8 @@ class BaseMixin(KtbsResourceMixin):
     def get_parent(self):
         """
         Return the root of the KTBS containing this base.
+
+        :rtype: `~.ktbs_root.KtbsRootMixin`:class:
         """
         parent_uri = (self.state.value(None, KTBS.hasBase, self.uri) or
                       self.state.value(None, KTBS.contains, self.uri))
@@ -126,7 +136,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: TODO DOC explain
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.base.Base`
+        :rtype: `~.base.BaseMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
         trust = graph is None  and  id is None
@@ -151,7 +161,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.model.Model`
+        :rtype: `~.tace_model.TraceModelMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
 
@@ -183,7 +193,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.method.Method`
+        :rtype: `~.method.MethodMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
 
@@ -240,7 +250,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.trace.StoredTrace`
+        :rtype: `~.trace.StoredTraceMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable=W0622
 
@@ -287,7 +297,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.trace.ComputedTrace`
+        :rtype: `~.trace.ComputedTraceMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable=W0622
 

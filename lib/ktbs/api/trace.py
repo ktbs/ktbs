@@ -59,7 +59,7 @@ class AbstractTraceMixin(InBaseMixin):
         :param id: the URI of the obsel; may be relative to the URI of the trace
         :type  id: str
 
-        :rtype: `~.obsel.ObselMixin`
+        :rtype: `~.obsel.ObselMixin`:class:
         """
         #  Redefining built-in id #pylint: disable-msg=W0622
         uri = coerce_to_uri(id, self.uri)
@@ -71,7 +71,7 @@ class AbstractTraceMixin(InBaseMixin):
         """
         I return the trace model of this trace.
 
-        :rtype: `~.trace_model.TraceModelMixin`
+        :rtype: `~.trace_model.TraceModelMixin`:class:
         """
         tmodel_uri = self.state.value(self.uri, KTBS.hasModel)
         return universal_factory(tmodel_uri)
@@ -98,6 +98,8 @@ class AbstractTraceMixin(InBaseMixin):
     def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, refresh=None):
         """
         Iter over the obsels of this trace.
+
+        :rtype: an iterable of `~.obsel.ObselMixin`:class:
 
         The obsels are sorted by their end timestamp, then their begin
         timestamp, then their identifier. If reverse is true, the order is

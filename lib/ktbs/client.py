@@ -37,7 +37,7 @@ def get_ktbs(uri):
     """I return the root of a kTBS.
 
     :param basestring uri: the URI of this kTBS
-    :rtype: :class:`ktbs.api.ktbs_root.KtbsRoot`
+    :rtype: :class:`ktbs.api.ktbs_root.KtbsRootMixin`
 
     This assumes that the kTBS already exists, either as a remore server or as
     a local service. If your goal is to *create* a local kTBS service, you must
