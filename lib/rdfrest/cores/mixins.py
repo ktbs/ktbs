@@ -81,11 +81,16 @@ class BookkeepingMixin(ILocalCore):
         to update bookkeeping metadata.
         """
         super(BookkeepingMixin, self).ack_edit(parameters, prepared)
-        self._update_bk_metadata_in(self.uri, self.metadata)
+        self._update_bk_metadata_in(self.uri, self.metadata, prepared)
 
     @classmethod
-    def _update_bk_metadata_in(cls, uri, graph):
+    def _update_bk_metadata_in(cls, uri, graph, prepared=None):
         """Update the metadata in the given graph.
+
+        Might be called from within the `~.local.ILocalCore.create`:meth: method,
+        or from the `~.local.ILocalCore.ack_edit`:meth: method.
+        In the latter case, `prepared` will contain the object returned by
+        `~.local.ILocalCore.prepare_edit`:meth:.
         """
         now = int(round(time()))
         etag = graph.value(uri, RDFREST.etag)

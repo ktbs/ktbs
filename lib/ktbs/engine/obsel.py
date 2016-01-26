@@ -280,7 +280,7 @@ class _ObselImpl(ILocalCore):
         # Do NOT call super method, as this is the base implementation.
 
         trace = cls._get_trace_from_uri(service, uri)
-        trace.obsel_collection.add_graph(new_graph, True)
+        trace.obsel_collection.add_obsel_graph(new_graph, True)
 
     ######## Private methods ########
 

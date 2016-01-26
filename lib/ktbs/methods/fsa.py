@@ -110,31 +110,32 @@ class _FSAMethod(AbstractMonosourceMethod):
         source_value = source_state.value
         target_uri = computed_trace.uri
         target_model_uri = computed_trace.model_uri
-        target_add_graph = target_obsels.add_graph
+        target_add_graph = target_obsels.add_obsel_graph
 
-        for obs in source.iter_obsels(after=last_seen, refresh="no"):
-            last_seen = obs
-            event = unicode(obs.uri)
-            matching_tokens = fsa.feed(event)
-            for i, token in enumerate(matching_tokens):
-                source_obsels = [ URIRef(uri) for uri in token['history_events']]
-                otype_uri = URIRef(token['state'], target_model_uri)
-                LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
+        with target_obsels.edit({"add_obsels_only":1}, _trust=True):
+            for obs in source.iter_obsels(after=last_seen, refresh="no"):
+                last_seen = obs
+                event = unicode(obs.uri)
+                matching_tokens = fsa.feed(event)
+                for i, token in enumerate(matching_tokens):
+                    source_obsels = [ URIRef(uri) for uri in token['history_events']]
+                    otype_uri = URIRef(token['state'], target_model_uri)
+                    LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
 
-                new_obs_uri = translate_node(source_obsels[-1], computed_trace,
-                                             source_uri, False)
-                if i > 0:
-                    new_obs_uri = URIRef("{}-{}".format(new_obs_uri, i))
-                new_obs_graph = Graph()
-                new_obs_add = new_obs_graph.add
-                new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
-                new_obs_add((new_obs_uri, RDF.type, otype_uri))
-                new_obs_add((new_obs_uri, KTBS.hasBegin, source_value(source_obsels[0], KTBS.hasBegin)))
-                new_obs_add((new_obs_uri, KTBS.hasEnd, source_value(source_obsels[-1], KTBS.hasEnd)))
-                for source_obsel in source_obsels:
-                    new_obs_add((new_obs_uri, KTBS.hasSourceObsel, source_obsel))
+                    new_obs_uri = translate_node(source_obsels[-1], computed_trace,
+                                                 source_uri, False)
+                    if i > 0:
+                        new_obs_uri = URIRef("{}-{}".format(new_obs_uri, i))
+                    new_obs_graph = Graph()
+                    new_obs_add = new_obs_graph.add
+                    new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
+                    new_obs_add((new_obs_uri, RDF.type, otype_uri))
+                    new_obs_add((new_obs_uri, KTBS.hasBegin, source_value(source_obsels[0], KTBS.hasBegin)))
+                    new_obs_add((new_obs_uri, KTBS.hasEnd, source_value(source_obsels[-1], KTBS.hasEnd)))
+                    for source_obsel in source_obsels:
+                        new_obs_add((new_obs_uri, KTBS.hasSourceObsel, source_obsel))
 
-                target_add_graph(new_obs_graph)
+                    target_add_graph(new_obs_graph)
 
         cstate["last_seen"] = last_seen and unicode(last_seen.uri)
         cstate["tokens"] = fsa.export_tokens_as_dict()

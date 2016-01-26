@@ -250,6 +250,8 @@ class Service(object):
             using does support rollback, you should assume that the store is
             corrupted when exiting abnormally from the service context.
         """
+        if self._context_level == 0 and self.store.transaction_aware:
+            self.store.transaction()
         self._context_level += 1
 
     def __exit__(self, typ, _value, _traceback):
@@ -813,8 +815,8 @@ class EditableCore(LocalCore):
             outermost = False
         else:
             outermost = True
-            self._edit_context = (True, parameters)
             prepared = self.prepare_edit(parameters)
+            self._edit_context = (True, parameters, prepared)
 
         with self.service:
             try:
@@ -854,16 +856,21 @@ class EditableCore(LocalCore):
         """
         if self._edit_context:
             raise RdfRestException("Can not embed untrusted edit context")
-        self._edit_context = (False, parameters)
         prepared = self.prepare_edit(parameters)
-        editable = Graph(identifier=self.uri)
-        if not clear:
-            editable_add = editable.add
-            for triple in self._graph: 
-                editable_add(triple)
+        self._edit_context = (False, parameters, prepared)
+        if self._graph.store.transaction_aware:
+            editable = self._graph
+        else:
+            editable = Graph(identifier=self.uri)
+            if not clear:
+                editable_add = editable.add
+                for triple in self._graph: 
+                    editable_add(triple)
 
         with self.service:
             try:
+                if clear and editable is self._graph:
+                    editable.remove((None, None, None))
                 yield editable
                 self.complete_new_graph(self.service, self.uri, parameters,
                                         editable, self)
@@ -872,26 +879,27 @@ class EditableCore(LocalCore):
                 if not diag:
                     raise InvalidDataError(unicode(diag))
 
-                # we replace self._graph by editable
-                # We assume that
-                # * most triples between the two graphs are the same
-                # * testing that a graph contains a triple is less
-                #   costly than adding it or removing it (which involves
-                #   updating several indexes -- this is verified by
-                #   IOMemory, and roughly so by Sleepycat)
-                # so the following should more efficient than simply
-                # emptying self_graph and then filling it with
-                # editable_graph
-                g_add = self._graph.add
-                g_remove = self._graph.remove
-                g_contains = self._graph.__contains__
-                e_contains = editable.__contains__
-                for triple in self._graph:
-                    if not e_contains(triple):
-                        g_remove(triple)
-                for triple in editable:
-                    if not g_contains(triple):
-                        g_add(triple)
+                if not editable is self._graph:
+                    # we replace self._graph by editable
+                    # We assume that
+                    # * most triples between the two graphs are the same
+                    # * testing that a graph contains a triple is less
+                    #   costly than adding it or removing it (which involves
+                    #   updating several indexes -- this is verified by
+                    #   IOMemory, and roughly so by Sleepycat)
+                    # so the following should more efficient than simply
+                    # emptying self_graph and then filling it with
+                    # editable_graph
+                    g_add = self._graph.add
+                    g_remove = self._graph.remove
+                    g_contains = self._graph.__contains__
+                    e_contains = editable.__contains__
+                    for triple in self._graph:
+                        if not e_contains(triple):
+                            g_remove(triple)
+                    for triple in editable:
+                        if not g_contains(triple):
+                            g_add(triple)
                 # alter _edit_context so that ack_edit can embed an edit ctxt:
                 self._edit_context = (True, parameters)
                 self.ack_edit(parameters, prepared)
