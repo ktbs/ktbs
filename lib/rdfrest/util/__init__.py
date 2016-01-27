@@ -240,9 +240,7 @@ def replace_node_sparse(graph, old_node, new_node):
     rem_triple = graph.remove
     for triple in todel:
         rem_triple(triple)
-    add_triple = graph.add
-    for triple in toadd:
-        add_triple(triple)
+    graph.addN( (s, p, o, graph) for (s, p, o) in toadd )
 
 def urisplit(url):
     """A better urlsplit.

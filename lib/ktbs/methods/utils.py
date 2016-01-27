@@ -50,6 +50,7 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
 
     bnodes = [ i for i in raw_graph.subjects(KTBS.hasBegin, None)
                if isinstance(i, BNode) ]
+    bnode_map = None
     if bnodes:
         bnode_map = {}
         for bnode in bnodes:
@@ -59,14 +60,12 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
 
     with obsels.edit(_trust=True) as editable:
         obsels._empty() # friend #pylint: disable=W0212
-        editable_add = editable.add
         if bnodes:
             bm_get = bnode_map.get
-            add_triple = lambda t: editable_add([ bm_get(x, x) for x in t])
+            triples = ( [ bm_get(x, x) for x in triple] for triple in raw_graph )
         else:
-            add_triple = editable_add
-        for triple in raw_graph:
-            add_triple(triple)
+            triples = iter(raw_graph)
+        editable.addN( (s, p, o, editable) for s, p, o in triples )
 
 def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=None):
     """

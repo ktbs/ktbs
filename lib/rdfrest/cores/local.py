@@ -662,9 +662,8 @@ class LocalCore(ILocalCore):
         metadata = Graph(service.store, URIRef(uri + "#metadata"))
         metadata.add((uri, NS.hasImplementation, cls.RDF_MAIN_TYPE))
 
-        graph_add = Graph(service.store, uri).add
-        for triple in new_graph:
-            graph_add(triple)
+        graph = Graph(service.store, uri)
+        service.store.addN( (s, p, o, graph) for s, p, o in new_graph )
 
     RDF_MAIN_TYPE = RDFS.Resource
 
@@ -890,16 +889,13 @@ class EditableCore(LocalCore):
                     # so the following should more efficient than simply
                     # emptying self_graph and then filling it with
                     # editable_graph
-                    g_add = self._graph.add
-                    g_remove = self._graph.remove
-                    g_contains = self._graph.__contains__
+                    g = self._graph
+                    g_remove = g.remove
                     e_contains = editable.__contains__
-                    for triple in self._graph:
+                    for triple in g:
                         if not e_contains(triple):
                             g_remove(triple)
-                    for triple in editable:
-                        if not g_contains(triple):
-                            g_add(triple)
+                    g.addN( (s, p, o, g) for s, p, o in editable )
                 # alter _edit_context so that ack_edit can embed an edit ctxt:
                 self._edit_context = (True, parameters)
                 self.ack_edit(parameters, prepared)

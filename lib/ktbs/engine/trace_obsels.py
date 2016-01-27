@@ -145,10 +145,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             prepared = self._edit_context[2]
             # inner context is used to apply the changes and have them
             # go through check_new_graph
-            _add = editable.add
-            for triple in graph:
-                _add(triple)
-            
+            editable.addN( (s, p, o, editable) for (s, p, o) in graph)
+
             self._detect_mon_change(graph, prepared)
 
 
