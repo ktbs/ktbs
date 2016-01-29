@@ -35,12 +35,14 @@ See `ISO-8601 time zones representation <https://en.wikipedia.org/wiki/ISO_8601#
 Stored trace origin
 -------------------
 
-Each stored trace must have an origin which should be :
+Each stored trace must have an origin which should be either:
 
-- a timestamp as specified above,
-- an *opaque string*, i.e a string that can not be interpreted as a datetime.
+- a datetime in ISO-8601 format, as specified above;
+- the special string ``now``, which will be replaced by the current datetime;
+- any other string that can not be interpreted as a datetime,
+  called an **opaque** origin.
 
-If you do not configure the trace origin explicitely, an opaque random generated string will be associated to the stored trace.
+If you do not configure the trace origin explicitly, an random opaque origin will be generated and associated to the stored trace.
 
 Trace Model time-unit
 ---------------------
@@ -73,7 +75,7 @@ If the trace model unit is ``:second`` or ``:millisecond``, the "begin timestamp
 
 .. warning::
 
-    If the trace origin is an opaque string, an error will occur.
+    If the trace origin is opaque, an error will occur.
 
 If the trace model unit is ``:sequence``, an automatic integer numbering could be generated.
 
@@ -94,4 +96,7 @@ Datetime begin timestamp
 The datetime value must be passed in the ``:hasBeginDT`` rdf parameter or in the ``"beginDT":`` parameter if passed in json format.
 
 The kTBS keeps the datetime as ``:hasBeginDT`` value and computes ``:hasBegin`` as the difference between the ``:hasBeginDT`` value and the trace origin using the trace model unit.
+Note that this only happens when the obsel is created.
+If after that the obsel is modified, and one of the timestamp (``begin`` or ``beginDT``),
+the other one will *not* be automatically updated.
 

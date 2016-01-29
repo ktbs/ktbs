@@ -18,6 +18,7 @@
 """
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
+from datetime import datetime
 from logging import getLogger
 
 from rdflib import BNode, Graph, Literal, URIRef, XSD
@@ -270,6 +271,10 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # start origin with a letter because if it starts with 4 digits,
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
+            elif unicode(origin) == "now":
+                origin = Literal("%sZ" % datetime.utcnow().isoformat())
+                new_graph.set((uri, KTBS.hasOrigin, origin))
+
 
         # compute begin and/or end if beginDT and/or endDT are provided
         begin_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceBeginDT))

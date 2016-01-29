@@ -471,6 +471,15 @@ class TestKtbs(KtbsTestCase):
         t.trace_end_dt = "1970-01-01T03:00:00Z"
         assert t.trace_end == 3600000*3
 
+    def test_origin_now(self, epsilon=0.5):
+        k = self.my_ktbs
+        b = k.create_base("b/")
+        m = b.create_model("m")
+        t = b.create_stored_trace("t/", m, origin="now")
+        now = datetime.now(UTC)
+        delta = t.get_origin(as_datetime=True) - now
+        assert_less(abs(delta.total_seconds()), epsilon)
+
 
 class TestCreateObsel(KtbsTestCase):
 
