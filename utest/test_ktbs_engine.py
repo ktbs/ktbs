@@ -22,7 +22,7 @@ from threading import Thread
 from wsgiref.simple_server import make_server
 import unittest
 
-from nose.tools import assert_equal, assert_raises, eq_
+from nose.tools import assert_equal, assert_raises, eq_, assert_less
 from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 
 from datetime import datetime, timedelta
@@ -471,6 +471,61 @@ class TestKtbs(KtbsTestCase):
         t.trace_end_dt = "1970-01-01T03:00:00Z"
         assert t.trace_end == 3600000*3
 
+
+class TestCreateObsel(KtbsTestCase):
+
+    my_ktbs = None
+    service = None
+    epoch = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
+
+    def setUp(self):
+        super(TestCreateObsel, self).setUp()
+        self.base = b = self.my_ktbs.create_base("b/")
+        self.model = m = b.create_model("m")
+        self.ot = m.create_obsel_type("#OT1")
+        self.trace = t = b.create_stored_trace("t/", m,
+                                               origin="1970-01-01T00:00:00Z")
+
+    def test_no_timestamp(self, epsilon=0.5):
+        g = Graph()
+        obs = BNode()
+        g.add((obs, RDF.type, self.ot.uri))
+        g.add((obs, KTBS.hasTrace, self.trace.uri))
+        uris = self.trace.post_graph(g)
+        now = datetime.now(UTC)
+        assert_equal(len(uris), 1)
+        obs = self.trace.get_obsel(uris[0])
+        begin_dt = self.epoch + timedelta(milliseconds=obs.begin)
+        delta = now - begin_dt
+        assert_less(abs(delta.total_seconds()), epsilon)
+        assert_equal(obs.end,obs.begin)
+
+    def test_no_end(self, epsilon=0.5):
+        g = Graph()
+        obs = BNode()
+        g.add((obs, RDF.type, self.ot.uri))
+        g.add((obs, KTBS.hasTrace, self.trace.uri))
+        g.add((obs, KTBS.hasBegin, Literal(42)))
+        uris = self.trace.post_graph(g)
+        now = datetime.now(UTC)
+        assert len(uris) == 1, uris
+        obs = self.trace.get_obsel(uris[0])
+        assert_equal(obs.begin, 42)
+        assert_equal(obs.end,obs.begin)
+
+    def test_dt_timestamps(self, epsilon=0.5):
+        g = Graph()
+        obs = BNode()
+        g.add((obs, RDF.type, self.ot.uri))
+        g.add((obs, KTBS.hasTrace, self.trace.uri))
+        g.add((obs, KTBS.hasBeginDT, Literal(self.epoch.replace(second=1))))
+        g.add((obs, KTBS.hasEndDT, Literal(self.epoch.replace(second=2))))
+        uris = self.trace.post_graph(g)
+        now = datetime.now(UTC)
+        assert len(uris) == 1, uris
+        obs = self.trace.get_obsel(uris[0])
+        assert_equal(obs.begin, 1000)
+        assert_equal(obs.end, 2000)
 
 class TestKtbsSynthetic(KtbsTestCase):
 
