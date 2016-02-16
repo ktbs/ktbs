@@ -46,7 +46,7 @@ def match_obseltype(transition, event, token, fsa):
     triple = (
         URIRef(event),
         RDF.type,
-        URIRef(transition['condition'], fsa.target.model_uri)
+        URIRef(transition['condition'], fsa.source.model_uri)
     )
     return triple in fsa.source_obsels_graph
 

@@ -52,15 +52,16 @@ class TestFSA(KtbsTestCase):
         KtbsTestCase.setUp(self)
         self.log = FSA_LOG
         self.base = self.my_ktbs.create_base("b/")
-        self.model = self.base.create_model("m")
-        self.otypeA = self.model.create_obsel_type("#otA")
-        self.otypeB = self.model.create_obsel_type("#otB")
-        self.otypeC = self.model.create_obsel_type("#otC")
-        self.otypeD = self.model.create_obsel_type("#otD")
-        self.otypeE = self.model.create_obsel_type("#otE")
-        self.otypeX = self.model.create_obsel_type("#otX")
-        self.otypeY = self.model.create_obsel_type("#otY")
-        self.otypeZ = self.model.create_obsel_type("#otZ")
+        self.model_src = self.base.create_model("ms")
+        self.otypeA = self.model_src.create_obsel_type("#otA")
+        self.otypeB = self.model_src.create_obsel_type("#otB")
+        self.otypeC = self.model_src.create_obsel_type("#otC")
+        self.otypeD = self.model_src.create_obsel_type("#otD")
+        self.otypeE = self.model_src.create_obsel_type("#otE")
+        self.model_dst = self.base.create_model("md")
+        self.otypeX = self.model_dst.create_obsel_type("#otX")
+        self.otypeY = self.model_dst.create_obsel_type("#otY")
+        self.otypeZ = self.model_dst.create_obsel_type("#otZ")
         self.base_structure = {
             "states": {
                 "start": {
@@ -125,11 +126,12 @@ class TestFSA(KtbsTestCase):
                 },
             }
         }
-        self.src = self.base.create_stored_trace("s/", self.model, default_subject="alice")
+        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
 
     def test_base_structure(self):
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
-                                         {"fsa": dumps(self.base_structure)},
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
                                          [self.src],)
         oA = self.src.create_obsel("oA", self.otypeA, 0)
         eq_(len(ctr.obsels), 0)
@@ -145,7 +147,8 @@ class TestFSA(KtbsTestCase):
     def test_allow_overlap(self):
         self.base_structure['allow_overlap'] = True
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
-                                         {"fsa": dumps(self.base_structure)},
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
                                          [self.src],)
         oA = self.src.create_obsel("oA", self.otypeA, 0)
         eq_(len(ctr.obsels), 0)
@@ -163,7 +166,8 @@ class TestFSA(KtbsTestCase):
     def test_simultaneaous_matches(self):
         self.base_structure['allow_overlap'] = True
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
-                                         {"fsa": dumps(self.base_structure)},
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
                                          [self.src],)
         oA = self.src.create_obsel("oA", self.otypeA, 0)
         eq_(len(ctr.obsels), 0)
