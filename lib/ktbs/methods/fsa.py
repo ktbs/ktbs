@@ -52,6 +52,26 @@ def match_obseltype(transition, event, token, fsa):
 
 matcher_directory['obseltype'] = match_obseltype
 
+def match_sparql_ask(transition, event, token, fsa):
+    """
+    The 'sparql-ask' matcher.
+
+    With this matcher,
+    transition conditions are interpreted as the WHERE clause of a SPARQL Ask query,
+    where variable ?obs is bound to the considered obsel,
+    and prefix m: is bound to the source trace URI.
+    """
+    m_ns = fsa.source.model_uri
+    if m_ns[-1] != '/' and m_ns[-1] != '#':
+        m_ns += '#'
+    return fsa.source_obsels_graph.query(
+        "ASK { %s }" % transition['condition'],
+        initNs={"m": m_ns},
+        initBindings={"?obs": URIRef(event)},
+    ).askAnswer
+
+matcher_directory['sparql-ask'] = match_sparql_ask
+
 
 
 class _FSAMethod(AbstractMonosourceMethod):

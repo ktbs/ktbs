@@ -103,6 +103,12 @@ with the following specificities:
   (either absolute or relative to the source trace's model URI),
   and an obsel matches the transition if it has the corresponding obsel type.
 
+* An additional matcher is also provided: ``sparql-ask``.
+  It interprets conditions as the WHERE clause of a SPARQL ASK query,
+  where prefix ``m:`` is bound to the source trace model,
+  and variable ``?obs`` is bound to the considered obsel.
+  This matcher allows for more expressive conditions.
+
 Sparql
 ``````
 

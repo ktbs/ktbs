@@ -20,6 +20,7 @@
 
 from json import dumps, loads
 from nose.tools import assert_set_equal, eq_, raises
+from rdflib import Literal
 from unittest import skip
 
 from ktbs.engine.resource import METADATA
@@ -178,3 +179,115 @@ class TestFSA(KtbsTestCase):
         assert_set_equal(set([self.otypeY.uri, self.otypeZ.uri ]), set(
             obs.obsel_type.uri for obs in ctr.obsels
         ))
+
+class TestFSAAsk(KtbsTestCase):
+
+    def setUp(self):
+        KtbsTestCase.setUp(self)
+        self.log = FSA_LOG
+        self.base = self.my_ktbs.create_base("b/")
+        self.model_src = self.base.create_model("ms")
+        self.otypeA = self.model_src.create_obsel_type("#otA")
+        self.atypeV = self.model_src.create_attribute_type("#atV")
+        self.otypeB = self.model_src.create_obsel_type("#otB")
+        self.atypeW = self.model_src.create_attribute_type("#atW")
+        self.model_dst = self.base.create_model("md")
+        self.otypeX = self.model_dst.create_obsel_type("#otX")
+        self.otypeY = self.model_dst.create_obsel_type("#otY")
+        self.otypeZ = self.model_dst.create_obsel_type("#otZ")
+        self.base_structure = {
+            "states": {
+                "start": {
+                    "transitions": [
+                        {
+                            "condition": self.otypeA.uri,
+                            "target": "s1"
+                        },
+                        {
+                            "condition": self.otypeB.uri,
+                            "target": "s2"
+                        },
+                    ]
+                },
+                "s1": {
+                    "transitions": [
+                        {
+                            "condition": '?obs m:atV 42',
+                            "matcher": "sparql-ask",
+                            "target": self.otypeX.uri,
+                        },
+                        {
+                            "condition": "?obs m:atV ?v . FILTER(?v > 42)",
+                            "matcher": "sparql-ask",
+                            "target": self.otypeY.uri,
+                        },
+                    ]
+                },
+                "s2": {
+                    "max_noise": 1,
+                    "transitions": [
+                        {
+                            "condition": "?obs m:atW ?any",
+                            "matcher": "sparql-ask",
+                            "target": self.otypeZ.uri,
+                        },
+                    ]
+                },
+                self.otypeX.uri: {
+                    "terminal": True,
+                },
+                self.otypeY.uri: {
+                    "terminal": True,
+                },
+                self.otypeZ.uri: {
+                    "terminal": True,
+                },
+            }
+        }
+        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
+
+    def test_X_with_AA(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 0, attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
+        oA2 = self.src.create_obsel("oA2", self.otypeA, 1, attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA1, oA2])
+
+    def test_X_with_AB(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 0, attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
+        oB2 = self.src.create_obsel("oB2", self.otypeB, 1, attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA1, oB2])
+
+    def test_Y(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 0, attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
+        oA2 = self.src.create_obsel("oA2", self.otypeA, 1, attributes={self.atypeV: Literal(43)})
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeY)
+        assert_source_obsels(ctr.obsels[0], [oA1, oA2])
+
+    def test_no_match_V(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 0, attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 0)
+        oA2 = self.src.create_obsel("oA2", self.otypeA, 1, attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
