@@ -103,8 +103,9 @@ class SparqlEndpointMiddleware(object):
                                      resource.uri)
         else:
             graph = resource.get_state()
+
         result = graph.query(query, base=resource.uri)
-        # TODO LATER use content negociation to decide on the output format
+        
         if result.graph is not None:
             ctype = serfmt = (
                 request.accept.best_match(self.CONSTRUCT_CTYPES)
@@ -120,10 +121,21 @@ class SparqlEndpointMiddleware(object):
             if ctype is None:
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
-        return MyResponse(result.serialize(format=serfmt),
-                          status="200 Ok",
-                          content_type=ctype,
-                          request=request)
+        try:
+            return MyResponse(result.serialize(format=serfmt),
+                              status="200 Ok",
+                              content_type=ctype,
+                              request=request)
+        except Exception, ex:
+            if ex.message.startswith(
+                    "You performed a query operation requiring a dataset"):
+                status = "403 Forbidden"
+                return MyResponse("%s\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=request)
+            else:
+                raise
 
 def start_plugin(config):
     register_middleware(BOTTOM, SparqlEndpointMiddleware)
