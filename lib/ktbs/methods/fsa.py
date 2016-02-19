@@ -64,10 +64,15 @@ def match_sparql_ask(transition, event, token, fsa):
     m_ns = fsa.source.model_uri
     if m_ns[-1] != '/' and m_ns[-1] != '#':
         m_ns += '#'
+    history = token and token.get('history_events')
+    if history:
+        pred = URIRef(history[-1])
+    else:
+        pred = None
     return fsa.source_obsels_graph.query(
         "ASK { %s }" % transition['condition'],
         initNs={"m": m_ns},
-        initBindings={"?obs": URIRef(event)},
+        initBindings={"?obs": URIRef(event), "?pred": pred},
     ).askAnswer
 
 matcher_directory['sparql-ask'] = match_sparql_ask
@@ -115,7 +120,7 @@ class _FSAMethod(AbstractMonosourceMethod):
         fsa.source_obsels_graph = source_obsels.state
 
         if monotonicity is STRICT_MON:
-            LOG.debug("NOT strictly temporally monotonic %s, restarting", computed_trace)
+            LOG.debug("strictly temporally monotonic %s, reloading state", computed_trace)
             tokens = cstate['tokens']
             if tokens:
                 fsa.load_tokens_from_dict(tokens)

@@ -191,6 +191,7 @@ class TestFSAAsk(KtbsTestCase):
         self.atypeV = self.model_src.create_attribute_type("#atV")
         self.otypeB = self.model_src.create_obsel_type("#otB")
         self.atypeW = self.model_src.create_attribute_type("#atW")
+        self.otypeC = self.model_src.create_obsel_type("#otC")
         self.model_dst = self.base.create_model("md")
         self.otypeX = self.model_dst.create_obsel_type("#otX")
         self.otypeY = self.model_dst.create_obsel_type("#otY")
@@ -206,6 +207,10 @@ class TestFSAAsk(KtbsTestCase):
                         {
                             "condition": self.otypeB.uri,
                             "target": "s2"
+                        },
+                        {
+                            "condition": self.otypeC.uri,
+                            "target": "s3"
                         },
                     ]
                 },
@@ -230,6 +235,15 @@ class TestFSAAsk(KtbsTestCase):
                             "condition": "?obs m:atW ?any",
                             "matcher": "sparql-ask",
                             "target": self.otypeZ.uri,
+                        },
+                    ]
+                },
+                "s3": {
+                    "transitions": [
+                        {
+                            "condition": "?obs m:atV ?val. ?pred m:atV ?val",
+                            "matcher": "sparql-ask",
+                            "target": self.otypeX.uri,
                         },
                     ]
                 },
@@ -291,3 +305,17 @@ class TestFSAAsk(KtbsTestCase):
         eq_(len(ctr.obsels), 0)
         oA2 = self.src.create_obsel("oA2", self.otypeA, 1, attributes={self.atypeV: Literal(41)})
         eq_(len(ctr.obsels), 0)
+
+    def test_pred(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oC1 = self.src.create_obsel("oC1", self.otypeC, 0, attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
+        oC2 = self.src.create_obsel("oC2", self.otypeC, 1, attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 0)
+        oC3 = self.src.create_obsel("oC3", self.otypeC, 2, attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oC2, oC3])
