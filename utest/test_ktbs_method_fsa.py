@@ -18,6 +18,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
+from fsa4streams.fsa import FSA
 from json import dumps, loads
 from nose.tools import assert_set_equal, eq_, raises
 from rdflib import Literal
@@ -319,3 +320,58 @@ class TestFSAAsk(KtbsTestCase):
         eq_(len(ctr.obsels), 1)
         assert_obsel_type(ctr.obsels[0], self.otypeX)
         assert_source_obsels(ctr.obsels[0], [oC2, oC3])
+
+class TestFSAMaxDuration(KtbsTestCase):
+
+    def setUp(self):
+        KtbsTestCase.setUp(self)
+        self.log = FSA_LOG
+        self.base = self.my_ktbs.create_base("b/")
+        self.model_src = self.base.create_model("ms")
+        self.otypeA = self.model_src.create_obsel_type("#otA")
+        self.otypeB = self.model_src.create_obsel_type("#otB")
+        self.model_dst = self.base.create_model("md")
+        self.otypeX = self.model_dst.create_obsel_type("#otX")
+        self.otypeY = self.model_dst.create_obsel_type("#otY")
+        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
+
+        fsa = FSA.make_empty(max_duration=4)
+        (fsa.add_state("start")
+               .add_transition("#otA", "#otX")
+            .add_state("#otX", terminal=True, max_duration=1)
+                .add_transition("#otB", "#otX"))
+        self.base_structure = fsa.export_structure_as_dict()
+
+    def test_exceed_state_max_duration(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA0 = self.src.create_obsel("oA0", self.otypeA, 0)
+        eq_(len(ctr.obsels), 0)
+        oB1 = self.src.create_obsel("oB1", self.otypeB, 1)
+        eq_(len(ctr.obsels), 0)
+        oB3 = self.src.create_obsel("oB3", self.otypeB, 3)
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA0, oB1])
+
+    def test_exceed_fsa_max_duration(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA0 = self.src.create_obsel("oA0", self.otypeA, 0)
+        eq_(len(ctr.obsels), 0)
+        oB1 = self.src.create_obsel("oB1", self.otypeB, 1)
+        eq_(len(ctr.obsels), 0)
+        oB2 = self.src.create_obsel("oB2", self.otypeB, 2)
+        eq_(len(ctr.obsels), 0)
+        oB3 = self.src.create_obsel("oB3", self.otypeB, 3)
+        eq_(len(ctr.obsels), 0)
+        oB4 = self.src.create_obsel("oB4", self.otypeB, 4)
+        eq_(len(ctr.obsels), 0)
+        oB5 = self.src.create_obsel("oB5", self.otypeB, 5)
+        eq_(len(ctr.obsels), 1)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA0, oB1, oB2, oB3, oB4])

@@ -90,6 +90,9 @@ The ``fsa`` parameter expects a JSON description of the FSA,
 as described in the `FSA4streams documentation <http://fsa4streams.readthedocs.org/en/latest/syntax.html>`_,
 with the following specificities:
 
+* Obsels are fed to the FSA with their *end* timestamp,
+  and``max_duration`` constraints apply to those.
+
 * When reaching a terminal state,
   an obsel will be generated, with an obsel type named after the state identifier.
   The latter must therefore *be a URI*,

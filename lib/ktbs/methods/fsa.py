@@ -141,7 +141,7 @@ class _FSAMethod(AbstractMonosourceMethod):
             for obs in source.iter_obsels(after=last_seen, refresh="no"):
                 last_seen = obs
                 event = unicode(obs.uri)
-                matching_tokens = fsa.feed(event)
+                matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
                     source_obsels = [ URIRef(uri) for uri in token['history_events']]
                     otype_uri = URIRef(token['state'], target_model_uri)
