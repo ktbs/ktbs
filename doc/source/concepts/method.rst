@@ -90,17 +90,6 @@ The ``fsa`` parameter expects a JSON description of the FSA,
 as described in the `FSA4streams documentation <http://fsa4streams.readthedocs.org/en/latest/syntax.html>`_,
 with the following specificities:
 
-* Obsels are fed to the FSA with their *end* timestamp,
-  and``max_duration`` constraints apply to those.
-
-* When reaching a terminal state,
-  an obsel will be generated, with an obsel type named after the state identifier.
-  The latter must therefore *be a URI*,
-  either absolute or relative to the computed trace's model URI.
-
-  The produced obsel will have no attribute,
-  but will have ``ktbs:hasSourceObsel`` links to all the obsels participating in the pattern.
-
 * The default matcher (even if not explicitly specified) is ``obseltype``:
   each ``transition.condition`` is interpreted as an obsel type URI
   (either absolute or relative to the source trace's model URI),
@@ -112,6 +101,37 @@ with the following specificities:
   and variable ``?obs`` is bound to the considered obsel,
   and a variable ``?pred`` is bound to the previous matching obsel (if any).
   This matcher allows for more expressive conditions.
+
+* The ``max_duration`` constraints (as specified in the documentation)
+  apply to the *end* timestamps of the obsels.
+
+* Terminal states may have two additional attributes ``ktbs_obsel_type`` and ``ktbs_attribute``,
+  described below.
+
+For each match found by the FSA,
+a new obsel is generated:
+
+* The source obsels of the new obsel are all the obsels contributing to the match.
+
+* The begin and end timestamps of the new obsel are, respectively,
+  the begin of the first source obsel and the end of the last source obsel.
+
+* The type of the new obsel is the value of the ``ktbs_obsel_type`` of the terminal state,
+  interpreted as a URI relative to the computed trace's model URI.
+  If this attribute is omitted, the state identifier is used instead.
+
+* If the terminal state has a ``ktbs_attributes`` model,
+  additional attributes will be generated for the new obsel.
+  The value of ``ktbs_attributes`` must be a JSON object,
+  whose keys are the *target* attribute type URIs
+  (relative to the computed trace's model URI),
+  and whose values are *source* attribute type URIs
+  (relative to the source trace's model URI).
+  Each target attribute will receive the value of the source attribute of the source obsels.
+  If several values are available, the value of the latest source obsel will be kept.
+  If none of the source obsel has a source attribute,
+  the corresponding target attribute will not be set.
+
 
 Sparql
 ``````

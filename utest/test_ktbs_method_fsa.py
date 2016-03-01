@@ -375,3 +375,114 @@ class TestFSAMaxDuration(KtbsTestCase):
         eq_(len(ctr.obsels), 1)
         assert_obsel_type(ctr.obsels[0], self.otypeX)
         assert_source_obsels(ctr.obsels[0], [oA0, oB1, oB2, oB3, oB4])
+
+class TestFSAKtbsSpecificProperties(KtbsTestCase):
+
+    def setUp(self):
+        KtbsTestCase.setUp(self)
+        self.log = FSA_LOG
+        self.base = self.my_ktbs.create_base("b/")
+        self.model_src = self.base.create_model("ms")
+        self.otypeA = self.model_src.create_obsel_type("#otA")
+        self.otypeB = self.model_src.create_obsel_type("#otB")
+        self.atypeV = self.model_src.create_attribute_type("#atV")
+        self.atypeW = self.model_src.create_attribute_type("#atW")
+        self.model_dst = self.base.create_model("md")
+        self.otypeX = self.model_dst.create_obsel_type("#otX")
+        self.otypeY = self.model_dst.create_obsel_type("#otY")
+        self.atype1 = self.model_dst.create_attribute_type("#at1")
+        self.atype2 = self.model_dst.create_attribute_type("#at2")
+        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
+
+        self.base_structure = {
+            "states": {
+                "start": {
+                    "transitions": [
+                        {
+                            "condition": "#otA",
+                            "target": "terminalA"
+                        },
+                        {
+                            "condition": "#otB",
+                            "target": "terminalB"
+                        }
+                    ]
+                },
+                "terminalA": {
+                    "terminal": True,
+                    "ktbs_obsel_type": "#otX",
+                    "ktbs_attributes": {
+                        "#at1": "#atV",
+                        "#at2": "#atW"
+                    },
+                    "transitions": [
+                        {
+                            "condition": "#otA",
+                            "target": "terminalA"
+                        }
+                    ]
+                },
+                "terminalB": {
+                    "terminal": True,
+                    "ktbs_obsel_type": "#otX",
+                    "transitions": [
+                        {
+                            "condition": "#otB",
+                            "target": "terminalB"
+                        }
+                    ]
+                }
+            }
+        }
+
+    def test_obsel_type(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA0 = self.src.create_obsel("oA0", self.otypeA, 0)
+        eq_(len(ctr.obsels), 0)
+        oB1 = self.src.create_obsel("oB1", self.otypeB, 1)
+        eq_(len(ctr.obsels), 1)
+        oB2 = self.src.create_obsel("oB2", self.otypeB, 2)
+        eq_(len(ctr.obsels), 1)
+        oA3 = self.src.create_obsel("oA3", self.otypeA, 3)
+        eq_(len(ctr.obsels), 2)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_obsel_type(ctr.obsels[1], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA0])
+        assert_source_obsels(ctr.obsels[1], [oB1, oB2])
+
+
+    def test_attributes(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oA0 = self.src.create_obsel("oA0", self.otypeA, 0,
+                                    attributes={self.atypeV: Literal(39),
+                                                self.atypeW: Literal(40)})
+        eq_(len(ctr.obsels), 0)
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 1,
+                                    attributes={self.atypeV: Literal(41)})
+        eq_(len(ctr.obsels), 0)
+        oA2 = self.src.create_obsel("oA2", self.otypeA, 2,
+                                    attributes={self.atypeW: Literal(42)})
+        eq_(len(ctr.obsels), 0)
+        oB3 = self.src.create_obsel("oB3", self.otypeB, 3,
+                                    attributes={self.atypeV: Literal(43)})
+        eq_(len(ctr.obsels), 1)
+        oB4 = self.src.create_obsel("oB4", self.otypeB, 4,
+                                    attributes={self.atypeW: Literal(44)})
+        eq_(len(ctr.obsels), 1)
+        oA5 = self.src.create_obsel("oA5", self.otypeA, 5,
+                                    attributes={self.atypeV: Literal(45)})
+        eq_(len(ctr.obsels), 2)
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_obsel_type(ctr.obsels[1], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oA0, oA1, oA2])
+        assert_source_obsels(ctr.obsels[1], [oB3, oB4])
+        eq_(ctr.obsels[0].get_attribute_value(self.atype1), 41)
+        eq_(ctr.obsels[0].get_attribute_value(self.atype2), 42)
+        eq_(ctr.obsels[1].get_attribute_value(self.atype1), None)
+        eq_(ctr.obsels[1].get_attribute_value(self.atype2), None)

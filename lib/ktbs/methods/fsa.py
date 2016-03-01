@@ -20,12 +20,10 @@ Implementation of the fsa builtin methods.
 """
 import logging
 
-import json
-
 from fsa4streams import FSA
 from fsa4streams.matcher import DIRECTORY as matcher_directory
+from fsa4streams.state import State
 from rdflib import Literal, RDF, URIRef, Graph
-from rdfrest.util import check_new
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
 from .utils import translate_node
 from ..engine.builtin_method import register_builtin_method_impl
@@ -131,6 +129,7 @@ class _FSAMethod(AbstractMonosourceMethod):
             target_obsels._empty() # friend #pylint: disable=W0212
 
         source_uri = source.uri
+        source_model_uri = source.model_uri
         source_state = source_obsels.state
         source_value = source_state.value
         target_uri = computed_trace.uri
@@ -143,8 +142,9 @@ class _FSAMethod(AbstractMonosourceMethod):
                 event = unicode(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
+                    state = KtbsFsaState(fsa, token['state'])
                     source_obsels = [ URIRef(uri) for uri in token['history_events']]
-                    otype_uri = URIRef(token['state'], target_model_uri)
+                    otype_uri = URIRef(state.ktbs_obsel_type, target_model_uri)
                     LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
 
                     new_obs_uri = translate_node(source_obsels[-1], computed_trace,
@@ -160,9 +160,51 @@ class _FSAMethod(AbstractMonosourceMethod):
                     for source_obsel in source_obsels:
                         new_obs_add((new_obs_uri, KTBS.hasSourceObsel, source_obsel))
 
+                    attributes = [
+                        (URIRef(key, target_model_uri),
+                         URIRef(val, source_model_uri))
+                        for key, val in state.ktbs_attributes.iteritems()
+                    ]
+                    if attributes:
+                        qvars = []
+                        qwhere = [ '?obs <{}> ?end .'.format(KTBS.hasEnd) ]
+                        for i, pair in enumerate(attributes):
+                            var = '?v{}'.format(i)
+                            qvars.append(var)
+                            qwhere.append('OPTIONAL {{?obs <{}> {} .}}'.format(pair[1], var))
+                        query = 'SELECT {} {{\n{}\nVALUES (?obs) {{\n(<{}>)\n}} }} ORDER BY ?end'.format(
+                            ' '.join(qvars),
+                            '\n'.join(qwhere),
+                            '>)\n(<'.join(source_obsels),
+                        )
+                        results = source_state.query(query)
+                        values = [None]*len(attributes)
+                        for tuple in results:
+                            for i, val in enumerate(tuple):
+                                if val is not None:
+                                    values[i] = tuple[i]
+
+                        for i, val in enumerate(values):
+                            if val is not None:
+                                new_obs_add((new_obs_uri, attributes[i][0], val))
+
+
+
                     target_add_graph(new_obs_graph)
 
         cstate["last_seen"] = last_seen and unicode(last_seen.uri)
         cstate["tokens"] = fsa.export_tokens_as_dict()
+
+class KtbsFsaState(State):
+    def __init__(self, fsa, stateid):
+        State.__init__(self, fsa, stateid)
+
+    @property
+    def ktbs_obsel_type(self):
+        return self._data.get('ktbs_obsel_type') or self.id
+
+    @property
+    def ktbs_attributes(self):
+        return self._data.get('ktbs_attributes') or {}
 
 register_builtin_method_impl(_FSAMethod())
