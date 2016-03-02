@@ -132,6 +132,21 @@ a new obsel is generated:
   If none of the source obsel has a source attribute,
   the corresponding target attribute will not be set.
 
+  Additionally,
+  the source attributes can be preceded by one of the following operators,
+  in which case the value of the target operator will be the result of applying the operator to all the values of the source attributes in the source obsels:
+
+  * ``last``: returns the last value in chronological order (this is the default, see above);
+  * ``first``: returns the first value in chronological order;
+  * ``count``: returns the number of source obsel having the source attribute;
+  * ``sum``: returns the sum of all values;
+  * ``average``: returns the average of all values;
+  * ``min``: returns the minimum value;
+  * ``max``: returns the maximum value;
+  * ``span``: returns the difference between the maximum and the minimum values;
+  * ``concat``: returns a space-separated concatenation of all the values.
+
+
 
 Sparql
 ``````

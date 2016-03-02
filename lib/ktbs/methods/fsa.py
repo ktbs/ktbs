@@ -142,9 +142,10 @@ class _FSAMethod(AbstractMonosourceMethod):
                 event = unicode(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
-                    state = KtbsFsaState(fsa, token['state'])
+                    state = KtbsFsaState(fsa, token['state'],
+                                         source_model_uri, target_model_uri)
                     source_obsels = [ URIRef(uri) for uri in token['history_events']]
-                    otype_uri = URIRef(state.ktbs_obsel_type, target_model_uri)
+                    otype_uri = state.get_obsel_type()
                     LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
 
                     new_obs_uri = translate_node(source_obsels[-1], computed_trace,
@@ -160,33 +161,29 @@ class _FSAMethod(AbstractMonosourceMethod):
                     for source_obsel in source_obsels:
                         new_obs_add((new_obs_uri, KTBS.hasSourceObsel, source_obsel))
 
-                    attributes = [
-                        (URIRef(key, target_model_uri),
-                         URIRef(val, source_model_uri))
-                        for key, val in state.ktbs_attributes.iteritems()
-                    ]
+                    attributes = state.get_attributes()
                     if attributes:
                         qvars = []
                         qwhere = [ '?obs <{}> ?end .'.format(KTBS.hasEnd) ]
-                        for i, pair in enumerate(attributes):
+                        for i, triple in enumerate(attributes):
                             var = '?v{}'.format(i)
                             qvars.append(var)
-                            qwhere.append('OPTIONAL {{?obs <{}> {} .}}'.format(pair[1], var))
-                        query = 'SELECT {} {{\n{}\nVALUES (?obs) {{\n(<{}>)\n}} }} ORDER BY ?end'.format(
+                            qwhere.append('OPTIONAL {{?obs <{}> {} .}}'
+                                          .format(triple[1], var))
+                        query = ('SELECT {} {{'
+                                 '\n{}\nVALUES (?obs) {{\n(<{}>)\n}}'
+                                 '}} ORDER BY ?end')\
+                            .format(
                             ' '.join(qvars),
                             '\n'.join(qwhere),
                             '>)\n(<'.join(source_obsels),
-                        )
+                            )
                         results = source_state.query(query)
-                        values = [None]*len(attributes)
-                        for tuple in results:
-                            for i, val in enumerate(tuple):
-                                if val is not None:
-                                    values[i] = tuple[i]
-
-                        for i, val in enumerate(values):
+                        for i, triple in enumerate(attributes):
+                            target_attr, _, aggr_func = triple
+                            val = aggr_func(results, i)
                             if val is not None:
-                                new_obs_add((new_obs_uri, attributes[i][0], val))
+                                new_obs_add((new_obs_uri, target_attr, val))
 
 
 
@@ -196,15 +193,109 @@ class _FSAMethod(AbstractMonosourceMethod):
         cstate["tokens"] = fsa.export_tokens_as_dict()
 
 class KtbsFsaState(State):
-    def __init__(self, fsa, stateid):
+    def __init__(self, fsa, stateid, source_model_uri, target_model_uri):
         State.__init__(self, fsa, stateid)
+        self.source_model_uri = source_model_uri
+        self.target_model_uri = target_model_uri
 
-    @property
-    def ktbs_obsel_type(self):
-        return self._data.get('ktbs_obsel_type') or self.id
+    def get_obsel_type(self):
+        ktbs_obsel_type = self._data.get('ktbs_obsel_type', self.id)
+        return URIRef(ktbs_obsel_type, self.target_model_uri)
 
-    @property
-    def ktbs_attributes(self):
-        return self._data.get('ktbs_attributes') or {}
+    def get_attributes(self):
+        ktbs_attributes = self._data.get('ktbs_attributes', {})
+        self_source_model_uri = self.source_model_uri
+        return [
+            (URIRef(key, self.target_model_uri),)
+            + _split_source_attribute(val, self_source_model_uri)
+            for key, val in ktbs_attributes.iteritems()
+        ]
+
+
+def _split_source_attribute(source_attribute, source_model_uri):
+    global _FUNCTIONS
+    splitted = source_attribute.split(' ')
+    if len(splitted) == 1:
+        splitted.insert(0, "last")
+    assert len(splitted) == 2, splitted
+    return (
+        URIRef(splitted[1], source_model_uri),
+        _FUNCTIONS[splitted[0]],
+    )
+
+
+def _last(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    if lst:
+        return lst[-1]
+    else:
+        return None
+
+def _first(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    if lst:
+        return lst[0]
+    else:
+        return None
+
+def _count(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    return Literal(len(lst))
+
+def _sum(data, index):
+    lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(sum(lst))
+    else:
+        return None
+
+def _avg(data, index):
+    lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(sum(lst)/float(len(lst)))
+    else:
+        return None
+
+def _min(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(min(lst))
+    else:
+        return None
+
+def _max(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(max(lst))
+    else:
+        return None
+
+def _span(data, index):
+    lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(max(lst).toPython()-min(lst).toPython())
+    else:
+        return None
+
+def _concat(data, index):
+    lst = [ unicode(tpl[index]) for tpl in data if tpl[index] is not None ]
+    if lst:
+        return Literal(" ".join(lst))
+    else:
+        return None
+
+_FUNCTIONS = {
+    'first':  _first,
+    'last':   _last,
+    'count':  _count,
+    'sum':    _sum,
+    'avg':    _avg,
+    'min':    _min,
+    'max':    _max,
+    'span':   _span,
+    'concat': _concat,
+}
+
+
 
 register_builtin_method_impl(_FSAMethod())
