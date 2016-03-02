@@ -107,7 +107,7 @@ class HttpClientCore(ICore):
 
     @classmethod
     @HostedCore.handle_fragments
-    def factory(cls, uri, _rdf_type=None, _no_spawn=False):
+    def factory(cls, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.interface.ICore.factory`.
 
         Note that I implement it as a class method, so a first resource can be
@@ -122,22 +122,21 @@ class HttpClientCore(ICore):
         NB: if uri contains a fragment-id, the returned resource will be a
         `~.hosted.HostedCore`:class: hosted by a `HttpClientCore`:class: .
         """
+        assert rdf_types is None or isinstance(rdf_types, list)
         uri = coerce_to_uri(uri)
         resource = _RESOURCE_CACHE.get(uri)
         if resource is None  and  not _no_spawn:
             graph = types = py_class = None
-            try:
-                graph = Graph(ProxyStore(identifier=uri,
-                                         configuration={"httpcx" : _http()}),
-                              identifier=uri)
-                types = list(graph.objects(uri, RDF.type))
-            except ResourceAccessError:
-                return None
-            if _rdf_type is not None and _rdf_type not in types:
-                types.append(_rdf_type)
-            py_class = get_wrapped(HttpClientCore, types)
-            # use HttpClientCore above and *not* cls, as cls may already
-            # be a class produced by get_wrapped
+            graph = Graph(ProxyStore(identifier=uri,
+                                     configuration={"httpcx" : _http()}),
+                          identifier=uri)
+            # wrap class if required;
+            # NB: use HttpClientCore *not* cls,
+            # as cls may already be a class produced by get_wrapped
+            if rdf_types:
+                py_class = get_wrapped(HttpClientCore, rdf_types)
+            else:
+                py_class = HttpClientCore
             resource = py_class(uri, graph)
             _RESOURCE_CACHE[uri] = resource
         return resource

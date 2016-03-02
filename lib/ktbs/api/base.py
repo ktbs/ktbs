@@ -43,7 +43,7 @@ class BaseMixin(KtbsResourceMixin):
     def __iter__(self):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
-            yield self_factory(uri, typ)
+            yield self_factory(uri, [typ])
 
     ######## Abstract kTBS API ########
 
@@ -56,7 +56,7 @@ class BaseMixin(KtbsResourceMixin):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.Base:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def iter_traces(self):
         """
@@ -67,7 +67,7 @@ class BaseMixin(KtbsResourceMixin):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.StoredTrace or typ == KTBS.ComputedTrace:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def iter_models(self):
         """
@@ -78,7 +78,7 @@ class BaseMixin(KtbsResourceMixin):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.TraceModel:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def iter_methods(self):
         """
@@ -89,7 +89,7 @@ class BaseMixin(KtbsResourceMixin):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.Method:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def get(self, id):
         """
@@ -104,7 +104,8 @@ class BaseMixin(KtbsResourceMixin):
         """
         #  Redefining built-in id #pylint: disable-msg=W0622
         elt_uri = coerce_to_uri(id, self.uri)
-        ret = self.factory(elt_uri)
+        elt_type = self.state.value(elt_uri, RDF.type)
+        ret = self.factory(elt_uri, [elt_type])
         assert ret is None  or  isinstance(ret, InBaseMixin)  or  isinstance(ret, BaseMixin)
         return ret
 
@@ -114,9 +115,13 @@ class BaseMixin(KtbsResourceMixin):
 
         :rtype: `~.ktbs_root.KtbsRootMixin`:class:
         """
-        parent_uri = (self.state.value(None, KTBS.hasBase, self.uri) or
-                      self.state.value(None, KTBS.contains, self.uri))
-        return self.factory(parent_uri)
+        parent_uri = self.state.value(None, KTBS.hasBase, self.uri)
+        if parent_uri:
+            parent_type = KTBS.KtbsRoot
+        else:
+            parent_uri = self.state.value(None, KTBS.contains, self.uri)
+            parent_type = KTBS.Base
+        return self.factory(parent_uri, [parent_type])
 
     def get_depth(self):
         """
@@ -149,7 +154,7 @@ class BaseMixin(KtbsResourceMixin):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         uris = self.post_graph(graph, None, trust, node, KTBS.Base)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.Base)
+        return self.factory(uris[0], [KTBS.Base])
         # must be a BaseMixin
 
     def create_model(self, id=None, parents=None, label=None, graph=None):
@@ -180,7 +185,7 @@ class BaseMixin(KtbsResourceMixin):
             graph.add((node, KTBS.hasParentModel, parent))
         uris = self.post_graph(graph, None, trust, node, KTBS.TraceModel)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.TraceModel)
+        return self.factory(uris[0], [KTBS.TraceModel])
         # must be a .trace_model.TraceModelMixin
 
     def create_method(self, id=None, parent=None, parameters=None, label=None,
@@ -232,7 +237,7 @@ class BaseMixin(KtbsResourceMixin):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         uris = self.post_graph(graph, None, trust, node, KTBS.Method)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.Method)
+        return self.factory(uris[0], [KTBS.Method])
         # must be a .method.MethodMixin
 
 
@@ -283,7 +288,7 @@ class BaseMixin(KtbsResourceMixin):
 
         uris = self.post_graph(graph, None, trust, node, KTBS.StoredTrace)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.StoredTrace)
+        return self.factory(uris[0], [KTBS.StoredTrace])
         # must be a .trace.StoredTraceMixin
 
     def create_computed_trace(self, id=None, method=None, parameters=None,
@@ -350,7 +355,7 @@ class BaseMixin(KtbsResourceMixin):
 
         uris = self.post_graph(graph, None, trust, node, KTBS.ComputedTrace)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.ComputedTrace)
+        return self.factory(uris[0], [KTBS.ComputedTrace])
         # must be a .trace.StoredTraceMixin
 
     def remove(self):
@@ -394,7 +399,7 @@ class InBaseMixin(KtbsResourceMixin):
         :rtype: `BaseMixin`:class:
         """
         base_uri = parent_uri(self.uri)
-        ret = self.factory(base_uri, KTBS.Base)
+        ret = self.factory(base_uri, [KTBS.Base])
         assert isinstance(ret, BaseMixin)
         return ret
 

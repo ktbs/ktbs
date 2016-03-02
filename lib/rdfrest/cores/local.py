@@ -28,17 +28,17 @@ implement the concerns of the server.
   manage.
 
 * More precisely, the classes passed to a `Service`:class: must implement
-  :class:`ILocalCore`, a sub-interface of `~.interface.Resource`:class:
+  :class:`ILocalCore`, a sub-interface of `~rdfrest.cores.ICore`:class:
   augmenting it with attributes and hooks methods aimed at managing the concerns
   of the server (integrity checking, update propagations...).
 
 * This module provides default implementations of :class:`ILocalCore`:
   :class:`LocalCore` (supporting only "read" operations) and
-  :class:`EditableCore` (supporting :meth:`~.interface.Resource.edit` and
-  :meth:`~.interface.Resource.delete`).
+  :class:`EditableCore` (supporting :meth:`~rdfrest.cores.ICore.edit` and
+  :meth:`~rdfrest.cores.ICore.delete`).
 
 * Subclasses of :class:`ILocalCore` can also benefit from a number of mix-in
-  classes provided in the `.mixins`:mod: module.
+  classes provided in the `~rdfrest.cores.mixins`:mod: module.
 """
 from contextlib import contextmanager
 import traceback
@@ -160,13 +160,13 @@ class Service(object):
             pass
 
     @HostedCore.handle_fragments
-    def get(self, uri, _rdf_type=None, _no_spawn=False):
+    def get(self, uri, rdf_types=None, _no_spawn=False):
         """Get a resource from this service.
 
         :param uri:      the URI of the resource
         :type  uri:      :class:`~rdflib.URIRef`
-        :param _rdf_type: a hint at the expected RDF type of the resource
-        :type  _rdf_type: :class:`~rdflib.URIRef`
+        :param rdf_types: if provided, a list of expected RDF types of the resource
+        :type  rdf_types: list of :class:`rdflib.term.URIRef`
         :param _no_spawn: if True, only *pre-existing* python objects will be
                           returned
         :type  _no_spawn: bool
@@ -177,7 +177,7 @@ class Service(object):
         TODO NOW: if no resource is found, try to get it from parent resource
 
         NB: if uri contains a fragment-id, the returned resource will be a
-        `~.cores.hosted.HostedCore`:class: hosted by a resource from this
+        `~rdfrest.cores.hosted.HostedCore`:class: hosted by a resource from this
         service.
 
         When using this function, it is a good practice to indicate the expected
@@ -187,6 +187,8 @@ class Service(object):
             assert isinstance(returned_object, expected_class)
         """
         assert isinstance(uri, URIRef)
+        assert rdf_types is None  or  isinstance(rdf_types, list)
+
         querystr, fragid = urisplit(uri)[3:]
         if querystr is not None  or  fragid is not None:
             # fragid is managed by the decorator HostedCore.handle_fragment
@@ -197,23 +199,19 @@ class Service(object):
             metadata = Graph(self.store, URIRef(uri + "#metadata"))
             if len(metadata) == 0:
                 return None
-            if _rdf_type:
-                assert (uri, NS.hasImplementation, _rdf_type) in metadata
-                typ = _rdf_type
-            else:
-                types = list(
-                    metadata.objects(uri, NS.hasImplementation))
-                assert len(types) == 1, types
-                typ = types[0]
-            # find base python class
+            types = list(
+                metadata.objects(uri, NS.hasImplementation))
+            assert len(types) == 1, types
+            typ = types[0]
+
+            # find base python class and wrap it
             py_class = self.class_map.get(typ)
             if py_class is None:
                 raise ValueError("No implementation for type <%s> of <%s>"
                                  % (types[0], uri))
-            # derive subclass bas
-            graph = Graph(self.store, uri)
-            types = [ i for i in graph.objects(uri, RDF.type) if i != typ ]
-            py_class = get_wrapped(py_class, types)
+            if rdf_types:
+                py_class = get_wrapped(py_class, rdf_types)
+
             # make resource and store it in "cache"
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
@@ -535,7 +533,7 @@ class LocalCore(ILocalCore):
     # .interface.Resource implementation
     #
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.interface.ICore.factory`.
         """
         # while it is not technically an error to violate the assertion below
@@ -544,9 +542,7 @@ class LocalCore(ILocalCore):
         # be used instead
         assert uri.startswith(self.service.root_uri), uri
 
-        # we do not use rdfrest.get_wrapped
-        # (see comment at the top of the file for explanations)
-        return self.service.get(coerce_to_uri(uri), _rdf_type, _no_spawn)
+        return self.service.get(coerce_to_uri(uri), rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement :meth:`.interface.ICore.get_state`.
@@ -956,7 +952,7 @@ class _DeletedCore(ICore):
         """
         raise TypeError(self._message)
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement `interface.ICore.factory`.
         """
         raise TypeError(self._message)

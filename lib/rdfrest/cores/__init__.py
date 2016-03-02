@@ -62,15 +62,19 @@ class ICore(object):
 
     """
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    uri = None
+
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I return an instance for the resource identified by `uri`.
 
-        The returned instance will inherit all the 
-        `registered <register_wrapper>`:meth: mix-in classes corresponding to the
-        ``rdf:type``\s of the resource.
+        If ``rdf_types`` is provided, the returned instance will inherit
+        all the `registered <register_wrapper>`:meth: mix-in classes
+        corresponding to those types.
 
         :param basestring uri: the URI of the resource to instanciate
         :rtype: :class:`ICore`
+        :param rdf_types: if provided, a list of expected RDF types of the resource
+        :type  rdf_types: list of :class:`rdflib.term.URIRef`
 
         Note that this method is only intended to access resources relying on
         the *same implementation* as self (i.e. "neighbour" resources). If this
@@ -80,8 +84,6 @@ class ICore(object):
 
         Optimisation arguments:
 
-        :param _rdf_type: if provided, the expected RDF type of the resource
-        :type  _rdf_type: :class:`rdflib.term.URIRef`
         :param _no_spawn: if True, only *pre-existing* python objects will be
                           returned (may not be honnored by all implementations)
         :type  _no_spawn: bool
@@ -90,12 +92,11 @@ class ICore(object):
         return type, either informally (with a comment) or formally, with a
         statement of the form::
 
-            assert isinstance(returned_object, expected_class)
+            assert isinstance(returned_object, expected_mixin_class)
 
-        Note that, when describing a mix-in class decorated with
-        :func:`register_wrapper`, one does not know the exact implementation that
-        :meth:`factory` will return, so the expected class will usually be
-        another `registered <register_wrapper>`:func: mix-in class.
+        Note however that most of the time,
+        one can only know which :func:`registered wrapper<register_wrapper>` to expect,
+        not the precise class.
 
         .. note::
 

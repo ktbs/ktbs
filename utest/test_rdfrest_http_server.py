@@ -35,6 +35,7 @@ from rdfrest.http_server import HttpFrontend
 from rdfrest.serializers import register_serializer
 from rdfrest.util import urisplit
 from rdfrest.util.config import get_service_configuration
+from utest.example1 import EXAMPLE
 
 URL = "http://localhost:8001/"
 
@@ -48,7 +49,7 @@ class TestHttpFront(object):
             service_config = get_service_configuration()
             self.service = make_example2_service(service_config)
             #root = self.service.get(URIRef(URL))
-            root = self.service.get(self.service.root_uri)
+            root = self.service.get(self.service.root_uri, [EXAMPLE.Group2])
             assert isinstance(root, Group2Implementation)
             root.create_new_simple_item("foo")
             # max-age is now deprecated, cache_control="max-age=60")
@@ -358,7 +359,7 @@ class TestHttpFront(object):
 
     def test_max_bytes_get_ko(self):
         self.app.max_bytes = 1000
-        foo = self.service.get(URIRef(URL + "foo"))
+        foo = self.service.get(URIRef(URL + "foo"), [EXAMPLE.Item2])
         assert isinstance(foo, Item2Implementation)
         with foo.edit(_trust=True) as editable:
             editable.add((foo.uri, RDFS.label, Literal(1000*"x")))

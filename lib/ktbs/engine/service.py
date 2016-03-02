@@ -86,7 +86,7 @@ def make_ktbs(root_uri=None, repository=None, create=None):
 
     service = KtbsService(ktbs_config)
 
-    ret = service.get(service.root_uri, _rdf_type=KTBS.KtbsRoot)
+    ret = service.get(service.root_uri, [KTBS.KtbsRoot])
     assert isinstance(ret, KtbsRoot)
     return ret
 
@@ -120,7 +120,7 @@ class KtbsService(Service):
         # self.init_ktbs : always give the initialization method
         Service.__init__(self, classes, service_config, self.init_ktbs)
 
-        root = self.get(URIRef(self.root_uri))
+        root = self.get(URIRef(self.root_uri), [KTBS.KtbsRoot])
         
         with root.edit(_trust=True) as graph:
             # updating hasBuiltinMethod with registered implementations
@@ -132,18 +132,18 @@ class KtbsService(Service):
                        KTBS.hasVersion,
                        Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
-    def get(self, uri, _rdf_type=None, _no_spawn=False):
+    def get(self, uri, rdf_types=None, _no_spawn=False):
         """I override :meth:`rdfrest.cores.local.Service.get`
 
         If the original implementation returns None, I try to make an Obsel.
         """
-        ret = super(KtbsService, self).get(uri, _rdf_type, _no_spawn)
+        ret = super(KtbsService, self).get(uri, rdf_types, _no_spawn)
         if ret is None:
             parent = super(KtbsService, self).get(URIRef(parent_uri(uri)), None,
                                                   _no_spawn)
             if parent is not None \
             and parent.RDF_MAIN_TYPE in (KTBS.StoredTrace, KTBS.ComputedTrace):
-                assert _rdf_type is None or _rdf_type == KTBS.Obsel, _rdf_type
+                assert rdf_types is None or KTBS.Obsel in rdf_types, rdf_types
                 ret = Obsel(parent, uri)
         return ret
             

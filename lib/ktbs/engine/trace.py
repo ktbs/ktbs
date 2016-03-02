@@ -78,7 +78,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         implementation.
         """
         obsels_uri = self.state.value(self.uri, KTBS.hasObselCollection)
-        return self.service.get(obsels_uri)
+        return self.service.get(obsels_uri, [self._obsels_cls.RDF_MAIN_TYPE])
 
 
     ######## ILocalCore (and mixins) implementation  ########
@@ -125,13 +125,8 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         graph = Graph(service.store, uri)
         graph.add((uri, KTBS.hasObselCollection, obsels_uri))
         obsels_graph = Graph(identifier=obsels_uri)
-        if cls.RDF_MAIN_TYPE == KTBS.StoredTrace:
-            obsels_cls = StoredTraceObsels
-        else:
-            assert cls.RDF_MAIN_TYPE == KTBS.ComputedTrace
-            obsels_cls = ComputedTraceObsels
-        obsels_cls.init_graph(obsels_graph, obsels_uri, uri)
-        obsels_cls.create(service, obsels_uri, obsels_graph)
+        cls._obsels_cls.init_graph(obsels_graph, obsels_uri, uri)
+        cls._obsels_cls.create(service, obsels_uri, obsels_graph)
 
         # notify sources
         sources = list(new_graph.objects(uri, KTBS.hasSource))
@@ -207,6 +202,9 @@ class AbstractTrace(AbstractTraceMixin, InBase):
 class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     """I provide the implementation of ktbs:StoredTrace .
     """
+
+    _obsels_cls = StoredTraceObsels
+
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.StoredTrace
@@ -280,7 +278,8 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         begin_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceBeginDT))
         end_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceEndDT))
         if begin_dt or end_dt:
-            model = universal_factory(new_graph.value(uri, KTBS.hasModel))
+            model = universal_factory(new_graph.value(uri, KTBS.hasModel),
+                                      [KTBS.TraceModel])
             delta2unit = get_converter_to_unit(model.unit)
             origin = lit2datetime(new_graph.value(uri, KTBS.hasOrigin))
             if origin is not None:
@@ -367,6 +366,8 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
     """I provide the implementation of ktbs:ComputedTrace .
     """
 
+    _obsels_cls = ComputedTraceObsels
+
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.ComputedTrace
@@ -390,7 +391,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         compute the computed properties (model, origin) of this trace.
         """
         super(ComputedTrace, cls).create(service, uri, new_graph)
-        created = service.get(uri, cls.RDF_MAIN_TYPE)
+        created = service.get(uri)
         assert isinstance(created, ComputedTrace)
         created._mark_dirty() # friend #pylint: disable=W0212
         created.force_state_refresh()

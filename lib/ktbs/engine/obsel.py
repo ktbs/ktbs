@@ -63,12 +63,12 @@ class _ObselImpl(ILocalCore):
 
     ######## ICore implementation  ########
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on my service's get method.
         """
-        return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
+        return self.service.get(URIRef(uri), rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement `.cores.ICore.get_state`.

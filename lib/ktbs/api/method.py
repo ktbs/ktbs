@@ -120,7 +120,10 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         I return the inherited method.
         """
         method_uri = self.state.value(self.uri, KTBS.hasParentMethod)
-        return universal_factory(method_uri)
+        if method_uri is None:
+            return None
+        else:
+            return universal_factory(method_uri, [KTBS.Method])
 
     def set_parent(self, method):
         """
@@ -142,8 +145,8 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         self.force_state_refresh() # as changes can come from other resources
         factory = self.factory
         for uri in self.state.subjects(KTBS.hasMethod, self.uri):
-            yield factory(uri)
-            # must be a .trace.AbstratcTraceMixin
+            yield factory(uri, [KTBS.ComputedTrace])
+            # must be a .trace.ComputedTraceMixin
 
     def iter_children(self):
         """I iter over all children method of this method
@@ -151,7 +154,7 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         self.force_state_refresh() # as changes can come from other resources
         factory = self.factory
         for uri in self.state.subjects(KTBS.hasParentMethod, self.uri):
-            child = factory(uri)
+            child = factory(uri, [KTBS.Method])
             assert isinstance(child, MethodMixin)
             yield child
         

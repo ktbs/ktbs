@@ -47,7 +47,7 @@ class KtbsRootMixin(KtbsResourceMixin):
         :rtype: an iterable of `~.builtin_method.MethodBuiltinMixin`:class:
         """
         for obs in self.state.objects(self.uri, KTBS.hasBuiltinMethod):
-            yield universal_factory(obs, _rdf_type=KTBS.BuiltinMethod)
+            yield universal_factory(obs, [KTBS.BuiltinMethod])
 
     def iter_bases(self):
         """
@@ -57,7 +57,7 @@ class KtbsRootMixin(KtbsResourceMixin):
         """
         self_factory = self.factory
         for obs in self.state.objects(self.uri, KTBS.hasBase):
-            yield self_factory(obs)
+            yield self_factory(obs, [KTBS.Base])
 
     def get_builtin_method(self, uri):
         """I return the built-in method identified by `uri` if supported.
@@ -66,7 +66,7 @@ class KtbsRootMixin(KtbsResourceMixin):
         """
         uri = coerce_to_uri(uri)
         if (self.uri, KTBS.hasBuiltinMethod, uri) in self.state:
-            return universal_factory(uri, _rdf_type=KTBS.BuiltinMethod)
+            return universal_factory(uri, [KTBS.BuiltinMethod])
         else:
             return None
 
@@ -78,7 +78,7 @@ class KtbsRootMixin(KtbsResourceMixin):
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
         base_uri = coerce_to_uri(id, self.uri)
-        return self.factory(base_uri, KTBS.Base)
+        return self.factory(base_uri, [KTBS.Base])
         # must be a .base.BaseMixin
 
     def create_base(self, id=None, label=None, graph=None):
@@ -101,5 +101,5 @@ class KtbsRootMixin(KtbsResourceMixin):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         uris = self.post_graph(graph, None, trust, node, KTBS.Base)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.Base)
+        return self.factory(uris[0], [KTBS.Base])
         # must be a .base.BaseMixin

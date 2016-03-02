@@ -62,12 +62,12 @@ class HostedCore(ICore):
     def __str__(self):
         return "<%s>" % self.uri
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.interface.ICore.factory`.
 
         I simply rely on my host's factory.
         """
-        return self.host.factory(uri, _rdf_type, _no_spawn)
+        return self.host.factory(uri, rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement :meth:`.interface.ICore.get_state`.
@@ -144,19 +144,22 @@ class HostedCore(ICore):
         Else, I will pass the URI through to the decorated factory.
         """
         @wraps(factory)
-        def decorated_factory(self_or_cls, uri, _rdf_type=None,
+        def decorated_factory(self_or_cls, uri, rdf_types=None,
                               _no_spawn=False):
             """I wrap a resource factory to handle URIs with frag-id."""
+            assert rdf_types is None or isinstance(rdf_types, list)
             fragid = urisplit(uri)[4]
             if fragid is None:
-                return factory(self_or_cls, uri, _rdf_type, _no_spawn)
+                return factory(self_or_cls, uri, rdf_types, _no_spawn)
             else:
                 uri = URIRef(uri)
                 host = factory(self_or_cls, URIRef(uri[:-len(fragid)-1]), None,
                                _no_spawn)
                 if host is not None:
-                    types = host.get_state().objects(uri, RDF.type)
-                    py_class = get_wrapped(cls, types)
+                    if rdf_types:
+                        py_class = get_wrapped(cls, rdf_types)
+                    else:
+                        py_class = cls
                     return py_class(host, uri)
                 else:
                     return None

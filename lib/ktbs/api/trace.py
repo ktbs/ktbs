@@ -44,6 +44,7 @@ from ..utils import extend_api
 LOG = logging.getLogger(__name__)
 
 
+@register_wrapper(KTBS.AbstractTrace)
 @extend_api
 class AbstractTraceMixin(InBaseMixin):
     """
@@ -63,7 +64,7 @@ class AbstractTraceMixin(InBaseMixin):
         """
         #  Redefining built-in id #pylint: disable-msg=W0622
         uri = coerce_to_uri(id, self.uri)
-        ret = self.factory(uri, KTBS.Obsel)
+        ret = self.factory(uri, [KTBS.Obsel])
         assert ret is None  or  isinstance(ret, ObselMixin)
         return ret
 
@@ -74,7 +75,7 @@ class AbstractTraceMixin(InBaseMixin):
         :rtype: `~.trace_model.TraceModelMixin`:class:
         """
         tmodel_uri = self.state.value(self.uri, KTBS.hasModel)
-        return universal_factory(tmodel_uri)
+        return universal_factory(tmodel_uri, [KTBS.TraceModel])
         # must be a .trace_model.TraceModelMixin
 
     def get_origin(self, as_datetime=False):
@@ -217,7 +218,7 @@ class AbstractTraceMixin(InBaseMixin):
         """
         factory = self.factory
         for uri in self.state.objects(self.uri, KTBS.hasSource):
-            src = factory(uri)
+            src = factory(uri, [KTBS.AbstractTrace])
             assert isinstance(src, AbstractTraceMixin)
             yield src
 
@@ -228,7 +229,7 @@ class AbstractTraceMixin(InBaseMixin):
         self.force_state_refresh() # as changes can come from other resources
         factory = self.factory
         for uri in self.state.subjects(KTBS.hasSource, self.uri):
-            tra = factory(uri)
+            tra = factory(uri, [KTBS.AbstractTrace])
             assert isinstance(tra, AbstractTraceMixin), uri
             yield tra
 
@@ -530,7 +531,7 @@ class StoredTraceMixin(AbstractTraceMixin):
         assert len(uris) == 1
         self.obsel_collection.force_state_refresh()
         if not no_return:
-            ret = self.factory(uris[0], KTBS.Obsel)
+            ret = self.factory(uris[0], [KTBS.Obsel])
             assert isinstance(ret, ObselMixin)
             return ret
 
@@ -546,7 +547,8 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
     def get_method(self):
         """I return the method used by this computed trace
         """
-        return universal_factory(self.state.value(self.uri, KTBS.hasMethod))
+        return universal_factory(self.state.value(self.uri, KTBS.hasMethod),
+                                 [KTBS.Method])
         # must return a .method.MethodMixin
 
     def set_method(self, val):
@@ -674,12 +676,12 @@ class OpportunisticObselCollection(AbstractTraceObselsMixin):
 
     ######## ICore implementation ########
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on the factory of my trace.
         """
-        return self.actual.factory(uri, _rdf_type, _no_spawn)
+        return self.actual.factory(uri, rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement :meth:`.cores.ICore.get_state`.

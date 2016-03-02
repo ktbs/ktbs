@@ -49,8 +49,7 @@ class TestMixins:
         self.service = make_example2_service(service_config,
                                              additional = [TestItem])
         self.ROOT_URI = self.service.root_uri
-        self.root = self.service.get(self.ROOT_URI,
-                                     _rdf_type=EXAMPLE.Group2)
+        self.root = self.service.get(self.ROOT_URI, [EXAMPLE.Group2])
         assert isinstance(self.root, Group2Implementation)
         self.items = []
 
@@ -89,7 +88,7 @@ class TestMixins:
         created, graph = self.prepare_test_item()
         uris = self.root.post_graph(graph, _created=created,
                                     _rdf_type=RESERVED.TestItem)
-        ret = self.root.factory(uris[0], _rdf_type=RESERVED.TestItem)
+        ret = self.root.factory(uris[0], [RESERVED.TestItem])
         assert isinstance(ret, TestItem)
         self.items.append(ret)
         return ret
@@ -143,7 +142,7 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((RESERVED.somethingElse, uri, bnode))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
@@ -156,7 +155,7 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((RESERVED.somethingElse, uri, bnode))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can edit it
             with item.edit() as editable:
@@ -187,7 +186,7 @@ class TestMixins:
                 other = RESERVED.somethingElse
             graph.add((bnode, uri, other))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
@@ -204,7 +203,7 @@ class TestMixins:
                 other = RESERVED.somethingElse
             graph.add((bnode, uri, other))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can edit it
             with item.edit() as editable:
@@ -227,7 +226,7 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((bnode, RDF.type, uri))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
@@ -240,7 +239,7 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((bnode, RDF.type, uri))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0])
+            item = self.root.factory(uris[0], [RESERVED.TestItem])
             assert isinstance(item, TestItem)
             # check that we can edit it
             with item.edit() as editable:
@@ -292,13 +291,13 @@ class TestMixins:
         bnode, new_graph = self.prepare_test_item()
         self.change_cardinality_prop(new_graph, bnode, prop, nb, direction)
         uris = self.root.post_graph(new_graph)
-        self.root.factory(uris[0]).delete()
+        self.root.factory(uris[0], [RESERVED.TestItem]).delete()
         self.root.force_state_refresh()
                              
     def check_cardinality_edit(self, direction, prop, nb):
         bnode, new_graph = self.prepare_test_item()
         uris = self.root.post_graph(new_graph)
-        test = self.root.factory(uris[0])
+        test = self.root.factory(uris[0],  [RESERVED.TestItem])
         assert isinstance(item, TestItem)
         with test.edit() as editable:
             self.change_cardinality_prop(editable, test.uri, prop, nb,direction)

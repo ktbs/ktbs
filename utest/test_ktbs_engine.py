@@ -58,8 +58,7 @@ class KtbsTestCase(object):
         ktbs_config = get_ktbs_configuration()
         ktbs_config.set('server', 'port', '12345')
         self.service = KtbsService(ktbs_config)
-        self.my_ktbs = self.service.get(self.service.root_uri,
-                                        _rdf_type=KTBS.KtbsRoot)
+        self.my_ktbs = self.service.get(self.service.root_uri, [KTBS.KtbsRoot])
 
     def tearDown(self):
         if self.service is not None:
@@ -88,7 +87,8 @@ class HttpKtbsTestCaseMixin(object):
             thread = Thread(target=httpd.serve_forever)
             thread.start()
             self.httpd = httpd
-            self.my_ktbs = HttpClientCore.factory("http://localhost:12345/")
+            self.my_ktbs = HttpClientCore.factory("http://localhost:12345/",
+                                                  [KTBS.KtbsRoot])
             assert isinstance(self.my_ktbs, KtbsRootMixin)
         except:
             self.tearDown()
@@ -452,7 +452,7 @@ class TestKtbs(KtbsTestCase):
         new_base_graph.add((base1.uri, KTBS.contains, new_base))
         uris = base1.post_graph(new_base_graph)
         assert len(uris) == 1
-        base2 = base1.factory(uris[0])
+        base2 = base1.factory(uris[0], [KTBS.Base])
         assert (base1.uri, KTBS.contains, base2.uri) in base2.state
         base1.force_state_refresh()
         assert (base1.uri, KTBS.contains, base2.uri) in base1.state

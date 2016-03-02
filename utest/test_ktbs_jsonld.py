@@ -241,7 +241,7 @@ class TestJsonBase(KtbsTestCase):
         ret = self.my_ktbs.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.my_ktbs.uri + base_id
-        newbase = self.my_ktbs.factory(ret[0])
+        newbase = self.my_ktbs.factory(ret[0], [KTBS.Base])
         assert isinstance(newbase, BaseMixin)
 
 
@@ -366,7 +366,7 @@ class TestJsonMethod(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + method_id
-        newmethod = self.base.factory(ret[0])
+        newmethod = self.base.factory(ret[0], [KTBS.Method])
         assert isinstance(newmethod, MethodMixin)
 
 class TestJsonHashModel(KtbsTestCase):
@@ -510,7 +510,7 @@ class TestJsonHashModel(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + model_id
-        newmodel = self.base.factory(ret[0])
+        newmodel = self.base.factory(ret[0], [KTBS.TraceModel])
         assert isinstance(newmodel, TraceModelMixin)
         assert len(newmodel.obsel_types) == 1
 
@@ -881,7 +881,7 @@ class TestJsonStoredTrace(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + stored_trace_id
-        newstored_trace = self.base.factory(ret[0])
+        newstored_trace = self.base.factory(ret[0], [KTBS.StoredTrace])
         assert isinstance(newstored_trace, StoredTraceMixin)
 
 class TestJsonComputedTrace(KtbsTestCase):
@@ -995,7 +995,7 @@ class TestJsonComputedTrace(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + computed_trace_id
-        newcomputed_trace = self.base.factory(ret[0])
+        newcomputed_trace = self.base.factory(ret[0], [KTBS.ComputedTrace])
         assert isinstance(newcomputed_trace, ComputedTraceMixin)
 
 
@@ -1184,7 +1184,7 @@ class TestJsonObsels(KtbsTestCase):
         }), self.t1.uri)
         ret = self.t1.post_graph(graph)
         assert len(ret) == 1
-        newobsel = self.t1.factory(ret[0])
+        newobsel = self.t1.factory(ret[0], [KTBS.Obsel])
         assert isinstance(newobsel, ObselMixin)
         assert newobsel.obsel_type == self.ot1, newobsel.obsel_type
 
@@ -1205,10 +1205,10 @@ class TestJsonObsels(KtbsTestCase):
 
         ret = self.t1.post_graph(graph)
         assert len(ret) == 2
-        newobsel1 = self.t1.factory(ret[0])
+        newobsel1 = self.t1.factory(ret[0], [KTBS.Obsel])
         assert isinstance(newobsel1, ObselMixin)
         assert newobsel1.obsel_type == self.ot1, newobsel1.obsel_type
-        newobsel2 = self.t1.factory(ret[1])
+        newobsel2 = self.t1.factory(ret[1], [KTBS.Obsel])
         assert isinstance(newobsel2, ObselMixin)
         assert newobsel2.obsel_type == self.ot1, newobsel2.obsel_type
 

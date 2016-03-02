@@ -53,6 +53,7 @@ from rdfrest.exceptions import CanNotProceedError
 from rdfrest.cores.http_client import HttpClientCore
 from rdfrest.http_server import HttpFrontend
 from rdfrest.cores import ICore
+from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.cores.local import EditableCore, Service
 from rdfrest.cores.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
@@ -173,7 +174,7 @@ class ItemMixin(ICore):
     @property
     def parent(self):
         """Return the group containing this item (if any)"""
-        ret = self.factory(parent_uri(self.uri))
+        ret = self.factory(parent_uri(self.uri), [EXAMPLE.Group])
         assert isinstance(ret, GroupMixin)
         return ret
 
@@ -221,15 +222,19 @@ class GroupMixin(ItemMixin):
         item_uri = URIRef(self.uri + ident)
         if not (self.uri, EXAMPLE.contains, item_uri) in self.state:
             item_uri = URIRef(item_uri + "/")
-        ret = self.factory(item_uri)
+        item_type = self.state.value(item_uri, RDF.type)
+        ret = self.factory(item_uri, [item_type])
         assert ret is None or isinstance(ret, ItemMixin)
         return ret
 
     def iter_items(self):
         """Iter over all items in this group"""
         self_factory = self.factory
-        for item_uri in self.state.objects(self.uri, EXAMPLE.contains):
-            yield self_factory(item_uri)
+        query = ("SELECT ?i ?t WHERE { <%s> <%s> ?i. ?i a ?t. }"
+                 % (self.uri, EXAMPLE.contains))
+        self_factory = self.factory
+        for item_uri, item_type in self.state.query(query):
+            yield self_factory(item_uri, [item_type])
 
     @property
     def items(self):
@@ -242,7 +247,7 @@ class GroupMixin(ItemMixin):
                  % (self.uri, EXAMPLE.contains, self.ITEM_TYPE))
         self_factory = self.factory
         for result in self.state.query(query):
-            yield self_factory(result[0], self.ITEM_TYPE)
+            yield self_factory(result[0], [self.ITEM_TYPE])
 
     @property
     def simple_items(self):
@@ -251,11 +256,11 @@ class GroupMixin(ItemMixin):
 
     def iter_groups(self):
         """Iter over groups in this group"""
+        query = ("SELECT ?i WHERE { <%s> <%s> ?i. ?i a <%s>. }"
+                 % (self.uri, EXAMPLE.contains, self.GROUP_TYPE))
         self_factory = self.factory
-        graph_contains = self.state.__contains__
-        for group_uri in self.state.objects(self.uri, EXAMPLE.contains):
-            if graph_contains((group_uri, RDF.type, self.GROUP_TYPE)):
-                yield self_factory(group_uri, self.GROUP_TYPE)
+        for result in self.state.query(query):
+            yield self_factory(result[0], [self.GROUP_TYPE])
 
     @property
     def groups(self):
@@ -273,7 +278,7 @@ class GroupMixin(ItemMixin):
         new.add((created, RDF.type, self.ITEM_TYPE))
         uris = self.post_graph(new, None, True, created, self.ITEM_TYPE)
         assert len(uris) == 1
-        ret = self.factory(uris[0], self.ITEM_TYPE)
+        ret = self.factory(uris[0], [self.ITEM_TYPE])
         assert isinstance(ret, ItemMixin)
         return ret
 
@@ -288,7 +293,7 @@ class GroupMixin(ItemMixin):
         new.add((created, RDF.type, self.GROUP_TYPE))
         uris = self.post_graph(new, None, True, created, self.GROUP_TYPE)
         assert len(uris) == 1
-        ret = self.factory(uris[0], self.GROUP_TYPE)
+        ret = self.factory(uris[0], [self.GROUP_TYPE])
         assert isinstance(ret, GroupMixin)
         return ret
 
@@ -478,7 +483,7 @@ def main():
     root_uri = serv.root_uri
 
     if test:
-        local_root = serv.get(root_uri)
+        local_root = serv.get(root_uri, [EXAMPLE.Group])
         assert isinstance(local_root, GroupImplementation)
         do_tests(local_root)
         print "Local tests passed"
@@ -537,12 +542,12 @@ def do_tests(root):
     assert item11 in group1 and  item11 not in root
 
     # test the _no_spawn argument in factory
-    item1bis = root.factory(URIRef("item1", root.uri))
+    item1bis = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item])
     assert item1bis is item1
-    item1bis = root.factory(URIRef("item1", root.uri), _no_spawn=True)
+    item1bis = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
     assert item1bis is item1
     del item1, item1bis
-    item1 = root.factory(URIRef("item1", root.uri), _no_spawn=True)
+    item1 = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
     assert item1 is None
 
     

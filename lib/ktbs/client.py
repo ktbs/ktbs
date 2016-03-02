@@ -30,6 +30,8 @@ import ktbs.api.trace_obsels # reimport ktbs #pylint: disable=W0404
 # import serializers and parsers to ensure they are registered
 import ktbs.serpar
 
+from ktbs.namespace import KTBS
+
 from rdfrest.cores.factory import factory
 
 
@@ -43,7 +45,7 @@ def get_ktbs(uri):
     a local service. If your goal is to *create* a local kTBS service, you must
     use :func:`ktbs.engine.service.make_ktbs` instead.
     """
-    ret = factory(uri)
+    ret = factory(uri, [KTBS.KtbsRoot])
     assert isinstance(ret, ktbs.api.ktbs_root.KtbsRootMixin)
     return ret
                      

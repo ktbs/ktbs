@@ -23,6 +23,7 @@ JSON-LD parser and serializer for KTBS.
 """
 import logging
 
+from ktbs.namespace import KTBS
 from rdfrest.cores.factory import factory
 
 
@@ -130,7 +131,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             if not obsel_context:
                 json_data["@context"] = CONTEXT_URI
             else:
-                model_uri = factory(base_uri).model_uri
+                model_uri = factory(base_uri, [KTBS.AbstractTrace]).model_uri
                 if model_uri[-1] not in { "/", "#" }:
                     model_uri += "#"
                 json_data["@context"] = [

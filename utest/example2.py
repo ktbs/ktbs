@@ -151,12 +151,12 @@ class Group2Implementation(Group2Mixin,
 class Ex2Service(Service):
     """I override Service.get to support some parameters (see module doc)"""
     # too few public methods (1/2) #pylint: disable=R0903
-    def get(self, uri, _rdf_type=None, _no_spawn=False):
+    def get(self, uri, rdf_types=None, _no_spawn=False):
         """I override Service.get"""
-        ret = super(Ex2Service, self).get(uri, _rdf_type, _no_spawn)
+        ret = super(Ex2Service, self).get(uri, rdf_types, _no_spawn)
         if ret is None:
             if uri == URIRef("@proxy", self.root_uri):
-                ret = super(Ex2Service, self).get(self.root_uri, _rdf_type,
+                ret = super(Ex2Service, self).get(self.root_uri, rdf_types,
                                                   _no_spawn)
         return ret
         
