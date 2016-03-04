@@ -181,9 +181,12 @@ class _FSAMethod(AbstractMonosourceMethod):
                         results = source_state.query(query)
                         for i, triple in enumerate(attributes):
                             target_attr, _, aggr_func = triple
-                            val = aggr_func(results, i)
-                            if val is not None:
-                                new_obs_add((new_obs_uri, target_attr, val))
+                            try:
+                                val = aggr_func(results, i)
+                                if val is not None:
+                                    new_obs_add((new_obs_uri, target_attr, val))
+                            except Exception, ex:
+                                LOG.warn(ex.message)
 
 
 

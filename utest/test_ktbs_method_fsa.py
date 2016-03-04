@@ -573,3 +573,36 @@ class TestFSAKtbsSpecificProperties(KtbsTestCase):
         eq_(ctr.obsels[-1].get_attribute_value(self.atypeMax), 11)
         eq_(ctr.obsels[-1].get_attribute_value(self.atypeSpan), 6)
         eq_(ctr.obsels[-1].get_attribute_value(self.atypeConcat), "9 11 5")
+
+    def test_aggregate_functions_heterogeneous(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oC3 = self.src.create_obsel("oC3", self.otypeC, 3)
+        eq_(len(ctr.obsels), 0)
+        oC4 = self.src.create_obsel("oC4", self.otypeC, 4,
+                                    attributes={self.atypeV: Literal(42)})
+        eq_(len(ctr.obsels), 0)
+        oC5 = self.src.create_obsel("oC5", self.otypeC, 5)
+        eq_(len(ctr.obsels), 0)
+        oC6 = self.src.create_obsel("oC6", self.otypeC, 6,
+                                    attributes={self.atypeV: Literal("foo")})
+        eq_(len(ctr.obsels), 0)
+        oC7 = self.src.create_obsel("oC7", self.otypeC, 7)
+        eq_(len(ctr.obsels), 0)
+        oC8 = self.src.create_obsel("oC8", self.otypeC, 8)
+        eq_(len(ctr.obsels), 0)
+        oD9 = self.src.create_obsel("oD9", self.otypeD, 9)
+        eq_(len(ctr.obsels), 1)
+        assert_source_obsels(ctr.obsels[-1], [oC3, oC4, oC5, oC6, oC7, oC8])
+
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeFirst), 42)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeLast), "foo")
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeCount), 2)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeSum), None)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeAvg), None)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeMin), 42)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeMax), "foo")
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeSpan), None)
+        eq_(ctr.obsels[-1].get_attribute_value(self.atypeConcat), "42 foo")
