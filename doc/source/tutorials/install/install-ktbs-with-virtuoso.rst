@@ -15,10 +15,11 @@ Here are the steps necessary to do so:
   you can for example use the Docker image provided at https://hub.docker.com/r/joernhees/virtuoso/,
   and ensure that both ports 8890 and 1111 are accessible to kTBS.
 
-* You need the client ODBC library for accessing Virtuoso.
+* You need the client ODBC library for accessing Virtuoso,
+  as well as development files for ODBC and Python.
   On Debian/Ubuntu Linux, you can get it with::
 
-    apt-get install libvitodbc0
+    apt-get install libvirtodbc0 unixodbc-dev python2.7-dev
 
 * Add the following lines in ``~/.odbc.ini`` or ``/etc/odbc.ini``::
 
@@ -29,27 +30,25 @@ Here are the steps necessary to do so:
     Port        = 1111
     Locale     = en.UTF-8
 
+  .. warning::
+
+     Any other value than 1111 for the ``Port`` seems to be ignored,
+     so you should not try to change that value (Virtuoso's default).
+
 * You need a customized version of the ``pyodbc`` module,
   available at https://github.com/maparent/pyodbc,
   in the branch ``v3-virtuoso``.
 
   One way to achieve that is the following::
 
-    git clone https://github.com/maparent/pyodbc maparent_pyodbc
-    cd maparent_pyodbc
-    git checkout v3-virtuoso
-    pip install -e .
+    pip install git+https://github.com/maparent/pyodbc@v3-virtuoso
 
-* You also need a customized version of the ``virtuoso-python`` module,
-  available at https://github.com/pchampin/virtuoso-python,
-  in the branch ``rdflib_improvements``.
+* Finally, you need the ``virtuoso-python`` module,
+  available at https://github.com/maparent/virtuoso-python.
 
   One way to achieve that is the following::
 
-    git clone https://github.com/pchampin/virtuoso-python pchampin_virtuoso
-    cd pchampin_virtuoso
-    git checkout rdflib_improvements
-    pip install -e .
+    pip install git+https://github.com/maparent/virtuoso-python
 
 * Finally,
   all you need to do is to configure the RDF store used by kTBS to::
