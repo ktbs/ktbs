@@ -193,7 +193,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 html = html.replace(/"([^">\n]+)"/g, '"<a href="$1">$1</a>"');
             } else {
                 html = html.replace(/&lt;&gt;/g, '<a href="">&lt;&gt;</a>');
-                html = html.replace(/&lt;([^&\n]+)&gt;/g, '&lt;<a href="$1">$1</a>&gt;');
+                html = html.replace(/&lt;([^\n]+?)&gt;/g, '&lt;<a href="$1">$1</a>&gt;');
             }
             response.innerHTML = html;
         }
