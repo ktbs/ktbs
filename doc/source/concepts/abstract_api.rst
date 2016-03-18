@@ -344,21 +344,21 @@ Model (Resource)
 
     :rtype: ObselType
 
-.. function:: create_attribute_type(id:uri?, obsel_type:ObselType?, data_type:uri?, \
+.. function:: create_attribute_type(id:uri?, obsel_types:[ObselType]?, data_types:[uri]?, \
               value_is_list:bool?, label:str)
 
     NB: if data_type represent a "list datatype", value_is_list must not be
     true
     NB: if id is not provided, label is used to mint a human-friendly URI
     TODO specify a minimum list of datatypes that must be supported
-    TODO define a URI for representing "list of X" for each supported datatype
+    TODO define a URI for representing "list of X" for each supported datatype?
 
     :param data_type: uri is an XML-Schema datatype URI.
     :param value_is_list: indicates whether the attributes accepts a single value
                           (false, default) or a list of values (true).
     :rtype: AttributeType
 
-.. function:: create_relation_type(id:uri?, origin:ObselType?, destination:ObselType?, \
+.. function:: create_relation_type(id:uri?, origins:[ObselType]?, destinations:[ObselType]?, \
               supertypes:[RelationType]?, label:str)
 
     NB: if id is not provided, label is used to mint a human-friendly URI
@@ -424,6 +424,11 @@ ObselType (Resource)
                              including indirect supertypes and this obsel type itself
     :rtype: [ObselType]
 
+
+.. function:: add_supertype(ot:ObselType)
+
+.. function:: remove_supertype(ot:ObselType)
+
 .. function:: list_subtypes(include_indirect:bool?)
 
     List the subtypes of this obsel type from the same model.
@@ -457,7 +462,7 @@ ObselType (Resource)
                               inherited from supertypes should be included
     :rtype: [RelationType]
 
-.. function:: create_attribute_type(id:uri?, data_type:uri?, value_is_list:book?, \
+.. function:: create_attribute_type(id:uri?, data_types:[uri]?, value_is_list:book?, \
               label:str)
 
     Shortcut to get_model().create_attribute_type where this ObselType is the
@@ -465,17 +470,13 @@ ObselType (Resource)
 
     :rtype: AttributeType
 
-.. function:: create_relation_type(id:uri?, destination:ObselType?, \
+.. function:: create_relation_type(id:uri?, destinations:[ObselType]?, \
               supertypes:[RelationType]?, label:str)
 
     Shortcut to get_model().create_relation_type where this ObselType is the
     origin.
 
     :rtype: RelationType
-
-.. function:: add_supertype(ot:ObselType)
-
-.. function:: remove_supertype(ot:ObselType)
 
       
     
@@ -486,24 +487,27 @@ AttributeType (Resource)
 
     :rtype: Model
 
-.. function:: get_obsel_type()
+.. function:: list_obsel_types()
 
-    :rtype: ObselType
+    :rtype: [ObselType]
 
-.. function:: set_obsel_type(ot:ObselType)
+.. function:: add_obsel_type(ot:ObselType)
 
-.. function:: get_data_type()
+.. function:: remove_obsel_type(ot:ObselType)
 
-    :rtype: uri
+.. function:: list_data_types()
 
-.. function:: set_data_type(data_type:uri, is_list:bool?)
+    :rtype: [uri]
+            
+.. function:: add_data_type(data_type:uri, is_list:bool?)
 
     NB: if data_type represent a "list datatype", value_is_list must not be
     true
 
     :param is_list: indicates whether the attribute accepts a single value (false,
                     default) or a list of values (true)
-    :rtype: 
+
+.. function:: remove_data_type(data_type:uri)
 
     
 RelationType (Resource)
@@ -521,6 +525,10 @@ RelationType (Resource)
                              including indirect supertypes and this relation type itself
     :rtype: [RelationType]
 
+.. function:: add_supertype(rt:RelationType)
+
+.. function:: remove_supertype(rt:RelationType)
+
 .. function:: list_subtypes(include_indirect:bool?)
 
     List the subtypes of this relation type from the same model.
@@ -530,21 +538,22 @@ RelationType (Resource)
                              relation type itself
     :rtype: [RelationType]
 
-.. function:: get_origin()
 
-    :rtype: ObselType
+.. function:: list_origins()
 
-.. function:: set_origin(ot:ObselType)
+    :rtype: [ObselType]
 
-.. function:: get_destination()
+.. function:: add_origin(ot:ObselType)
 
-    :rtype: ObselType
+.. function:: remove_origin(ot:ObselType)
 
-.. function:: set_destination(ot:ObselType)
+.. function:: list_destinations()
 
-.. function:: add_supertype(rt:RelationType)
+    :rtype: [ObselType]
 
-.. function:: remove_supertype(rt:RelationType)
+.. function:: add_destination(ot:ObselType)
+
+.. function:: remove_destination(ot:ObselType)
 
 
     
