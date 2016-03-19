@@ -18,16 +18,15 @@
 """
 I provide kTBS CSV serializer, this is a serialization with information loss.
 """
-from string import maketrans
-
-from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
+from cStringIO import StringIO
+from csv import writer as csv_writer
+from itertools import groupby
+from rdflib import RDF
 from rdfrest.serializers import register_serializer, SerializeError
-from rdfrest.util import coerce_to_uri, wrap_exceptions
-
-from jsonld_serializers import ValueConverter
+from rdfrest.util import wrap_exceptions
+from re import compile as Regexp
 
 from ..namespace import KTBS, KTBS_NS_URI
-from ..utils import SKOS
 
 LEN_KTBS = len(KTBS_NS_URI)+1
 
@@ -36,52 +35,91 @@ CSV = "text/csv"
 @register_serializer(CSV, "csv", 85, KTBS.ComputedTraceObsels)
 @register_serializer(CSV, "csv", 85, KTBS.StoredTraceObsels)
 @wrap_exceptions(SerializeError)
-def serialize_csv_trace_obsels(graph, tobsels, bindings=None):
+def serialize_csv_trace_obsels(graph, resource, bindings=None):
+    sio = StringIO()
+    csvw = csv_writer(sio)
+    for row in iter_csv_rows(resource.trace.uri, graph):
+        csvw.writerow(row)
+        yield sio.getvalue()
+        sio.reset()
+        sio.truncate()
 
-    trace_uri = tobsels.trace.uri
-    model_uri = tobsels.trace.model_uri
-    if model_uri[-1] not in { "/", "#" }:
-        model_uri += "#"
-    valconv = ValueConverter(trace_uri, { model_uri: "m" })
-    valconv_uri = valconv.uri
+def iter_csv_rows(trace_uri, graph, sep=u' | '):
 
-    obsels = graph.query("""
-        PREFIX : <%s#>
+    results0 = graph.query("""
+        PREFIX : <{0}#>
         SELECT DISTINCT ?attr
-        {
-            ?obs :hasTrace [] ; ?attr [].
-        }
-    """ % KTBS_NS_URI)
+        {{
+            ?obs :hasTrace <{1}> ; ?attr [].
+        }}
+    """.format(KTBS_NS_URI, trace_uri))
 
-    # Build meaningfull sparql variables without special chars
-    all_attr = {}
+    ktbs_props = [ i[0] for i in results0 if i[0].startswith(KTBS.uri) ]
+    other_props = [ i[0] for i in results0 if not i[0].startswith(KTBS.uri) ]
+    ktbs_props.sort()
+    other_props.sort()
 
-    for attr in obsels:
-        abr = attr[0].split('#')[-1]
+    ktbs_props.remove(KTBS.hasTrace)
+    if KTBS.hasSourceObsel in ktbs_props:
+        ktbs_props.remove(KTBS.hasSourceObsel)
+        src_obs = [ KTBS.hasSourceObsel ]
+    else:
+        src_obs = []
 
-        if abr.find('/') != -1:
-            abr = attr[0].split('/')[-1]
+    other_props.remove(RDF.type)
 
-        # TODO Should we remove hasTrace ?
-        if abr is not None:
-            if all_attr.get(abr) is None:
-                all_attr[abr] = attr[0]
+    props = [RDF.type] + ktbs_props + other_props + src_obs
+    vars = []
+    for prop in props:
+        vars.append(make_var_name(prop, vars))
 
-    opt_attr = []
-    for abr, attr in all_attr.items():
-        opt_attr.append(u'OPTIONAL {{ ?id <{0}> ?{1} }}'.format(attr, abr))
+    yield ['id'] + [ i.encode('utf8') for i in vars ]
 
-    all_opts = u'\n\t'.join(opt_attr)
+    sel_parts = []
+    bgp_parts = []
+    for var, prop in zip(vars, props):
+        sel_parts.append(u'?{0}'
+                         .format(var))
+        bgp_parts.append(u'OPTIONAL {{ ?id <{1}> ?{0} }}'
+                         .format(var, prop))
 
-    header = u' '.join(['?{0}'.format(abr) for abr in all_attr.keys()])
+    obs_query = u"""SELECT ?id {0}
+            WHERE {{
+                ?id <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <{1}> .
+                {2}
+            }}
+            ORDER BY ?end ?begin ?id
+    """.format(' '.join(sel_parts),
+               trace_uri,
+               '\n'.join(bgp_parts))
 
-    obs_query = u"""SELECT {0}
-            {{
-                ?id <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> [] .
-                  {1}
-            }} ORDER BY ?hasEnd ?hasBegin""".format(header, all_opts)
+    for obs, tuples in groupby(graph.query(obs_query), lambda tpl: tpl[0]):
+        sets = [ set() for i in vars ]
+        for tuple in tuples:
+            for val, valset in zip(tuple[1:], sets):
+                if val is not None:
+                    valset.add(val)
+        yield [obs.encode('utf8')] + [ sep.join(valset).encode('utf8') for valset in sets ]
 
-    obsels = graph.query(obs_query)
 
-    s = obsels.serialize(format='csv', encoding='utf-8')
-    yield s
+def make_var_name(uri, vars):
+    var_name = LAST_PART.search(uri).group(1)
+    if HAS_VERB.match(var_name):
+        if var_name[3] == '_':
+            var_name = var_name[4:]
+        else:
+            var_name = ''.join((var_name[3].lower(), var_name[4:]))
+
+    if var_name in vars:
+        i = 2
+        while True:
+            attempt = u'{}{}'.format(var_name, i)
+            if attempt not in vars:
+                var_name = attempt
+                break
+            i = i+1
+
+    return var_name
+
+LAST_PART = Regexp(r'([^#/]+)/?$')
+HAS_VERB = Regexp(r'^has[A-Z_]')
