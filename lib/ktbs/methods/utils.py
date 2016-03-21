@@ -86,3 +86,6 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=N
         ret = None
     return ret
 
+def boolean_parameter(value):
+    return value.strip().lower() not in { "false", "no", "0" }
+

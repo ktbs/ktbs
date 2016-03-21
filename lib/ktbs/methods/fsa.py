@@ -23,14 +23,12 @@ import logging
 from fsa4streams import FSA
 from fsa4streams.matcher import DIRECTORY as matcher_directory
 from fsa4streams.state import State
+from json import dumps
 from rdflib import Literal, RDF, URIRef, Graph
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
-from .utils import translate_node
+from .utils import boolean_parameter, translate_node
 from ..engine.builtin_method import register_builtin_method_impl
 from ..namespace import KTBS
-from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
-
-# pylint is confused by a module named time (as built-in module)
 
 LOG = logging.getLogger(__name__)
 
@@ -86,6 +84,7 @@ class _FSAMethod(AbstractMonosourceMethod):
         "origin": Literal,
         "model": URIRef,
         "fsa": FSA.from_str,
+        "expose_tokens": boolean_parameter,
     }
     required_types = ["fsa"]
 
@@ -94,6 +93,7 @@ class _FSAMethod(AbstractMonosourceMethod):
         """
         cstate.update([
             ("fsa", params.get("fsa").export_structure_as_dict()),
+            ("expose_tokens", params.get("expose_tokens", False)),
             ("tokens", None),
             ("last_seen", None),
         ])
@@ -194,6 +194,12 @@ class _FSAMethod(AbstractMonosourceMethod):
 
         cstate["last_seen"] = last_seen and unicode(last_seen.uri)
         cstate["tokens"] = fsa.export_tokens_as_dict()
+
+        if cstate["expose_tokens"]:
+            with computed_trace.edit(_trust=True) as g:
+                g.set((computed_trace.uri,
+                       URIRef('tag:tweak.liris.cnrs.fr.2016.03.21.fsa4streams:tokens'),
+                       Literal(dumps(cstate["tokens"]))))
 
 class KtbsFsaState(State):
     def __init__(self, fsa, stateid, source_model_uri, target_model_uri):
