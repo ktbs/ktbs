@@ -448,13 +448,15 @@ def serialize_json_model(graph, tmodel, bindings=None):
             "@id": "%s" ,
             "@type": "AttributeType" """ % valconv_uri(atype.uri)
 
-        if atype.obsel_type:
-            yield u""",\n            "hasAttributeObselType": "%s" """ \
-                % valconv_uri(coerce_to_uri(atype.obsel_type))
+        obsel_types = atype.obsel_types
+        if obsel_types:
+            yield u""",\n            "hasAttributeObselType": %s """ \
+                % dumps([ valconv_uri(coerce_to_uri(ot)) for ot in obsel_types ])
 
-        if atype.data_type:
-            yield u""",\n            "hasAttributeDatatype": "%s" """ \
-                % valconv_uri(atype.data_type)
+        data_types = atype.data_types
+        if data_types:
+            yield u""",\n            "hasAttributeDatatype": %s """ \
+                % dumps([ valconv_uri(dt) for dt in data_types ])
 
         for i in iter_other_arcs(graph, atype.uri, valconv, "\n            "):
             yield i
@@ -472,13 +474,15 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield u""",\n            "hasSuperRelationType": %s """ \
               % dumps(stypes)
 
-        if rtype.origin:
-            yield u""",\n            "hasRelationOrigin": "%s" """ \
-                % valconv_uri(coerce_to_uri(rtype.origin),)
+        origins = rtype.origins
+        if origins:
+            yield u""",\n            "hasRelationOrigin": %s """ \
+                % dumps([ valconv_uri(coerce_to_uri(o)) for o in origins ])
 
-        if rtype.destination:
-            yield u""",\n            "hasRelationDestination": "%s" """ \
-                % valconv_uri(coerce_to_uri(rtype.destination),)
+        destinations = rtype.destinations
+        if destinations:
+            yield u""",\n            "hasRelationDestination": %s """ \
+                % dumps([ valconv_uri(coerce_to_uri(d)) for d in destinations ],)
 
         for i in iter_other_arcs(graph, rtype.uri, valconv, "\n            "):
             yield i

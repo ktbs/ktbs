@@ -22,11 +22,12 @@
 I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF
+from warnings import warn
 
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.util import coerce_to_uri, parent_uri
-from .base import InBaseMixin
 from rdfrest.wrappers import register_wrapper
+from .base import InBaseMixin
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import extend_api, mint_uri_from_label, SKOS
@@ -182,14 +183,14 @@ class TraceModelMixin(InBaseMixin):
         assert isinstance(ret, ObselTypeMixin)
         return ret
 
-    def create_relation_type(self, id=None, origin=None, destination=None,
+    def create_relation_type(self, id=None, origins=None, destinations=None,
                                 supertypes=(), label=None):
         """
         I create a new relation type in this model.
 
         :param id: see :ref:`ktbs-resource-creation`
-        :param origin: explain.
-        :param destination: explain.
+        :param origins: explain.
+        :param destinations: explain.
         :param supertypes: explain.
         :param label: explain.
 
@@ -205,12 +206,22 @@ class TraceModelMixin(InBaseMixin):
             graph_add((uri, RDF.type, KTBS.RelationType))
             if label is not None:
                 graph_add((uri, SKOS.prefLabel, Literal(label)))
-            if origin is not None:
-                origin_uri = coerce_to_uri(origin, self.uri)
-                graph_add((uri, _HAS_REL_ORIGIN, origin_uri))
-            if destination is not None:
-                destination_uri = coerce_to_uri(destination, self.uri)
-                graph_add((uri, _HAS_REL_DESTINATION, destination_uri))
+            if origins is not None:
+                # TODO remove test below when enough time has passed (2016-03-18)
+                if isinstance(origins, basestring) or isinstance(origins, ObselTypeMixin):
+                    warn("Model abstract API has changed: you should provide an *iterable* of origins")
+                    origins = [origins]
+                for origin in origins:
+                    origin_uri = coerce_to_uri(origin, self.uri)
+                    graph_add((uri, _HAS_REL_ORIGIN, origin_uri))
+            if destinations is not None:
+                # TODO remove test below when enough time has passed (2016-03-18)
+                if isinstance(destinations, basestring) or isinstance(destinations, ObselTypeMixin):
+                    warn("Model abstract API has changed: you should provide an *iterable* of destinations")
+                    destinations = [destinations]
+                for destination in destinations:
+                    destination_uri = coerce_to_uri(destination, self.uri)
+                    graph_add((uri, _HAS_REL_DESTINATION, destination_uri))
             for i in supertypes:
                 graph_add((uri, KTBS.hasSuperRelationType,
                      coerce_to_uri(i, base_uri)))
@@ -219,14 +230,14 @@ class TraceModelMixin(InBaseMixin):
         return ret
 
 
-    def create_attribute_type(self, id=None, obsel_type=None, data_type=None,
+    def create_attribute_type(self, id=None, obsel_types=None, data_types=None,
                               value_is_list=False, label=None):
         """
         I create a new obsel type in this model.
 
         :param id: see :ref:`ktbs-resource-creation`
-        :param obsel_type: explain.
-        :param data_type: explain.
+        :param obsel_types: explain.
+        :param data_types: explain.
         :param value_is_list: explain.
         :param label: explain.
 
@@ -242,12 +253,22 @@ class TraceModelMixin(InBaseMixin):
             graph_add((uri, RDF.type, KTBS.AttributeType))
             if label is not None:
                 graph_add((uri, SKOS.prefLabel, Literal(label)))
-            if obsel_type is not None:
-                obsel_type_uri = coerce_to_uri(obsel_type, base_uri)
-                graph_add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
-            if data_type is not None:
-                data_type_uri = coerce_to_uri(data_type, base_uri)
-                graph_add ((uri, _HAS_ATT_DATATYPE, data_type_uri))
+            if obsel_types is not None:
+                # TODO remove test below when enough time has passed (2016-03-18)
+                if isinstance(obsel_types, basestring) or isinstance(obsel_types, ObselTypeMixin):
+                    warn("Model abstract API has changed: you should provide an *iterable* of obsel_types")
+                    obsel_types = [obsel_types]
+                for obsel_type in obsel_types:
+                    obsel_type_uri = coerce_to_uri(obsel_type, base_uri)
+                    graph_add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
+            if data_types is not None:
+                # TODO remove test below when enough time has passed (2016-03-18)
+                if isinstance(data_types, basestring):
+                    warn("Model abstract API has changed: you should provide an *iterable* of data_types")
+                    data_types = [data_types]
+                for data_type in data_types:
+                    data_type_uri = coerce_to_uri(data_type, base_uri)
+                    graph_add ((uri, _HAS_ATT_DATATYPE, data_type_uri))
             # TODO SOON make use of value_is_list
             # ... in the meantime, we lure pylint into ignoring it:
             _ = value_is_list
@@ -432,46 +453,58 @@ class AttributeTypeMixin(_ModelElementMixin):
     """
     ######## Abstract kTBS API ########
 
-    def get_obsel_type(self):
+    def iter_obsel_types(self):
         """
-        I hold the obsel type containing this attribute, or None.
+        I iter over the obsel types containing this attribute.
 
-        :rtype: `ObselTypeMixin`:class:
+        :rtype: iterable of `ObselTypeMixin`:class:
         """
-        uri = self.state.value(self.uri, _HAS_ATT_OBSELTYPE)
-        if uri is None:
-            return None
-        else:
+        for uri in self.state.objects(self.uri, _HAS_ATT_OBSELTYPE):
             ret = universal_factory(uri, [KTBS.ObselType])
             assert isinstance(ret, ObselTypeMixin)
-            return ret
+            yield ret
 
-    def set_obsel_type(self, obsel_type):
+    def add_obsel_type(self, obsel_type):
         """
-        I set the obsel type of this attribute.
+        I add an obsel type to this attribute.
         """
         obsel_type_uri = coerce_to_uri(obsel_type)
         with self.edit(_trust=True) as editable:
-            editable.set((self.uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
+            editable.add((self.uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
 
-    def get_data_type(self):
+    def remove_obsel_type(self, obsel_type):
         """
-        I hold the data type allowed for this attribute, or None (any).
+        I remove an obsel type from this attribute.
+        """
+        obsel_type_uri = coerce_to_uri(obsel_type)
+        with self.edit(_trust=True) as editable:
+            editable.remove((self.uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
 
-        Returns the type as a URIRef
+    def iter_data_types(self):
         """
-        return self.state.value(self.uri, _HAS_ATT_DATATYPE)
+        I iter over the data types allowed for this attribute.
 
-    def set_data_type(self, data_type):
+        Returns the types as URIRefs
         """
-        I set the data type of this attribute.
+        return self.state.objects(self.uri, _HAS_ATT_DATATYPE)
+
+    def add_data_type(self, data_type):
+        """
+        I add the data type to this attribute.
         """
         # TODO LATER check data_type?
         # what kind of datatype do we accept? see ktbs.namespace
         data_type_uri = coerce_to_uri(data_type)
         with self.edit(_trust=True) as editable:
-            editable.set((self.uri, _HAS_ATT_DATATYPE, data_type_uri))
+            editable.add((self.uri, _HAS_ATT_DATATYPE, data_type_uri))
 
+    def remove_data_type(self, data_type):
+        """
+        I remove the data type from this attribute.
+        """
+        data_type_uri = coerce_to_uri(data_type)
+        with self.edit(_trust=True) as editable:
+            editable.remove((self.uri, _HAS_ATT_DATATYPE, data_type_uri))
 
 @register_wrapper(KTBS.ObselType)
 @extend_api
@@ -521,7 +554,7 @@ class ObselTypeMixin(_ModelTypeMixin):
             for uri in self.state.subjects(_HAS_REL_DESTINATION, self.uri):
                 yield universal_factory(uri, [KTBS.RelationType])
 
-    def create_attribute_type(self, id=None, data_type=None,
+    def create_attribute_type(self, id=None, data_types=None,
                               value_is_list=False, label=None):
         """
         Call the associated Model method.
@@ -529,12 +562,12 @@ class ObselTypeMixin(_ModelTypeMixin):
         # redefining built-in 'id' #pylint: disable=W0622
         model = self.get_model()
         return model.create_attribute_type(id=id, 
-                                           obsel_type=self.uri,
-                                           data_type=data_type,
+                                           obsel_types=[self.uri],
+                                           data_types=data_types,
                                            value_is_list=value_is_list,
                                            label=label)
 
-    def create_relation_type(self, id=None, destination=None,
+    def create_relation_type(self, id=None, destinations=None,
                              supertypes=(), label=None):
         """
         Call the associated Model method.
@@ -542,8 +575,8 @@ class ObselTypeMixin(_ModelTypeMixin):
         # redefining built-in 'id' #pylint: disable=W0622
         model = self.get_model()
         return model.create_relation_type(id=id, 
-                                          origin=self.uri, 
-                                          destination=destination,
+                                          origins=[self.uri],
+                                          destinations=destinations,
                                           supertypes=supertypes, 
                                           label=label)
 
@@ -559,33 +592,27 @@ class RelationTypeMixin(_ModelTypeMixin):
 
     ######## Abstract kTBS API ########
 
-    def get_origin(self):
+    def iter_origins(self):
         """
-        I hold the origin obsel type this relation, or None.
+        I iter over the origin obsel types of this relation.
 
-        :rtype: `ObselTypeMixin`:class:
+        :rtype: iterable of `ObselTypeMixin`:class:
         """
-        uri = self.state.value(self.uri, _HAS_REL_ORIGIN)
-        if uri is None:
-            return None
-        else:
+        for uri in self.state.objects(self.uri, _HAS_REL_ORIGIN):
             ret = universal_factory(uri, [KTBS.ObselType])
             assert isinstance(ret, ObselTypeMixin), ret
-            return ret
+            yield ret
 
-    def get_destination(self):
+    def iter_destinations(self):
         """
-        I hold the destination obsel type this relation, or None.
+        I iter over the destination obsel types of this relation.
 
-        :rtype: `ObselTypeMixin`:class:
+        :rtype: iterable of `ObselTypeMixin`:class:
         """
-        uri = self.state.value(self.uri, _HAS_REL_DESTINATION)
-        if uri is None:
-            return None
-        else:
+        for uri in self.state.objects(self.uri, _HAS_REL_DESTINATION):
             ret = universal_factory(uri, [KTBS.ObselType])
             assert isinstance(ret, ObselTypeMixin), ret
-            return ret
+            yield ret
 
     def iter_all_origins(self):
         """
@@ -595,10 +622,10 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         seen = set()
         for rtype in self.iter_supertypes(True):
-            rorigin = rtype.origin
-            if rorigin is not None and rorigin not in seen:
-                yield rorigin
-                seen.add(rorigin)
+            for rorigin in rtype.iter_origins():
+                if rorigin not in seen:
+                    yield rorigin
+                    seen.add(rorigin)
 
     def iter_all_destinations(self):
         """
@@ -609,10 +636,43 @@ class RelationTypeMixin(_ModelTypeMixin):
         """
         seen = set()
         for rtype in self.iter_supertypes(True):
-            rdestination = rtype.destination
-            if rdestination is not None and rdestination not in seen:
-                yield rdestination
-                seen.add(rdestination)
+            for rdestination in rtype.iter_destinations():
+                if rdestination not in seen:
+                    yield rdestination
+                    seen.add(rdestination)
+
+    def add_origin(self, origin):
+        """
+        I add an obsel type to this attribute.
+        """
+        origin_uri = coerce_to_uri(origin)
+        with self.edit(_trust=True) as editable:
+            editable.add((self.uri, _HAS_REL_ORIGIN, origin_uri))
+
+    def remove_origin(self, origin):
+        """
+        I remove an obsel type from this attribute.
+        """
+        origin_uri = coerce_to_uri(origin)
+        with self.edit(_trust=True) as editable:
+            editable.remove((self.uri, _HAS_REL_ORIGIN, origin_uri))
+
+
+    def add_destination(self, destination):
+        """
+        I add an obsel type to this attribute.
+        """
+        destination_uri = coerce_to_uri(destination)
+        with self.edit(_trust=True) as editable:
+            editable.add((self.uri, _HAS_REL_DESTINATION, destination_uri))
+
+    def remove_destination(self, destination):
+        """
+        I remove an obsel type from this attribute.
+        """
+        destination_uri = coerce_to_uri(destination)
+        with self.edit(_trust=True) as editable:
+            editable.remove((self.uri, _HAS_REL_DESTINATION, destination_uri))
 
 def _closure(obj, iter_property_name):
     """

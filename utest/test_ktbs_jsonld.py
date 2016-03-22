@@ -84,7 +84,7 @@ class TestJsonRoot(KtbsTestCase):
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
                 'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
@@ -124,7 +124,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
@@ -154,7 +154,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],
@@ -432,10 +432,10 @@ class TestJsonHashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("#OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("#at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("#at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("#rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("#rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("#at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("#at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -463,27 +463,27 @@ class TestJsonHashModel(KtbsTestCase):
                 {
                     '@id': '#at1',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT1',
-                    'hasAttributeDatatype': 'xsd:string',
+                    'hasAttributeObselType': ['#OT1',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#at2',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT2',
-                    'hasAttributeDatatype': 'xsd:integer',
+                    'hasAttributeObselType': ['#OT2',],
+                    'hasAttributeDatatype': ['xsd:integer',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT1',],
                 },
                 {
                     '@id': '#rt2',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['#rt1'],
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT2',],
+                    'hasSuperRelationType': ['#rt1',],
                 },
             ]
         })
@@ -578,10 +578,10 @@ class TestJsonSlashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("#OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("#at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("#at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("#rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("#rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("#at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("#at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -609,27 +609,27 @@ class TestJsonSlashModel(KtbsTestCase):
                 {
                     '@id': '#at1',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT1',
-                    'hasAttributeDatatype': 'xsd:string',
+                    'hasAttributeObselType': ['#OT1',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#at2',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT2',
-                    'hasAttributeDatatype': 'xsd:integer',
+                    'hasAttributeObselType': ['#OT2',],
+                    'hasAttributeDatatype': ['xsd:integer',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT1',],
                 },
                 {
                     '@id': '#rt2',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['#rt1'],
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT2',],
+                    'hasSuperRelationType': ['#rt1',],
                 },
             ]
         })
@@ -642,10 +642,10 @@ class TestJsonSlashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -693,7 +693,7 @@ class TestJsonSlashModel(KtbsTestCase):
                     '@type': 'RelationType',
                     'hasRelationOrigin': 'OT1',
                     'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['rt1'],
+                    'hasSuperRelationType': ['rt1',],
                 },
             ]
         })
@@ -724,8 +724,8 @@ class TestJsonTwoModels(KtbsTestCase):
 
         self.model.add_parent(self.other_model)
         ot1 = self.model.create_obsel_type( "#OT1", [otf])
-        at1 = self.model.create_attribute_type("#at1", otf, XSD.string)
-        rt1 = self.model.create_relation_type("#rt1", ot1, otf, [rtf])
+        at1 = self.model.create_attribute_type("#at1", [otf], [XSD.string])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [otf], [rtf])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -751,15 +751,15 @@ class TestJsonTwoModels(KtbsTestCase):
                     '@id': '#at1',
                     '@type': 'AttributeType',
                     'hasAttributeObselType':
-                        'http://example.org/another/model#OTF',
-                    'hasAttributeDatatype': 'xsd:string',
+                        ['http://example.org/another/model#OTF',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
                     'hasRelationDestination':
-                        'http://example.org/another/model#OTF',
+                        ['http://example.org/another/model#OTF',],
                     'hasSuperRelationType':
                         ['http://example.org/another/model#rtF',],
                 },
@@ -1006,9 +1006,9 @@ class TestJsonObsels(KtbsTestCase):
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
-        self.at1 = self.model.create_attribute_type("#at1", ot1)
-        self.at2 = self.model.create_attribute_type("#at2", ot1)
-        self.rt1 = self.model.create_attribute_type("#rt1", ot1, ot1)
+        self.at1 = self.model.create_attribute_type("#at1", [ot1])
+        self.at2 = self.model.create_attribute_type("#at2", [ot1])
+        self.rt1 = self.model.create_attribute_type("#rt1", [ot1], [ot1])
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
@@ -1081,7 +1081,7 @@ class TestJsonObsels(KtbsTestCase):
                     'm:at1': 'hello world',
                     'm:at2': { '@id': 'http://example.org/resource' },
                     'hasSourceObsel': ['http://example.org/t1/source-obsel',
-                                       '../t0/o0'],
+                                       '../t0/o0',],
                     'beginDT': '1970-01-01T00:00:01+00:00',
                     'endDT': '1970-01-01T00:00:02+00:00',
                 },
@@ -1126,7 +1126,7 @@ class TestJsonObsels(KtbsTestCase):
             'm:at1': 'hello world',
             'm:at2': { '@id': 'http://example.org/resource' },
             'hasSourceObsel': ['http://example.org/t1/source-obsel',
-                               '../t0/o0'],
+                               '../t0/o0',],
             'beginDT': '1970-01-01T00:00:01+00:00',
             'endDT': '1970-01-01T00:00:02+00:00',
         })
