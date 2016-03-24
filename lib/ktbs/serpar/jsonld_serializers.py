@@ -18,8 +18,9 @@
 """
 I provide kTBS JSON-LD serializers.
 """
-from itertools import chain, groupby
 from collections import OrderedDict
+from copy import deepcopy
+from itertools import chain, groupby
 from json import dumps
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
@@ -111,6 +112,15 @@ class ValueConverter(object):
 
         assert False, "unexpected value type %s" % type(val)
 
+KTBS_SPECIAL_KEYS = {
+    KTBS.hasBegin: "begin",
+    KTBS.hasBeginDT: "beginDT",
+    KTBS.hasEnd: "end",
+    KTBS.hasEndDT: "endDT",
+    KTBS.hasSubject: "subject",
+}
+
+
 def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
     "Yield JSON properties for all predicates outside the ktbs namespace."
 
@@ -178,77 +188,6 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
     if comma is not None:
         yield u"%s}" % indent
 
-def other_arcs_to_dict(odict, graph, uri, valconv, obsel=False):
-    """
-    Add dictionary keys for all predicates outside the ktbs namespace.
-
-    :param odict: The ordered dictionnary to which keys must be added
-    :param graph:
-    :param uri:
-    :param valconv:
-    :param indent:
-    :param obsel:
-    :return:
-    """
-    val2jsonobj = valconv.val2jsonobj
-    valconv_uri = valconv.uri
-    if obsel:
-        pred_conv = valconv_uri
-    else:
-        pred_conv = lambda x: x
-
-    if not obsel:
-        types = [ i for i in graph.objects(uri, RDF.type)
-                  if not i.startswith(KTBS_NS_URI) ]
-        if types:
-            types = [ valconv_uri(i) for i in types ]
-            odict['additionalType'] = types
-
-    labels = list(graph.objects(uri, SKOS.prefLabel))
-    if labels:
-        odict['label'] = val2jsonobj(labels[0])
-
-        if len(labels) > 1:
-            # for the sake of regularity, we keep a single value for "label",
-            # and set the other values to the full URI
-            odict['%s' % SKOS.prefLabel] = val2jsonobj(labels[1:])
-
-    for pred, tuples in groupby(
-            graph.query(OTHER_ARCS, initBindings={"subj": uri}),
-            lambda tpl: tpl[1]
-            ):
-        if obsel:
-            # include k:hasTrace property of related obsels
-            obj = [ i[2]  if i[3] is None
-                    else OrderedDict({ u'@id': valconv_uri(i[2]),
-                                       u'hasTrace': u'./' })
-                    for i in tuples ]
-        else:
-            obj = [ i[2] for i in tuples ]
-        if len(obj) == 1:
-            obj = obj[0]
-        odict['%s' % pred_conv(pred)] = val2jsonobj(obj)
-
-    odict['@reverse'] = OrderedDict()
-    for pred, tuples in groupby(
-            graph.query(OTHER_ARCS, initBindings={"obj": uri}),
-            lambda tpl: tpl[1]
-            ):
-        if obsel:
-            # include k:hasTrace property of related obsels
-            subj = [ i[0]  if i[3] is None
-                     else OrderedDict({ u'@id': valconv_uri(i[0]),
-                                        u'hasTrace': u'./' })
-                     for i in tuples ]
-        else:
-            subj = [ i[0] for i in tuples ]
-        if len(subj) == 1:
-            subj = subj[0]
-
-        odict['@reverse']['%s' % pred_conv(pred)] = val2jsonobj(subj)
-    if len(odict['@reverse']) == 0:
-        del odict['@reverse']
-
 OTHER_ARCS = prepareQuery("""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
     PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
@@ -263,9 +202,10 @@ OTHER_ARCS = prepareQuery("""
     } ORDER BY ?pred ?obj """
     % (KTBS_NS_URI, KTBS_NS_URI))
 
+
+
 JSONLD = "application/ld+json"
 JSON = "application/json"
-
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.KtbsRoot)
 @register_serializer(JSON, "json", 60, KTBS.KtbsRoot)
@@ -621,47 +561,100 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
         '@id': '',
         '@type': tobsels_type
     }
-    tobsels_dict['obsels'] = []
+    tobsels_dict['obsels'] = obsel_list = []
 
     obsels = graph.query("""
         PREFIX : <%s#>
-        SELECT ?obs ?otype ?begin ?end ?subject
+        SELECT ?obs ?pred ?other ?rev ?trc
         {
-            ?obs a ?otype ;
-                 :hasBegin ?begin ;
+            ?obs :hasBegin ?begin ;
                  :hasEnd ?end .
-            OPTIONAL{ ?obs :hasSubject ?subject }
-        } ORDER BY ?begin ?end
-    """ % KTBS_NS_URI)
+            {
+                ?obs ?pred ?other .
+                BIND (0 as ?rev)
+            }
+            UNION
+            {
+                ?other ?pred ?obs .
+                BIND (1 as ?rev)
+            }
+            OPTIONAL { ?other :hasTrace ?trc } .
+        } ORDER BY ?end ?begin ?obs ?rev ?pred ?other
+    """ % (KTBS_NS_URI))
 
-    for obs, otype, begin, end, subject in obsels:
-        obs_dict = OrderedDict()
+
+    for obs, tuples in groupby(obsels, lambda tpl: tpl[0]):
+        obs_dict = deepcopy(_OBSEL_TEMPLATE)
         obs_dict['@id'] = valconv_uri(obs)
-        obs_dict['@type'] = valconv_uri(otype)
-        obs_dict['begin'] = val2jsonobj(begin)
-        obs_dict['end'] = val2jsonobj(end)
+        rev_dict = OrderedDict()
 
-        if subject:
-            obs_dict['subject'] = val2jsonobj(subject)
+        for _, pred, other, rev, trc in tuples:
 
-        # iter_obsel_arcs
-        source_obsels = [ valconv_uri(i) for i in graph.objects(obs, KTBS.hasSourceObsel) ]
-        if source_obsels:
-            obs_dict['hasSourceObsel'] = source_obsels
-        beginDT = graph.value(obs, KTBS.hasBeginDT)
-        if beginDT:
-            obs_dict['beginDT'] = val2jsonobj(beginDT)
+            # handle special predicates
+            if pred == _RDF_TYPE and not rev:
+                if obs_dict['@type'] is None:
+                    obs_dict['@type'] = valconv_uri(other)
+                else:
+                    obs_dict['additionalType'].append(valconv_uri(other))
+                continue
+            if pred == _KTBS_HAS_TRACE:
+                # ignored here, implied by the 'obsels' key in the parent dict
+                continue
+            if pred == _KTBS_HAS_SOURCE_OBSEL:
+                # '@id' is implied by hasSourceObsel
+                obs_dict['hasSourceObsel'].append(valconv_uri(other))
+                continue
 
-        endDT = graph.value(obs, KTBS.hasEndDT)
-        if endDT:
-            obs_dict['endDT'] = val2jsonobj(endDT)
 
-        # iter_other_arcs
-        other_arcs_to_dict(obs_dict, graph, obs, valconv, True)
+            if rev:
+                the_dict = rev_dict
+            else:
+                the_dict = obs_dict
 
-        tobsels_dict['obsels'].append(obs_dict)
+            pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
+            new_val = val2jsonobj(other)
+            if trc:
+                # other has to be a URI, so new_val has to be a dict
+                new_val['hasTrace'] = valconv_uri(trc)
+
+            old_val = the_dict.get(pred_key)
+            if old_val is None:
+                the_dict[pred_key] = new_val
+            elif type(old_val) == list:
+                old_val.append(new_val)
+            else:
+                the_dict[pred_key] = [old_val, new_val]
+
+        if rev_dict:
+            obs_dict['@reverse'] = rev_dict
+
+        todel = []
+        for key, val in obs_dict.items():
+            if val is None or val == []:
+                todel.append(key)
+        for key in todel:
+            del obs_dict[key]
+
+        obsel_list.append(obs_dict)
 
     return tobsels_dict
+
+_OBSEL_TEMPLATE = OrderedDict([
+    ('@id', None),
+    ('@type', None),
+    ('additionalType', None),
+    ('begin', None),
+    ('beginDT', None),
+    ('end', None),
+    ('endDT', None),
+    ('subject', None),
+    ('hasSourceObsel', []),
+])
+
+_RDF_TYPE = RDF.type
+_KTBS_HAS_TRACE = KTBS.hasTrace
+_KTBS_HAS_SOURCE_OBSEL = KTBS.hasSourceObsel
+
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.ComputedTraceObsels)
 @register_serializer(JSONLD, "jsonld", 85, KTBS.StoredTraceObsels)
