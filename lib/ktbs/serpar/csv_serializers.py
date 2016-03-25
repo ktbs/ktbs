@@ -61,6 +61,11 @@ def iter_csv_rows(trace_uri, graph, sep=u' | '):
         }}
     """.format(KTBS_NS_URI, trace_uri))
 
+    if len(results0) == 0:
+        # no obsel, yield minimal column header and stop
+        yield [u'id', u'type', u'begin', u'end']
+        return
+
     ktbs_props = [ i[0] for i in results0 if i[0].startswith(KTBS.uri) ]
     other_props = [ i[0] for i in results0 if not i[0].startswith(KTBS.uri) ]
     ktbs_props.sort()
