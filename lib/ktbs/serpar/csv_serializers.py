@@ -39,12 +39,19 @@ def serialize_csv_trace_obsels(graph, resource, bindings=None):
     sio = StringIO()
     csvw = csv_writer(sio)
     for row in iter_csv_rows(resource.trace.uri, graph):
-        csvw.writerow(row)
+        csvw.writerow([ i.encode('utf-8') for i in row ])
+        # immediately yield each line
         yield sio.getvalue()
+        # then empty sio before writing next line
         sio.reset()
         sio.truncate()
 
 def iter_csv_rows(trace_uri, graph, sep=u' | '):
+    """
+    Convert obsels in graph to a tabular form, an iterable of unicode strings.
+
+    NB: the first yielded table contains column names.
+    """
 
     results0 = graph.query("""
         PREFIX : <{0}#>
@@ -73,15 +80,16 @@ def iter_csv_rows(trace_uri, graph, sep=u' | '):
     for prop in props:
         vars.append(make_var_name(prop, vars))
 
-    yield ['id'] + [ i.encode('utf8') for i in vars ]
+    # yielding column headers
+    yield ['id'] + vars
 
-    sel_parts = []
-    bgp_parts = []
+    select_parts = []
+    where_parts = []
     for var, prop in zip(vars, props):
-        sel_parts.append(u'?{0}'
+        select_parts.append(u'?{0}'
                          .format(var))
-        bgp_parts.append(u'OPTIONAL {{ ?id <{1}> ?{0} }}'
-                         .format(var, prop))
+        where_parts.append(u'OPTIONAL {{ ?id <{0}> ?{1} }}'
+                         .format(prop, var))
 
     obs_query = u"""SELECT ?id {0}
             WHERE {{
@@ -89,26 +97,38 @@ def iter_csv_rows(trace_uri, graph, sep=u' | '):
                 {2}
             }}
             ORDER BY ?end ?begin ?id
-    """.format(' '.join(sel_parts),
+    """.format(' '.join(select_parts),
                trace_uri,
-               '\n'.join(bgp_parts))
+               '\n'.join(where_parts))
 
-    for obs, tuples in groupby(graph.query(obs_query), lambda tpl: tpl[0]):
+    results = graph.query(obs_query)
+    for obsel_id, tuples in groupby(results, lambda tpl: tpl[0]):
         sets = [ set() for i in vars ]
         for tuple in tuples:
             for val, valset in zip(tuple[1:], sets):
                 if val is not None:
                     valset.add(val)
-        yield [obs.encode('utf8')] + [ sep.join(valset).encode('utf8') for valset in sets ]
+        yield [obsel_id] + [ sep.join(valset) for valset in sets ]
 
 
 def make_var_name(uri, vars):
+    """
+    Convert a property URI to a SPARQL variable name.
+
+    :param uri: the property URI
+    :type uri: unicode string
+    :param vars: the variables already in use (to prevent clashes)
+    :type vars: iterable of unicode strings
+    """
+
+    # make a short, SPARQL-safe name from URI
     var_name = LAST_PART.search(uri).group(1)
-    if HAS_VERB.match(var_name):
-        if var_name[3] == '_':
+    if HAS_HAS.match(var_name):
+        if var_name[3] in ['_', '-']:
             var_name = var_name[4:]
         else:
             var_name = ''.join((var_name[3].lower(), var_name[4:]))
+    var_name = UNAUTHORIZED.sub('_', var_name)
 
     if var_name in vars:
         i = 2
@@ -117,9 +137,10 @@ def make_var_name(uri, vars):
             if attempt not in vars:
                 var_name = attempt
                 break
-            i = i+1
+            i += 1
 
     return var_name
 
-LAST_PART = Regexp(r'([^#/]+)/?$')
-HAS_VERB = Regexp(r'^has[A-Z_]')
+LAST_PART = Regexp(r'([^#/]+)[#/]?$')
+HAS_HAS = Regexp(r'^has[A-Z_-]')
+UNAUTHORIZED = Regexp(r'[^0-9A-Za-z_]')
