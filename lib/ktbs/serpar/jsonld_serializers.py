@@ -22,16 +22,14 @@ from collections import OrderedDict
 from copy import deepcopy
 from itertools import chain, groupby
 from json import dumps
-from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
+from rdflib import BNode, Literal, RDF, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
-#from rdfrest.parsers import wrap_exceptions
-from rdfrest.serializers import get_prefix_bindings, iter_serializers, \
-    register_serializer, SerializeError
+from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
-from re import compile as Regex
 
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
+from .jsonld_parser import  CONTEXT_URI
 
 LEN_KTBS = len(KTBS_NS_URI)+1
 
@@ -222,11 +220,11 @@ def serialize_json_root(graph, root, bindings=None):
         ktbs_version = "Unknwown"
 
     yield u"""{
-    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@context": "%s",
     "@id": "%s",
     "@type": "KtbsRoot",
     "version": "%s",
-    """ % (root.uri, ktbs_version)
+    """ % (CONTEXT_URI, root.uri, ktbs_version)
 
     yield """
     "hasBuiltinMethod" : %s
@@ -255,9 +253,9 @@ def serialize_json_base(graph, base, bindings=None):
     valconv = ValueConverter(base.uri)
 
     yield u"""{
-    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@context": "%s",
     "@id": "%s",
-    "@type": "Base" """ % base.uri
+    "@type": "Base" """ % (CONTEXT_URI, base.uri)
 
     contained = list(chain(
         base.iter_traces(),
@@ -306,12 +304,12 @@ def serialize_json_method(graph, method, bindings=None):
     valconv_uri = valconv.uri
 
     yield u"""{
-    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@context": "%s",
     "@id": "%s",
     "@type": "Method",
     "hasParentMethod": "%s",
     "parameter": [""" % (
-        method.uri, valconv_uri(coerce_to_uri(method.parent))
+        CONTEXT_URI, method.uri, valconv_uri(coerce_to_uri(method.parent))
     )
 
     own_params = method.iter_parameters(False)
@@ -346,12 +344,13 @@ def serialize_json_model(graph, tmodel, bindings=None):
     valconv_uri = valconv.uri
 
     yield u"""{
-    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@context": "%s",
     "@graph": [
         {
             "@id": "%s",
             "@type": "TraceModel",
-            "inBase": "%s" """ % (tmodel.uri, valconv_uri(tmodel.base.uri))
+            "inBase": "%s" """ \
+    % (CONTEXT_URI, tmodel.uri, valconv_uri(tmodel.base.uri))
 
     if tmodel.unit is not None:
         yield u""",\n            "hasUnit": "%s" """ \
@@ -445,9 +444,10 @@ def serialize_json_trace(graph, trace, bindings=None):
     valconv_uri = valconv.uri
 
     yield u"""\n{
-    "@context": "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+    "@context": "%s",
     "@id": "%s",
     "@type": "%s" """ % (
+        CONTEXT_URI,
         trace.uri,
         trace.RDF_MAIN_TYPE[LEN_KTBS:],
         )
@@ -553,7 +553,7 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
 
     # Est-ce qu'on a une constante, un namespace pour le contexte ktbs jsonld ?
     tobsels_dict['@context'] = [
-        'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+        CONTEXT_URI,
         {'m': model_uri}
     ]
     tobsels_dict['@id'] = './'
@@ -696,7 +696,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
 
     yield u"""{
     "@context": [
-        "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context",
+        "%s",
         { "m": "%s" }
     ],
     "@id": "%s",
@@ -705,6 +705,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     "begin": %s,
     "end": %s
     """ % (
+        CONTEXT_URI,
         model_uri,
         obsel.uri,
         dumps(otypes),
