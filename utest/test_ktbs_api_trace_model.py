@@ -51,10 +51,10 @@ class RelAndAttTypeMixin:
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelTest#RelTypeWithID")
         eq_(relation_type.uri, generated_uri)
         if self.target is self.model:
-            eq_(relation_type.origin, None)
+            eq_(relation_type.origins, [])
         else:
-            eq_(relation_type.origin, self.target)
-        eq_(relation_type.destination, None)
+            eq_(relation_type.origins, [self.target])
+        eq_(relation_type.destinations, [])
         eq_(relation_type.supertypes, [])
         eq_(relation_type.subtypes, [])
         eq_(self.target.relation_types, [relation_type])
@@ -111,19 +111,19 @@ class RelAndAttTypeMixin:
                                                  supertype2.uri],
                                      label="Relation type with two super types")
         eq_(set(self.target.relation_types),
-            set([relation_type, supertype1, supertype2]))
+                         set([relation_type, supertype1, supertype2]))
         eq_(set(self.model.relation_types),
-            set([relation_type, supertype1, supertype2]))
+                         set([relation_type, supertype1, supertype2]))
         eq_(set(relation_type.supertypes),
-            set([supertype1, supertype2]))
+                         set([supertype1, supertype2]))
         eq_(supertype1.subtypes, [relation_type])
         eq_(supertype2.subtypes, [relation_type])
 
     def test_create_relation_type_with_destination(self):
         dest = self.model.create_obsel_type("#ObselTypeWithId")
         reltype = self.target.create_relation_type(id="#RelTypeWithDestination",
-                                                   destination=dest.uri)
-        eq_(reltype.destination, dest)
+                                                   destinations=[dest.uri])
+        eq_(reltype.destinations, [dest])
         eq_(dest.inverse_relation_types, [reltype])
 
     ######## add attribute types ########
@@ -137,10 +137,10 @@ class RelAndAttTypeMixin:
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelTest#AttTypeWithID")
         eq_(attribute_type.uri, generated_uri)
         if self.target is self.model:
-            eq_(attribute_type.obsel_type, None)
+            eq_(attribute_type.obsel_types, [])
         else:
-            eq_(attribute_type.obsel_type, self.target)
-        eq_(attribute_type.data_type, None)
+            eq_(attribute_type.obsel_types, [self.target])
+        eq_(attribute_type.data_types, [])
         eq_(self.target.attribute_types, [attribute_type])
         eq_(self.model.attribute_types, [attribute_type])
 
@@ -175,8 +175,8 @@ class RelAndAttTypeMixin:
 
     def test_create_attribute_type_with_datatype(self):
         atttype = self.target.create_attribute_type(id="#AttTypeWithDatatype",
-                                                    data_type=XSD.integer)
-        eq_(atttype.data_type, XSD.integer)
+                                                    data_types=[XSD.integer])
+        eq_(atttype.data_types, [XSD.integer])
 
     @skip("list datatypes not supported yet")
     def test_create_attribute_type_with_list_value(self):
@@ -205,7 +205,7 @@ class SuperTypeMixin:
     def test_handle_inherited_obsel_types(self):
         supertype1 = self.create_supertype(id="#SuperType1")
         supertype2 = self.create_supertype(id="#SuperType2",
-                                                  supertypes=[supertype1])
+                                           supertypes=[supertype1])
         self.target.add_supertype(supertype2)
         eq_(self.target.supertypes, [supertype2])
         eq_(set(self.target.list_supertypes(True)),
@@ -343,15 +343,15 @@ class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
     def test_create_relation_type_with_origin(self):
         orig = self.model.create_obsel_type("#ObselTypeWithId")
         relation_type = self.model.create_relation_type(id="#RelTypeWithOrigin",
-                                                        origin=orig.uri)
+                                                        origins=[orig.uri])
         eq_(orig.relation_types, [relation_type])
 
     def test_create_relation_type_with_everything(self):
         orig = self.model.create_obsel_type("#ObselTypeWithId1")
         dest = self.model.create_obsel_type("#ObselTypeWithId2")
         relation_type = self.model.create_relation_type(id="#RelTypeWithOrigin",
-                                                        origin=orig.uri,
-                                                        destination=dest.uri)
+                                                        origins=[orig.uri],
+                                                        destinations=[dest.uri])
         eq_(orig.relation_types, [relation_type])
         eq_(dest.inverse_relation_types, [relation_type])
 
@@ -363,7 +363,7 @@ class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
         orig = self.model.create_obsel_type("#ObselTypeWithId")
         attribute_type = \
             self.model.create_attribute_type(id="#AttTypeWithObselType",
-                                             obsel_type=orig.uri)
+                                             obsel_types=[orig.uri])
         eq_(orig.attribute_types, [attribute_type])
 
     def test_create_attribute_type_with_everything(self):
@@ -371,8 +371,8 @@ class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
         dest = self.model.create_obsel_type("#ObselTypeWithId2")
         attribute_type = \
             self.model.create_attribute_type(id="#AttTypeWithObsel_Type",
-                                             obsel_type=orig.uri,
-                                             data_type=XSD.integer)
+                                             obsel_types=[orig.uri],
+                                             data_types=[XSD.integer])
         eq_(orig.attribute_types, [attribute_type])
 
     ######## remove ########
@@ -444,8 +444,8 @@ class TestKtbsRelationType(SuperTypeMixin, KtbsTestCase):
         self.otype1 = self.model.create_obsel_type(id="#ObselType1")
         self.otype2 = self.model.create_obsel_type(id="#ObselType2")
         self.rtype = self.model.create_relation_type(id="#RelationTypeTest",
-                                                     origin=self.otype1,
-                                                     destination=self.otype2,
+                                                     origins=[self.otype1],
+                                                     destinations=[self.otype2],
                                                      )
         self.target = self.rtype
         self.create_supertype = self.model.create_relation_type
@@ -460,12 +460,12 @@ class TestKtbsRelationType(SuperTypeMixin, KtbsTestCase):
         otype2a = self.model.create_obsel_type(id="#ObselType2a",
                                                supertypes=[self.otype2])
         rsubtypea = self.model.create_relation_type(id="#RelationSubtypeA",
-                                                   origin=otype1a,
-                                                   destination=otype2a,
+                                                   origins=[otype1a],
+                                                   destinations=[otype2a],
                                                    supertypes=[self.rtype],
                                                    )
-        eq_(rsubtypea.origin, otype1a)
-        eq_(rsubtypea.destination, otype2a)
+        eq_(rsubtypea.origins, [otype1a])
+        eq_(rsubtypea.destinations, [otype2a])
         eq_(rsubtypea.supertypes, [self.rtype])
         eq_(set(rsubtypea.all_origins), set([self.otype1, otype1a]))
         eq_(set(rsubtypea.all_destinations), set([self.otype2, otype2a]))
@@ -477,12 +477,12 @@ class TestKtbsRelationType(SuperTypeMixin, KtbsTestCase):
         otype2b = self.model.create_obsel_type(id="#ObselType2b",
                                                supertypes=[otype2a])
         rsubtypeb = self.model.create_relation_type(id="#RelationSubtypeB",
-                                                   origin=otype1b,
-                                                   destination=otype2b,
+                                                   origins=[otype1b],
+                                                   destinations=[otype2b],
                                                    supertypes=[rsubtypea],
                                                    )
-        eq_(rsubtypeb.origin, otype1b)
-        eq_(rsubtypeb.destination, otype2b)
+        eq_(rsubtypeb.origins, [otype1b])
+        eq_(rsubtypeb.destinations, [otype2b])
         eq_(rsubtypeb.supertypes, [rsubtypea])
         eq_(set(rsubtypeb.all_origins), set([self.otype1, otype1a, otype1b]))
         eq_(set(rsubtypeb.all_destinations),

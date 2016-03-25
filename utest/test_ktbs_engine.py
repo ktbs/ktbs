@@ -581,14 +581,14 @@ class TestKtbsSynthetic(KtbsTestCase):
 
         assert_equal(model1.attribute_types, [])
         with assert_raises(InvalidDataError):
-            model1.create_attribute_type("channel", open_chat)
+            model1.create_attribute_type("channel", [open_chat])
             # leading '#' is missing
-        channel = model1.create_attribute_type("#channel", open_chat)
+        channel = model1.create_attribute_type("#channel", [open_chat])
         print "--- attribute type channel:", channel
         assert_equal(model1.attribute_types, [channel])
         with assert_raises(InvalidDataError):
-            model1.create_attribute_type("#channel", open_chat) # already in use
-        msg = model1.create_attribute_type("#msg", "#AbstractMsg")
+            model1.create_attribute_type("#channel", [open_chat]) # already in use
+        msg = model1.create_attribute_type("#msg", ["#AbstractMsg"])
         with assert_raises(InvalidDataError):
             recv_msg.create_attribute_type("from") # leading '#' is missing
         recv_msg.create_attribute_type("#from")
@@ -600,22 +600,22 @@ class TestKtbsSynthetic(KtbsTestCase):
 
         assert_equal(model1.relation_types, [])
         with assert_raises(InvalidDataError):
-            model1.create_relation_type("onChannel", with_on_channel, "#OpenChat")
+            model1.create_relation_type("onChannel", [with_on_channel], ["#OpenChat"])
             # leading '#' is missing
-        on_channel = model1.create_relation_type("#onChannel", with_on_channel,
-                                                "#OpenChat")
+        on_channel = model1.create_relation_type("#onChannel", [with_on_channel],
+                                                ["#OpenChat"])
         print "--- relation type on_channel:", on_channel
         assert_equal(model1.relation_types, [on_channel])
         with assert_raises(InvalidDataError):
-            model1.create_relation_type("#onChannel", open_chat, with_on_channel)
+            model1.create_relation_type("#onChannel", [open_chat], [with_on_channel])
             # already in use in this *model1* (even if on another obsel type)
         with assert_raises(InvalidDataError):
-            close_chat.create_relation_type("closes", "#OpenChat", [on_channel])
+            close_chat.create_relation_type("closes", ["#OpenChat"], [on_channel])
             # leading '#' is missing
-        closes = close_chat.create_relation_type("#closes", "#OpenChat",
+        closes = close_chat.create_relation_type("#closes", ["#OpenChat"],
                                                  [on_channel])
         with assert_raises(InvalidDataError):
-            open_chat.create_relation_type("#closes", with_on_channel,
+            open_chat.create_relation_type("#closes", [with_on_channel],
                                            [on_channel])
             # already in use in this *model1* (even if on another obsel type)
         assert_equal(len(model1.relation_types), 2)
