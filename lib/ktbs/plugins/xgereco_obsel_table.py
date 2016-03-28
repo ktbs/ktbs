@@ -38,7 +38,7 @@ def serialize_obsel_table(graph, resource, bindings=None, highlight=None):
     yield '</script></head></body>'
     trace_uri = resource.uri.rsplit('/',1)[0]
     trace_id = trace_uri.rsplit('/',1)[1]
-    yield u'<p><a href="{0}/">Trace {1}</a> (<a href="{0}/@obsels.csv" download>download as CSV</a>)</p>' \
+    yield u'<p><a href="{0}/">Trace {1}</a> (<a href="{0}/@obsels.csv" target="_top" download>download as CSV</a>)</p>' \
         .format(trace_uri, trace_id).encode('utf8')
 
     rows = iter_csv_rows(resource.trace.uri, graph)
