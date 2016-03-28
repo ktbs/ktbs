@@ -379,19 +379,14 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         }
 
         function interceptLinks (evt) {
-            console.log(evt.target.nodeName === "A");
-            console.log(!evt.ctrlKey);
-            console.log((!evt.target.target || evt.target.target === '_self'));
             foobar = evt.target;
             if (evt.target.nodeName === "A" &&
                   !evt.ctrlKey &&
                   (!evt.target.target || evt.target.target === '_self')) {
-                console.log("ok");
                 evt.preventDefault();
                 addressbar.value = evt.target.href;
                 sendRequest({ forceget: true });
             }
-            else console.log("ko");
         }
 
         function updateAddressBar() {
