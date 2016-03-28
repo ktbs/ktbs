@@ -73,6 +73,18 @@ REST_CONSOLE = r"""<!DOCTYPE html>
     height: 0;
     opacity: 0;
 }
+
+#response {
+    min-width: fit-content;
+    min-width: -moz-fit-content;
+    min-width: -webkit-fit-content;
+}
+
+#response iframe {
+  border: none;
+}
+    </style>
+    <style id="theme" type="text/css">
 /* importing theme.css */
 #response {
     transition: all .3s;
@@ -96,8 +108,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 #response a {
     text-decoration: none;
 }
-
-
 
 #response-headers th {
     text-align: left;
@@ -124,7 +134,9 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         <input placeholder="*/*" disabled="" />
         <select>
           <option>*/*</option>
+          <option>x-gereco/*</option>
           <option>application/json</option>
+          <option>application/sparql-query</option>
           <option>application/xml</option>
           <option>text/html</option>
           <option>text/plain</option>
@@ -191,6 +203,8 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             if (/json/.test(ctype) || /html/.test(ctype) || /xml/.test(ctype)) {
                 html = html.replace(/""/g, '<a href="">""</a>');
                 html = html.replace(/"([^">\n]+)"/g, '"<a href="$1">$1</a>"');
+            } else if (/text\/uri-list/.test(ctype)) {
+                html = html.replace(/^.*$/gm, '<a href="$&">$&</a>');
             } else {
                 html = html.replace(/&lt;&gt;/g, '<a href="">&lt;&gt;</a>');
                 html = html.replace(/&lt;([^\n]+?)&gt;/g, '&lt;<a href="$1">$1</a>&gt;');
@@ -236,7 +250,17 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             }
             req.open(method, url);
             req.setRequestHeader("cache-control", "private;no-cache");
-            req.setRequestHeader("accept", ctypeInput.value + ",application/json;q=0.8,*/*;q=0.1");
+
+            var accept = "application/json;q=0.8,*/*;q=0.1";
+            if (sessionStorage.lastAcceptedCType) {
+                accept = sessionStorage.lastAcceptedCType + ';q=0.9,' + accept;
+            }
+            if (ctypeInput.value && ctypeInput.value !== '*/*') {
+                sessionStorage.lastAcceptedCType = ctypeInput.value;
+                accept = ctypeInput.value + ',' + accept;
+            }
+            req.setRequestHeader("accept", accept);
+
             if (method !== "GET") {
                 req.setRequestHeader("content-type", ctypeInput.value);
             }
@@ -311,9 +335,32 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                     response.classList.remove("loading");
                     if (Math.floor(req.status / 100) === 2) {
                         response.classList.remove("error");
-                        response.textContent = req.responseText;
-                        if (req.responseText.length < 1000000) {
-                            enhanceResponse(req);
+                        response.innerHTML = "";
+                        if (req.getResponseHeader("content-type").startsWith('x-gereco') &&
+                              // only trust x-gereco/* mime-types if they come from the same server
+                              addressbar.value === window.location.toString()) {
+                            var iframe = document.createElement('iframe');
+                            iframe.seamless = true;
+                            iframe.scrolling = "no";
+                            iframe.onload = function() {
+                                var ifdoc = iframe.contentDocument;
+                                iframe.style.height = (ifdoc.body.scrollHeight+32) + 'px';
+                                iframe.style.width = (ifdoc.body.scrollWidth+32) + 'px';
+                                var theme = document.querySelector('style#theme');
+                                ifdoc.head.insertBefore(
+                                    theme.cloneNode(true),
+                                    ifdoc.head.children[0]
+                                );
+
+                                ifdoc.body.addEventListener("click", interceptLinks);
+                            };
+                            iframe.srcdoc = req.responseText;
+                            response.appendChild(iframe);
+                        } else {
+                            response.textContent = req.responseText;
+                            if (req.responseText.length < 1000000) {
+                                enhanceResponse(req);
+                            }
                         }
                     } else {
                         response.classList.add("error");
@@ -332,7 +379,10 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         }
 
         function interceptLinks (evt) {
-            if (evt.target.nodeName === "A" && !evt.ctrlKey) {
+            if (evt.target.nodeName === "A" &&
+                  !evt.ctrlKey &&
+                  (evt.target.download === undefined) &&
+                  (!evt.target.target || evt.target.target === '_self')) {
                 evt.preventDefault();
                 addressbar.value = evt.target.href;
                 sendRequest({ forceget: true });
@@ -359,7 +409,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 sendRequest();
             }
         });
-        
+
         addressbar.addEventListener("keypress", function(evt) {
             if (evt.keyCode === 13) { // enter
                 sendRequest({ forceget: true });
@@ -387,8 +437,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         updateCombo({ target: methodSelect });
         updateCombo({ target: ctypeSelect });
         sendRequest({ forceget: true });
-
-        
 
     });
 })();
