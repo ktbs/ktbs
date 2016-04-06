@@ -235,7 +235,7 @@ class HttpFrontend(object):
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
             last_modified = datetime.fromtimestamp(last_modified, UTC)
-            headerlist.append(("last-modified", last_modified.isoformat()))
+            headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
         # get graph and redirect if needed
         cache_bypass = request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
