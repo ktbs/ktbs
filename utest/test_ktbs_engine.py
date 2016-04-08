@@ -27,7 +27,7 @@ from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 
 from datetime import datetime, timedelta
 from rdfrest.exceptions import CanNotProceedError, InvalidDataError, \
-    MethodNotAllowedError, RdfRestException
+    InvalidParametersError, MethodNotAllowedError, RdfRestException
 from rdfrest.cores.factory import unregister_service
 from rdfrest.cores.local import LocalCore
 from rdfrest.cores.http_client import HttpClientCore
@@ -545,6 +545,15 @@ class TestObsels(KtbsTestCase):
         assert_equal(len(t.obsels), 2)
         t.obsel_collection.delete()
         assert_equal(len(t.obsels), 0)
+
+    def test_delete_obsel_collection_with_parameters(self):
+        # NB: in the future, this might be allowed
+        t = self.trace
+        ot = self.ot
+        t.create_obsel(type=ot)
+        t.create_obsel(type=ot)
+        with assert_raises(InvalidParametersError):
+            t.obsel_collection.delete({"limit": "1"})
 
     def test_delete_computed_obsel_collection(self):
         t2 = self.base.create_computed_trace(None, KTBS.filter, {}, [self.trace])

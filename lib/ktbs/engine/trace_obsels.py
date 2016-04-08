@@ -371,6 +371,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # this should only be set of the owning trace
             super(AbstractTraceObsels, self).delete(None, _trust)
         else:
+            self.check_parameters(parameters, "delete")
             with self.edit(_trust=True) as editable:
                 editable.remove((None, None, None))
                 self.init_graph(editable, self.uri, self.trace.uri)
