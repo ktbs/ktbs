@@ -364,15 +364,16 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.
 
-        Obsel collections can not be deleted individually.
-        Delete the owning trace instead.
+        Deleting an obsel collection simply empties it,
+        but does not actually destroy the resource.
         """
         if _trust:
             # this should only be set of the owning trace
             super(AbstractTraceObsels, self).delete(None, _trust)
         else:
-            raise MethodNotAllowedError("Can not delete obsel collection; "
-                                        "delete its owning trace instead.")
+            with self.edit(_trust=True) as editable:
+                editable.remove((None, None, None))
+                self.init_graph(editable, self.uri, self.trace.uri)
 
     # TODO SOON implement check_new_graph on ObselCollection?
     # we should check that the graph only contains well formed obsels
@@ -547,6 +548,17 @@ class ComputedTraceObsels(AbstractTraceObsels):
         else:
             return super(ComputedTraceObsels, self).edit(parameters, clear,
                                                          _trust)
+
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`.AbstractTraceObsels.delete`.
+
+        You can not empty a computed trace.
+        """
+        if _trust:
+            # this should only be set of the owning trace
+            super(AbstractTraceObsels, self).delete(None, _trust)
+        else:
+            raise MethodNotAllowedError("Can not empty a computed trace.")
 
     ######## Protected methods ########
 

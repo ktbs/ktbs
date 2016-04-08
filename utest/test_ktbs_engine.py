@@ -481,21 +481,21 @@ class TestKtbs(KtbsTestCase):
         assert_less(abs(delta.total_seconds()), epsilon)
 
 
-class TestCreateObsel(KtbsTestCase):
+class TestObsels(KtbsTestCase):
 
     my_ktbs = None
     service = None
     epoch = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
 
     def setUp(self):
-        super(TestCreateObsel, self).setUp()
+        super(TestObsels, self).setUp()
         self.base = b = self.my_ktbs.create_base("b/")
         self.model = m = b.create_model("m")
         self.ot = m.create_obsel_type("#OT1")
         self.trace = t = b.create_stored_trace("t/", m,
                                                origin="1970-01-01T00:00:00Z")
 
-    def test_no_timestamp(self, epsilon=0.5):
+    def test_create_no_timestamp(self, epsilon=0.5):
         g = Graph()
         obs = BNode()
         g.add((obs, RDF.type, self.ot.uri))
@@ -509,7 +509,7 @@ class TestCreateObsel(KtbsTestCase):
         assert_less(abs(delta.total_seconds()), epsilon)
         assert_equal(obs.end,obs.begin)
 
-    def test_no_end(self, epsilon=0.5):
+    def test_create_no_end(self, epsilon=0.5):
         g = Graph()
         obs = BNode()
         g.add((obs, RDF.type, self.ot.uri))
@@ -522,7 +522,7 @@ class TestCreateObsel(KtbsTestCase):
         assert_equal(obs.begin, 42)
         assert_equal(obs.end,obs.begin)
 
-    def test_dt_timestamps(self, epsilon=0.5):
+    def test_create_dt_timestamps(self, epsilon=0.5):
         g = Graph()
         obs = BNode()
         g.add((obs, RDF.type, self.ot.uri))
@@ -535,6 +535,22 @@ class TestCreateObsel(KtbsTestCase):
         obs = self.trace.get_obsel(uris[0])
         assert_equal(obs.begin, 1000)
         assert_equal(obs.end, 2000)
+
+    def test_delete_obsel_collection(self):
+        t = self.trace
+        ot = self.ot
+        assert_equal(len(t.obsels), 0)
+        t.create_obsel(type=ot)
+        t.create_obsel(type=ot)
+        assert_equal(len(t.obsels), 2)
+        t.obsel_collection.delete()
+        assert_equal(len(t.obsels), 0)
+
+    def test_delete_computed_obsel_collection(self):
+        t2 = self.base.create_computed_trace(None, KTBS.filter, {}, [self.trace])
+        with assert_raises(MethodNotAllowedError):
+            t2.obsel_collection.delete()
+
 
 class TestKtbsSynthetic(KtbsTestCase):
 
