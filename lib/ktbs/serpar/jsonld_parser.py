@@ -179,6 +179,7 @@ CONTEXT_JSON = """{"@context":{
     "hasBuiltinMethod": { "@id": "k:hasBuiltinMethod", "@type": "@vocab" },
     "version": "k:hasVersion",
     "defaultSubject": "k:hasDefaultSubject",
+    "diagnosis": "k:hasDiagnosis",
     "end": { "@id": "k:hasEnd", "@type": "xsd:integer" },
     "endDT": { "@id": "k:hasEndDT", "@type": "xsd:dateTime" },
     "hasMethod": { "@id": "k:hasMethod", "@type": "@vocab" },

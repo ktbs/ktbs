@@ -446,19 +446,28 @@ def serialize_json_trace(graph, trace, bindings=None):
     yield u"""\n{
     "@context": "%s",
     "@id": "%s",
-    "@type": "%s" """ % (
+    "@type": "%s",
+    "hasObselList": "@obsels" """ % (
         CONTEXT_URI,
         trace.uri,
         trace.RDF_MAIN_TYPE[LEN_KTBS:],
         )
 
-    yield u""",
-    "hasModel": "%s",
-    "origin": "%s",
-    "hasObselList": "@obsels" """ % (
-        valconv_uri(trace.model_uri),
-        trace.origin,
-        )
+    diagnosis = getattr(trace, 'diagnosis', None)
+    if diagnosis is not None:  # can be None with faulty computed traces
+        yield u',\n    "diagnosis": %s' % dumps(diagnosis)
+
+    model_uri = trace.model_uri
+    if model_uri is not None: # can be None with faulty computed traces
+        yield u',\n    "hasModel": "%s"' % valconv_uri(model_uri)
+
+    model_uri = trace.model_uri
+    if model_uri is not None: # can be None with faulty computed traces
+        yield u',\n    "hasModel": "%s"' % valconv_uri(model_uri)
+
+    origin = trace.origin
+    if origin is not None: # can be None with faulty computed traces
+        yield u',\n    "origin": "%s"' % origin
 
     trace_begin = trace.get_trace_begin()
     if trace_begin is not None:
