@@ -27,6 +27,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.cores.local import NS as RDFREST
+from rdfrest.util import Diagnosis
 from .resource import KtbsResource, METADATA
 from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
@@ -531,7 +532,13 @@ class ComputedTraceObsels(AbstractTraceObsels):
                 self.metadata.remove((self.uri, METADATA.dirty, None))
                 trace.force_state_refresh()
                 impl = trace._method_impl # friend #pylint: disable=W0212
-                diag = impl.compute_obsels(trace, refresh_param >= 2)
+                try:
+                    diag = impl.compute_obsels(trace, refresh_param >= 2)
+                except BaseException, ex:
+                    diag = Diagnosis(
+                        "exception raised while computing obsels",
+                        [ex.message]
+                    )
                 if not diag:
                     self.metadata.set((self.uri, METADATA.dirty,
                                           Literal("yes")))

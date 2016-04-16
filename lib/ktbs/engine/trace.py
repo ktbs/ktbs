@@ -29,7 +29,8 @@ from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
-from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse
+from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse, \
+    Diagnosis
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from .obsel import Obsel
@@ -459,7 +460,13 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                 editable.remove((self.uri, KTBS.hasDiagnosis, None))
                 editable.remove((self.uri, KTBS.hasModel, None))
                 editable.remove((self.uri, KTBS.hasOrigin, None))
-                diag = self._method_impl.compute_trace_description(self)
+                try:
+                    diag = self._method_impl.compute_trace_description(self)
+                except BaseException, ex:
+                    diag = Diagnosis(
+                        "exception raised while computing trace description",
+                        [ex.message]
+                    )
                 if not diag:
                     editable.add((self.uri, KTBS.hasDiagnosis,
                                      Literal(str(diag))))
@@ -513,9 +520,15 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         if ret is None:
             met = self.get_method()
             while True:
-                par = getattr(met, "parent", None)
-                if par is None:
+                try:
+                    par = getattr(met, "parent", None)
+                except:
+                    # met.uri might be unreachable
+                    par = None
+                if par is not None:
+                    met = par
+                else:
                     break
-                met = par
-            ret = self.__method_impl = get_builtin_method_impl(met.uri, True)
+            uri = getattr(met, "uri", None)
+            ret = self.__method_impl = get_builtin_method_impl(uri, True)
         return ret

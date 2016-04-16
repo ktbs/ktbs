@@ -37,6 +37,13 @@ def register_builtin_method_impl(implementation):
     uri = str(implementation.uri)
     _BUILTIN_METHODS[uri] = implementation
 
+def unregister_builtin_method_impl(implementation):
+    """I unresgister the implementation of a builtin method.
+    """
+    uri = str(implementation.uri)
+    assert _BUILTIN_METHODS.get(uri) is implementation
+    del _BUILTIN_METHODS[uri]
+
 def get_builtin_method_impl(uri, _return_fake=False):
     """I return the implementation of a given built-in method.
 
@@ -58,7 +65,7 @@ class _FakeMethod(IMethod):
         # IMethod.__init__ is not called #pylint: disable=W0231
         self.uri = uri
         self.diag = Diagnosis("_FakeMethod")
-        self.diag.append("%s is not implemented; can not compute trace" % uri)
+        self.diag.append("%s is unreachable and unimplemented; can not compute trace" % uri)
 
     def compute_trace_description(self, computed_trace):
         """I implement
