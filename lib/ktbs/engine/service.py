@@ -33,6 +33,7 @@ from .obsel import Obsel
 from .trace import StoredTrace, ComputedTrace
 from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
+from .trace_stats import TraceStatistics
 from ..namespace import KTBS
 from ..config import get_ktbs_configuration
 from .. import __version__ as ktbs_version
@@ -115,6 +116,7 @@ class KtbsService(Service):
                     StoredTrace,
                     StoredTraceObsels,
                     TraceModel,
+                    TraceStatistics,
                     ]
 
         # self.init_ktbs : always give the initialization method

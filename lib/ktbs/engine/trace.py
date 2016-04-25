@@ -24,6 +24,7 @@ from logging import getLogger
 from rdflib import BNode, Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 
+from ktbs.engine.trace_stats import TraceStatistics
 from ktbs.time import lit2datetime, get_converter_to_unit
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.factory import factory as universal_factory
@@ -116,7 +117,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
     def create(cls, service, uri, new_graph):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
 
-        I create the obsel collection associated with this trace,
+        I create the obsel collection and the statistics resource associated with this trace,
         and I notify this trace's sources.
         """
         super(AbstractTrace, cls).create(service, uri, new_graph)
@@ -128,6 +129,13 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         obsels_graph = Graph(identifier=obsels_uri)
         cls._obsels_cls.init_graph(obsels_graph, obsels_uri, uri)
         cls._obsels_cls.create(service, obsels_uri, obsels_graph)
+
+        # create trace statistics
+        stats_uri = URIRef(uri + "@stats")
+        graph.add((uri, KTBS.hasTraceStatistics, stats_uri))
+        stats_graph = Graph(identifier=stats_uri)
+        TraceStatistics.init_graph(stats_graph, stats_uri, uri)
+        TraceStatistics.create(service, stats_uri, stats_graph)
 
         # notify sources
         sources = list(new_graph.objects(uri, KTBS.hasSource))
@@ -176,6 +184,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         old_traces = self.state.objects(self.uri, KTBS.hasSource)
         self._ack_source_change(old_traces, [])
         self.obsel_collection.delete(_trust=True)
+        self.trace_statistics.delete(_trust=True)
         super(AbstractTrace, self).ack_delete(parameters)
 
 
@@ -335,6 +344,9 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         assert not bnode_candidates, bnode_candidates
         if not ret:
             raise InvalidDataError("No obsel found in posted graph")
+
+        stats = self.trace_statistics
+        stats.metadata.set((stats.uri, METADATA.dirty, YES))
         return ret
                 
     def get_created_class(self, rdf_type):
@@ -508,9 +520,11 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         Note that the recomputation will only occur when my state (or the state
         of my obsel collection) is required.
         """
-        self.metadata.add((self.uri, METADATA.dirty, Literal("yes")))
+        self.metadata.add((self.uri, METADATA.dirty, YES))
         obsels = self.obsel_collection
-        obsels.metadata.add((obsels.uri, METADATA.dirty, Literal("yes")))
+        obsels.metadata.add((obsels.uri, METADATA.dirty, YES))
+        stats = self.trace_statistics
+        stats.metadata.add((stats.uri, METADATA.dirty, YES))
 
     @property
     def _method_impl(self):
@@ -532,3 +546,5 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
             uri = getattr(met, "uri", None)
             ret = self.__method_impl = get_builtin_method_impl(uri, True)
         return ret
+
+YES = Literal('yes')

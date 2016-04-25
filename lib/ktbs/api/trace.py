@@ -277,6 +277,19 @@ class AbstractTraceMixin(InBaseMixin):
         """
         return OpportunisticObselCollection(self)
 
+    @property
+    @cache_result
+    def trace_statistics(self):
+        """This trace's statistics.
+
+        :rtype: `.trace_stats.TraceStatistics`:class:
+        """
+        stats_uri = self.state.value(self.uri, KTBS.hasTraceStatistics)
+        if stats_uri:
+            return self.factory(stats_uri, [KTBS.TraceStatistics])
+        else:
+            return None
+
     def get_pseudomon_range(self):
         """Return the pseudo-monotonicity range of this trace.
 
