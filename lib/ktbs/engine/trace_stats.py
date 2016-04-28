@@ -21,7 +21,7 @@ I provide the implementation of kTBS obsel collections.
 from itertools import chain
 from logging import getLogger
 
-from rdflib import Graph, Literal, RDF
+from rdflib import Graph, Literal, RDF, BNode
 from rdflib.namespace import Namespace
 from rdflib.plugins.sparql.processor import prepareQuery
 
@@ -163,12 +163,48 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
         initNs = { '': unicode(KTBS.uri) }
         initBindings = { 'trace': trace.uri }
 
+        # Obsel count
         count_result = obsels_graph.query(COUNT_OBSELS, initNs=initNs,
                                           initBindings=initBindings)
         count = count_result.bindings[0]['c']
         graph.add((trace.uri, NS.obselCount, count))
 
-        # TODO
+        # Obsel type statistics
+        if count.value > 0:
+            count_type_result = obsels_graph.query(COUNT_OBSEL_TYPES, initNs=initNs,
+                                                   initBindings=initBindings)
 
+            #count_infos = BNode()
+            #graph.add((trace.uri, NS.obselCountPerType, count_infos))
+            #graph.add((count_infos, RDF.type, RDF.Seq))
+            if (count_type_result is not None and
+               len(count_type_result.bindings) > 0 and
+               len(count_type_result.bindings[0]) > 0):
+                for res in  count_type_result.bindings:
+                    ot_infos = BNode()
+                    graph.add((ot_infos, NS.nb, res['nb']))
+                    graph.add((ot_infos, NS.obselType, res['t']))
+                    #graph.add((count_infos, RDF.li, ot_infos))
+                    graph.add((trace.uri, NS.obselCountPerType, ot_infos))
+
+        # Duration statistics
+        duration_result = obsels_graph.query(DURATION_TIME, initNs=initNs,
+                                             initBindings=initBindings)
+
+        if (duration_result is not None and
+            len(duration_result.bindings) > 0 and
+            len(duration_result.bindings[0]) > 0):
+            graph.add((trace.uri, NS.minTime, duration_result.bindings[0]['minb']))
+            graph.add((trace.uri, NS.maxTime, duration_result.bindings[0]['maxe']))
+            graph.add((trace.uri, NS.duration, duration_result.bindings[0]['duration']))
 
 COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
+COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \
+                   'GROUP BY ?t ORDER BY ?t'
+DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
+SELECT (min(?b) as ?minb) (max(?e) as ?maxe)  where {
+        ?o :hasTrace ?trace ;
+           :hasBegin ?b ;
+           :hasEnd ?e .
+    }}
+"""
