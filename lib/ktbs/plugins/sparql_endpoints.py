@@ -24,9 +24,8 @@ to all the resources exposed by kTBS.
 
 from rdfrest.http_server import \
     register_middleware, unregister_middleware, MyResponse, BOTTOM
-
-from rdflib.graph import ConjunctiveGraph
-import os
+from rdfrest.util.prefix_conjunctive_view import PrefixConjunctiveView
+from warnings import warn
 from webob import Request
 
 class SparqlEndpointMiddleware(object):
@@ -54,8 +53,6 @@ class SparqlEndpointMiddleware(object):
         "text/plain",
     ]
 
-    FULL_DATASET = False
-
 
     def __init__(self, app):
         self.app = app
@@ -80,6 +77,7 @@ class SparqlEndpointMiddleware(object):
             params = request.GET
         else:
             params = request.POST
+        scope = params.getall("scope") or ['graph']
         default_graph_uri = params.getall("default-graph-uri")
         named_graph_uri = params.getall("named-graph-uri")
 
@@ -95,13 +93,23 @@ class SparqlEndpointMiddleware(object):
         else:
             query = request.body
 
+        if len(scope) > 1:
+            return MyResponse("400 Bad Request\nMultiple values for 'scope'.",
+                              status="400 Bad Request",
+                              request=request)
+        scope = scope[0]
+        if scope not in { 'graph', 'subtree' }:
+            return MyResponse("400 Bad Request\nUnsupported scope '%s'." % scope,
+                              status="400 Bad Request",
+                              request=request)
+
         # TODO LATER do something with default_graph_uri and named_graph_uri ?
 
         resource.force_state_refresh()
-        if SparqlEndpointMiddleware.FULL_DATASET:
-            graph = ConjunctiveGraph(resource.service.store,
-                                     resource.uri)
+        if scope == 'subtree':
+            graph = PrefixConjunctiveView(resource.uri, resource.service.store)
         else:
+            # scope == 'graph'
             graph = resource.get_state()
 
         result = graph.query(query, base=resource.uri)
@@ -140,7 +148,7 @@ class SparqlEndpointMiddleware(object):
 def start_plugin(config):
     register_middleware(BOTTOM, SparqlEndpointMiddleware)
     if config.has_section('sparql') and config.has_option('sparql', 'full_dataset'):
-        SparqlEndpointMiddleware.FULL_DATASET = config.getboolean('sparql', 'full_dataset')
+        warn("sparql.full_dataset option is deprecared. Use scope parameter instead.")
 
 def stop_plugin():
     unregister_middleware(SparqlEndpointMiddleware)
