@@ -26,14 +26,8 @@ Here are the steps necessary to do so:
     [VOS]
     Description = Open Virtuoso
     Driver      = /usr/lib/odbc/virtodbcu_r.so
-    Servername  = localhost
-    Port        = 1111
-    Locale     = en.UTF-8
-
-  .. warning::
-
-     Any other value than 1111 for the ``Port`` seems to be ignored,
-     so you should not try to change that value (Virtuoso's default).
+    Address     = localhost:1111
+    Locale      = en.UTF-8
 
 * You need a customized version of the ``pyodbc`` module,
   available at https://github.com/maparent/pyodbc,
