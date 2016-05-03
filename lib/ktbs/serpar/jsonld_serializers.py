@@ -554,10 +554,6 @@ def serialize_json_trace(graph, trace, bindings=None):
     if model_uri is not None: # can be None with faulty computed traces
         yield u',\n    "hasModel": "%s"' % valconv_uri(model_uri)
 
-    model_uri = trace.model_uri
-    if model_uri is not None: # can be None with faulty computed traces
-        yield u',\n    "hasModel": "%s"' % valconv_uri(model_uri)
-
     origin = trace.origin
     if origin is not None: # can be None with faulty computed traces
         yield u',\n    "origin": "%s"' % origin
