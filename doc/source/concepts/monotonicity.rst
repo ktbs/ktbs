@@ -1,49 +1,115 @@
 Monotonicity
 ============
 
-Monotonicity is, loosely, the property of evolving always in the same "direction".
+Monotonicity is, loosely,
+the property of evolving always in the same "direction".
 
-Traces have two ways of evolving: by collecting obsels, or by being amended. While amendment allows any kind of evolution of the content of the trace, collecting is more constrained.
+Traces have two ways of evolving: by collecting obsels, or by being amended.
+While amendment allows any kind of evolution of the content of the trace,
+collecting is more constrained.
 
-By definition, collecting is restricted to adding new obsels with their attributes and relations to previously created obsels. In a sense, those constrained can be considered as a kind of monotonicity that we call **simple monotonicity**.
+By definition, collecting is restricted to adding new obsels,
+with their attributes and relations to previously created obsels.
+In a sense, those constrained can be considered as a kind of monotonicity,
+that we call **logical monotonicity**.
 
-A stronger version of monotonicity is **temporal monotonicity**: it is verified if newly added obsel have their *end* timestamp greater or equal than the *end* timestamp of any obsel already present in the trace. In other words, a collecting is temporally monotonic if obsels are created in an order consistent with the internal chronology of the trace.
+A stronger version of monotonicity is **strict monotonicity**:
+it is verified if every newly added obsel has its *end* timestamp greater or equal than the *end* timestamp of any obsel already present in the trace.
+In other words, a collecting is strictly monotonic if obsels are added in an order consistent with the internal chronology of the trace.
 
-In its current state, kTBS only accepts temporally monotonic collecting (see below for `Future evolutions`_).
+Why does it matter?
+-------------------
 
-Why enforce monotonicity?
--------------------------
+The more constrained the evolution of a trace,
+the more hypothesis transformations can make,
+hence the more optimised they can be.
 
-The more constrained the evolution of a trace, the more hypothesis transformations can make, hence the more optimised they can be.
+For example,
+consider a transformation filtering obsels between two timestamp *s* and *f*.
+If the source trace changes in a strictly monotonic way,
+once an obsel after *f* is encountered,
+the transformation can safely ignore all subsequent obsels without even checking their timestamps.
 
-For example, consider a transformation filtering obsels between two timestamp *s* and *f*. If the source trace is temporally monotonic, once an obsel above *f* is encountered, the transformation can safely ignore all subsequent obsels without even checking their timestamps (unless of course the source trace gets amended).
+On the other hand,
+if the source trace changes in a (non-strict) logically monotonic way,
+for every new obsel,
+the transformation has to check its timestamp,
+to decide whether to included it or not in the computed trace.
+
 
 Monotonicity of computed traces
 -------------------------------
 
-Monotonicity does not only apply to stored traces, but to computed traces as well. In that case, the monotonicity depends on two factors: the monotonicity of the source trace(s) (if any), and the applied method.
+Monotonicity does not only apply to stored traces,
+but to computed traces as well.
+In that case, the monotonicity depends on two factors:
+the monotonicity of the source trace(s) (if any),
+and the applied method.
 
-For example, a transformation method filtering obsels between two timestamps will perfectly preserve the monotonicity of its source trace: if it temporally monotonic, the transformed trace will also be; if it is only simply monotonic, the transformed trace can not be guaranteed to be more than simply monotonic.
+In the example above (temporal filtering),
+the method perfectly preserves the monotonicity of its source trace.
+The computed trace will evolve in a strict (resp. logical, non)
+monotonic way if the source trace evolves in a strict (resp. logical, non)
+monotonic way.
 
-Another example is a transformation method that would keep only the last obsel. This kind of transformation does not preserve monotonicity: even if the source trace is temporally monotonic, the transformed trace will evolve non monotonically. Indeed, each time an obsel is added to the source trace, any existing obsel in the transformed trace will be *removed* and replaced by a copy of the latest obsel.
+On the other hand, consider a transformation method that would keep only the last obsel of the source trace.
+This kind of transformation does not preserve monotonicity:
+even if the source trace is strictly monotonic,
+the transformed trace will evolve non monotonically.
+Indeed, each time an obsel is added to the source trace,
+any existing obsel in the transformed trace will be *removed*,
+and replaced by a copy of the latest obsel.
 
-In its current state, kTBS assumes that all methods ensure temporal monotonicity, just as collecting does. This allows method to assume that their traces are always temporally monotonic, but it also puts a very strong constraint on the order in which they produce obsels. This may change in `Future evolutions`_.
+Current handling in kTBS
+------------------------
 
-Future evolutions
------------------
+Every trace has a number of etags_ that change at various rates:
 
-Although the constraint of temporal monotonicity may seem reasonable for collecting, it is not always easy to ensure -- for example when independent collectors contribute to the same trace. Furthermore, this constraint is much harder on computed traces, as illustrated above.
+.. list-table::
+    :header-rows: 1
 
-An easy evolution will be to allow collection to be only simply monotonic. In that case, the stored trace will be marked as amended. This is will require no change in the code of transformations, which can still make the assumption that a non-amended trace is temporally monotonic.
+    * -
+      - standard etag
+      - strict mon. etag
+      - logical mon. etag
+    * - obsels are deleted or modified
+      - yes
+      - yes
+      - yes
+    * - an obsel is added anywhere
+      - yes
+      - yes
+      - no
+    * - an obsel is added at the end of the trace
+      - yes
+      - no
+      - no
 
-In the longer term, kTBS may let methods handle it as they wish. It would allow simply monotonic collecting, or even fine-grained amendment (by PUTing or DELETEing obsels individually). Methods would then have to be able handle those different kinds of events:
+Internally,
+those etags are used by computed trace to determine how their sources have changed,
+and hence decide on which optimisation they can apply.
 
-* temporally monotonic collecting,
-* simply monotonic collecting,
-* (amendment by obsel modification,)
-* (amendment by obsel deletion,)
-* global amendment.
+Externally,
+those etags are attached to different representations of the trace,
+to help clients efficiently cache those representations.
+For example,
+considering a trace of 100 obsels,
+the representation of "the first 10 obsels of that trace" will not change as long as the trace is modified in a strictly monotonic way.
+On the other hand,
+the representation of "the last 10 obsels of that trace" may be impacted by any kind of change on the trace.
 
-This increased flexibility would increase the complexity of the Method python API, but fall-back behaviour can be provided to let implementers support only some of those events.
+Actually, kTBS uses a fourth etag,
+related to so-called **pseudo monotonicity**.
+This etag changes unless an obsel is added *near* the end of a trace
+(*i.e.* inside a time window at the end of the trace,
+called the *pseudo-monotonicity range*).
+The rationale is that in some situations,
+strict monotonicity can not be completely guaranteed
+(*e.g.* when obsels are collected by several agents with different latencies),
+but still obsels will not be added at arbitrary times.
+Hence pseudo monotonicity is a weaker property than strict monotonicity,
+but stronger than logical monotonicity.
 
-This would also make the internals of kTBS more complex: for the moment, source traces simply notify computed traces that they have changed, and computed traces only keep track of the last obsel they have seen. This kind of evolution would require each computed trace to maintain an event queue. This also raise the question of optimising the event queue: several events related to an obsel may be collapsed into a single one or even cancelled. This has to be studied.
+
+.. _etags: https://tools.ietf.org/html/rfc7232#section-2.3
+
