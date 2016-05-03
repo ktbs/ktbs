@@ -58,9 +58,9 @@ def assert_jsonld_equiv(val1, val2):
         "\n%s\n\nIS NOT JSON-LD EQUIVALENT TO\n\n%s"
         % (pformat(val1), pformat(val2)))
 
-def assert_roundtrip(json_content, resource):
+def assert_roundtrip(json_content, resource, parameters=None):
     graph = parse_json(json_content, resource.uri)
-    _, spurious, missing = graph_diff(graph, resource.state)
+    _, spurious, missing = graph_diff(graph, resource.get_state(parameters))
     assert not(spurious or missing), graph_diff_msg(spurious, missing)
 
 def graph_diff_msg(spurious, missing):
@@ -221,12 +221,40 @@ class TestJsonBase(KtbsTestCase):
             '@type': 'Base',
             'inRoot': '..',
             'contains': [
-                { '@id': './method', '@type': 'Method' },
-                { '@id': './model', '@type': 'TraceModel' },
-                { '@id': './t1/', '@type': 'StoredTrace' },
+                { '@id': 'method', '@type': 'Method' },
+                { '@id': 'model', '@type': 'TraceModel' },
+                { '@id': 't1/', '@type': 'StoredTrace' },
             ],
         })
         assert_roundtrip(json_content, self.base)
+
+    def test_enriched_base(self):
+        self.base.create_method("method", KTBS.sparql, label="the method")
+        self.base.create_model("model", label="the model")
+        self.base.create_stored_trace("t1/", "model", "alonglongtimeago", label="the trace")
+        self.base.create_computed_trace("t2/", KTBS.filter, sources=['t1/'])
+
+        params = lambda: {'prop':'comment,hasModel,hasSource,label,obselCount',}
+        json_content = "".join(
+            serialize_json_base(self.base.get_state(params()), self.base))
+        json = loads(json_content)
+        obselCount = 1 # should be 0, this is a bug with rdflib 4.2.1
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/',
+            '@type': 'Base',
+            'inRoot': '..',
+            'contains': [
+                { '@id': 'method', '@type': 'Method', 'label':"the method" },
+                { '@id': 'model', '@type': 'TraceModel', 'label':"the model" },
+                { '@id': 't1/', '@type': 'StoredTrace', 'label':"the trace",
+                  'hasModel':"model", 'obselCount':obselCount },
+                { '@id': 't2/', '@type': 'ComputedTrace', 'hasModel':"model",
+                  'hasSource':["t1/"], 'obselCount':obselCount },
+            ],
+        })
+        assert_roundtrip(json_content, self.base, params())
 
     def test_post_base(self):
         """

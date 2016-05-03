@@ -185,6 +185,13 @@ KTBS_NS_TTL = """
         rdfs:range xsd:dateTime ;
     .
 
+    :hasObselCount
+        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        rdfs:label "has obsel count"@en, "a pour nombre d'obsels"@fr;
+        rdfs:domain :AbstractTrace ;
+        rdfs:range xsd:integer ;
+    .
+
 :StoredTrace
     a owl:Class ;
     rdfs:subClassOf :AbstractTrace ;

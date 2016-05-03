@@ -22,7 +22,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from itertools import chain, groupby
 from json import dumps
-from rdflib import BNode, Literal, RDF, URIRef, XSD
+from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
@@ -55,12 +55,16 @@ class ValueConverter(object):
             self._parent = parent = base_uri[:len_par]
             if self._parent.endswith("//"):
                 self._parent = None
-        if prefixes:
-            self._prefixes = [
-                (ns, prefix, len(ns)) for ns, prefix in prefixes.items()
-            ]
-        else:
-            self._prefixes = ()
+        if not prefixes:
+            prefixes = {}
+        prefixes.update({
+            XSD: 'xsd',
+            SKOS: 'skos',
+            unicode(RDFS): 'rdfs',
+        })
+        self._prefixes = [
+            (ns, prefix, len(ns)) for ns, prefix in prefixes.items()
+        ]
 
     def uri(self, uri, _len_ktbs=LEN_KTBS):
         """Convert URI"""
@@ -79,6 +83,19 @@ class ValueConverter(object):
                 return "../%s" % uri[self._len_parent:]
         return uri
 
+    @staticmethod
+    def literal(val):
+        if val.language:
+            return { '@value': unicode(val), '@language': val.language }
+        if val.datatype == XSD.integer:
+            return int(val)
+        elif val.datatype in (XSD.double, XSD.decimal):
+            return float(val)
+        elif val.datatype == XSD.boolean:
+            return unicode(val) in ('true', '1')
+        else:
+            return unicode(val)
+
     def val2json(self, val, indent=""):
         return dumps(self.val2jsonobj(val), ensure_ascii=False, indent=4)
 
@@ -94,14 +111,7 @@ class ValueConverter(object):
         elif isinstance(val, URIRef):
             return OrderedDict({'@id': '%s' % self.uri(val)})
         elif isinstance(val, Literal):
-            if val.datatype == XSD.integer:
-                return int(val)
-            elif val.datatype in (XSD.double, XSD.decimal):
-                return float(val)
-            elif val.datatype == XSD.boolean:
-                return unicode(val) in ('true', '1')
-            else:
-                return unicode(val)
+            return self.literal(val)
         elif isinstance(val, list):
             return [ self.val2jsonobj(i) for i in val ]
         elif isinstance(val, dict) or isinstance(val, OrderedDict):
@@ -118,6 +128,64 @@ KTBS_SPECIAL_KEYS = {
     KTBS.hasSubject: "subject",
 }
 
+
+def add_other_arcs(jsonobj, graph, uri, valconv, obsel=False):
+    "Add to jsonobj properties for all predicates outside the ktbs namespace."
+
+    valconv_uri = valconv.uri
+    valconv_lit = valconv.literal
+    if obsel:
+        pred_conv = valconv_uri
+    else:
+        pred_conv = lambda x: x
+
+    if not obsel:
+        types = [ i for i in graph.objects(uri, RDF.type)
+                  if not i.startswith(KTBS_NS_URI) ]
+        if types:
+            types = [ valconv_uri(i) for i in types ]
+            jsonobj['additionalType'] = types
+
+    labels = [ valconv_lit(i) for i in graph.objects(uri, SKOS.prefLabel) ]
+    if labels:
+        jsonobj['label'] = labels[0]
+        if len(labels) > 1:
+            # for the sake of regularity, we keep a single value for "label",
+            # and set the other values to the prefixed name
+            jsonobj['skos:prefLabel'] = labels[1:]
+
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"subj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if obsel:
+            # include k:hasTrace property of related obsels
+            obj = [ i[2]  if i[3] is None
+                    else { u"@id": valconv_uri(i[2]), u"hasTrace": u"./" }
+                    for i in tuples ]
+        else:
+            obj = [ i[2] for i in tuples ]
+        if len(obj) == 1:
+            obj = obj[0]
+        jsonobj[pred_conv(pred)] = obj
+
+    reverse = {}
+    for pred, tuples in groupby(
+            graph.query(OTHER_ARCS, initBindings={"obj": uri}),
+            lambda tpl: tpl[1]
+            ):
+        if obsel:
+            # include k:hasTrace property of related obsels
+            subj = [ i[0]  if i[3] is None
+                     else { u"@id": valconv_uri(i[0]), u"hasTrace": u"./" }
+                     for i in tuples ]
+        else:
+            subj = [ i[0] for i in tuples ]
+        if len(subj) == 1:
+            subj = subj[0]
+        reverse[pred_conv(pred)] = subj
+    if reverse:
+        jsonobj['@reverse'] = reverse
 
 def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
     "Yield JSON properties for all predicates outside the ktbs namespace."
@@ -250,48 +318,73 @@ def serialize_json_root(graph, root, bindings=None):
 @encode_unicodes
 def serialize_json_base(graph, base, bindings=None):
 
+    base_dict = OrderedDict()
     valconv = ValueConverter(base.uri)
+    valconv_uri = valconv.uri
+    valconv_lit = valconv.literal
 
-    yield u"""{
-    "@context": "%s",
-    "@id": "%s",
-    "@type": "Base" """ % (CONTEXT_URI, base.uri)
+    base_dict['@context'] = CONTEXT_URI
+    base_dict['@id'] = base.uri
+    base_dict['@type'] = 'Base'
 
-    contained = list(chain(
+    contained = chain(
         base.iter_traces(),
         base.iter_models(),
         base.iter_methods(),
         base.iter_bases(),
-    ))
+    )
 
-    if contained:
-        yield """,
-    "contains": ["""
+    items = []
+    len_base_uri = len(base.uri)
+    for i in contained:
+        item = OrderedDict()
+        items.append(item)
+        item['@id'] = i.uri[len_base_uri:]
+        item['@type'] = i.RDF_MAIN_TYPE[LEN_KTBS:]
 
-        comma =""
-        len_base_uri = len(base.uri)
-        for i in contained:
-            yield """%s
-        {
-            "@id": "./%s",
-            "@type": "%s"
-        } """ % (
-                comma,
-                i.uri[len_base_uri:],
-                i.RDF_MAIN_TYPE[LEN_KTBS:],
-                )
-            comma = ", "
+        # base enrichment
+        comments = [
+            valconv_lit(j) for j in graph.objects(i.uri, RDFS.comment) ]
+        if comments:
+            if len(rdfs_comments) > 1: rdfs_comments = rdfs_comments[0]
+            item['rdf:comments'] = rdfs_comments
 
-        yield """
-    ]"""
+        model = graph.value(i.uri, KTBS.hasModel)
+        if model:
+            item['hasModel'] = valconv_uri(model)
 
-    for i in iter_other_arcs(graph, base.uri, valconv):
-        yield i
+        sources = [
+            valconv_uri(j) for j in graph.objects(i.uri, KTBS.hasSource) ]
+        if sources:
+            item['hasSource'] = sources
+
+        labels = [
+            valconv_lit(j) for j in graph.objects(i.uri, SKOS.prefLabel) ]
+        if labels:
+            item['label'] = labels[0]
+            if len(labels) > 1:
+                item['skos:prefLabel'] = labels[1:]
+        rdfs_labels = [
+            valconv_lit(j) for j in graph.objects(i.uri, RDFS.label) ]
+        if rdfs_labels:
+            if len(rdfs_labels): rdfs_labels = rdfs_labels[0]
+            item['rdf:label'] = rdfs_labels
+
+        obselCount = graph.value(i.uri, KTBS.hasObselCount)
+        if obselCount:
+            item['obselCount'] = valconv_lit(obselCount)
+
+    if items:
+        base_dict['contains'] = items
+
+    add_other_arcs(base_dict, graph, base.uri, valconv)
 
     if (None, KTBS.hasBase, base.uri) in graph:
-        yield u""",\n    "inRoot": ".."\n}\n"""
+        base_dict['inRoot'] = ".."
     else:
-        yield u""",\n    "inBase": ".."\n}\n"""
+        base_dict['inBase'] = '..'
+
+    yield dumps(base_dict, ensure_ascii=False, indent=4)
 
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Method)
@@ -340,7 +433,7 @@ def serialize_json_method(graph, method, bindings=None):
 @encode_unicodes
 def serialize_json_model(graph, tmodel, bindings=None):
 
-    valconv = ValueConverter(tmodel.uri, { XSD: "xsd" })
+    valconv = ValueConverter(tmodel.uri)
     valconv_uri = valconv.uri
 
     yield u"""{

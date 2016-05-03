@@ -156,6 +156,7 @@ CONTEXT_JSON = """{"@context":{
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "skos": "http://www.w3.org/2004/02/skos/core#",
     "k": "http://liris.cnrs.fr/silex/2009/ktbs#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
 
     "AttributeType": "k:AttributeType",
     "Base": "k:Base",
@@ -184,6 +185,7 @@ CONTEXT_JSON = """{"@context":{
     "endDT": { "@id": "k:hasEndDT", "@type": "xsd:dateTime" },
     "hasMethod": { "@id": "k:hasMethod", "@type": "@vocab" },
     "hasModel": { "@id": "k:hasModel", "@type": "@id" },
+    "obselCount": { "@id": "k:hasObselCount", "@type": "xsd:integer" },
     "hasObselList": { "@id": "k:hasObselCollection", "@type": "@id" },
     "origin": { "@id": "k:hasOrigin" },
     "parameter": "k:hasParameter",

@@ -18,24 +18,123 @@
 """
 I provide the implementation of ktbs:Base .
 """
-from rdflib import RDF
+from rdflib import ConjunctiveGraph, Graph, RDF, RDFS
 from contextlib import contextmanager
 from posix_ipc import SEMAPHORE_VALUE_SUPPORTED
+from rdfrest.exceptions import InvalidParametersError
 
 from .resource import KtbsPostableMixin, KtbsResource
 from .lock import WithLockMixin
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
+from ..utils import SKOS
 
 
 class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
     """I provide the implementation of ktbs:Base .
     """
+
+    ######## ICore implementation  ########
+
+    def get_state(self, parameters=None):
+        """I override `~rdfrest.cores.ICore.get_state`:meth:
+
+        I support parameter "prop" to enrich the Base description with additional information.
+        I consider an empty dict as equivalent to no dict.
+        """
+        state = super(Base, self).get_state(parameters)
+        if not parameters:
+            return state
+
+        enriched_state = Graph()
+        enriched_state += state
+        whole = ConjunctiveGraph(self.service.store)
+        initNs = { '': KTBS, 'rdfs': RDFS, 'skos': SKOS }
+        initBindings = { 'base': self.uri }
+        for prop in parameters['prop']:
+            if prop == 'comment':
+                enriched_state.addN(
+                    (s, RDFS.comment, o, enriched_state)
+                    for s, o in whole.query('''
+                        SELECT ?s ?o {
+                            GRAPH ?base { ?base :contains ?s }
+                            GRAPH ?t    { ?s rdfs:comment ?o }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            elif prop == 'hasModel':
+                enriched_state.addN(
+                    (s, KTBS.hasModel, o, enriched_state)
+                    for s, o in whole.query('''
+                        SELECT ?t ?m {
+                            GRAPH ?base { ?base :contains ?t }
+                            GRAPH ?t    { ?t :hasModel ?m }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            elif prop == 'hasSource':
+                enriched_state.addN(
+                    (s, KTBS.hasSource, o, enriched_state)
+                    for s, o in whole.query('''
+                        SELECT ?t1 ?t2 {
+                            GRAPH ?base { ?base :contains ?t1 }
+                            GRAPH ?t1   { ?t1 :hasSource ?t2 }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            elif prop == 'label':
+                enriched_state.addN(
+                    (s, p, o, enriched_state)
+                    for s, p, o in whole.query('''
+                        SELECT ?s ?p ?o {
+                            GRAPH ?base { ?base :contains ?s }
+                            GRAPH ?s    { ?s ?p ?o }
+                            VALUES ?p { rdfs:label skos:prefLabel }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            elif prop == 'obselCount':
+                enriched_state.addN(
+                    (s, KTBS.hasObselCount, o, enriched_state)
+                    for s, o in whole.query('''
+                            SELECT ?t (COUNT(?obs) as ?c) {
+                                GRAPH ?base { ?base :contains ?t. ?t a ?tt }
+                                OPTIONAL { ?obs :hasTrace ?t }
+                                VALUES ?tt { :StoredTrace :ComputedTrace }
+                            } GROUP BY ?t
+                        ''', initNs=initNs, initBindings=initBindings)
+                )
+            else:
+                pass # ignoring unrecognized properties
+                # should we signal them instead (diagnosis?)
+
+        return enriched_state
+
+
+
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.Base
 
     RDF_CREATABLE_IN = [ KTBS.hasBase, KTBS.contains, ]
+
+    ######## ILocalCore (and mixins) implementation  ########
+
+    def check_parameters(self, parameters, method):
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
+
+        I also convert parameters values from strings to usable datatypes.
+        """
+        if parameters is not None:
+            if method in ("get_state", "force_state_refresh"):
+                for key, val in parameters.items():
+                    if key == 'prop':
+                        parameters[key] = val.split(',')
+                    else:
+                        raise InvalidParametersError("Unsupported parameters %s"
+                                                     % key)
+                parameters = None  # hide all parameters for super call below
+        super(Base, self).check_parameters(parameters, method)
 
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableCore.ack_delete`.
