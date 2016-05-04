@@ -91,6 +91,17 @@ class BaseMixin(KtbsResourceMixin):
             if typ == KTBS.Method:
                 yield self_factory(uri, [typ])
 
+    def iter_data_graphs(self):
+        """
+        Iter over all the methods of this base.
+
+        :rtype: an iterable of `~.method.MethodMixin`:class:
+        """
+        self_factory = self.factory
+        for uri, typ in self._iter_contained():
+            if typ == KTBS.DataGraph:
+                yield self_factory(uri, [typ])
+
     def get(self, id):
         """
         Return one of the element contained in the base.
@@ -358,6 +369,29 @@ class BaseMixin(KtbsResourceMixin):
         return self.factory(uris[0], [KTBS.ComputedTrace])
         # must be a .trace.StoredTraceMixin
 
+    def create_data_graph(self, id=None, label=None, graph=None):
+        """Create a new base in this kTBS.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param label: TODO DOC explain
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `~.base.InBaseMixin`:class:
+        """
+        # redefining built-in 'id' #pylint: disable-msg=W0622
+        trust = graph is None and id is None
+        node = coerce_to_node(id, self.uri)
+        if graph is None:
+            graph = Graph()
+        graph.add((self.uri, KTBS.contains, node))
+        graph.add((node, RDF.type, KTBS.DataGraph))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+        uris = self.post_graph(graph, None, trust, node, KTBS.Base)
+        assert len(uris) == 1
+        return self.factory(uris[0], [KTBS.DataGraph])
+        # must be a InBaseMixin (no special mixin for DataGraph, this is just a graph)
+
     def remove(self):
         """Delete this base from the kTBS.
         """
@@ -382,6 +416,10 @@ _ITER_CONTAINED_QUERY = prepareQuery("""
             
 
 
+# NB: the register_wrapper below does not mean that KTBS.DataGraph is the
+# *only* type corresponding to InBaseMixin, but this particulat type has no
+# mixin of its own, so we register it directly here.
+@register_wrapper(KTBS.DataGraph)
 @extend_api
 class InBaseMixin(KtbsResourceMixin):
     """

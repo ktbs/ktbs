@@ -155,7 +155,8 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
             for typ in new_graph.objects(created, RDF.type):
                 if typ.startswith(KTBS_NS_URI):
                     assert typ in (KTBS.Base, KTBS.TraceModel, KTBS.Method,
-                                   KTBS.StoredTrace, KTBS.ComputedTrace)
+                                   KTBS.StoredTrace, KTBS.ComputedTrace,
+                                   KTBS.DataGraph,)
                     editable.add((created, RDF.type, typ))
                     break
             else: # no valid rdf:type was found; should not happen
@@ -184,7 +185,8 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                            { ?c a ktbs:TraceModel } UNION
                            { ?c a ktbs:Method } UNION
                            { ?c a ktbs:StoredTrace } UNION
-                           { ?c a ktbs:ComputedTrace }
+                           { ?c a ktbs:ComputedTrace } UNION
+                           { ?c a ktbs:DataGraph }
                          }
         """ % (KTBS, self.uri)
         return self._find_created_default(new_graph, query)

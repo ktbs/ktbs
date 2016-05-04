@@ -27,6 +27,7 @@ from rdfrest.cores.local import Service
 from rdfrest.util import parent_uri
 from .builtin_method import get_builtin_method_impl, iter_builtin_method_impl
 from .base import Base
+from .data_graph import DataGraph
 from .ktbs_root import KtbsRoot
 from .method import Method
 from .obsel import Obsel
@@ -110,6 +111,7 @@ class KtbsService(Service):
         classes = [ Base,
                     ComputedTrace,
                     ComputedTraceObsels,
+                    DataGraph,
                     KtbsRoot,
                     Method,
                     StoredTrace,

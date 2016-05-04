@@ -100,7 +100,7 @@ Base (Base)
 
     Return the element of this base identified by the given URI, or null.
 
-    :rtype: Trace|Model|Method|Base
+    :rtype: Trace|Model|Method|Base|DataGraph
 
 .. function:: list_traces()
 
@@ -123,6 +123,12 @@ Base (Base)
     List the bases stored in that base.
 
     :rtype: [Base]
+
+.. function:: list_data_graphs()
+
+    List the data graphs stored in that base.
+
+    :rtype: [DataGraph]
 
 .. function:: create_stored_trace(id:uri?, model:Model, origin:str?, default_subject:str?, label:str?, )
 
@@ -148,6 +154,11 @@ Base (Base)
 .. function:: create_base(id:uri?, label:str?)
 
     :rtype: Base
+
+.. function:: create_data_graph(id:uri?, label:str?)
+
+    :rtype: DataGraph
+
 
 Trace (Resource)
 ----------------
@@ -204,6 +215,13 @@ Trace (Resource)
     Return the list of the traces of which this trace is a source.
 
     :rtype: [Trace]
+
+
+.. function:: list_contexts()
+
+    Return the data graphs providing contextual information for this trace.
+
+    :rtype: [DataGraph]
 
 .. function:: list_obsels(begin:int?, end:int?, reverse:bool?)
 
@@ -407,6 +425,12 @@ Method (Resource)
 
     Unset a parameter.
     An exception must be raised if the parameter is inherited.
+
+
+DataGraph (Resource)
+--------------------
+
+This class has no additional method.
 
     
 ObselType (Resource)

@@ -109,9 +109,10 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             json_data.setdefault(u"inRoot", unicode(base_uri))
 
         elif json_data.get("@type") in ("StoredTrace",
-                                      "ComputedTrace",
-                                      "TraceModel",
-                                      "Method"):
+                                        "ComputedTrace",
+                                        "DataGraph",
+                                        "TraceModel",
+                                        "Method"):
             json_data.setdefault(u"inBase", unicode(base_uri))
 
         elif "@graph" in json_data:
@@ -162,6 +163,7 @@ CONTEXT_JSON = """{"@context":{
     "Base": "k:Base",
     "BuiltinMethod": "k:BuiltinMethod",
     "ComputedTrace": "k:ComputedTrace",
+    "DataGraph": "k:DataGraph",
     "KtbsRoot": "k:KtbsRoot",
     "Method": "k:Method",
     "Obsel": "k:Obsel",
@@ -178,6 +180,7 @@ CONTEXT_JSON = """{"@context":{
     "begin": { "@id": "k:hasBegin", "@type": "xsd:integer" },
     "beginDT": { "@id": "k:hasBeginDT", "@type": "xsd:dateTime" },
     "hasBuiltinMethod": { "@id": "k:hasBuiltinMethod", "@type": "@vocab" },
+    "hasContext": { "@id": "k:hasContext", "@type": "@id" },
     "version": "k:hasVersion",
     "defaultSubject": "k:hasDefaultSubject",
     "diagnosis": "k:hasDiagnosis",

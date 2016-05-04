@@ -213,7 +213,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     RDF_EDITABLE_OUT =    [ KTBS.hasModel, KTBS.hasOrigin, KTBS.hasTraceBegin,
                             KTBS.hasTraceEnd, KTBS.hasTraceBeginDT,
                             KTBS.hasTraceEndDT, KTBS.hasDefaultSubject,
-                            KTBS.hasPseudoMonRange,
+                            KTBS.hasPseudoMonRange, KTBS.hasContext,
                             ]
     RDF_CARDINALITY_OUT = [ (KTBS.hasModel, 1, 1),
                             (KTBS.hasOrigin, 1, 1),
@@ -231,6 +231,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                             (KTBS.hasTraceEnd,       "literal", XSD.integer),
                             (KTBS.hasTraceEndDT,     "literal", XSD.dateTime),
                             (KTBS.hasPseudoMonRange, "literal", XSD.integer),
+                            (KTBS.hasContext,        "uri"),
                             ]
 
     @classmethod

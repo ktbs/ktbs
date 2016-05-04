@@ -18,6 +18,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
+
 """
 I provide the pythonic interface of ktbs:StoredTrace and ktbs:ComputedTrace.
 """
@@ -233,6 +234,16 @@ class AbstractTraceMixin(InBaseMixin):
             assert isinstance(tra, AbstractTraceMixin), uri
             yield tra
 
+    def iter_contexts(self):
+        """
+        I iter over the contexts of this computed trace.
+        """
+        factory = self.factory
+        for uri in self.state.objects(self.uri, KTBS.hasContext):
+            ctx = factory(uri, [KTBS.DataGraph])
+            assert isinstance(ctx, InBaseMixin)
+            yield ctx
+
     def add_source_trace(self, val):
         """I add a source trace to this trace
         """
@@ -331,6 +342,13 @@ class AbstractTraceMixin(InBaseMixin):
         """
         return lit2datetime(self.state.value(self.uri, KTBS.hasTraceEndDT))
 
+    def iter_context_uris(self):
+        """
+        I iter over the context URIs of this computed trace.
+        """
+        factory = self.factory
+        for uri in self.state.objects(self.uri, KTBS.hasContext):
+            yield uri
 
 
 @register_wrapper(KTBS.StoredTrace)

@@ -332,6 +332,7 @@ def serialize_json_base(graph, base, bindings=None):
         base.iter_models(),
         base.iter_methods(),
         base.iter_bases(),
+        base.iter_data_graphs(),
     )
 
     items = []
@@ -594,6 +595,10 @@ def serialize_json_trace(graph, trace, bindings=None):
                 )
             )
 
+    if trace.context_uris:
+        context_uris = [ valconv_uri(i) for i in trace.context_uris ]
+        yield u""",\n    "hasContext": %s""" % dumps(context_uris)
+
     transformed = [ valconv_uri(i)
                     for i in trace.state.subjects(KTBS.hasSource, trace.uri) ]
     if transformed:
@@ -823,3 +828,27 @@ def serialize_json_obsel(graph, obsel, bindings=None):
         yield i
 
     yield u"""\n}\n"""
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.DataGraph)
+@register_serializer(JSON, "json", 60, KTBS.DataGraph)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_datagraph(graph, datagraph, bindings=None):
+    valconv = ValueConverter(datagraph.uri)
+    valconv_uri = valconv.uri
+    val2jsonobj = valconv.val2jsonobj
+
+    jsonobj = OrderedDict()
+    jsonobj['@context'] = CONTEXT_URI
+    statements = jsonobj['@graph'] = []
+
+    triples = graph.query('SELECT ?s ?p ?o { ?s ?p ?o } ORDER BY ?s ?p')
+    for subj, s_triples in groupby(triples, lambda t: t[0]):
+        sjson = val2jsonobj(subj)
+        statements.append(sjson)
+        for pred, sp_triples in groupby(s_triples, lambda t: t[1]):
+            pjson = sjson[valconv_uri(pred)] = [
+                val2jsonobj(obj) for _, _, obj in sp_triples
+            ]
+
+    yield dumps(jsonobj, ensure_ascii=False, indent=4)
