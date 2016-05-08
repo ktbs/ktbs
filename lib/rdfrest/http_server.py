@@ -132,12 +132,14 @@ class HttpFrontend(object):
         maintained consistent with
         :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
-        requested_uri, requested_extension = extsplit(Request(environ).path_url)
+        request = Request(environ)
+        requested_uri, requested_extension = extsplit(request.path_url)
         requested_uri = URIRef(requested_uri)
         resource = self._service.get(requested_uri)
         environ['rdfrest.requested.uri'] = requested_uri
         environ['rdfrest.requested.extension'] = requested_extension
         environ['rdfrest.resource'] = resource
+        environ['rdfrest.parameters'] = dict(request.GET.mixed())
 
         if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
             self._middleware_stack = build_middleware_stack(self._core_call)
@@ -184,13 +186,14 @@ class HttpFrontend(object):
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)
-        resource.delete(request.GET.mixed() or None)
+        resource.delete(request.environ['rdfrest.parameters'] or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
         """Process a GET request on the given resource.
         """
         headerlist = []
+        params = request.environ['rdfrest.parameters']
 
         # find serializer
         rdf_type = resource.RDF_MAIN_TYPE
@@ -230,7 +233,7 @@ class HttpFrontend(object):
         iter_etags = getattr(resource, "iter_etags", None)
         if iter_etags is not None:
             etags = " ".join( 'W/"%s"' % taint_etag(i, ctype)
-                              for i in iter_etags(request.GET.mixed() or None) )
+                              for i in iter_etags(params or None) )
             headerlist.append(("etag", etags))
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
@@ -238,8 +241,7 @@ class HttpFrontend(object):
             headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
         # get graph and redirect if needed
-        cache_bypass = request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
-        params = request.GET.mixed()
+        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
         graph = resource.get_state(params or None)
         redirect = getattr(graph, "redirect_to", None)
         if redirect is not None:
@@ -314,7 +316,8 @@ class HttpFrontend(object):
                 return self.issue_error(413, request, resource,
                                         "max_triples (%s) was exceeded"
                                         % self.max_triples)
-        results = resource.post_graph(graph, request.GET.mixed() or None)
+        params = request.environ['rdfrest.parameters']
+        results = resource.post_graph(graph, params or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
@@ -341,6 +344,8 @@ class HttpFrontend(object):
         """
         # too many return statements (7/6) #pylint: disable=R0911
 
+        params = request.environ['rdfrest.parameters']
+
         # find parser
         ext = request.uri_extension
         if ext:
@@ -359,7 +364,7 @@ class HttpFrontend(object):
                         status="403 Forbidden: 'if-match' is required",
                         request=request,
                         )
-                for i in iter_etags(request.GET.mixed() or None):
+                for i in iter_etags(params or None):
                     if taint_etag(i, ctype) in request.if_match:
                         break
                 else: # no matching etag found in 'for' loop
@@ -378,7 +383,7 @@ class HttpFrontend(object):
                                         "max_bytes (%s) was exceeded"
                                         % self.max_bytes)
         try:
-            with resource.edit(request.GET.mixed() or None, True) as graph:
+            with resource.edit(params or None, True) as graph:
                 parser(request.body, resource.uri, request.charset, graph)
                 if self.max_triples is not None:
                     if len(graph) > self.max_triples:
