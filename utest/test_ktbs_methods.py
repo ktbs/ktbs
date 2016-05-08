@@ -20,12 +20,12 @@
 
 from json import loads
 from nose.tools import assert_raises, eq_
+from nose.plugins.skip import SkipTest
 from unittest import skip
 
 from ktbs.engine.resource import METADATA
-from ktbs.methods.fusion import LOG as FUSION_LOG
 from ktbs.methods.filter import LOG as FILTER_LOG
-from ktbs.namespace import KTBS, KTBS_NS_URI
+from ktbs.namespace import KTBS
 
 from .test_ktbs_engine import KtbsTestCase, HttpKtbsTestCaseMixin
 
@@ -117,16 +117,12 @@ class TestFilter(KtbsTestCase):
 
 
         self.log.info(">non-monotonic change: removing o15")
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o15.uri, None, None))
-            editable.remove((None, None, o15.uri))
+        o15.delete()
         eq_(len(ctr.obsels), 3)
         eq_(get_custom_state(ctr, 'passed_maxtime'), True)
 
         self.log.info(">non-monotonic change: removing o25")
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o25.uri, None, None))
-            editable.remove((None, None, o25.uri))
+        o25.delete()
         eq_(len(ctr.obsels), 3)
         eq_(get_custom_state(ctr, 'passed_maxtime'), True)
 
@@ -165,9 +161,7 @@ class TestFilter(KtbsTestCase):
         o15_19 = src.create_obsel("o15_19", otype, 15, 19)
         eq_(len(ctr.obsels), 8)
         eq_(get_custom_state(ctr, 'passed_maxtime'), True)
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o15_21.uri, None, None))
-            editable.remove((None, None, o15_21.uri))
+        o15_21.delete()
         eq_(len(ctr.obsels), 8)
         eq_(get_custom_state(ctr, 'passed_maxtime'), False)
 
@@ -233,18 +227,15 @@ class TestFilter(KtbsTestCase):
         eq_(get_custom_state(ctr, 'last_seen'), 35)
 
         self.log.info(">non-monotonic change: removing o15")
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o15.uri, None, None))
+        o15.delete()
         eq_(len(ctr.obsels), 8)
         eq_(get_custom_state(ctr, 'last_seen'), 35)
         self.log.info(">non-monotonic change: removing o25")
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o25.uri, None, None))
+        o25.delete()
         eq_(len(ctr.obsels), 8)
         eq_(get_custom_state(ctr, 'last_seen'), 35)
         self.log.info(">non-monotonic change: removing o35")
-        with src.obsel_collection.edit() as editable:
-            editable.remove((o35.uri, None, None))
+        o35.delete()
         eq_(len(ctr.obsels), 7)
         eq_(get_custom_state(ctr, 'last_seen'), 30)
 
@@ -265,8 +256,16 @@ class TestFilter(KtbsTestCase):
         o30 = src.create_obsel("o30", otype, 30)
         eq_(len(ctr.obsels), 0)
 
-        count_relations = lambda: \
-            len(list(ctr.obsel_collection.state.triples((None, rtype.uri, None))))
+        def count_relations():
+            results = self.service.query("""
+                SELECT (COUNT(?x) as ?nr) {
+                  GRAPH ?obs { ?obs :hasTrace ?ctr. ?x m:rt ?y }
+                }
+                """,
+                initNs={'': KTBS, 'm': model.uri+"#"},
+                initBindings={'ctr': ctr.uri},
+            )
+            return int(next(iter(results))[0])
 
         o10 = src.create_obsel("o10", otype, 10, relations=[(rtype, o00)])
         eq_(len(ctr.obsels), 1)
@@ -322,15 +321,14 @@ class TestFusion(KtbsTestCase):
         o20 = src2.create_obsel("o20", otype, 0)
         eq_(len(ctr.obsels), 6)
 
-        with src1.obsel_collection.edit() as editable:
-            editable.remove((o10.uri, None, None))
+        o10.delete()
         eq_(len(ctr.obsels), 5)
 
-        with src2.obsel_collection.edit() as editable:
-            editable.remove((o21.uri, None, None))
+        o21.delete()
         eq_(len(ctr.obsels), 4)
         
 
+@SkipTest  #@skip("External method has not been upgraded in branch 'raphael'")
 class TestExternal(KtbsTestCase):
 
     def __init__(self):
@@ -391,15 +389,14 @@ class TestExternal(KtbsTestCase):
         o20 = src1.create_obsel("o20", otype, 0)
         eq_(len(ctr.obsels), 6)
 
-        with src1.obsel_collection.edit() as editable:
-            editable.remove((o10.uri, None, None))
+        o10.delete()
         eq_(len(ctr.obsels), 5)
 
-        with src1.obsel_collection.edit() as editable:
-            editable.remove((o21.uri, None, None))
+        o21.delete()
         eq_(len(ctr.obsels), 4)
 
 
+@SkipTest  #@skip("SPARQL method has not been upgraded in branch 'raphael'")
 class TestSparql(KtbsTestCase):
 
     def __init__(self):
@@ -464,12 +461,10 @@ class TestSparql(KtbsTestCase):
         o20 = self.src1.create_obsel("o20", self.otype1, 0)
         eq_(len(ctr.obsels), 6)
 
-        with self.src1.obsel_collection.edit() as editable:
-            editable.remove((o10.uri, None, None))
+        o10.delete()
         eq_(len(ctr.obsels), 5)
 
-        with self.src1.obsel_collection.edit() as editable:
-            editable.remove((o21.uri, None, None))
+        o21.delete()
         eq_(len(ctr.obsels), 4)
 
     def test_sparql_inherit_all(self):

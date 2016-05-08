@@ -93,7 +93,9 @@ class TestGeojsonObselsSerialization(KtbsTestCase):
             geodict['features'].append(f)
         geoRefSerialized = json.dumps(geodict)
 
-        geojsoncontent = serialize_geojson_trace_obsels(self.t1.obsel_collection.state, self.t1.obsel_collection)
+        geojsoncontent = serialize_geojson_trace_obsels(
+            self.t1.obsel_collection.get_state(),
+            self.t1.obsel_collection)
 
         res = "".join(geojsoncontent)
 

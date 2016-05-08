@@ -74,15 +74,15 @@ def monkeypatch_prepare_query():
     if not hasattr(_TEST_PREPARED_QUERY, "_original_args"):
         # monkey-patch 'prepare'
         original_prepareQuery = sparql_processor.prepareQuery
-        def monkeypatched_prepareQuery(queryString, initNS=None, base=None):
+        def monkeypatched_prepareQuery(queryString, initNs=None, base=None):
             """
             A monkey-patched version of the original prepareQuery,
             adding an attribute '_original_args' to the result.
             """
-            if initNS is None:
-                initNS = {}
-            ret = original_prepareQuery(queryString, initNS, base)
-            ret._original_args = (queryString, initNS, base)
+            if initNs is None:
+                initNs = {}
+            ret = original_prepareQuery(queryString, initNs, base)
+            ret._original_args = (queryString, initNs, base)
             return ret
         sparql_processor.prepareQuery = monkeypatched_prepareQuery
         LOG.info("monkey-patched rdflib.plugins.sparql.processor.prepareQuery")

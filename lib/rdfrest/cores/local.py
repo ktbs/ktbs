@@ -46,6 +46,7 @@ from weakref import WeakValueDictionary
 
 from os.path import exists
 from rdflib import Graph, plugin as rdflib_plugin, Namespace, RDF, RDFS, URIRef
+from rdflib.graph import ConjunctiveGraph
 from rdflib.store import Store
 from rdflib.compare import graph_diff
 
@@ -125,6 +126,9 @@ class Service(object):
         store = rdflib_plugin.get(store_type, Store)(config_str)
 
         self.store = store
+        cg = ConjunctiveGraph(store)
+        self.query = cg.query
+        self.update = cg.update
         self.class_map = class_map = {}
         for cls in classes:
             assert issubclass(cls, ILocalCore)

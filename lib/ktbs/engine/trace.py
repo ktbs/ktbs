@@ -29,7 +29,7 @@ from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
-from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse, \
+from rdfrest.util import cache_result, random_token, replace_node_sparse, \
     Diagnosis
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
@@ -38,7 +38,7 @@ from .resource import KtbsPostableMixin, METADATA
 from .trace_obsels import ComputedTraceObsels, StoredTraceObsels
 from ..api.trace import AbstractTraceMixin, StoredTraceMixin, ComputedTraceMixin
 from ..namespace import KTBS, KTBS_NS_URI
-from ..utils import extend_api, check_new
+from ..utils import extend_api
 
 
 LOG = getLogger(__name__)
@@ -199,6 +199,23 @@ class AbstractTrace(AbstractTraceMixin, InBase):
             with factory(new).edit(_trust=True) as editable:
                 editable.add((uri, KTBS.hasSource, new))
 
+    def _check_new_obsel(self, _, uri):
+        """
+        Return True if uri does not identify an obsel of that trace.
+
+        Not
+        :param _: ignore (for compatibility with `rdfrest.util.checknew`:func:
+        :param uri:
+        :type uri: `rdflib.URIRef`:class:
+        :return:
+        """
+        return not self.service.query("""
+                ASK { GRAPH ?obs { ?obs :hasTrace ?trace } }
+            """,
+            initNs={'': KTBS},
+            initBindings={ 'obs': uri, 'trace': self.uri },
+        ).askAnswer
+
 
 class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     """I provide the implementation of ktbs:StoredTrace .
@@ -299,7 +316,11 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 
         I check if the created resource exists in my obsel collection.
         """
-        return check_new(self.obsel_collection.get_state(), created)
+        return not self.service.query(
+            'ASK { GRAPH ?obs { ?obs :hasTrace ?trace } }',
+            initNs={"": KTBS},
+            initBindings={ 'obs': created, 'trace': self.uri },
+        ).askAnswer
 
     def post_graph(self, graph, parameters=None,
                    _trust=False, _created=None, _rdf_type=None):
@@ -307,35 +328,46 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
 
         I allow for multiple obsels to be posted at the same time.
         """
-        base = self.get_base()
-        post_single_obsel = super(StoredTrace, self).post_graph
-        binding = { "trace": self.uri }
         ret = []
-        candidates = [ i[0] for i in graph.query(_SELECT_CANDIDATE_OBSELS,
-                                                 initBindings=binding) ]
+        post_single_obsel = super(StoredTrace, self).post_graph
+        if _created is not None:
+            candidates = [_created]
+        else:
+            binding = { "trace": self.uri }
+            candidates = [ i[0] for i in graph.query(_SELECT_CANDIDATE_OBSELS,
+                                                     initBindings=binding) ]
         bnode_candidates = { i for i in candidates
                                if isinstance(i, BNode) }
-        with base.lock(self), self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
+        if len(candidates) != 1:
+            raise InvalidDataError("I don't support multiple obsels in a "
+                                   "single graph for the moment")
+        # TODO instead of raising the exception above, write actual function below
+        # for each individual obsel,
+        # we should store its CBD plus all the "contextual info" in the graph;
+        # the contextual info will therefore be duplicated in all obsels
+        extract_candidate_graph = lambda candidate, graph, prune: graph
+
+        with self.get_base().lock(self), \
+        self.obsel_collection.edit({"add_obsels_only":1}, _trust=True) as editable:
+            add_obsel_to_collection = self.obsel_collection._add_obsel
             for candidate in candidates:
                 if isinstance(candidate, BNode):
                     bnode_candidates.remove(candidate)
-                obs_graph = bounded_description(candidate, graph, prune=bnode_candidates)
-                for other in bnode_candidates:
-                    obs_graph.remove((candidate, None, other))
-                    obs_graph.remove((other, None, candidate))
+                obs_graph = extract_candidate_graph(candidate, graph, prune=bnode_candidates)
 
                 ret1 = post_single_obsel(obs_graph, parameters, _trust, candidate,
                                          KTBS.Obsel)
-                if ret1:
-                    assert len(ret1) == 1
-                    new_obs = ret1[0]
-                    ret.append(new_obs)
-                    if new_obs != candidate:
-                        replace_node_sparse(graph, candidate, new_obs)
+                assert len(ret1) == 1
+                new_obs = ret1[0]
+                ret.append(new_obs)
+                if new_obs != candidate:
+                    replace_node_sparse(graph, candidate, new_obs)
+                add_obsel_to_collection(new_obs, obs_graph, False)
 
-        assert not bnode_candidates, bnode_candidates
-        if not ret:
-            raise InvalidDataError("No obsel found in posted graph")
+            assert not bnode_candidates, bnode_candidates
+            if not ret:
+                raise InvalidDataError("No obsel found in posted graph")
+
         return ret
                 
     def get_created_class(self, rdf_type):

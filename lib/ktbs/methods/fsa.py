@@ -25,7 +25,7 @@ from fsa4streams.matcher import DIRECTORY as matcher_directory
 from fsa4streams.state import State
 from json import dumps
 from rdflib import Literal, RDF, URIRef, Graph
-from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
+from .abstract import AbstractMonosourceMethod, STRICT_MON
 from .utils import boolean_parameter, translate_node
 from ..engine.builtin_method import register_builtin_method_impl
 from ..namespace import KTBS
@@ -44,7 +44,7 @@ def match_obseltype(transition, event, token, fsa):
         RDF.type,
         URIRef(transition['condition'], fsa.source.model_uri)
     )
-    return triple in fsa.source_obsels_graph
+    return triple in fsa.current_obsel.state
 
 matcher_directory['obseltype'] = match_obseltype
 
@@ -65,7 +65,12 @@ def match_sparql_ask(transition, event, token, fsa):
         pred = URIRef(history[-1])
     else:
         pred = None
-    return fsa.source_obsels_graph.query(
+    # TODO make the query below safer
+    # for the moment, nothing guarantees that
+    # - the found triples are asserted by the corresponding obsels
+    # - the use will not use the query to access other part of the store,
+    #   for which he would not be authorized otherwise
+    return fsa.service.query(
         "ASK { %s }" % transition['condition'],
         initNs={"m": m_ns},
         initBindings={"?obs": URIRef(event), "?pred": pred},
@@ -103,7 +108,6 @@ class _FSAMethod(AbstractMonosourceMethod):
         """I implement :meth:`.abstract.AbstractMonosourceMethod.do_compute_obsels
         """
         source = computed_trace.source_traces[0]
-        source_obsels = source.obsel_collection
         target_obsels = computed_trace.obsel_collection
         last_seen = cstate["last_seen"]
         if last_seen is not None:
@@ -115,7 +119,9 @@ class _FSAMethod(AbstractMonosourceMethod):
             fsa._structure['default_matcher'] = "obseltype" # <- workaround
         fsa.source = source
         fsa.target = computed_trace
-        fsa.source_obsels_graph = source_obsels.state
+        fsa.service = computed_trace.service
+        # by setting those objects as attributes of fsa,
+        # we make them accessible to the matcher functions
 
         if monotonicity is STRICT_MON:
             LOG.debug("strictly temporally monotonic %s, reloading state", computed_trace)
@@ -130,14 +136,14 @@ class _FSAMethod(AbstractMonosourceMethod):
 
         source_uri = source.uri
         source_model_uri = source.model_uri
-        source_state = source_obsels.state
-        source_value = source_state.value
+        service_query = source.service.query
         target_uri = computed_trace.uri
         target_model_uri = computed_trace.model_uri
-        target_add_graph = target_obsels.add_obsel_graph
+        target_add_obsel = target_obsels._add_obsel
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
             for obs in source.iter_obsels(after=last_seen, refresh="no"):
+                fsa.current_obsel = obs # make it available to matchers
                 last_seen = obs
                 event = unicode(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
@@ -156,20 +162,32 @@ class _FSAMethod(AbstractMonosourceMethod):
                     new_obs_add = new_obs_graph.add
                     new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
                     new_obs_add((new_obs_uri, RDF.type, otype_uri))
-                    new_obs_add((new_obs_uri, KTBS.hasBegin, source_value(source_obsels[0], KTBS.hasBegin)))
-                    new_obs_add((new_obs_uri, KTBS.hasEnd, source_value(source_obsels[-1], KTBS.hasEnd)))
+
+                    results = service_query(""" SELECT ?b ?e {
+                        GRAPH ?first { ?first :hasBegin ?b }
+                        GRAPH ?last  { ?last  :hasEnd   ?e }
+                    }""", initNs={'': KTBS}, initBindings={
+                        'first': source_obsels[0],
+                        'last': source_obsels[-1],
+                    })
+                    begin, end = next(iter(results))
+                    new_obs_add((new_obs_uri, KTBS.hasBegin, begin))
+                    new_obs_add((new_obs_uri, KTBS.hasEnd, end))
                     for source_obsel in source_obsels:
                         new_obs_add((new_obs_uri, KTBS.hasSourceObsel, source_obsel))
 
                     attributes = state.get_attributes()
                     if attributes:
                         qvars = []
-                        qwhere = [ '?obs <{}> ?end .'.format(KTBS.hasEnd) ]
+                        qwhere = [ 'GRAPH ?obs {{ ?obs <{}> ?end }}' \
+                                       .format(KTBS.hasEnd) ]
                         for i, triple in enumerate(attributes):
                             var = '?v{}'.format(i)
                             qvars.append(var)
-                            qwhere.append('OPTIONAL {{?obs <{}> {} .}}'
-                                          .format(triple[1], var))
+                            qwhere.append(
+                                'OPTIONAL {{ GRAPH ?obs {{ ?obs <{}> {} }}}}'
+                                    .format(triple[1], var)
+                            )
                         query = ('SELECT {} {{'
                                  '\n{}\nVALUES (?obs) {{\n(<{}>)\n}}'
                                  '}} ORDER BY ?end')\
@@ -178,7 +196,7 @@ class _FSAMethod(AbstractMonosourceMethod):
                             '\n'.join(qwhere),
                             '>)\n(<'.join(source_obsels),
                             )
-                        results = source_state.query(query)
+                        results = service_query(query)
                         for i, triple in enumerate(attributes):
                             target_attr, _, aggr_func = triple
                             try:
@@ -188,9 +206,7 @@ class _FSAMethod(AbstractMonosourceMethod):
                             except Exception, ex:
                                 LOG.warn(ex.message)
 
-
-
-                    target_add_graph(new_obs_graph)
+                    target_add_obsel(new_obs_uri, new_obs_graph)
 
         cstate["last_seen"] = last_seen and unicode(last_seen.uri)
         cstate["tokens"] = fsa.export_tokens_as_dict()

@@ -135,8 +135,6 @@ class AbstractTraceMixin(InBaseMixin):
         timestamps and identifiers.
         """
         parameters = {}
-        filters = []
-        postface = ""
         if begin is not None:
             if isinstance(begin, Real):
                 pass # nothing else to do
@@ -145,7 +143,6 @@ class AbstractTraceMixin(InBaseMixin):
                     "datetime as begin is not implemented yet")
             else:
                 raise ValueError("Invalid value for `begin` (%r)" % begin)
-            filters.append("?b >= %s" % begin)
             parameters["minb"] = begin
         if end is not None:
             if isinstance(end, Real):
@@ -155,63 +152,47 @@ class AbstractTraceMixin(InBaseMixin):
                     "datetime as end is not implemented yet")
             else:
                 raise ValueError("Invalid value for `end` (%r)" % end)
-            filters.append("?e <= %s" % end)
             parameters["maxe"] = end
         if after is not None:
-            if not isinstance(after, ObselMixin):
-                raise ValueError("Invalid value for `after` (%r)" % after)
-            filters.append("?e > {2} || "
-                           "?e = {2} && ?b > {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
-                                after.uri, after.begin, after.end,
-            ))
+            if isinstance(after, ObselMixin):
+                after = after.uri
+            parameters['after'] = after
         if before is not None:
-            if not isinstance(before, ObselMixin):
-                raise ValueError("Invalid value for `before` (%r)" % before)
-            filters.append("?e < {2} || "
-                           "?e = {2} && ?b < {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
-                                before.uri, before.begin, before.end
-            ))
+            if isinstance(before, ObselMixin):
+                before = before.uri
+            parameters['before'] = before
         if reverse:
-            postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
-        else:
-            postface += "ORDER BY ?e ?b ?obs"
-        if bgp is None:
-            bgp = ""
-        else:
-            bgp = "%s" % bgp
+            parameters['reverse'] = ""
+        if bgp:
+            parameters['bgp'] = bgp
         if refresh:
             parameters['refresh'] = refresh
-        if not parameters:
-            parameters = None
-        if filters:
-            filters = "FILTER(%s)" % (" && ".join(filters))
-        else:
-            filters = ""
+
+        LOG.debug('iter_obsels parameters=%s', parameters)
 
         collection = self.obsel_collection
         collection.force_state_refresh(parameters)
         if isinstance(collection, OpportunisticObselCollection):
             obsels_graph = collection.get_state(parameters)
+            if reverse:
+                postface = "ORDER BY ?e ?b ?obs"
+            else:
+                postface = "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
+            result = obsels_graph.query("""
+                PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
+                SELECT ?obs WHERE {
+                    ?obs :hasTrace <%s> ; :hasBegin ?b ; :hasEnd ?e .
+                } %s
+                """ % (self.uri, postface))
+            for tuple in result:
+                yield ObselProxy(tuple[0], collection, obsels_graph, parameters)
         else:
             # we have the raw resource instead, so we access the whole graph
             # (pylint does not know that, hence the directive below)
-            obsels_graph = collection.state #pylint: disable=E1101
-        query_str = """
-            SELECT ?b ?e ?obs WHERE {
-                ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e .
-                %s
-                %s
-            } %s
-        """ % (self.uri, filters, bgp, postface)
-        tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
-        for _, _, obs_uri in tuples:
-            types = obsels_graph.objects(obs_uri, RDF.type)
-            cls = get_wrapped(ObselProxy, types)
-            yield cls(obs_uri, collection, obsels_graph, parameters)
+            result = self.service.query(
+                collection._make_obsel_query(parameters)) #pylint: disable=E1101
+            for tuple in result:
+                yield self.factory(tuple[0])
 
     def iter_source_traces(self):
         """

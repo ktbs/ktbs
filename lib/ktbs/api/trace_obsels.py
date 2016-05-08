@@ -40,11 +40,19 @@ class AbstractTraceObselsMixin(ICore):
 
     @property
     @cache_result
+    def trace_uri(self):
+        """I return the trace owning this obsel collection.
+        """
+        graph = self.get_state({'limit': 0})
+        return graph.value(None, KTBS.hasObselCollection, self.uri)
+
+    @property
+    @cache_result
     def trace(self):
         """I return the trace owning this obsel collection.
         """
-        global _TYPECONV
-        trace_uri = self.state.value(None, KTBS.hasObselCollection, self.uri)
+        graph = self.get_state({'limit': 0})
+        trace_uri = graph.value(None, KTBS.hasObselCollection, self.uri)
         self_type = self.state.value(self.uri, RDF.type)
         trace_type = _TYPECONV[self_type]
         return self.factory(trace_uri, [trace_type])

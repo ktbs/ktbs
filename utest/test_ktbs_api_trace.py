@@ -86,11 +86,8 @@ class _TestIterObselsMixin(object):
                           self.t.list_obsels(bgp=bgp))
 
     def test_multiple_params(self):
-        bgp = """
-            ?obs a m:OT2.
-        """
-        assert_list_equal([self.o4, self.o2],
-                          self.t.list_obsels(begin=5, end=45, reverse=True, bgp=bgp))
+        assert_list_equal([self.o3, self.o4],
+                          self.t.list_obsels(begin=5, end=45, after=self.o2))
 
 class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
 

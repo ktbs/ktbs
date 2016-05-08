@@ -209,28 +209,35 @@ class TestKtbs(KtbsTestCase):
         o150 = trace.create_obsel("o150", myot, 150)
         eq_(get_change_monotonicity(trace, tags), 2)
         eq_(last_obsel(trace), o200.uri)
+        o150 = trace.create_obsel("o050", myot, 50)
+        eq_(get_change_monotonicity(trace, tags), 1)
+        eq_(last_obsel(trace), o200.uri)
         o300 = trace.create_obsel("o300", myot, 300)
         eq_(get_change_monotonicity(trace, tags), 3)
         eq_(last_obsel(trace), o300.uri)
         o350 = trace.create_obsel("o350", myot, 350, relations=[(myrt, o200)])
-        eq_(get_change_monotonicity(trace, tags), 2)
+        eq_(get_change_monotonicity(trace, tags), 3)
         eq_(last_obsel(trace), o350.uri)
         o375 = trace.create_obsel("o375", myot, 375, relations=[(myrt, o150)])
-        eq_(get_change_monotonicity(trace, tags), 1)
+        eq_(get_change_monotonicity(trace, tags), 3)
         eq_(last_obsel(trace), o375.uri)
         o400 = trace.create_obsel("o400", myot, 400,
                                   inverse_relations=[(o375, myrt)])
-        eq_(get_change_monotonicity(trace, tags), 2)
+        eq_(get_change_monotonicity(trace, tags), 3)
         eq_(last_obsel(trace), o400.uri)
         o450 = trace.create_obsel("o450", myot, 450,
                                   inverse_relations=[(o350, myrt)])
-        eq_(get_change_monotonicity(trace, tags), 2)
+        eq_(get_change_monotonicity(trace, tags), 3)
+
+        with o450.edit() as editable:
+            editable.add((o450.uri, RDFS.label, Literal("Modifying the last obsel")))
+        # any direct change to an obsel is considered non-monotonic
+        eq_(get_change_monotonicity(trace, tags), 0)
+
         eq_(last_obsel(trace), o450.uri)
         o45b = trace.create_obsel("o45b", myot, 450)
         eq_(get_change_monotonicity(trace, tags), 3)
-        with obsels.edit() as editable:
-            editable.remove((o45b.uri, None, None))
-            editable.remove((None, None, o45b.uri))
+        o45b.delete()
         eq_(get_change_monotonicity(trace, tags), 0)
 
         eq_(set([obsels.etag]), set(obsels.iter_etags()))
@@ -261,6 +268,7 @@ class TestKtbs(KtbsTestCase):
         trace.pseudomon_range = 200
         eq_(get_change_monotonicity(trace, tags), 0)
 
+    @unittest.skip("Multiple obsels in a single graph not supported yet in branch 'raphael'")
     def test_post_multiple_obsels(self):
         base = self.my_ktbs.create_base()
         model = base.create_model()
@@ -337,6 +345,7 @@ class TestKtbs(KtbsTestCase):
         eq_(obsN.subject, "alice")
         eq_(obsN.obsel_type, otypeN)
 
+    @unittest.skip("Multiple obsels in a single graph not supported yet in branch 'raphael'")
     def test_post_multiple_bnode_obsels_w_relations(self):
         base = self.my_ktbs.create_base()
         model = base.create_model()
@@ -843,9 +852,9 @@ def last_obsel(trace):
     obsels = trace.obsel_collection
     values = list(obsels.metadata.objects(obsels.uri, METADATA.last_obsel))
     if values:
-        assert len(values) == 1
-        ends = list(obsels.state.objects(values[0], KTBS.hasEnd))
-        assert len(ends) == 1
+        assert len(values) == 1, len(values)
+        links = list(obsels._graph.objects(values[0], KTBS.hasTrace))
+        assert len(links) == 1, len(links)
         return values[0]
     else:
         return None

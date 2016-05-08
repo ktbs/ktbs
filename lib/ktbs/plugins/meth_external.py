@@ -28,6 +28,7 @@ from rdflib import Literal, Graph, URIRef
 from rdfrest.util import Diagnosis
 from rdfrest.exceptions import ParseError
 from subprocess import Popen, PIPE
+from warnings import warn
 
 from ktbs.methods.interface import IMethod
 from ktbs.methods.utils import replace_obsels
@@ -115,7 +116,10 @@ class _ExternalMethod(IMethod):
                             format=rdfformat)
         except Exception, exc:
             diag.append(str(exc))
-        replace_obsels(computed_trace, raw_graph)
+
+        warn("Extrenal method currently does nothing")
+        # TODO rewrite this function now that every obsel has its own graph
+        #replace_obsels(computed_trace, raw_graph)
 
         return diag
 

@@ -31,6 +31,10 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
     Except for that, no processing or verification is done on raw_graph,
     so it must be valid.
     """
+    raise NotImplemented()
+    # IMPORTANT the code below is not uptodate anymore,
+    # it still relies on the obsels being entirely stored in the obsel collection
+
     obsels = computed_trace.obsel_collection
     rg_add = raw_graph.add
     ct_uri = computed_trace.uri
@@ -88,4 +92,57 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=N
 
 def boolean_parameter(value):
     return value.strip().lower() not in { "false", "no", "0" }
+
+def update_obsel_relations(service, obsels):
+    """
+    For each provided obsel,
+    remove relations to/from obsels of the source(s) trace(s),
+    and replace them (when possible)
+    with a reference to the corresponding obsel in the computed trace.
+
+    :param obsels: a list of URIref's
+    """
+    values = "> <".join(obsels)
+    service.update("""
+        DELETE {
+            GRAPH ?cob { ?s ?p ?o }
+        }
+        WHERE {
+            GRAPH ?cob { ?cob :hasTrace ?ctr }
+            { GRAPH ?cob { ?cob ?p ?sob } BIND(?cob AS ?s) BIND(?sob AS ?o)
+              FILTER(?p != :hasSourceObsel) }
+            UNION
+            { GRAPH ?cob { ?sob ?p ?cob } BIND(?sob AS ?s) BIND(?cob AS ?o) }
+            GRAPH ?sob { ?sob :hasTrace ?str }
+            GRAPH ?ctr { ?ctr :hasSource ?str }
+
+            VALUES ?cob { <%s> }
+        }
+    """ % values, initNs={'': KTBS})
+    service.update("""
+        INSERT {
+            GRAPH ?cob1 { ?s ?p ?o }
+        }
+        WHERE {
+            {
+              GRAPH ?cob1 { ?cob1 :hasTrace ?ctr ; :hasSourceObsel ?sob1 }
+              GRAPH ?cob2 { ?cob2 :hasTrace ?ctr ; :hasSourceObsel ?sob2 }
+              GRAPH ?sob1 { ?sob1 ?p ?sob2 } BIND(?cob1 AS ?s) BIND(?cob2 AS ?o)
+            } UNION {
+              GRAPH ?cob1 { ?cob1 :hasTrace ?ctr ; :hasSourceObsel ?sob1 }
+              GRAPH ?cob2 { ?cob2 :hasTrace ?ctr ; :hasSourceObsel ?sob2 }
+              GRAPH ?sob1 { ?sob2 ?p ?sob1 } BIND(?cob2 AS ?s) BIND(?cob1 AS ?o)
+            }
+            VALUES ?cob1 { <%s> }
+
+            # NB: in the two clauses of the UNION above,
+            # the two first lines are identifical.
+            # However, factoring them out of the UNION does not work:
+            # the BIND clauses inside the UNION do not "know" ?cob1 or ?cob2 anymore.
+            #
+            # I am not sure whether this is a bug in rdflib or a correct behaviour,
+            # but I don't have the time to inverstigate it further.
+        }
+    """ % values, initNs={'': KTBS})
+    # TODO merge the two queries above into a single one once issue #633 is fixed in rdflib
 

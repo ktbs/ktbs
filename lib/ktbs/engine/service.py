@@ -24,8 +24,7 @@ from os import getpid
 from rdflib import Graph, RDF, URIRef, Literal
 
 from rdfrest.cores.local import Service
-from rdfrest.util import parent_uri
-from .builtin_method import get_builtin_method_impl, iter_builtin_method_impl
+from .builtin_method import iter_builtin_method_impl
 from .base import Base
 from .data_graph import DataGraph
 from .ktbs_root import KtbsRoot
@@ -39,6 +38,10 @@ from ..config import get_ktbs_configuration
 from .. import __version__ as ktbs_version
 from .. import __commitno__ as ktbs_commit
 import ktbs.serpar
+
+ktbs.serpar # just to remove the 'unused import warning'
+# NB: serpar needs to be imported in order to register default parsers and serializers
+
 
 
 # make ktbs:/ URIs use relative, query, fragments
@@ -91,6 +94,9 @@ def make_ktbs(root_uri=None, repository=None, create=None):
     assert isinstance(ret, KtbsRoot)
     return ret
 
+# TODO class KtbsService is not really needed anymore,
+# everything could be handled by make_ktbs now
+# (rename it to make_ktbs_service?)
 
 class KtbsService(Service):
     """The KTBS service.
@@ -114,6 +120,7 @@ class KtbsService(Service):
                     DataGraph,
                     KtbsRoot,
                     Method,
+                    Obsel,
                     StoredTrace,
                     StoredTraceObsels,
                     TraceModel,
@@ -134,21 +141,6 @@ class KtbsService(Service):
                        KTBS.hasVersion,
                        Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
-    def get(self, uri, rdf_types=None, _no_spawn=False):
-        """I override :meth:`rdfrest.cores.local.Service.get`
-
-        If the original implementation returns None, I try to make an Obsel.
-        """
-        ret = super(KtbsService, self).get(uri, rdf_types, _no_spawn)
-        if ret is None:
-            parent = super(KtbsService, self).get(URIRef(parent_uri(uri)), None,
-                                                  _no_spawn)
-            if parent is not None \
-            and parent.RDF_MAIN_TYPE in (KTBS.StoredTrace, KTBS.ComputedTrace):
-                assert rdf_types is None or KTBS.Obsel in rdf_types, rdf_types
-                ret = Obsel(parent, uri)
-        return ret
-            
     @classmethod
     def init_ktbs(cls, service):
         """I populate the root resource's graph of a new service.
@@ -158,5 +150,3 @@ class KtbsService(Service):
         graph.add((root_uri, RDF.type, KTBS.KtbsRoot))
         KtbsRoot.create(service, root_uri, graph)
 
-# unused import #pylint: disable=W0611
-# ensures registration of parsers/serializers 

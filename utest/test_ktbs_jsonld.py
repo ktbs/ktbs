@@ -1066,7 +1066,7 @@ class TestJsonObsels(KtbsTestCase):
 
     def test_empty_obsels(self):
         json_content = "".join(serialize_json_trace_obsels(
-            self.t1.obsel_collection.state,
+            self.t1.obsel_collection.get_state(),
             self.t1.obsel_collection))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -1086,7 +1086,7 @@ class TestJsonObsels(KtbsTestCase):
     def test_populated_obsels(self):
         self.populate()
         json_content = "".join(serialize_json_trace_obsels(
-            self.t1.obsel_collection.state,
+            self.t1.obsel_collection.get_state(),
             self.t1.obsel_collection))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -1176,7 +1176,7 @@ class TestJsonObsels(KtbsTestCase):
             'end': 3000,
             'subject': 'bar',
             'm:at2': 42,
-            'm:rt1': { '@id': 'o3', 'hasTrace': './' },
+            'm:rt1': { '@id': 'o3' },
         })
         assert_roundtrip(json_content, self.o2)
 
@@ -1195,9 +1195,6 @@ class TestJsonObsels(KtbsTestCase):
             'begin': 3000,
             'end': 4000,
             'm:at1': 'hello world',
-            '@reverse': {
-                'm:rt1': { '@id': 'o2', 'hasTrace': './' },
-            },
         })
         assert_roundtrip(json_content, self.o3)
 
@@ -1216,6 +1213,7 @@ class TestJsonObsels(KtbsTestCase):
         assert isinstance(newobsel, ObselMixin)
         assert newobsel.obsel_type == self.ot1, newobsel.obsel_type
 
+    @skip("Multiple obsels in a single graph not supported yet in branch 'raphael'")
     def test_post_multiple_obsels(self):
         """
         Test posting several obsels at once

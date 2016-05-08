@@ -21,12 +21,12 @@ Implementation of the fusion builtin methods.
 from json import dumps as json_dumps, loads as json_loads
 import logging
 
-from rdflib import Literal, URIRef
+from rdflib import Graph, Literal, URIRef
 
 from rdfrest.util.iso8601 import ParseError
-from rdfrest.util import Diagnosis
+from rdfrest.util import Diagnosis, replace_node_dense
 from .interface import IMethod
-from .utils import translate_node
+from .utils import translate_node, update_obsel_relations
 from ..namespace import KTBS
 from ..engine.builtin_method import register_builtin_method_impl
 from ..engine.resource import METADATA
@@ -125,9 +125,10 @@ class _FusionMethod(IMethod):
         
         last_seens = cstate["last_seens"]
         target_uri = computed_trace.uri
-        with target_obsels.edit(_trust=True) as editable:
-            target_contains = editable.__contains__
-            target_add = editable.add
+        target_contains = target_obsels._graph.__contains__
+        target_add_obsel = target_obsels._add_obsel
+        with target_obsels.edit({"add_obsels_only":1}, _trust=True):
+            new_obsels = []
             for src in computed_trace.source_traces:
                 src_uri = src.uri
                 src_triples = src.obsel_collection.get_state({"refresh":"no"}).triples
@@ -143,8 +144,11 @@ class _FusionMethod(IMethod):
                         continue # already added
 
                     LOG.debug("--- keeping %s", obs)
-                    target_add((new_obs_uri, KTBS.hasTrace, target_uri))
-                    target_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
+                    new_obs_graph = Graph()
+                    new_obs_add = new_obs_graph.add
+
+                    new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
+                    new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
 
                     for _, pred, obj in src_triples((obs.uri, None, None)):
                         if pred == KTBS.hasTrace \
@@ -152,15 +156,30 @@ class _FusionMethod(IMethod):
                             continue
                         new_obj = translate_node(obj, computed_trace, src_uri,
                                                  True)
-                        target_add((new_obs_uri, pred, new_obj))
+                        new_obs_add((new_obs_uri, pred, new_obj))
                     for subj, pred, _ in src_triples((None, None, obs.uri)):
                         if pred == KTBS.hasTrace \
                         or pred == KTBS.hasSourceObsel:
                             continue
                         new_subj = translate_node(subj, computed_trace, src_uri,
                                                   True)
-                        target_add((new_subj, pred, new_obs_uri))
-        
+                        new_obs_add((new_subj, pred, new_obs_uri))
+
+                    LOG.debug("--- keeping %s for %s", obs, target_uri)
+                    new_obs_graph = Graph()
+                    new_obs_graph += obs.state
+                    new_obs_graph.remove((obs.uri, KTBS.hasTrace, None))
+                    new_obs_graph.remove((obs.uri, KTBS.hasSourceObsel, None))
+                    replace_node_dense(new_obs_graph, obs.uri, new_obs_uri)
+                    new_obs_graph.add(
+                        (new_obs_uri, KTBS.hasTrace, target_uri))
+                    new_obs_graph.add(
+                        (new_obs_uri, KTBS.hasSourceObsel, obs.uri))
+
+                    target_add_obsel(new_obs_uri, new_obs_graph)
+                    new_obsels.append(new_obs_uri)
+
+            update_obsel_relations(computed_trace.service, new_obsels)
 
         computed_trace.metadata.set((computed_trace.uri,
                                      METADATA.computation_state,

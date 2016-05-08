@@ -159,7 +159,7 @@ def extsplit(path_info):
     else:
         return path_info[:dot], path_info[dot+1:]
 
-def make_fresh_uri(graph, prefix, suffix=""):
+def make_fresh_uri(graph, prefix, suffix="", check_new=check_new):
     """Creates a URIRef which is not in graph, with given prefix and suffix.
     """
     length = 2

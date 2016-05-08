@@ -21,6 +21,7 @@ from nose.tools import assert_raises
 from rdflib import RDF
 from rdflib.graph import Graph
 from rdflib.term import URIRef
+from unittest import skip
 
 from ktbs.engine.builtin_method import (
     register_builtin_method_impl, unregister_builtin_method_impl)
