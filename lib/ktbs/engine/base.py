@@ -120,21 +120,27 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
 
     ######## ILocalCore (and mixins) implementation  ########
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
         if parameters is not None:
+            to_check_again = None
             if method in ("get_state", "force_state_refresh"):
-                for key, val in parameters.items():
+                for key in to_check:
+                    val = parameters[key]
                     if key == 'prop':
                         parameters[key] = val.split(',')
                     else:
-                        raise InvalidParametersError("Unsupported parameters %s"
-                                                     % key)
-                parameters = None  # hide all parameters for super call below
-        super(Base, self).check_parameters(parameters, method)
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
+            else:
+                to_check_again = to_check
+            if to_check_again:
+                super(Base, self).check_parameters(to_check_again, parameters,
+                                                   method)
 
     def ack_delete(self, parameters):
         """I override :meth:`rdfrest.util.EditableCore.ack_delete`.

@@ -180,7 +180,7 @@ class GraphPostableMixin(ILocalCore):
         only executed in `__debug__` mode, this should obviously not be relied
         upon).
         """
-        self.check_parameters(parameters, "post_graph")
+        self.check_parameters(parameters, parameters, "post_graph")
 
         if _created:
             created = _created

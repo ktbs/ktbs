@@ -172,7 +172,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             or "refresh" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
-            self.check_parameters(parameters, "get_state")
+            self.check_parameters(parameters, parameters, "get_state")
             graph = Graph(identifier=self.uri)
             graph_add = graph.add
 
@@ -263,14 +263,16 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 
     ######## ILocalCore (and mixins) implementation  ########
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
-        if parameters is not None:
+        if to_check is not None:
+            to_check_again = None
             if method in ("get_state", "force_state_refresh"):
-                for key, val in parameters.items():
+                for key in to_check:
+                    val = parameters[key]
                     if key in ("minb", "maxb", "mine", "maxe", "limit", "offset"):
                         try:
                             parameters[key] = int(val)
@@ -298,18 +300,23 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                     elif key == "reverse":
                         pass
                     else:
-                        raise InvalidParametersError("Unsupported parameters %s"
-                                                     % key)
-                parameters = None # hide all parameters for super call below
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
             elif method in ("edit"):
-                for key, val in parameters.items():
+                for key in to_check:
                     if "add_obsels_only":
                         pass
                     else:
-                        raise InvalidParametersError("Unsupported parameters %s"
-                                                     % key)
-                parameters = None # hide all parameters for super call below
-        super(AbstractTraceObsels, self).check_parameters(parameters, method)
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
+            else:
+                to_check_again = to_check
+            if to_check_again:
+                super(AbstractTraceObsels, self).check_parameters(to_check_again,
+                                                                  parameters,
+                                                                  method)
     
     def prepare_edit(self, parameters):
         """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
@@ -372,7 +379,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # this should only be set of the owning trace
             super(AbstractTraceObsels, self).delete(None, _trust)
         else:
-            self.check_parameters(parameters, "delete")
+            self.check_parameters(parameters, parameters, "delete")
             with self.edit(_trust=True) as editable:
                 editable.remove((None, None, None))
                 self.init_graph(editable, self.uri, self.trace.uri)

@@ -77,7 +77,7 @@ class _ObselImpl(ILocalCore):
         """
         # TODO LATER return a state that automatically follows changes in
         # self.home?
-        self.check_parameters(parameters, "get_state")
+        self.check_parameters(parameters, parameters, "get_state")
         ret = self._state
         if ret is None:
             ret = self._state = get_obsel_bounded_description(
@@ -91,7 +91,7 @@ class _ObselImpl(ILocalCore):
         """I override `.cores.hosted.HostedCore.force_state_refresh`.
         """
         # nothing to do, there is no cache involved
-        self.check_parameters(parameters, "force_state_refresh")
+        self.check_parameters(parameters, parameters, "force_state_refresh")
         if self._state is not None:
             self._state.remove((None, None, None))
             bounded_description(self.uri, self.home.get_state(), self._state)
@@ -154,7 +154,7 @@ class _ObselImpl(ILocalCore):
     # so if the graph also contains ktbs:hasTrace pointing to a literal,
     # this will violate the cardinality constraint.
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`ILocalCore.check_parameters`.
 
         I accepts no parameter (not even an empty query string).
@@ -163,13 +163,9 @@ class _ObselImpl(ILocalCore):
         # argument 'method' is not used #pylint: disable=W0613
 
         # Do NOT call super method, as this is the base implementation.
-        if parameters is not None:
-            if not parameters:
-                raise InvalidParametersError("Unsupported parameters "
-                                             "(empty dict instead of None)")
-            else:
-                raise InvalidParametersError("Unsupported parameter(s):" +
-                                             ", ".join(parameters.keys()))
+        if to_check:
+            raise InvalidParametersError("Unsupported parameter(s):" +
+                                         ", ".join(to_check))
 
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,

@@ -100,10 +100,10 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
         new_graph.add((uri, EXAMPLE.number_of_tags, Literal(tag_nb)))
         super(Item2Implementation, cls).create(service, uri, new_graph)
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I accept the accepted parameters"""
         if parameters:
-            if "notallowed" in parameters:
+            if to_check and "notallowed" in to_check:
                 raise MethodNotAllowedError("Parameter notallowed was used")
             parameters.pop("valid", None)
             # we do not pop redirect_to, as it is handled by get_state
@@ -111,6 +111,7 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
         if not parameters:
             parameters = None
         super(Item2Implementation, self).check_parameters(parameters,
+                                                          parameters,
                                                           method)
 
     def get_state(self, parameters=None):

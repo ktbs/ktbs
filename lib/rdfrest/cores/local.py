@@ -294,19 +294,24 @@ class ILocalCore(ICore):
 
     """
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I checks whether parameters are acceptable.
+        I may also alter parameters to normalize or format its values.
 
-        This hook method is to be called whenever a method from
+        This hook method is called whenever a method from
         :class:`.interface.ICore` is invoked, and raises an
         `~.exceptions.InvalidParametersError`:class: if the given
         parameters are not acceptable for the given method.
 
-        NB: an empty dict means that an empty query string has been appended
-        to the original URI (trailing ``?``), while None means no query string
-        at all.
+        When a subclass does not recognizes some of the parameters,
+        it must call the superclass's `check_parameters`, including *only*
+        the names of the unrecognized parameters in `to_check`.
+        On the other hand, if it exhausts the parameter list,
+        the subclass is not required to call the superclass's `check_parameters`.
 
-        :param parameters: the query string parameters passed to `edit` if any
+        :param to_check:   the names if the parameters to check
+        :type  to_check:   iterable of keys existing in `parameters`, or None
+        :param parameters: the dict containing the parameters
         :type  parameters: dict or None
         :param method:     the name of the calling python method
         :type  method:     unicode
@@ -552,7 +557,7 @@ class LocalCore(ILocalCore):
         The returned graph may have an attribute `redirected_to`, which is
         used to inform :mod:`http_server` that it should perform a redirection.
         """
-        self.check_parameters(parameters, "get_state")
+        self.check_parameters(parameters, parameters, "get_state")
         if __debug__:
             return self._readonly_graph
         else:
@@ -563,7 +568,7 @@ class LocalCore(ILocalCore):
 
         I will first invoke :meth:`check_parameters`.
         """
-        self.check_parameters(parameters, "force_state_refresh")
+        self.check_parameters(parameters, parameters, "force_state_refresh")
         # nothing to do, there is no cache involved
 
     def edit(self, parameters=None, clear=False, _trust=False):
@@ -595,20 +600,16 @@ class LocalCore(ILocalCore):
     # ILocalCore implementation
     #
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`ILocalCore.check_parameters`.
 
-        I accepts no parameter (not even an empty query string).
+        I accepts no parameter.
         """
         # self is not used #pylint: disable=R0201
         # argument 'method' is not used #pylint: disable=W0613
-        if parameters is not None:
-            if parameters:
-                raise InvalidParametersError("Unsupported parameter(s):" +
-                                             ", ".join(parameters.keys()))
-            else:
-                raise InvalidParametersError("Unsupported parameters "
-                                             "(empty dict instead of None)")
+        if to_check:
+            raise InvalidParametersError("Unsupported parameter(s):" +
+                                         ", ".join(to_check))
 
 
     @classmethod
@@ -723,7 +724,7 @@ class EditableCore(LocalCore):
               detail in the commented source).
 
         """
-        self.check_parameters(parameters, "edit")
+        self.check_parameters(parameters, parameters, "edit")
         if parameters is not None:
             parameters = parameters.copy()
             # protects us agains changes to 'parameters' inside 'with' statement
@@ -744,7 +745,7 @@ class EditableCore(LocalCore):
         After calling this method, the resource object is unsusable and should
         be *immediatetly discarded*.
         """
-        self.check_parameters(parameters, "delete")
+        self.check_parameters(parameters, parameters, "delete")
         diag = self.check_deletable(parameters)
         if not diag:
             raise CanNotProceedError(unicode(diag))
