@@ -240,8 +240,7 @@ class AbstractTraceMixin(InBaseMixin):
         """
         factory = self.factory
         for uri in self.state.objects(self.uri, KTBS.hasContext):
-            ctx = factory(uri, [KTBS.DataGraph])
-            assert isinstance(ctx, InBaseMixin)
+            ctx = factory(uri)
             yield ctx
 
     def add_source_trace(self, val):
