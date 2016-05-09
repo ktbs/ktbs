@@ -1049,8 +1049,11 @@ class TestJsonObsels(KtbsTestCase):
     def populate(self):
         # create obsel in wrong order, to check that they are serialized in
         # the correct order nonetheless
+        ex_foo = URIRef('http://example.org/Foo')
         self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, None,
-                                       {self.at1: "hello world" })
+                                       {self.at1: "hello world",
+                                        RDF.type: ex_foo,
+                                        })
         self.o2 = self.t1.create_obsel("o2", self.ot1, 2000, 3000, "bar",
                                        {self.at2: 42}, [(self.rt1, self.o3)])
         self.o1 = self.t1.create_obsel("o1", self.ot1,
@@ -1124,7 +1127,7 @@ class TestJsonObsels(KtbsTestCase):
                 },
                 {
                     '@id': 'o3',
-                    '@type': 'm:OT1',
+                    '@type': ['m:OT1', 'http://example.org/Foo'],
                     'begin': 3000,
                     'end': 4000,
                     'm:at1': 'hello world',
@@ -1191,7 +1194,7 @@ class TestJsonObsels(KtbsTestCase):
                 ],
             '@id': 'http://localhost:12345/b1/t1/o3',
             'hasTrace': './',
-            '@type': 'm:OT1',
+            '@type': ['m:OT1', 'http://example.org/Foo'],
             'begin': 3000,
             'end': 4000,
             'm:at1': 'hello world',

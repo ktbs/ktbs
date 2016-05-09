@@ -695,10 +695,13 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
 
             # handle special predicates
             if pred == _RDF_TYPE and not rev:
-                if obs_dict['@type'] is None:
+                at_type = obs_dict['@type']
+                if at_type is None:
                     obs_dict['@type'] = valconv_uri(other)
                 else:
-                    obs_dict['additionalType'].append(valconv_uri(other))
+                    if not type(at_type) is list:
+                        obs_dict['@type'] = at_type = [at_type]
+                    at_type.append(valconv_uri(other))
                 continue
             if pred == _KTBS_HAS_TRACE:
                 # ignored here, implied by the 'obsels' key in the parent dict
@@ -745,7 +748,6 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
 _OBSEL_TEMPLATE = OrderedDict([
     ('@id', None),
     ('@type', None),
-    ('additionalType', None),
     ('begin', None),
     ('beginDT', None),
     ('end', None),
@@ -790,7 +792,6 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     valconv = ValueConverter(trace_uri, { model_uri: "m" })
     valconv_uri = valconv.uri
     val2json = valconv.val2json
-
 
     otypes = [ valconv_uri(i)
                for i in obsel.state.objects(obsel.uri, RDF.type) ]
