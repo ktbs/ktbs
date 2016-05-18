@@ -344,9 +344,9 @@ def serialize_json_base(graph, base, bindings=None):
         item['@type'] = i.RDF_MAIN_TYPE[LEN_KTBS:]
 
         # base enrichment
-        comments = [
+        rdfs_comments = [
             valconv_lit(j) for j in graph.objects(i.uri, RDFS.comment) ]
-        if comments:
+        if rdfs_comments:
             if len(rdfs_comments) > 1: rdfs_comments = rdfs_comments[0]
             item['rdf:comments'] = rdfs_comments
 
