@@ -381,8 +381,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         else:
             self.check_parameters(parameters, parameters, "delete")
             with self.edit(_trust=True) as editable:
+                trace_uri = self.trace.uri
                 editable.remove((None, None, None))
-                self.init_graph(editable, self.uri, self.trace.uri)
+                self.init_graph(editable, self.uri, trace_uri)
 
     # TODO SOON implement check_new_graph on ObselCollection?
     # we should check that the graph only contains well formed obsels
