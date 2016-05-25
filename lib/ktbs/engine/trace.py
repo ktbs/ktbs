@@ -470,7 +470,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                     )
                 if not diag:
                     editable.add((self.uri, KTBS.hasDiagnosis,
-                                     Literal(str(diag))))
+                                     Literal(unicode(diag))))
 
 
     ######## Private method  ########

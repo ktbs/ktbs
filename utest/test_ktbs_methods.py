@@ -26,6 +26,7 @@ from ktbs.engine.resource import METADATA
 from ktbs.methods.fusion import LOG as FUSION_LOG
 from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS, KTBS_NS_URI
+from rdfrest.exceptions import CanNotProceedError
 
 from .test_ktbs_engine import KtbsTestCase, HttpKtbsTestCaseMixin
 
@@ -668,3 +669,39 @@ class TestSparql(KtbsTestCase):
                                             attributes={self.atype: "hoho"})
                 eq_(len(self.src1.obsels), 3)
                 eq_(len(ctr.obsels), 0)
+
+
+class TestIssue28(KtbsTestCase):
+    def __init__(self):
+        KtbsTestCase.__init__(self)
+
+    def setUp(self):
+        super(TestIssue28, self).setUp()
+        self.base = self.my_ktbs.create_base("b/")
+        self.model = self.base.create_model("m")
+        self.origin = "orig-abc"
+        self.src1 = self.base.create_stored_trace("s1/", self.model,
+                                                  origin=self.origin,
+                                                  default_subject="alice")
+
+    def test_diagnosis(self):
+        ctr1 = self.base.create_computed_trace(
+            "c1/", KTBS.sparql,
+            {
+                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                u"hà": u"foo",
+            }, [self.src1]
+        )
+        assert ctr1.diagnosis is not None
+
+
+    def test_obsel_collection(self):
+        ctr1 = self.base.create_computed_trace(
+            "c1/", KTBS.sparql,
+            {
+                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                u"hà": u"foo",
+            }, [self.src1]
+        )
+        assert_raises(CanNotProceedError,
+                      ctr1.obsel_collection.get_state)
