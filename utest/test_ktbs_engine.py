@@ -679,8 +679,8 @@ class TestKtbsSynthetic(KtbsTestCase):
         assert_equal(method2.get_parameter("command-line"), cmdline) # inherited
         method2.set_parameter("foo", "BAR")
         assert_equal(method2.get_parameter("foo"), "BAR")
-        with assert_raises(ValueError):
-            method2.set_parameter("command-line", "456789") # cannot set inherited
+        method2.set_parameter("command-line", "456789") # can override inherited
+        method2.set_parameter("command-line", None) # can remove override
         assert_equal(len(base.methods), 2)
         assert_equal(method1.used_by, [])
         assert_equal(method2.used_by, [])

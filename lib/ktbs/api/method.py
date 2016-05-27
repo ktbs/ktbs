@@ -63,9 +63,6 @@ class WithParametersMixin(object):
         """
         I set a parameter value.
         """
-        if key in self._get_inherited_parameters():
-            raise ValueError("Can not %s inherited parameter '%s'"
-                             % ((value is None) and "delete" or "set", key))
         parameter = None
         for i in self.state.objects(self.uri, KTBS.hasParameter):
             akey, _ = i.split("=", 1)
