@@ -631,6 +631,11 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
             ret = unicode(ret)
         return ret
 
+    def get_method_uri(self):
+        """I return the URI of the method used by this computed trace
+        """
+        return self.state.value(self.uri, KTBS.hasMethod)
+
     ######## Private methods ########
 
     def _get_inherited_parameters(self):

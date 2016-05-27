@@ -475,8 +475,6 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
 
     ######## Private method  ########
 
-    __method_impl = None
-
     def _ack_source_change(self, old_source_uris, new_source_uris):
         """I override :meth:`AbstractTrace._ack_source_change`
 
@@ -513,23 +511,31 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         obsels = self.obsel_collection
         obsels.metadata.add((obsels.uri, METADATA.dirty, Literal("yes")))
 
+    __method_impl = None
+    # do NOT use @cache_result here, as the result may change over time
+
     @property
     def _method_impl(self):
         """I hold the python object implementing my method.
         """
-        ret = self.__method_impl
-        if ret is None:
-            met = self.get_method()
-            while True:
+        if self.__method_impl is None:
+            uri = self.get_method_uri()
+            ret = get_builtin_method_impl(uri)
+
+            while ret is None:
+                met = universal_factory(uri, [KTBS.Method])
                 try:
-                    par = getattr(met, "parent", None)
+                    parent_uri = getattr(met, "parent_uri", None)
                 except:
-                    # met.uri might be unreachable
-                    par = None
-                if par is not None:
-                    met = par
+                    parent_uri = None
+                if parent_uri:
+                    uri = parent_uri
+                    ret = get_builtin_method_impl(uri)
                 else:
-                    break
-            uri = getattr(met, "uri", None)
-            ret = self.__method_impl = get_builtin_method_impl(uri, True)
+                    ret = get_builtin_method_impl(uri, True)
+                    # the above will always return a method (possibly fake)
+                    # so we will exit the loop
+            self.__method_impl = ret
+        else:
+            ret = self.__method_impl
         return ret

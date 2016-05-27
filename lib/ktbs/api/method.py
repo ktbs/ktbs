@@ -139,6 +139,12 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
 
     ######## Extension to the abstract kTBS API  ########
 
+    def get_parent_uri(self):
+        """
+        I return the URI of the inherited method, if any.
+        """
+        return self.state.value(self.uri, KTBS.hasParentMethod)
+
     def iter_used_by(self):
         """I iter over all computed traces using this method
         """
