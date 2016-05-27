@@ -406,10 +406,10 @@ def serialize_json_method(graph, method, bindings=None):
         CONTEXT_URI, method.uri, valconv_uri(coerce_to_uri(method.parent))
     )
 
-    own_params = method.iter_parameters(False)
+    own_params = method.iter_parameters_with_values(False)
     yield u",".join(
-        u"\n        %s" % dumps("%s=%s" % (key, method.get_parameter(key)))
-        for key in own_params
+        u"\n        %s" % dumps("%s=%s" % item)
+        for item in own_params
     ) + "]"
 
     used_by = list(method.state.subjects(KTBS.hasMethod, method.uri))
@@ -585,13 +585,13 @@ def serialize_json_trace(graph, trace, bindings=None):
     if hasattr(trace, "method"):
         yield u""",\n    "hasMethod": "%s" """ \
           % valconv_uri(coerce_to_uri(trace.method))
-        own_params = trace.list_parameters(False)
+        own_params = trace.list_parameters_with_values(False)
         if own_params:
             yield u""",\n    "parameter": [%s\n    ]""" % (
                 ",".join(
                     u"\n        %s"
-                    % dumps("%s=%s" % (key, trace.get_parameter(key)))
-                    for key in own_params
+                    % dumps("%s=%s" % item)
+                    for item in own_params
                 )
             )
 
