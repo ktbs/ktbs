@@ -57,7 +57,14 @@ class WithParametersMixin(object):
         """
         I return a parameter value.
         """
-        return self.parameters_as_dict.get(key)
+        # we first seach in local parameters...
+        for i in self.state.objects(self.uri, KTBS.hasParameter):
+            akey, value = i.split("=", 1)
+            if akey == key:
+                return value
+        # ... then fetch inherited parameters only if necessary
+        else:
+            return self._get_inherited_parameters().get(key)
 
     def set_parameter(self, key, value):
         """
@@ -101,6 +108,16 @@ class WithParametersMixin(object):
             key, value = parameter.split("=", 1)
             parameters[key] = value
         return parameters
+
+    def iter_parameters_with_values(self, include_inherited=True):
+        """I iter over the parameter of this resource.
+        """
+        if include_inherited:
+            for i in self.parameters_as_dict.iter_items():
+                yield i
+        else:
+            for parameter in self.state.objects(self.uri, KTBS.hasParameter):
+                yield tuple(parameter.split("=", 1))
 
 
 @register_wrapper(KTBS.Method)
