@@ -23,6 +23,8 @@ on the server, with the priviledges of the user running kTBS.
 Therefore, it is mostly intended for single-user localhost instances of kTBS.
 """
 import logging
+import traceback
+
 from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.util import Diagnosis
@@ -114,7 +116,8 @@ class _ExternalMethod(IMethod):
             raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
                             format=rdfformat)
         except Exception, exc:
-            diag.append(str(exc))
+            LOG.warn(traceback.format_exp())
+            diag.append(unicode(exc))
         replace_obsels(computed_trace, raw_graph)
 
         return diag
@@ -149,10 +152,12 @@ class _ExternalMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except ValueError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
                 except ParseError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True

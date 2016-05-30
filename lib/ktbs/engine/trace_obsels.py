@@ -18,6 +18,7 @@
 """
 I provide the implementation of kTBS obsel collections.
 """
+import traceback
 from itertools import chain
 from logging import getLogger
 
@@ -543,6 +544,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
                 try:
                     diag = impl.compute_obsels(trace, refresh_param >= 2)
                 except BaseException, ex:
+                    LOG.warn(traceback.format_exc())
                     diag = Diagnosis(
                         "exception raised while computing obsels",
                         [ex.message]

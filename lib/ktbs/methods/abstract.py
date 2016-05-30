@@ -23,7 +23,7 @@ It handles
 
 TODO: document how to use this
 """
-
+import traceback
 from json import dumps as json_dumps, loads as json_loads
 import logging
 
@@ -213,6 +213,7 @@ class AbstractMonosourceMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except Exception as e:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s.\n"
                                 "    Reason: %s"
                                 % (key, val, e.message))

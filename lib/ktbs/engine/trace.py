@@ -18,6 +18,7 @@
 """
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
+import traceback
 from datetime import datetime
 from logging import getLogger
 
@@ -464,6 +465,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                 try:
                     diag = self._method_impl.compute_trace_description(self)
                 except BaseException, ex:
+                    LOG.warn(traceback.format_exc())
                     diag = Diagnosis(
                         "exception raised while computing trace description",
                         [ex.message]

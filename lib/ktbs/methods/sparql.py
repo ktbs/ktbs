@@ -18,6 +18,8 @@
 """
 Implementation of the sparql builtin methods.
 """
+import traceback
+
 from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.util import Diagnosis
@@ -30,6 +32,10 @@ from .interface import IMethod
 from .utils import replace_obsels
 from ..namespace import KTBS
 from ..engine.builtin_method import register_builtin_method_impl
+
+import logging
+
+LOG = logging.getLogger(__name__)
 
 class _SparqlMethod(IMethod):
     """I implement the sparql builtin method.
@@ -78,7 +84,8 @@ class _SparqlMethod(IMethod):
             result = data.query(sparql, base=source.obsel_collection.uri).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except Exception, exc:
-            diag.append(str(exc))
+            LOG.warn(traceback.format_exc())
+            diag.append(unicode(exc))
 
         return diag
 
@@ -116,10 +123,12 @@ class _SparqlMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except ValueError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
                 except ParseError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True

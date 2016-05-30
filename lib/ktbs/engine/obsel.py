@@ -18,6 +18,8 @@
 """
 I provide the implementation of ktbs:Obsel .
 """
+import traceback
+
 from rdflib import Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 import re
@@ -34,7 +36,8 @@ from ..namespace import KTBS, RDF
 from ..utils import SKOS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
 
-
+import logging
+LOG = logging.getLogger(__name__)
 
 # pylint is confused by a module named time (as built-in module)
     
@@ -247,6 +250,7 @@ class _ObselImpl(ILocalCore):
                 diag.append("End timestamp is before begin timestamp [%s,%s]"
                             % (begin, end))
         except ValueError:
+            LOG.info(traceback.format_exc())
             diag.append("Can not convert timestamps to int: [%s,%s]"
                         % (begin, end))
 
