@@ -68,6 +68,7 @@ class ValueConverter(object):
 
     def uri(self, uri, _len_ktbs=LEN_KTBS):
         """Convert URI"""
+        print "===", self._base, uri
         if uri.startswith(KTBS_NS_URI):
             return uri[_len_ktbs:]
         for ns, prefix, len_ns in self._prefixes:
@@ -75,11 +76,16 @@ class ValueConverter(object):
                 return "%s:%s" % (prefix, uri[len_ns:])
         if self._base is not None:
             if uri.startswith(self._base_hash):
+                print "===", 1, uri[self._len_base:]
                 return uri[self._len_base:]
             if uri.startswith(self._dir):
+                print "===", 2, uri[self._len_dir:] or "./"
                 ret = uri[self._len_dir:]
+                if not ret or ret[0] == '#':
+                    ret = "./%s" % ret
                 return ret or "./"
             elif self._parent and uri.startswith(self._parent):
+                print "===", 3, "../%s" % uri[self._len_parent:]
                 return "../%s" % uri[self._len_parent:]
         return uri
 
@@ -576,8 +582,12 @@ def serialize_json_trace(graph, trace, bindings=None):
         yield ',\n    "traceEndDT": %s' % val2json(trace_end_dt)
     defsubject = trace.state.value(trace.uri, KTBS.hasDefaultSubject)
     if defsubject:
-        yield u""",\n    "defaultSubject": %s """ % \
-            val2json(defsubject)
+        if isinstance(defsubject, URIRef):
+            yield u""",\n    "hasDefaultSubject": "%s" """ % \
+                valconv_uri(defsubject)
+        else:
+            yield u""",\n    "defaultSubject": %s """ % \
+                val2json(defsubject)
     if trace.source_traces:
         sources = [ valconv_uri(coerce_to_uri(i))
                     for i in trace.source_traces ]
@@ -641,11 +651,10 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     """
     tobsels_dict = OrderedDict()
 
-    trace_uri = tobsels.trace.uri
     model_uri = tobsels.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
-    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv = ValueConverter(tobsels.uri, { model_uri: "m" })
     valconv_uri = valconv.uri
     val2jsonobj = valconv.val2jsonobj
 
@@ -719,8 +728,12 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
 
             pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
             new_val = val2jsonobj(other)
-            if trc:
-                # other has to be a URI, so new_val has to be a dict
+            if pred_key == 'subject' and type(new_val) is OrderedDict:
+                # nicer representation of URI subject
+                pred_key = 'hasSubject'
+                new_val = new_val['@id']
+            elif trc:
+                # other is a related obsel URI, so new_val must be a dict
                 new_val['hasTrace'] = valconv_uri(trc)
 
             old_val = the_dict.get(pred_key)
@@ -753,6 +766,7 @@ _OBSEL_TEMPLATE = OrderedDict([
     ('end', None),
     ('endDT', None),
     ('subject', None),
+    ('hasSubject', None),
     ('hasSourceObsel', []),
 ])
 
@@ -789,7 +803,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     model_uri = obsel.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
-    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv = ValueConverter(obsel.uri, { model_uri: "m" })
     valconv_uri = valconv.uri
     val2json = valconv.val2json
 
@@ -820,7 +834,10 @@ def serialize_json_obsel(graph, obsel, bindings=None):
 
     subject = obsel.get_subject()
     if subject is not None:
-        yield ',\n    "subject": "%s"' % subject
+        if isinstance(subject, URIRef):
+            yield ',\n    "hasSubject": "%s"' % valconv_uri(subject)
+        else:
+            yield ',\n    "subject": "%s"' % subject
 
     for i in iter_obsel_arcs(graph, obsel.uri, valconv, "\n            "):
         yield i

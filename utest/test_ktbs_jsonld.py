@@ -912,6 +912,25 @@ class TestJsonStoredTrace(KtbsTestCase):
         newstored_trace = self.base.factory(ret[0], [KTBS.StoredTrace])
         assert isinstance(newstored_trace, StoredTraceMixin)
 
+
+    def test_uri_default_subject(self):
+        self.t1.default_subject = URIRef("http://ex.co/bob")
+        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/t1/',
+            '@type': 'StoredTrace',
+            'inBase': '../',
+            'hasObselList': '@obsels',
+            'hasModel': '../modl',
+            'origin': '1970-01-01T00:00:00Z',
+            'hasDefaultSubject': 'http://ex.co/bob'
+        })
+        assert_roundtrip(json_content, self.t1)
+
+
 class TestJsonComputedTrace(KtbsTestCase):
 
     def setUp(self):
@@ -1050,7 +1069,8 @@ class TestJsonObsels(KtbsTestCase):
         # create obsel in wrong order, to check that they are serialized in
         # the correct order nonetheless
         ex_foo = URIRef('http://example.org/Foo')
-        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, None,
+        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000,
+                                       URIRef("#baz", self.t1.uri),
                                        {self.at1: "hello world",
                                         RDF.type: ex_foo,
                                         })
@@ -1130,6 +1150,7 @@ class TestJsonObsels(KtbsTestCase):
                     '@type': ['m:OT1', 'http://example.org/Foo'],
                     'begin': 3000,
                     'end': 4000,
+                    'hasSubject': './#baz',
                     'm:at1': 'hello world',
                     '@reverse': {
                         'm:rt1': { '@id': 'o2', 'hasTrace': './' },
@@ -1197,6 +1218,7 @@ class TestJsonObsels(KtbsTestCase):
             '@type': ['m:OT1', 'http://example.org/Foo'],
             'begin': 3000,
             'end': 4000,
+            "hasSubject": "./#baz",
             'm:at1': 'hello world',
             '@reverse': {
                 'm:rt1': { '@id': 'o2', 'hasTrace': './' },
