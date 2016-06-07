@@ -145,7 +145,7 @@ KTBS_NS_TTL = """
     .
 
     :hasDefaultSubject
-        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        a rdf:Property, owl:FunctionalProperty ;
         rdfs:label "has default subject"@en, "a pour sujet par défaut"@fr;
         rdfs:domain :AbstractTrace ;
     .
@@ -276,7 +276,7 @@ KTBS_NS_TTL = """
     .
 
     :hasSubject
-        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        a rdf:Property, owl:FunctionalProperty ;
         rdfs:label "has subject"@en, "a pour sujet"@fr;
         rdfs:domain :Obsel ;
     .

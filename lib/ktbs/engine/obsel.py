@@ -195,7 +195,7 @@ class _ObselImpl(ILocalCore):
         if subject is None:
             default_subject = trace.get_default_subject()
             if default_subject is not None:
-                new_graph.add((uri, KTBS.hasSubject, Literal(default_subject)))
+                new_graph.add((uri, KTBS.hasSubject, default_subject))
 
         # compute begin and/or end if beginDT and/or endDT are provided
         delta2unit = None

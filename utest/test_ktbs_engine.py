@@ -308,33 +308,33 @@ class TestKtbs(KtbsTestCase):
         obs0 = trace.get_obsel(created[0])
         eq_(obs0.begin, 0)
         eq_(obs0.end, 0)
-        eq_(obs0.subject, "alice")
+        eq_(obs0.subject, Literal("alice"))
         eq_(obs0.obsel_type, otype0)
         
         obs1 = trace.get_obsel(created[1])
         eq_(obs1.begin, 1)
         eq_(obs1.end, 1)
-        eq_(obs1.subject, "alice")
+        eq_(obs1.subject, Literal("alice"))
         eq_(obs1.obsel_type, otype1)
         eq_(obs1.get_attribute_value(RDF.value), "obs1")
 
         obs2 = trace.get_obsel(created[2])
         eq_(obs2.begin, 2)
         eq_(obs2.end, 3)
-        eq_(obs2.subject, "alice")
+        eq_(obs2.subject, Literal("alice"))
         eq_(obs2.obsel_type, otype2)
         eq_(obs2.get_attribute_value(RDF.value), "obs2")
 
         obs3 = trace.get_obsel(created[3])
         eq_(obs3.begin, 3)
         eq_(obs3.end, 3)
-        eq_(obs3.subject, "bob")
+        eq_(obs3.subject, Literal("bob"))
         eq_(obs3.obsel_type, otype3)
 
         obsN = trace.get_obsel(created[4])
         assert obsN.begin > 4 # set to current date, which is *much* higher
         eq_(obsN.end, obsN.begin)
-        eq_(obsN.subject, "alice")
+        eq_(obsN.subject, Literal("alice"))
         eq_(obsN.obsel_type, otypeN)
 
     def test_post_multiple_bnode_obsels_w_relations(self):
@@ -479,6 +479,28 @@ class TestKtbs(KtbsTestCase):
         now = datetime.now(UTC)
         delta = t.get_origin(as_datetime=True) - now
         assert_less(abs(delta.total_seconds()), epsilon)
+
+    def test_uri_subject(self):
+        bob = URIRef("http://example.org/bob")
+        base = self.my_ktbs.create_base()
+        model = base.create_model()
+        otype0 = model.create_obsel_type("#MyObsel0")
+        trace1 = base.create_stored_trace(None, model,
+                                         "1970-01-01T00:00:00Z",
+                                         bob)
+        eq_(trace1.default_subject, bob)
+        o1 = trace1.create_obsel("o1", otype0, 1)
+        eq_(o1.subject, bob)
+
+        g = Graph()
+        o2n = BNode()
+        g.add((o2n, KTBS.hasTrace, trace1.uri))
+        g.add((o2n, RDF.type, otype0.uri))
+        g.add((o2n, KTBS.hasBegin, Literal(2)))
+        created = trace1.post_graph(g)
+        eq_(len(created), 1)
+        eq_(trace1.get_obsel(created[0]).subject, bob)
+
 
 
 class TestObsels(KtbsTestCase):
@@ -719,8 +741,10 @@ class TestKtbsSynthetic(KtbsTestCase):
         # above, we do not test for equality, because *sometimes* there is a
         # difference of 1µs (rounding error?)
         assert_equal(trace1.default_subject, None)
+        trace1.default_subject = URIRef("http://example.org/alice")
+        assert_equal(trace1.default_subject, URIRef("http://example.org/alice"))
         trace1.default_subject = "alice"
-        assert_equal(trace1.default_subject, "alice")
+        assert_equal(trace1.default_subject, Literal("alice"))
 
         assert_equal(trace1.obsels, [])
         trace1.origin = datetime.now(UTC)

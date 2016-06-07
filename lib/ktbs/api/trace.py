@@ -383,14 +383,13 @@ class StoredTraceMixin(AbstractTraceMixin):
         I return the default subject of this trace.
         """
         ret = self.state.value(self.uri, KTBS.hasDefaultSubject)
-        if ret is not None:
-            ret = unicode(ret)
         return ret
 
     def set_default_subject(self, subject):
         """I set the default subject of this trace.
         """
-        subject = Literal(subject)
+        if not isinstance(subject, URIRef):
+            subject = Literal(subject)
         with self.edit(_trust=True) as graph:
             graph.set((self.uri, KTBS.hasDefaultSubject, subject))
 
@@ -475,6 +474,8 @@ class StoredTraceMixin(AbstractTraceMixin):
             end = begin
         if subject is None:
             subject = self.get_default_subject()
+        elif not isinstance(subject, URIRef):
+            subject = Literal(subject)
 
         trust = False # TODO SOON decide if we can trust anything
         # this would imply verifying that begin and end are mutually consistent
@@ -512,7 +513,7 @@ class StoredTraceMixin(AbstractTraceMixin):
             graph.add((obs, KTBS.hasEndDT, Literal(end_dt)))
 
         if subject is not None:
-            graph.add((obs, KTBS.hasSubject, Literal(subject)))
+            graph.add((obs, KTBS.hasSubject, subject))
 
         if attributes is not None:
             for key, val in attributes.items():

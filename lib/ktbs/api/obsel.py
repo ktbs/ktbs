@@ -102,8 +102,6 @@ class ObselMixin(KtbsResourceMixin):
         I return the subject of the obsel.
         """
         ret = self.state.value(self.uri, KTBS.hasSubject)
-        if ret is not None:
-            ret = unicode(ret)
         return ret
 
     def iter_source_obsels(self):

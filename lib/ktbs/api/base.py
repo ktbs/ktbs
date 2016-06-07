@@ -293,7 +293,9 @@ class BaseMixin(KtbsResourceMixin):
         graph.add((node, KTBS.hasModel, model))
         graph.add((node, KTBS.hasOrigin, Literal(origin)))
         if default_subject is not None:
-            graph.add((node, KTBS.hasDefaultSubject, Literal(default_subject)))
+            if not isinstance(default_subject, URIRef):
+                default_subject = Literal(default_subject)
+            graph.add((node, KTBS.hasDefaultSubject, default_subject))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
 
