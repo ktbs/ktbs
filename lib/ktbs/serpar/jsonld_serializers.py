@@ -22,14 +22,16 @@ from collections import OrderedDict
 from copy import deepcopy
 from itertools import chain, groupby
 from json import dumps
-from rdflib import BNode, Literal, RDF, URIRef, XSD
+from rdflib import BNode, Literal, RDF, URIRef, XSD, Graph
 from rdflib.plugins.sparql.processor import prepareQuery
+from pyld.jsonld import compact
 from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
 
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
-from .jsonld_parser import  CONTEXT_URI
+from .jsonld_parser import CONTEXT_URI, CONTEXT_JSON
+from ..engine.trace_stats import NS as KTBS_NS_STATS
 
 LEN_KTBS = len(KTBS_NS_URI)+1
 
@@ -447,7 +449,8 @@ def serialize_json_trace(graph, trace, bindings=None):
     "@context": "%s",
     "@id": "%s",
     "@type": "%s",
-    "hasObselList": "@obsels" """ % (
+    "hasObselList": "@obsels",
+    "hasTraceStatistics": "@stats" """ % (
         CONTEXT_URI,
         trace.uri,
         trace.RDF_MAIN_TYPE[LEN_KTBS:],
@@ -683,6 +686,116 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     tobsels_dict = trace_obsels_to_json(graph, tobsels, bindings)
 
     yield dumps(tobsels_dict, ensure_ascii=False, indent=4)
+
+def trace_stats_to_json(graph, tstats, bindings=None):
+    """
+    I create an Ordered dictionary for a further json-ld serialization.
+
+    :param graph: ? graph
+    :param tstats: TraceStatistics object
+    :param bindings: ?
+    :return: The dictionnary created.
+    """
+    tstats_dict = OrderedDict()
+
+    trace_uri = tstats.trace.uri
+    model_uri = tstats.trace.model_uri
+    if model_uri[-1] not in { "/", "#" }:
+        model_uri += "#"
+    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv_uri = valconv.uri
+    val2jsonobj = valconv.val2jsonobj
+
+    tstats_dict['@id'] = './'
+    tstats_dict['hasTraceStatistics'] = {
+        '@id': '',
+        '@type': 'TraceStatistics'
+    }
+
+    initNs = {'': unicode(KTBS_NS_URI),
+              'stats': unicode(KTBS_NS_STATS)
+              }
+    initBindings = {'trace': trace_uri}
+
+    # How could I get predicates in the form stat:xxxxx
+    # in the results, InitNs does not seem to be enough
+    # Is it because of the filter clause ?
+    stats_infos = graph.query("""
+        SELECT ?pred ?obj
+        {{
+            ?trace ?pred ?obj
+
+            filter (strstarts(xsd:string(?pred), "{0:s}"))
+        }}
+    """.format(KTBS_NS_STATS),
+                              initNs=initNs,
+                              initBindings=initBindings)
+
+    for pred, obj in stats_infos:
+        if pred.find('obselCountPerType') == -1:
+            if isinstance(obj, Literal):
+                tstats_dict[pred] = obj.toPython()
+            else:
+                tstats_dict[pred] = obj
+
+    # Recover data inside blank nodes : another request needed
+    stats_infos = graph.query("""
+        SELECT ?bn ?pred ?obj
+        {
+            ?trace stats:obselCountPerType ?bn .
+
+            ?bn ?pred ?obj .
+        }
+        ORDER BY ?bn
+        """,
+                              initNs=initNs,
+                              initBindings=initBindings)
+
+    if len(stats_infos) > 0:
+        tstats_dict[KTBS_NS_STATS.obselCountPerType] = []
+        for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
+            ot_infos = {}
+            for _, pred, obj in tuples:
+                if pred.find('hasObselType') != -1:
+                    ot_infos[pred] = {'@id': obj,
+                                      '@type': '@id'}
+                elif isinstance(obj, Literal):
+                        ot_infos[pred] = obj.toPython()
+                else:
+                    ot_infos[pred] = obj
+
+            tstats_dict[KTBS_NS_STATS.obselCountPerType].append(ot_infos)
+
+    compact_context = {'@context': {'m': model_uri,
+                                    'stats': KTBS_NS_STATS}
+                        }
+
+    full_context = {'@context': [CONTEXT_URI,
+                                 compact_context['@context']]
+                    }
+
+    tstats_dict = compact(tstats_dict, full_context)
+
+    tstats_dict['@context'] = full_context['@context']
+
+    return tstats_dict
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.TraceStatistics)
+@register_serializer(JSON, "json", 60, KTBS.TraceStatistics)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_trace_stats(graph, tstats, bindings=None):
+    """
+    I serialize the trace stats to a json-ld string.
+
+    :param graph:
+    :param tstats:
+    :param bindings:
+    :return:
+    """
+    tstats_dict = trace_stats_to_json(graph, tstats, bindings)
+
+    yield dumps(tstats_dict, ensure_ascii=False, indent=4)
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Obsel)
 @register_serializer(JSON, "json", 60, KTBS.Obsel)

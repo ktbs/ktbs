@@ -174,17 +174,15 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
             count_type_result = obsels_graph.query(COUNT_OBSEL_TYPES, initNs=initNs,
                                                    initBindings=initBindings)
 
-            #count_infos = BNode()
-            #graph.add((trace.uri, NS.obselCountPerType, count_infos))
-            #graph.add((count_infos, RDF.type, RDF.Seq))
             if (count_type_result is not None and
                len(count_type_result.bindings) > 0 and
                len(count_type_result.bindings[0]) > 0):
                 for res in  count_type_result.bindings:
                     ot_infos = BNode()
+
                     graph.add((ot_infos, NS.nb, res['nb']))
-                    graph.add((ot_infos, NS.obselType, res['t']))
-                    #graph.add((count_infos, RDF.li, ot_infos))
+                    graph.add((ot_infos, NS.hasObselType, res['t']))
+
                     graph.add((trace.uri, NS.obselCountPerType, ot_infos))
 
         # Duration statistics

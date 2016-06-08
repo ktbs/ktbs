@@ -168,6 +168,7 @@ CONTEXT_JSON = """{"@context":{
     "RelationType": "k:RelationType",
     "StoredTrace": "k:StoredTrace",
     "StoredTraceObsels": "k:StoredTraceObsels",
+    "TraceStatistics": "k:TraceStatistics",
     "TraceModel": "k:TraceModel",
 
     "contains": { "@id": "k:contains", "@type": "@id" },
@@ -185,6 +186,7 @@ CONTEXT_JSON = """{"@context":{
     "hasMethod": { "@id": "k:hasMethod", "@type": "@vocab" },
     "hasModel": { "@id": "k:hasModel", "@type": "@id" },
     "hasObselList": { "@id": "k:hasObselCollection", "@type": "@id" },
+    "hasTraceStatistics": { "@id": "k:hasTraceStatistics", "@type": "@id" },
     "origin": { "@id": "k:hasOrigin" },
     "parameter": "k:hasParameter",
     "hasParentMethod": { "@id": "k:hasParentMethod", "@type": "@vocab" },
