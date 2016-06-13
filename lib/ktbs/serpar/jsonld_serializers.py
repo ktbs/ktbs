@@ -30,7 +30,7 @@ from rdfrest.util import coerce_to_uri, wrap_exceptions
 
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
-from .jsonld_parser import CONTEXT_URI, CONTEXT_JSON
+from .jsonld_parser import CONTEXT_URI, load_document
 from ..engine.trace_stats import NS as KTBS_NS_STATS
 
 LEN_KTBS = len(KTBS_NS_URI)+1
@@ -702,10 +702,11 @@ def trace_stats_to_json(graph, tstats, bindings=None):
     model_uri = tstats.trace.model_uri
     if model_uri[-1] not in { "/", "#" }:
         model_uri += "#"
-    valconv = ValueConverter(trace_uri, { model_uri: "m" })
+    valconv = ValueConverter(trace_uri)
     valconv_uri = valconv.uri
     val2jsonobj = valconv.val2jsonobj
 
+    tstats_dict['@context'] = CONTEXT_URI
     tstats_dict['@id'] = './'
     tstats_dict['hasTraceStatistics'] = {
         '@id': '',
@@ -732,11 +733,8 @@ def trace_stats_to_json(graph, tstats, bindings=None):
                               initBindings=initBindings)
 
     for pred, obj in stats_infos:
-        if pred.find('obselCountPerType') == -1:
-            if isinstance(obj, Literal):
-                tstats_dict[pred] = obj.toPython()
-            else:
-                tstats_dict[pred] = obj
+        if pred != KTBS_NS_STATS.obselCountPerType:
+            tstats_dict[pred] = val2jsonobj(obj)
 
     # Recover data inside blank nodes : another request needed
     stats_infos = graph.query("""
@@ -752,33 +750,37 @@ def trace_stats_to_json(graph, tstats, bindings=None):
                               initBindings=initBindings)
 
     if len(stats_infos) > 0:
-        tstats_dict[KTBS_NS_STATS.obselCountPerType] = []
+        tstats_dict[KTBS_NS_STATS.obselCountPerType] = ocpt =  []
         for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
             ot_infos = {}
             for _, pred, obj in tuples:
-                if pred.find('hasObselType') != -1:
-                    ot_infos[pred] = {'@id': obj,
-                                      '@type': '@id'}
-                elif isinstance(obj, Literal):
-                        ot_infos[pred] = obj.toPython()
-                else:
-                    ot_infos[pred] = obj
+                pred = unicode(pred) # cast URIRef to plain unicode
+                ot_infos[pred] = val2jsonobj(obj)
 
-            tstats_dict[KTBS_NS_STATS.obselCountPerType].append(ot_infos)
+            ocpt.append(ot_infos)
 
-    compact_context = {'@context': {'m': model_uri,
-                                    'stats': KTBS_NS_STATS}
+    compact_context = {'@context': [ CONTEXT_URI,
+                                     {'stats': KTBS_NS_STATS,
+                                    'stats:hasObselType': {'@type': '@id'},
+                                    'm': model_uri}
+                                   ]
                         }
 
-    full_context = {'@context': [CONTEXT_URI,
-                                 compact_context['@context']]
-                    }
+    tstats_dict = compact(tstats_dict, compact_context,
+                          {'base': tstats.uri,
+                           'documentLoader': load_document})
 
-    tstats_dict = compact(tstats_dict, full_context)
+    final = OrderedDict()
+    final['@context'] = None
+    final['@id'] = None
+    final['hasTraceStatistics'] = None
+    final['stats:obselCount'] = None
+    final['stats:minTime'] = None
+    final['stats:maxTime'] = None
+    final['stats:duration'] = None
+    final.update(tstats_dict)
 
-    tstats_dict['@context'] = full_context['@context']
-
-    return tstats_dict
+    return final
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.TraceStatistics)
 @register_serializer(JSON, "json", 60, KTBS.TraceStatistics)
