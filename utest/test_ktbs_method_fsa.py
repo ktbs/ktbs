@@ -335,14 +335,14 @@ class TestFSAMaxDuration(KtbsTestCase):
         self.otypeY = self.model_dst.create_obsel_type("#otY")
         self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
 
-        fsa = FSA.make_empty(max_duration=4)
+        fsa = FSA.make_empty()
         (fsa.add_state("start")
                .add_transition("#otA", "#otX")
-            .add_state("#otX", terminal=True, max_duration=1)
+            .add_state("#otX", terminal=True, max_duration=1, max_total_duration=4)
                 .add_transition("#otB", "#otX"))
         self.base_structure = fsa.export_structure_as_dict()
 
-    def test_exceed_state_max_duration(self):
+    def test_exceed_max_duration(self):
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
                                          {"fsa": dumps(self.base_structure),
                                           "model": self.model_dst.uri,},
@@ -356,7 +356,7 @@ class TestFSAMaxDuration(KtbsTestCase):
         assert_obsel_type(ctr.obsels[0], self.otypeX)
         assert_source_obsels(ctr.obsels[0], [oA0, oB1])
 
-    def test_exceed_fsa_max_duration(self):
+    def test_exceed_max_total_duration(self):
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
                                          {"fsa": dumps(self.base_structure),
                                           "model": self.model_dst.uri,},
