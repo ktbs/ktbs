@@ -86,7 +86,8 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
             trace = self.trace
             trace.obsel_collection.force_state_refresh(parameters)
 
-            with self.edit(parameters, _trust=True) as editable:
+            # Avoid passing refresh parameter to edit()
+            with self.edit(None, _trust=True) as editable:
                 editable.remove((None, None, None))
                 self.init_graph(editable, self.uri, trace.uri)
                 self._populate(editable, trace)
@@ -195,6 +196,7 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
             graph.add((trace.uri, NS.minTime, duration_result.bindings[0]['minb']))
             graph.add((trace.uri, NS.maxTime, duration_result.bindings[0]['maxe']))
             graph.add((trace.uri, NS.duration, duration_result.bindings[0]['duration']))
+
 
 COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
 COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \

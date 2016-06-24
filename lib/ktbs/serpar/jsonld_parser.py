@@ -120,7 +120,9 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             # with the first item representing the trace model
             json_data["@graph"][0].setdefault(u"inBase", unicode(base_uri))
         elif ((json_data.get("hasObselList") is None)
-              and 
+              and
+              (json_data.get("hasTraceStatistics") is None)
+              and
               (json_data.get("hasBuiltinMethod") is None)):
             # must be an obsel
             obsel_context = True

@@ -775,10 +775,18 @@ def trace_stats_to_json(graph, tstats, bindings=None):
     final['@id'] = None
     final['hasTraceStatistics'] = None
     final['stats:obselCount'] = None
-    final['stats:minTime'] = None
-    final['stats:maxTime'] = None
-    final['stats:duration'] = None
+    # None as no meaning in jsonld, if there is no arc in the graph there
+    # should be no value. We could remove the keys which values are None
+    # instead of this test
+    if tstats_dict.get('stats:minTime') is not None:
+        final['stats:minTime'] = None
+        final['stats:maxTime'] = None
+        final['stats:duration'] = None
     final.update(tstats_dict)
+
+    # PyLD return "@stats" for the current URI which is not wrong
+    # but we prefer an empty string for the sake of consistency
+    final['hasTraceStatistics']['@id'] = ''
 
     return final
 

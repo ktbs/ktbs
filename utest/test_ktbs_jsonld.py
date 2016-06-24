@@ -61,7 +61,7 @@ def assert_jsonld_equiv(val1, val2):
 def assert_roundtrip(json_content, resource):
     graph = parse_json(json_content, resource.uri)
     _, spurious, missing = graph_diff(graph, resource.state)
-    assert not(spurious or missing), graph_diff_msg(spurious, missing)
+    assert not(spurious or missing), graph.serialize(format="turtle") #graph_diff_msg(spurious, missing)
 
 def graph_diff_msg(spurious, missing):
     ret = "Json does not encode the right graph"
@@ -1219,3 +1219,91 @@ class TestJsonObsels(KtbsTestCase):
         assert isinstance(newobsel2, ObselMixin)
         assert newobsel2.obsel_type == self.ot1, newobsel2.obsel_type
 
+class TestJsonStats(KtbsTestCase):
+
+    def setUp(self):
+        super(TestJsonStats, self).setUp()
+        self.base = self.my_ktbs.create_base("b1/")
+        self.model = self.base.create_model("modl",)
+        self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
+        self.ot2 = ot2 = self.model.create_obsel_type("#OT2")
+        self.t1 = self.base.create_stored_trace("t1/", self.model,
+                                                "1970-01-01T00:00:00Z")
+
+    def tearDown(self):
+        super(TestJsonStats, self).tearDown()
+        self.base = None
+        self.model = self.ot1 = self.ot2 = None
+        self.t1 = None
+
+    def populate(self):
+        # create obsel in wrong order, as TestJsonObsels
+        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, None)
+        self.o2 = self.t1.create_obsel("o2", self.ot1, 2000, 3000, "bar")
+        self.o1 = self.t1.create_obsel("o1", self.ot1,
+            "1970-01-01T00:00:01Z", "1970-01-01T00:00:02Z", "foo")
+        self.o4 = self.t1.create_obsel("o4", self.ot2, 1000, 2000, "alice")
+        self.o5 = self.t1.create_obsel("o5", self.ot2, 4000, 5000, "bob")
+
+    def test_stats_empty_obsels(self):
+        json_content = "".join(serialize_json_trace_stats(
+            self.t1.trace_statistics.state,
+            self.t1.trace_statistics))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context': [
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+                { 'm': 'http://localhost:12345/b1/modl#',
+                  'stats': 'http://tbs-platform.org/2016/trace-stats#',
+                  'stats:hasObselType': {
+                      '@type': '@id'
+                      },
+                  },
+                ],
+            '@id': './',
+            'hasTraceStatistics': {
+                '@id': '',
+                '@type': 'TraceStatistics',
+            },
+            'stats:obselCount': 0,
+        })
+        
+        """
+        'stats:minTime': 0,
+        'stats:maxTime': 0,
+        'stats:duration': 0,
+        """
+        assert_roundtrip(json_content, self.t1.trace_statistics)
+
+    def test_stats_populated_obsels(self):
+        self.populate()
+        json_content = "".join(serialize_json_trace_stats(
+            self.t1.trace_statistics.state,
+            self.t1.trace_statistics))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context': [
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+                { 'm': 'http://localhost:12345/b1/modl#',
+                  'stats': 'http://tbs-platform.org/2016/trace-stats#',
+                  'stats:hasObselType': {
+                      '@type': '@id'
+                      },
+                  },
+                ],
+            '@id': './',
+            'hasTraceStatistics': {
+                '@id': '',
+                '@type': 'TraceStatistics',
+            },
+            'stats:obselCount': 5,
+            'stats:minTime': 1000,
+            'stats:maxTime': 5000,
+            'stats:duration': 4000,
+            'stats:obselCountPerType': [{'stats:hasObselType': 'm:OT1',
+                                         'stats:nb': 3},
+                                        {'stats:hasObselType': 'm:OT2',
+                                         'stats:nb': 2}]
+        })
+        # Does a roundtrip have a sens for trace statistics ?
+        assert_roundtrip(json_content, self.t1.trace_statistics)
