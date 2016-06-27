@@ -68,7 +68,7 @@ def match_sparql_ask(transition, event, token, fsa):
     return fsa.source_obsels_graph.query(
         "ASK { %s }" % transition['condition'],
         initNs={"m": m_ns},
-        initBindings={"?obs": URIRef(event), "?pred": pred},
+        initBindings={"obs": URIRef(event), "pred": pred},
     ).askAnswer
 
 matcher_directory['sparql-ask'] = match_sparql_ask
