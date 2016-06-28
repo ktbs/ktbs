@@ -140,7 +140,7 @@ a new obsel is generated:
   * ``first``: returns the first value in chronological order;
   * ``count``: returns the number of source obsel having the source attribute;
   * ``sum``: returns the sum of all values;
-  * ``average``: returns the average of all values;
+  * ``avg``: returns the average of all values;
   * ``min``: returns the minimum value;
   * ``max``: returns the maximum value;
   * ``span``: returns the difference between the maximum and the minimum values;
