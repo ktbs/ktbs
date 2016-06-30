@@ -350,7 +350,9 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
             raise InvalidDataError("No obsel found in posted graph")
 
         stats = self.trace_statistics
-        stats.metadata.set((stats.uri, METADATA.dirty, YES))
+        if stats:
+            # Traces created before @stats was introduced have no trace_statistics
+            stats.metadata.set((stats.uri, METADATA.dirty, YES))
         return ret
                 
     def get_created_class(self, rdf_type):
@@ -527,7 +529,9 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         obsels = self.obsel_collection
         obsels.metadata.add((obsels.uri, METADATA.dirty, YES))
         stats = self.trace_statistics
-        stats.metadata.add((stats.uri, METADATA.dirty, YES))
+        if stats:
+            # Traces created before @stats was introduced have no trace_statistics
+            stats.metadata.add((stats.uri, METADATA.dirty, YES))
 
     __method_impl = None
     # do NOT use @cache_result here, as the result may change over time
