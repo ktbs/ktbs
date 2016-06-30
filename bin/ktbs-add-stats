@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+#    This file is part of KTBS <http://liris.cnrs.fr/sbt-dev/ktbs>
+#    Copyright (C) 2011-2014 Pierre-Antoine Champin <pchampin@liris.cnrs.fr> /
+#    Françoise Conil <francoise.conil@liris.cnrs.fr> /
+#    Universite de Lyon <http://www.universite-lyon.fr>
+#
+#    KTBS is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Lesser General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    KTBS is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Lesser General Public License for more details.
+#
+#    You should have received a copy of the GNU Lesser General Public License
+#    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
+
+from ktbs.namespace import KTBS
+from ktbs.engine.service import KtbsService
+from ktbs.engine.trace_stats import TraceStatistics
+from ktbs.standalone import parse_options, parse_configuration_options
+import logging
+from rdflib import Graph, URIRef
+from rdfrest.util.config import apply_global_config
+
+LOG = logging.getLogger(__name__)
+
+
+def main():
+    """I launch KTBS as a standalone HTTP server.
+    """
+    cmdline_options = parse_options()
+
+    # Get default configuration possibly overriden by a user configuration file
+    # or command line configuration OPTIONS
+    ktbs_config = parse_configuration_options(cmdline_options)
+
+    # TODO : remove this option ?
+    if ktbs_config.getboolean('server', 'resource-cache'):
+        LOG.warning("option --resource-cache is deprecated; it has no effect")
+
+    apply_global_config(ktbs_config)
+
+    service = KtbsService(ktbs_config)
+    root = service.get(service.root_uri, [KTBS.KtbsRoot])
+
+    for base in root.bases:
+        for trace in base.traces:
+            if trace.trace_statistics is None:
+                continue
+            print trace
+            stats_uri = URIRef(trace.uri + "@stats")
+            with trace.edit(_trust=True) as graph:
+                graph.add((trace.uri, KTBS.hasTraceStatistics, stats_uri))
+            stats_graph = Graph(identifier=stats_uri)
+            TraceStatistics.init_graph(stats_graph, stats_uri, trace.uri)
+            TraceStatistics.create(service, stats_uri, stats_graph)
+
+if __name__ == "__main__":
+    main()

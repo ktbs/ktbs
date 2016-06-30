@@ -36,8 +36,64 @@ from utest.test_ktbs_engine import KtbsTestCase
 
 KTBS_ROOT = "http://localhost:12345/"
 
-class TestIterObsels(KtbsTestCase):
-    
+class _TestIterObselsMixin(object):
+
+    def test_no_param(self):
+        assert_list_equal(self.obsels,
+                          self.t.list_obsels())
+
+    def test_begin(self):
+        assert_list_equal(self.obsels[2:],
+                          self.t.list_obsels(begin=15))
+
+    def test_end(self):
+        assert_list_equal(self.obsels[:5],
+                          self.t.list_obsels(end=45))
+
+    def test_after(self):
+        assert_list_equal(self.obsels[3:],
+                          self.t.list_obsels(after=self.o2))
+
+    def test_before(self):
+        print([o.uri for o in self.t.list_obsels(before=self.o3)])
+        assert_list_equal(self.obsels[:3],
+                          self.t.list_obsels(before=self.o3))
+
+    def test_reverse(self):
+        assert_list_equal(self.obsels[::-1],
+                          self.t.list_obsels(reverse=True))
+
+    def test_bgb_single_type(self):
+        bgp = """
+            ?obs a m:OT2.
+        """
+        assert_list_equal([self.o0, self.o2, self.o4],
+                          self.t.list_obsels(bgp=bgp))
+
+    def test_bgb_filter(self):
+        bgp = """
+            ?obs m:OT1-at1 ?at1 ; m:OT1-at2 ?at2.
+            FILTER(?at1 > ?at2)
+        """
+        assert_list_equal([self.o0, self.o3],
+                          self.t.list_obsels(bgp=bgp))
+
+    def test_bgp_timestamps(self):
+        bgp = """
+            FILTER(?e < (?b+40))
+        """
+        assert_list_equal(self.obsels,
+                          self.t.list_obsels(bgp=bgp))
+
+    def test_multiple_params(self):
+        bgp = """
+            ?obs a m:OT2.
+        """
+        assert_list_equal([self.o4, self.o2],
+                          self.t.list_obsels(begin=5, end=45, reverse=True, bgp=bgp))
+
+class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
+
     def setUp(self):
         KtbsTestCase.setUp(self)
         self.b = self.my_ktbs.create_base("b/")
@@ -85,47 +141,53 @@ class TestIterObsels(KtbsTestCase):
         self.b.delete()
         KtbsTestCase.tearDown(self)
 
-    def test_no_param(self):
-        assert_list_equal(self.obsels,
-                          self.t.list_obsels())
 
-    def test_begin(self):
-        assert_list_equal(self.obsels[2:],
-                          self.t.list_obsels(begin=15))
+class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
 
-    def test_end(self):
-        assert_list_equal(self.obsels[:5],
-                          self.t.list_obsels(end=45))
+    def setUp(self):
+        KtbsTestCase.setUp(self)
+        self.b = self.my_ktbs.create_base("b/")
+        self.m = self.b.create_model("m")
+        self.ot1 = self.m.create_obsel_type("#OT1")
+        self.ot1at1 = self.m.create_attribute_type("#OT1-at1")
+        self.ot1at2 = self.m.create_attribute_type("#OT1-at2")
+        self.ot1at3 = self.m.create_attribute_type("#OT1-at3")
+        self.ot2 = self.m.create_obsel_type("#OT2", [self.ot1])
+        self.t = self.b.create_stored_trace("t1/", self.m, "some_time", default_subject="alice")
 
-    def test_reverse(self):
-        assert_list_equal(self.obsels[::-1],
-                          self.t.list_obsels(reverse=True))
+        self.o0 = self.t.create_obsel("o0", self.ot2, 00, 30, attributes={
+            self.ot1at1: 003,
+            self.ot1at2: 002,
+        })
+        self.o1 = self.t.create_obsel("o1", self.ot1, 10, 30, attributes={
+            self.ot1at1: 101,
+            self.ot1at2: 102,
+            self.ot1at3: 103,
+        })
+        self.o2 = self.t.create_obsel("o2", self.ot2, 20, 30, attributes={
+            self.ot1at1: 201,
+            self.ot1at2: 202,
+            self.ot1at3: 203,
+        })
+        self.o3 = self.t.create_obsel("o3", self.ot1, 20, 30, attributes={
+            self.ot1at1: 303,
+            self.ot1at2: 302,
+            self.ot1at3: 301,
+        })
+        self.o4 = self.t.create_obsel("o4", self.ot2, 20, 40, attributes={
+            self.ot1at1: 401,
+            self.ot1at2: 402,
+            self.ot1at3: 403,
+        })
+        self.o5 = self.t.create_obsel("o5", self.ot1, 20, 50, attributes={
+            self.ot1at1: 501,
+            self.ot1at2: 502,
+        })
+        self.obsels = [ self.o0, self.o1, self.o2, self.o3, self.o4, self.o5]
 
-    def test_bgb_single_type(self):
-        bgp = """
-            ?obs a m:OT2.
-        """
-        assert_list_equal([self.o0, self.o2, self.o4],
-                          self.t.list_obsels(bgp=bgp))
+    def tearDown(self):
+        self.t.delete()
+        self.m.delete()
+        self.b.delete()
+        KtbsTestCase.tearDown(self)
 
-    def test_bgb_filter(self):
-        bgp = """
-            ?obs m:OT1-at1 ?at1 ; m:OT1-at2 ?at2.
-            FILTER(?at1 > ?at2)
-        """
-        assert_list_equal([self.o0, self.o3],
-                          self.t.list_obsels(bgp=bgp))
-
-    def test_bgp_timestamps(self):
-        bgp = """
-            FILTER(?e < (?b+10))
-        """
-        assert_list_equal(self.obsels,
-                          self.t.list_obsels(bgp=bgp))
-
-    def test_multiple_params(self):
-        bgp = """
-            ?obs a m:OT2.
-        """
-        assert_list_equal([self.o4, self.o2],
-                          self.t.list_obsels(begin=5, end=45, reverse=True, bgp=bgp))

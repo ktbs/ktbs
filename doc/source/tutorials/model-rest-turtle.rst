@@ -21,9 +21,9 @@ Here is a UML representation of the Trace Model we will create. This is a minima
      node [ shape = "record", fontsize = 8 ]
      edge [ fontsize = 8, arrowhead = "open" ]
 
-     OpenChannel [ label = "OpenChannel|channel:str" ]
-     SendMsg [ label = "SendMsg|message:str" ]
-     MsgReceived [ label = "MsgResseived|message:str\lfrom:str\l" ]
+     OpenChannel [ label = "OpenChannel|channel:string" ]
+     SendMsg [ label = "SendMsg|message:string" ]
+     MsgReceived [ label = "MsgResseived|message:string\lfrom:string\l" ]
      CloseChannel [ label = "CloseChannel|" ]
     
      SendMsg -> OpenChannel [ label = "onChannel" ]
@@ -36,8 +36,9 @@ Here is a UML representation of the Trace Model we will create. This is a minima
 Creating the model
 ------------------
 
-On the page of your base, open the embedded editor,
-and *replace* the content with the following data:
+On the page of your base,
+select the POST request, the ``text/turtle`` content type,
+and copy the following data in the text area:
 
 .. code-block:: turtle
 
@@ -46,18 +47,28 @@ and *replace* the content with the following data:
    <.> :contains <model1> .
    <model1> a :TraceModel .
 
-then press the ``POST`` button.
+then press the ``Send`` button.
 The model is created and
 is now available at http://localhost:8001/base1/model1 .
+
+If you visit that URI,
+you will notice that the new model has an additional property:
+``:hasUnit :millisecond``.
+Every trace model must have a unit,
+specifying how time will be represented in the traces complying with this model
+(see `../concepts/trace_time_management`:doc:).
 
 
 Modifying the model
 -------------------
 
-Creating Obsel types
+Creating obsel types
 ^^^^^^^^^^^^^^^^^^^^
 
-We will first create the obsel types. Copy the following text in the editor
+We will first create the obsel types.
+Visit the model at http://localhost:8001/base1/model1 ,
+select the PUT request, the ``text/turtle`` content type,
+and modify the code with the following:
 
 .. code-block:: turtle
 
@@ -65,31 +76,44 @@ We will first create the obsel types. Copy the following text in the editor
    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 
    <.> :contains <model1> .
-   <model1> a :TraceModel .
+   
+   <model1> a :TraceModel ;
+       :hasUnit :millisecond .
 
    <#OpenChannel> a :ObselType .
    <#SendMsg> a :ObselType .
    <#MsgReceived> a :ObselType .
    <#CloseChannel> a :ObselType .
 
-then press the ``PUT`` button. The page should reload and show the new obsel types.
+then press the ``Send`` button.
+The page should reload and show the new obsel types.
 
 .. note::
 
-   From the example above, all URIs are relative to the URI *of the model*.
-
-   For the sake of readability, we keep ``<model1>`` to identify the model
-   (but ``<>`` would work as well).
+   Note that all relative URIs in this example are interpreted against the URI *of the model*
+   (as it is the target URI of the PUT request).
+   For the sake of readability, we keep ``<model1>`` to identify the model itsel,
+   but ``<>`` would work as well.
    All components of the models have their URI starting with ``#``,
-   so ``<#OpenChannel>`` could also be written ``<model1#OpenChannel>``,
+   so ``<#OpenChannel>`` is a shorthand for ``<http://localhost:8001/base1/model1#OpenChannel>``,
    for example.
+
+   Note that you could not have POSTed the Turtle code above as is,
+   as relative URIs in a POST are interpreted against the URI of the *base*
+   (``<http://localhost:8001/base01/>`` in this case).
+
+   It is still possible to create the obsel types together with the model at POST time,
+   but then you need change the relative URIs accordingly,
+   ``<model1#OpenChannel>`` instead of ``<model1>``, etc.
 
 Adding attributes
 ^^^^^^^^^^^^^^^^^
 
-Unlike in UML, attributes in kTBS a first-level elements, linked to their corresponding obsel type by the ``:hasAttributeDomain`` property. A consequence of this is that each attribute is identified by a URI, which has to be globally unique, while in UML, attributes in different classes may have the same (local) name.
+We will now associate attributes to our newly created obsel types.
 
-A good practice is therefore to include the name of the obsel type in the URI of every attribute. A label can still be attached to the attribute to specify its shorter user-friendly name.
+As obsel types, each attribute has a unique URI, relative to that of the model:
+``<#channel>``, ``<#message>`` and ``<#from>``.
+It is related to the obsel type(s) in which it may appear by the ``:hasAttributeDomaine`` property.
 
 The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS supports a subset of the primitive datatypes defined in  XML-Schema_, including the most usual datatypes such as ``xsd:string``, ``xsd:integer``, ``xsd:boolean`` and ``xsd:float``.
 
@@ -102,39 +126,61 @@ The datatype of an attribute is specified using ``:hasAttributeRange``. kTBS sup
    @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
    <.> :contains <model1> .
-   <model1> a :TraceModel .
+   
+   <model1> a :TraceModel ;
+       :hasUnit :millisecond .
 
    <#OpenChannel> a :ObselType .
    <#SendMsg> a :ObselType .
    <#MsgReceived> a :ObselType .
    <#CloseChannel> a :ObselType .
 
-   <#OpenChannel/channel> a :AttributeType ;
+   <#channel> a :AttributeType ;
        skos:prefLabel "channel" ;
        :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
-   <#SendMsg/message> a :AttributeType ;
+   <#message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#SendMsg> ;
+       :hasAttributeDomain <#SendMsg>, <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
-   <#MsgReveiced/message> a :AttributeType ;
-       skos:prefLabel "message" ;
-       :hasAttributeDomain <#MsgReceived> ;
-       :hasAttributeRange xsd:string .
-
-   <#MsgReveiced/from> a :AttributeType ;
+   <#from> a :AttributeType ;
        skos:prefLabel "from" ;
        :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
+
+.. note::
+
+   In UML, attributes belong to a given class,
+   and their name is scoped to that class.
+   It is therefore possible to have two different classes ``A`` and ``B``,
+   both having an attribute named ``foo``,
+   and still have ``A.foo`` mean something completely different from ``B.foo``
+   (they could for example have different datatypes).
+
+   In kTBS on the other hand,
+   attributes are first-class citizens of the model,
+   their name (URI) is scoped to the entire model.
+   In our example above, the attribute ``<#message>`` is shared by two obsel types,
+   it is therefore the *same* attribute,
+   with the same meaning and the same datatype\ [#abstract_class]_.
+
+   If we wanted to consider ``SendMsg.message`` and ``MsgReceived.message`` as two distinct attributes
+   more in the line of UML design,
+   then we would need to create two attribute types with distinct URIs,
+   for example ``<#SendMsg/message>`` and ``<#MsgReceived/message>``.
+   
+
 
 Adding relations
 ^^^^^^^^^^^^^^^^
 
-Just like attributes, relations are first-level elements with their own URI. The type of the obsels from which the relation can originate is specified with ``:hasRelationDomain``. The type of the obsels to which the relation can point is specified with ``:hasRelationRange``.
-
-In our example above, as the relation ``onChannel`` can originate from different obsel type, we simply leave it unspecified.
+We now define the types of relation that may exist between obsels in our model.
+Just like obsel types and attributes,
+relation types are named with a URI relative to that of the model.
+The type(s) of the obsels from which the relation can originate is specified with ``:hasRelationDomain``.
+The type(s) of the obsels to which the relation can point is specified with ``:hasRelationRange``.
 
 .. code-block:: turtle
 
@@ -143,45 +189,49 @@ In our example above, as the relation ``onChannel`` can originate from different
    @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
    <.> :contains <model1> .
-   <model1> a :TraceModel .
+   
+   <model1> a :TraceModel ;
+       :hasUnit :millisecond .
 
    <#OpenChannel> a :ObselType .
    <#SendMsg> a :ObselType .
    <#MsgReceived> a :ObselType .
    <#CloseChannel> a :ObselType .
 
-   <#OpenChannel/channel> a :AttributeType ;
+   <#channel> a :AttributeType ;
        skos:prefLabel "channel" ;
        :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
-   <#SendMsg/message> a :AttributeType ;
+   <#message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#SendMsg> ;
+       :hasAttributeDomain <#SendMsg>, <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
-   <#MsgReveiced/message> a :AttributeType ;
-       skos:prefLabel "message" ;
-       :hasAttributeDomain <#MsgReceived> ;
-       :hasAttributeRange xsd:string .
-
-   <#MsgReveiced/from> a :AttributeType ;
+   <#from> a :AttributeType ;
        skos:prefLabel "from" ;
        :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#onChannel> a :RelationType ;
+       :hasRelationDomain <#SendMsg>, <#MsgReceived>, <#CloseChannel> ;
        :hasRelationRange <#OpenChannel> .
 
+
+.. _inheritance:
 
 Inheritance of obsel types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-By leaving unspecified the domain of the relation ``onChannel``, we actually allow *any* obsel to have this relation, which is too permissive. We would prefer to restrict this property to the three obsel types ``SendMsg``, ``MsgReceived`` and ``CloseChannel``.
+While we can be satisfied with the model above and keep it that way,
+we can also notice that obsel types ``SendMsg`` and ``MsgReceived`` share a lot of things
+(namely the attribute ``message`` and being in the domain of ``onChannel``).
+This creates some redundancy in the model definition.
 
-We can solve this problem by introducing a new (abstract) obsel type, ``ChannelEvent``, from which the three obsel types above will inherit. Inheritance between obsel types is specified with ``:hasSuperObselType``.
-
-Then, we can set the domain of ``onChannel`` to this new type.
+To avoid that redundancy,
+and capture explicitly the commonalities between those obsel types,
+we can refactor those commonalities into a new obsel type ``MsgEvent``
+which both ``SendMsg`` and ``MsgReceived`` would inherit.
 
 .. code-block:: turtle
 
@@ -190,39 +240,35 @@ Then, we can set the domain of ``onChannel`` to this new type.
    @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 
    <.> :contains <model1> .
-   <model1> a :TraceModel .
+   
+   <model1> a :TraceModel ;
+       :hasUnit :millisecond .
 
    <#OpenChannel> a :ObselType .
-   <#ChannelEvent> a :ObselType .
+   <#MsgEvent> a :ObselType .
    <#SendMsg> a :ObselType ;
-       :hasSuperObselType <#ChannelEvent> .
+       :hasSuperObselType <#MsgEvent> .
    <#MsgReceived> a :ObselType ;
-       :hasSuperObselType <#ChannelEvent> .
-   <#CloseChannel> a :ObselType ;
-       :hasSuperObselType <#ChannelEvent> .
+       :hasSuperObselType <#MsgEvent> .
+   <#CloseChannel> a :ObselType .
 
-   <#OpenChannel/channel> a :AttributeType ;
+   <#channel> a :AttributeType ;
        skos:prefLabel "channel" ;
        :hasAttributeDomain <#OpenChannel> ;
        :hasAttributeRange xsd:string .
 
-   <#SendMsg/message> a :AttributeType ;
+   <#message> a :AttributeType ;
        skos:prefLabel "message" ;
-       :hasAttributeDomain <#SendMsg> ;
+       :hasAttributeDomain <#MsgEvent> ;
        :hasAttributeRange xsd:string .
 
-   <#MsgReveiced/message> a :AttributeType ;
-       skos:prefLabel "message" ;
-       :hasAttributeDomain <#MsgReceived> ;
-       :hasAttributeRange xsd:string .
-
-   <#MsgReveiced/from> a :AttributeType ;
+   <#from> a :AttributeType ;
        skos:prefLabel "from" ;
        :hasAttributeDomain <#MsgReceived> ;
        :hasAttributeRange xsd:string .
 
    <#onChannel> a :RelationType ;
-       :hasRelationDomain <#ChannelEvent> ;
+       :hasRelationDomain <#MsgEvent>, <#CloseChannel> ;
        :hasRelationRange <#OpenChannel> .
 
 This new trace model can be represented by the following UML diagram:
@@ -234,17 +280,29 @@ Here is a UML representation of the Trace Model we will create. This is a minima
    digraph {
      rankdir = RL
      node [ shape = "record", fontsize = 8 ]
-     edge [ fontsize = 8 , arrowhead = "open" ]
+     edge [ fontsize = 8 , arrowhead = "open", spines = false ]
 
-     OpenChannel [ label = "OpenChannel|<at>channel:str" ]
-     ChannelEvent [ label = "ChannelEvent|<at>" ]
-     SendMsg [ label = "SendMsg|message:str" ]
-     MsgReceived [ label = "MsgResseived|message:str\lfrom:str\l" ]
+     OpenChannel [ label = "OpenChannel|channel:string" ]
+     MsgEvent [ label = "MsgEvent|message:string" ]
+     SendMsg [ label = "SendMsg|" ]
+     MsgReceived [ label = "MsgResseived|from:string" ]
      CloseChannel [ label = "CloseChannel|" ]
     
-     ChannelEvent:at -> OpenChannel:at [ label = "onChannel" ]
-     SendMsg -> ChannelEvent [ arrowhead = "empty" ]
-     MsgReceived -> ChannelEvent [ arrowhead = "empty" ]
-     CloseChannel -> ChannelEvent [ arrowhead = "empty" ]
+     MsgEvent -> OpenChannel [ label = "onChannel" ]
+     CloseChannel -> OpenChannel [ label = "onChannel" ]
+     SendMsg -> MsgEvent [ arrowhead = "empty" ]
+     MsgReceived -> MsgEvent [ arrowhead = "empty" ]
      
    }
+
+
+.. rubric:: Footnotes
+
+.. [#abstract_class] The way to achieve this in UML,
+   we would need an abstract class (*e.g.* ``WithMessage``)
+   defining the attribute ``message``,
+   and have both classes ``SendMsg`` and ``MsgReceived`` inherit that abstract class.
+
+   Note that this design is still possible with kTBS,
+   and can be useful when multiple attributes and/or relations are shared together in several obsel types
+   (see (using `inheritance`:ref:).

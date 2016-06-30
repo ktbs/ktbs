@@ -145,7 +145,7 @@ KTBS_NS_TTL = """
     .
 
     :hasDefaultSubject
-        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        a rdf:Property, owl:FunctionalProperty ;
         rdfs:label "has default subject"@en, "a pour sujet par défaut"@fr;
         rdfs:domain :AbstractTrace ;
     .
@@ -183,6 +183,20 @@ KTBS_NS_TTL = """
         rdfs:label "has end date"@en, "a pour date de fin"@fr;
         rdfs:domain :AbstractTrace ;
         rdfs:range xsd:dateTime ;
+    .
+
+    :hasContext
+        a owl:ObjectProperty ;
+        rdfs:label "has context"@en, "a pour contexte"@fr;
+        rdfs:domain :AbstractTrace ;
+        rdfs:range :DataGraph ;
+    .
+
+    :hasObselCount
+        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        rdfs:label "has obsel count"@en, "a pour nombre d'obsels"@fr;
+        rdfs:domain :AbstractTrace ;
+        rdfs:range xsd:integer ;
     .
 
 :StoredTrace
@@ -262,7 +276,7 @@ KTBS_NS_TTL = """
     .
 
     :hasSubject
-        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        a rdf:Property, owl:FunctionalProperty ;
         rdfs:label "has subject"@en, "a pour sujet"@fr;
         rdfs:domain :Obsel ;
     .
@@ -369,6 +383,10 @@ KTBS_NS_TTL = """
         rdfs:range :ObselType ;
     .
 
+:DataGraph
+    a owl:Class ;
+    rdfs:label "Data graph"@en, "Graphe de données"@fr;
+.
 
 ################################################################
 #
@@ -396,6 +414,14 @@ KTBS_NS_TTL = """
         rdfs:label "has obsel list"@en, "a pour liste d'obsels"@fr;
         rdfs:domain :AbstractTrace ;
         rdfs:range :AbstractTraceObsels ;
+    .
+
+    :hasTraceStatistics
+        a owl:ObjectProperty, owl:FunctionalProperty,
+          owl:InverseFunctionalProperty ;
+        rdfs:label "has trace statistics"@en, "a pour statistiques de trace"@fr;
+        rdfs:domain :AbstractTrace ;
+        rdfs:range :TraceStatistics ;
     .
 
     :hasDiagnosis
@@ -448,16 +474,28 @@ KTBS_NS_TTL = """
     ].
 
 
+:TraceStatistics
+    a owl:Class ;
+    rdfs:label "Trace statistics"@en,
+               "Statistiques de trace"@fr;
+.
+
 ################################################################
 #
 # Built-in symbols supported by this implementation
 #
 ################################################################
 
-:external a :BuiltinMethod ; rdfs:label "external"@en, "externe"@fr .
-:filter   a :BuiltinMethod ; rdfs:label "filter"@en,   "filtre"@fr .
-:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,   "fusion"@fr .
-:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,   "SPARQL"@fr .
+:external a :BuiltinMethod ; rdfs:label "external"@en,
+                                        "externe"@fr .
+:filter   a :BuiltinMethod ; rdfs:label "filter"@en,
+                                        "filtre"@fr .
+:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,
+                                        "fusion"@fr .
+:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,
+                                        "SPARQL"@fr .
+:fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
+                                        "Automate à états fini"@fr .
 
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .

@@ -57,15 +57,19 @@ class WithParametersMixin(object):
         """
         I return a parameter value.
         """
-        return self.parameters_as_dict.get(key)
+        # we first seach in local parameters...
+        for i in self.state.objects(self.uri, KTBS.hasParameter):
+            akey, value = i.split("=", 1)
+            if akey == key:
+                return value
+        # ... then fetch inherited parameters only if necessary
+        else:
+            return self._get_inherited_parameters().get(key)
 
     def set_parameter(self, key, value):
         """
         I set a parameter value.
         """
-        if key in self._get_inherited_parameters():
-            raise ValueError("Can not %s inherited parameter '%s'"
-                             % ((value is None) and "delete" or "set", key))
         parameter = None
         for i in self.state.objects(self.uri, KTBS.hasParameter):
             akey, _ = i.split("=", 1)
@@ -105,6 +109,16 @@ class WithParametersMixin(object):
             parameters[key] = value
         return parameters
 
+    def iter_parameters_with_values(self, include_inherited=True):
+        """I iter over the parameter of this resource.
+        """
+        if include_inherited:
+            for i in self.parameters_as_dict.iter_items():
+                yield i
+        else:
+            for parameter in self.state.objects(self.uri, KTBS.hasParameter):
+                yield tuple(parameter.split("=", 1))
+
 
 @register_wrapper(KTBS.Method)
 @extend_api
@@ -120,7 +134,10 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         I return the inherited method.
         """
         method_uri = self.state.value(self.uri, KTBS.hasParentMethod)
-        return universal_factory(method_uri)
+        if method_uri is None:
+            return None
+        else:
+            return universal_factory(method_uri, [KTBS.Method])
 
     def set_parent(self, method):
         """
@@ -136,14 +153,20 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
 
     ######## Extension to the abstract kTBS API  ########
 
+    def get_parent_uri(self):
+        """
+        I return the URI of the inherited method, if any.
+        """
+        return self.state.value(self.uri, KTBS.hasParentMethod)
+
     def iter_used_by(self):
         """I iter over all computed traces using this method
         """
         self.force_state_refresh() # as changes can come from other resources
         factory = self.factory
         for uri in self.state.subjects(KTBS.hasMethod, self.uri):
-            yield factory(uri)
-            # must be a .trace.AbstratcTraceMixin
+            yield factory(uri, [KTBS.ComputedTrace])
+            # must be a .trace.ComputedTraceMixin
 
     def iter_children(self):
         """I iter over all children method of this method
@@ -151,7 +174,7 @@ class MethodMixin(WithParametersMixin, InBaseMixin):
         self.force_state_refresh() # as changes can come from other resources
         factory = self.factory
         for uri in self.state.subjects(KTBS.hasParentMethod, self.uri):
-            child = factory(uri)
+            child = factory(uri, [KTBS.Method])
             assert isinstance(child, MethodMixin)
             yield child
         

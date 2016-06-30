@@ -18,15 +18,21 @@
 """
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
+import traceback
+from datetime import datetime
 from logging import getLogger
 
-from rdflib import Graph, Literal, URIRef, XSD
+from rdflib import BNode, Graph, Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 
+from ktbs.engine.trace_stats import TraceStatistics
+from ktbs.time import lit2datetime, get_converter_to_unit
 from rdfrest.exceptions import InvalidDataError
+from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.cores.local import compute_added_and_removed
 from rdfrest.cores.mixins import FolderishMixin
-from rdfrest.util import cache_result, random_token
+from rdfrest.util import bounded_description, cache_result, random_token, replace_node_sparse, \
+    Diagnosis
 from .base import InBase
 from .builtin_method import get_builtin_method_impl
 from .obsel import Obsel
@@ -75,7 +81,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         implementation.
         """
         obsels_uri = self.state.value(self.uri, KTBS.hasObselCollection)
-        return self.service.get(obsels_uri)
+        return self.service.get(obsels_uri, [self._obsels_cls.RDF_MAIN_TYPE])
 
 
     ######## ILocalCore (and mixins) implementation  ########
@@ -112,7 +118,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
     def create(cls, service, uri, new_graph):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
 
-        I create the obsel collection associated with this trace,
+        I create the obsel collection and the statistics resource associated with this trace,
         and I notify this trace's sources.
         """
         super(AbstractTrace, cls).create(service, uri, new_graph)
@@ -122,13 +128,15 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         graph = Graph(service.store, uri)
         graph.add((uri, KTBS.hasObselCollection, obsels_uri))
         obsels_graph = Graph(identifier=obsels_uri)
-        if cls.RDF_MAIN_TYPE == KTBS.StoredTrace:
-            obsels_cls = StoredTraceObsels
-        else:
-            assert cls.RDF_MAIN_TYPE == KTBS.ComputedTrace
-            obsels_cls = ComputedTraceObsels
-        obsels_cls.init_graph(obsels_graph, obsels_uri, uri)
-        obsels_cls.create(service, obsels_uri, obsels_graph)
+        cls._obsels_cls.init_graph(obsels_graph, obsels_uri, uri)
+        cls._obsels_cls.create(service, obsels_uri, obsels_graph)
+
+        # create trace statistics
+        stats_uri = URIRef(uri + "@stats")
+        graph.add((uri, KTBS.hasTraceStatistics, stats_uri))
+        stats_graph = Graph(identifier=stats_uri)
+        TraceStatistics.init_graph(stats_graph, stats_uri, uri)
+        TraceStatistics.create(service, stats_uri, stats_graph)
 
         # notify sources
         sources = list(new_graph.objects(uri, KTBS.hasSource))
@@ -177,6 +185,9 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         old_traces = self.state.objects(self.uri, KTBS.hasSource)
         self._ack_source_change(old_traces, [])
         self.obsel_collection.delete(_trust=True)
+        if self.trace_statistics:
+            # Traces created before @stats was introduced have no trace_statistics
+            self.trace_statistics.delete(_trust=True)
         super(AbstractTrace, self).ack_delete(parameters)
 
 
@@ -204,6 +215,9 @@ class AbstractTrace(AbstractTraceMixin, InBase):
 class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     """I provide the implementation of ktbs:StoredTrace .
     """
+
+    _obsels_cls = StoredTraceObsels
+
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.StoredTrace
@@ -211,7 +225,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
     RDF_EDITABLE_OUT =    [ KTBS.hasModel, KTBS.hasOrigin, KTBS.hasTraceBegin,
                             KTBS.hasTraceEnd, KTBS.hasTraceBeginDT,
                             KTBS.hasTraceEndDT, KTBS.hasDefaultSubject,
-                            KTBS.hasPseudoMonRange,
+                            KTBS.hasPseudoMonRange, KTBS.hasContext,
                             ]
     RDF_CARDINALITY_OUT = [ (KTBS.hasModel, 1, 1),
                             (KTBS.hasOrigin, 1, 1),
@@ -229,6 +243,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                             (KTBS.hasTraceEnd,       "literal", XSD.integer),
                             (KTBS.hasTraceEndDT,     "literal", XSD.dateTime),
                             (KTBS.hasPseudoMonRange, "literal", XSD.integer),
+                            (KTBS.hasContext,        "uri"),
                             ]
 
     @classmethod
@@ -268,6 +283,28 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # start origin with a letter because if it starts with 4 digits,
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
+            elif unicode(origin) == "now":
+                origin = Literal("%sZ" % datetime.utcnow().isoformat())
+                new_graph.set((uri, KTBS.hasOrigin, origin))
+
+
+        # compute begin and/or end if beginDT and/or endDT are provided
+        begin_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceBeginDT))
+        end_dt = lit2datetime(new_graph.value(uri, KTBS.hasTraceEndDT))
+        if begin_dt or end_dt:
+            model = universal_factory(new_graph.value(uri, KTBS.hasModel),
+                                      [KTBS.TraceModel])
+            delta2unit = get_converter_to_unit(model.unit)
+            origin = lit2datetime(new_graph.value(uri, KTBS.hasOrigin))
+            if origin is not None:
+                if delta2unit is not None:
+                    if begin_dt is not None:
+                        begin = delta2unit(begin_dt - origin)
+                        new_graph.add((uri, KTBS.hasTraceBegin, Literal(begin)))
+                    if end_dt is not None:
+                        end = delta2unit(end_dt - origin)
+                        new_graph.add((uri, KTBS.hasTraceEnd, Literal(end)))
+
 
     def check_new(self, created):
         """ I override :meth:`GraphPostableMixin.check_new`.
@@ -286,17 +323,36 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
         post_single_obsel = super(StoredTrace, self).post_graph
         binding = { "trace": self.uri }
         ret = []
-        candidates = graph.query(_SELECT_CANDIDATE_OBSELS,
-                                 initBindings=binding)
-        with base.lock(self):
-            for candidate, _, _ in candidates:
-                ret1 = post_single_obsel(graph, parameters, _trust, candidate,
+        candidates = [ i[0] for i in graph.query(_SELECT_CANDIDATE_OBSELS,
+                                                 initBindings=binding) ]
+        bnode_candidates = { i for i in candidates
+                               if isinstance(i, BNode) }
+        with base.lock(self), self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
+            for candidate in candidates:
+                if isinstance(candidate, BNode):
+                    bnode_candidates.remove(candidate)
+                obs_graph = bounded_description(candidate, graph, prune=bnode_candidates)
+                for other in bnode_candidates:
+                    obs_graph.remove((candidate, None, other))
+                    obs_graph.remove((other, None, candidate))
+
+                ret1 = post_single_obsel(obs_graph, parameters, _trust, candidate,
                                          KTBS.Obsel)
                 if ret1:
                     assert len(ret1) == 1
-                    ret.append(ret1[0])
+                    new_obs = ret1[0]
+                    ret.append(new_obs)
+                    if new_obs != candidate:
+                        replace_node_sparse(graph, candidate, new_obs)
+
+        assert not bnode_candidates, bnode_candidates
         if not ret:
             raise InvalidDataError("No obsel found in posted graph")
+
+        stats = self.trace_statistics
+        if stats:
+            # Traces created before @stats was introduced have no trace_statistics
+            stats.metadata.set((stats.uri, METADATA.dirty, YES))
         return ret
                 
     def get_created_class(self, rdf_type):
@@ -329,6 +385,8 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
     """I provide the implementation of ktbs:ComputedTrace .
     """
 
+    _obsels_cls = ComputedTraceObsels
+
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.ComputedTrace
@@ -352,7 +410,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         compute the computed properties (model, origin) of this trace.
         """
         super(ComputedTrace, cls).create(service, uri, new_graph)
-        created = service.get(uri, cls.RDF_MAIN_TYPE)
+        created = service.get(uri)
         assert isinstance(created, ComputedTrace)
         created._mark_dirty() # friend #pylint: disable=W0212
         created.force_state_refresh()
@@ -420,15 +478,20 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                 editable.remove((self.uri, KTBS.hasDiagnosis, None))
                 editable.remove((self.uri, KTBS.hasModel, None))
                 editable.remove((self.uri, KTBS.hasOrigin, None))
-                diag = self._method_impl.compute_trace_description(self)
+                try:
+                    diag = self._method_impl.compute_trace_description(self)
+                except BaseException, ex:
+                    LOG.warn(traceback.format_exc())
+                    diag = Diagnosis(
+                        "exception raised while computing trace description",
+                        [ex.message]
+                    )
                 if not diag:
                     editable.add((self.uri, KTBS.hasDiagnosis,
-                                     Literal(str(diag))))
+                                     Literal(unicode(diag))))
 
 
     ######## Private method  ########
-
-    __method_impl = None
 
     def _ack_source_change(self, old_source_uris, new_source_uris):
         """I override :meth:`AbstractTrace._ack_source_change`
@@ -462,21 +525,41 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         Note that the recomputation will only occur when my state (or the state
         of my obsel collection) is required.
         """
-        self.metadata.add((self.uri, METADATA.dirty, Literal("yes")))
+        self.metadata.add((self.uri, METADATA.dirty, YES))
         obsels = self.obsel_collection
-        obsels.metadata.add((obsels.uri, METADATA.dirty, Literal("yes")))
+        obsels.metadata.add((obsels.uri, METADATA.dirty, YES))
+        stats = self.trace_statistics
+        if stats:
+            # Traces created before @stats was introduced have no trace_statistics
+            stats.metadata.add((stats.uri, METADATA.dirty, YES))
+
+    __method_impl = None
+    # do NOT use @cache_result here, as the result may change over time
 
     @property
     def _method_impl(self):
         """I hold the python object implementing my method.
         """
-        ret = self.__method_impl
-        if ret is None:
-            met = self.get_method()
-            while True:
-                par = getattr(met, "parent", None)
-                if par is None:
-                    break
-                met = par
-            ret = self.__method_impl = get_builtin_method_impl(met.uri, True)
+        if self.__method_impl is None:
+            uri = self.get_method_uri()
+            ret = get_builtin_method_impl(uri)
+
+            while ret is None:
+                met = universal_factory(uri, [KTBS.Method])
+                try:
+                    parent_uri = getattr(met, "parent_uri", None)
+                except:
+                    parent_uri = None
+                if parent_uri:
+                    uri = parent_uri
+                    ret = get_builtin_method_impl(uri)
+                else:
+                    ret = get_builtin_method_impl(uri, True)
+                    # the above will always return a method (possibly fake)
+                    # so we will exit the loop
+            self.__method_impl = ret
+        else:
+            ret = self.__method_impl
         return ret
+
+YES = Literal('yes')

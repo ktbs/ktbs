@@ -58,9 +58,9 @@ def assert_jsonld_equiv(val1, val2):
         "\n%s\n\nIS NOT JSON-LD EQUIVALENT TO\n\n%s"
         % (pformat(val1), pformat(val2)))
 
-def assert_roundtrip(json_content, resource):
+def assert_roundtrip(json_content, resource, parameters=None):
     graph = parse_json(json_content, resource.uri)
-    _, spurious, missing = graph_diff(graph, resource.state)
+    _, spurious, missing = graph_diff(graph, resource.get_state(parameters))
     assert not(spurious or missing), graph_diff_msg(spurious, missing)
 
 def graph_diff_msg(spurious, missing):
@@ -84,7 +84,7 @@ class TestJsonRoot(KtbsTestCase):
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
                 'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
@@ -124,7 +124,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
@@ -154,7 +154,7 @@ class TestJsonRoot(KtbsTestCase):
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql'],
+                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],
@@ -221,12 +221,40 @@ class TestJsonBase(KtbsTestCase):
             '@type': 'Base',
             'inRoot': '..',
             'contains': [
-                { '@id': './method', '@type': 'Method' },
-                { '@id': './model', '@type': 'TraceModel' },
-                { '@id': './t1/', '@type': 'StoredTrace' },
+                { '@id': 'method', '@type': 'Method' },
+                { '@id': 'model', '@type': 'TraceModel' },
+                { '@id': 't1/', '@type': 'StoredTrace' },
             ],
         })
         assert_roundtrip(json_content, self.base)
+
+    def test_enriched_base(self):
+        self.base.create_method("method", KTBS.sparql, label="the method")
+        self.base.create_model("model", label="the model")
+        self.base.create_stored_trace("t1/", "model", "alonglongtimeago", label="the trace")
+        self.base.create_computed_trace("t2/", KTBS.filter, sources=['t1/'])
+
+        params = lambda: {'prop':'comment,hasModel,hasSource,label,obselCount',}
+        json_content = "".join(
+            serialize_json_base(self.base.get_state(params()), self.base))
+        json = loads(json_content)
+        obselCount = 1 # should be 0, this is a bug with rdflib 4.2.1
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/',
+            '@type': 'Base',
+            'inRoot': '..',
+            'contains': [
+                { '@id': 'method', '@type': 'Method', 'label':"the method" },
+                { '@id': 'model', '@type': 'TraceModel', 'label':"the model" },
+                { '@id': 't1/', '@type': 'StoredTrace', 'label':"the trace",
+                  'hasModel':"model", 'obselCount':obselCount },
+                { '@id': 't2/', '@type': 'ComputedTrace', 'hasModel':"model",
+                  'hasSource':["t1/"], 'obselCount':obselCount },
+            ],
+        })
+        assert_roundtrip(json_content, self.base, params())
 
     def test_post_base(self):
         """
@@ -241,7 +269,7 @@ class TestJsonBase(KtbsTestCase):
         ret = self.my_ktbs.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.my_ktbs.uri + base_id
-        newbase = self.my_ktbs.factory(ret[0])
+        newbase = self.my_ktbs.factory(ret[0], [KTBS.Base])
         assert isinstance(newbase, BaseMixin)
 
 
@@ -366,7 +394,7 @@ class TestJsonMethod(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + method_id
-        newmethod = self.base.factory(ret[0])
+        newmethod = self.base.factory(ret[0], [KTBS.Method])
         assert isinstance(newmethod, MethodMixin)
 
 class TestJsonHashModel(KtbsTestCase):
@@ -432,10 +460,10 @@ class TestJsonHashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("#OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("#at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("#at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("#rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("#rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("#at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("#at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -463,27 +491,27 @@ class TestJsonHashModel(KtbsTestCase):
                 {
                     '@id': '#at1',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT1',
-                    'hasAttributeDatatype': 'xsd:string',
+                    'hasAttributeObselType': ['#OT1',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#at2',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT2',
-                    'hasAttributeDatatype': 'xsd:integer',
+                    'hasAttributeObselType': ['#OT2',],
+                    'hasAttributeDatatype': ['xsd:integer',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT1',],
                 },
                 {
                     '@id': '#rt2',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['#rt1'],
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT2',],
+                    'hasSuperRelationType': ['#rt1',],
                 },
             ]
         })
@@ -510,7 +538,7 @@ class TestJsonHashModel(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + model_id
-        newmodel = self.base.factory(ret[0])
+        newmodel = self.base.factory(ret[0], [KTBS.TraceModel])
         assert isinstance(newmodel, TraceModelMixin)
         assert len(newmodel.obsel_types) == 1
 
@@ -578,10 +606,10 @@ class TestJsonSlashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("#OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("#at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("#at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("#rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("#rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("#at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("#at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -609,27 +637,27 @@ class TestJsonSlashModel(KtbsTestCase):
                 {
                     '@id': '#at1',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT1',
-                    'hasAttributeDatatype': 'xsd:string',
+                    'hasAttributeObselType': ['#OT1',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#at2',
                     '@type': 'AttributeType',
-                    'hasAttributeObselType': '#OT2',
-                    'hasAttributeDatatype': 'xsd:integer',
+                    'hasAttributeObselType': ['#OT2',],
+                    'hasAttributeDatatype': ['xsd:integer',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT1',],
                 },
                 {
                     '@id': '#rt2',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
-                    'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['#rt1'],
+                    'hasRelationOrigin': ['#OT1',],
+                    'hasRelationDestination': ['#OT2',],
+                    'hasSuperRelationType': ['#rt1',],
                 },
             ]
         })
@@ -642,10 +670,10 @@ class TestJsonSlashModel(KtbsTestCase):
         self.model.add_parent(m2)
         ot1 = self.model.create_obsel_type("OT1")
         ot2 = self.model.create_obsel_type("#OT2", [ot1])
-        at1 = self.model.create_attribute_type("at1", ot1, XSD.string)
-        at2 = self.model.create_attribute_type("at2", ot2, XSD.integer)
-        rt1 = self.model.create_relation_type("rt1", ot1, ot1)
-        rt2 = self.model.create_relation_type("rt2", ot1, ot2, [rt1])
+        at1 = self.model.create_attribute_type("at1", [ot1], [XSD.string])
+        at2 = self.model.create_attribute_type("at2", [ot2], [XSD.integer])
+        rt1 = self.model.create_relation_type("rt1", [ot1], [ot1])
+        rt2 = self.model.create_relation_type("rt2", [ot1], [ot2], [rt1])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -693,7 +721,7 @@ class TestJsonSlashModel(KtbsTestCase):
                     '@type': 'RelationType',
                     'hasRelationOrigin': 'OT1',
                     'hasRelationDestination': '#OT2',
-                    'hasSuperRelationType': ['rt1'],
+                    'hasSuperRelationType': ['rt1',],
                 },
             ]
         })
@@ -724,8 +752,8 @@ class TestJsonTwoModels(KtbsTestCase):
 
         self.model.add_parent(self.other_model)
         ot1 = self.model.create_obsel_type( "#OT1", [otf])
-        at1 = self.model.create_attribute_type("#at1", otf, XSD.string)
-        rt1 = self.model.create_relation_type("#rt1", ot1, otf, [rtf])
+        at1 = self.model.create_attribute_type("#at1", [otf], [XSD.string])
+        rt1 = self.model.create_relation_type("#rt1", [ot1], [otf], [rtf])
 
         json_content = "".join(
             serialize_json_model(self.model.state, self.model))
@@ -751,15 +779,15 @@ class TestJsonTwoModels(KtbsTestCase):
                     '@id': '#at1',
                     '@type': 'AttributeType',
                     'hasAttributeObselType':
-                        'http://example.org/another/model#OTF',
-                    'hasAttributeDatatype': 'xsd:string',
+                        ['http://example.org/another/model#OTF',],
+                    'hasAttributeDatatype': ['xsd:string',],
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
-                    'hasRelationOrigin': '#OT1',
+                    'hasRelationOrigin': ['#OT1',],
                     'hasRelationDestination':
-                        'http://example.org/another/model#OTF',
+                        ['http://example.org/another/model#OTF',],
                     'hasSuperRelationType':
                         ['http://example.org/another/model#rtF',],
                 },
@@ -792,6 +820,7 @@ class TestJsonStoredTrace(KtbsTestCase):
             '@type': 'StoredTrace',
             'inBase': '../',
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': '../modl',
             'origin': '1970-01-01T00:00:00Z',
         })
@@ -802,6 +831,7 @@ class TestJsonStoredTrace(KtbsTestCase):
         self.t1.origin = "alonglongtimeago"
         self.t1.default_subject = "pa"
         self.t1.model = "http://example.org/model"
+        self.t1.trace_begin = 42
         with self.t1.edit() as g:
             g.add((self.t1.uri,
                    URIRef("http://example.org/ns/strprop"),
@@ -817,10 +847,36 @@ class TestJsonStoredTrace(KtbsTestCase):
             'label': 'My customized stored trace',
             'inBase': '../',
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': 'http://example.org/model',
             'origin': 'alonglongtimeago',
+            'traceBegin': 42,
             'defaultSubject': 'pa',
             'http://example.org/ns/strprop': 'Hello world',
+        })
+        assert_roundtrip(json_content, self.t1)
+
+    def test_customized_stored_trace_2(self):
+        self.t1.label = "My customized stored trace #2"
+        self.t1.trace_begin_dt = '2015-12-09T12:00:00Z'
+        self.t1.trace_end_dt = '2015-12-09T13:00:00Z'
+        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/t1/',
+            '@type': 'StoredTrace',
+            'label': 'My customized stored trace #2',
+            'inBase': '../',
+            'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
+            'hasModel': '../modl',
+            'origin': '1970-01-01T00:00:00Z',
+            'traceBegin': 1449662400000,
+            'traceBeginDT': '2015-12-09T12:00:00+00:00',
+            'traceEnd': 1449666000000,
+            'traceEndDT': '2015-12-09T13:00:00+00:00',
         })
         assert_roundtrip(json_content, self.t1)
 
@@ -836,6 +892,7 @@ class TestJsonStoredTrace(KtbsTestCase):
             '@type': 'StoredTrace',
             'inBase': '../',
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': '../modl',
             'origin': '1970-01-01T00:00:00Z',
             'isSourceOf': ['../t2/',],
@@ -856,8 +913,28 @@ class TestJsonStoredTrace(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + stored_trace_id
-        newstored_trace = self.base.factory(ret[0])
+        newstored_trace = self.base.factory(ret[0], [KTBS.StoredTrace])
         assert isinstance(newstored_trace, StoredTraceMixin)
+
+
+    def test_uri_default_subject(self):
+        self.t1.default_subject = URIRef("http://ex.co/bob")
+        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/t1/',
+            '@type': 'StoredTrace',
+            'inBase': '../',
+            'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
+            'hasModel': '../modl',
+            'origin': '1970-01-01T00:00:00Z',
+            'hasDefaultSubject': 'http://ex.co/bob'
+        })
+        assert_roundtrip(json_content, self.t1)
+
 
 class TestJsonComputedTrace(KtbsTestCase):
 
@@ -892,6 +969,7 @@ class TestJsonComputedTrace(KtbsTestCase):
             'hasSource': [ '../t1/', ],
             'parameter': [ 'after=42', ],
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': '../modl',
             'origin': '1970-01-01T00:00:00Z',
         })
@@ -926,6 +1004,7 @@ class TestJsonComputedTrace(KtbsTestCase):
                 'model=http://example.org/model',
             ],
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': 'http://example.org/model',
             'origin': 'alonglongtimeago',
             'http://example.org/ns/strprop': 'Hello world',
@@ -949,6 +1028,7 @@ class TestJsonComputedTrace(KtbsTestCase):
             'hasSource': [ '../t1/', ],
             'parameter': [ 'after=42', ],
             'hasObselList': '@obsels',
+            'hasTraceStatistics': '@stats',
             'hasModel': '../modl',
             'origin': '1970-01-01T00:00:00Z',
             'isSourceOf': ['../t3/',],
@@ -970,7 +1050,7 @@ class TestJsonComputedTrace(KtbsTestCase):
         ret = self.base.post_graph(graph)
         assert len(ret) == 1
         assert ret[0] == self.base.uri + computed_trace_id
-        newcomputed_trace = self.base.factory(ret[0])
+        newcomputed_trace = self.base.factory(ret[0], [KTBS.ComputedTrace])
         assert isinstance(newcomputed_trace, ComputedTraceMixin)
 
 
@@ -981,9 +1061,9 @@ class TestJsonObsels(KtbsTestCase):
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
-        self.at1 = self.model.create_attribute_type("#at1", ot1)
-        self.at2 = self.model.create_attribute_type("#at2", ot1)
-        self.rt1 = self.model.create_attribute_type("#rt1", ot1, ot1)
+        self.at1 = self.model.create_attribute_type("#at1", [ot1])
+        self.at2 = self.model.create_attribute_type("#at2", [ot1])
+        self.rt1 = self.model.create_attribute_type("#rt1", [ot1], [ot1])
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
@@ -996,8 +1076,12 @@ class TestJsonObsels(KtbsTestCase):
     def populate(self):
         # create obsel in wrong order, to check that they are serialized in
         # the correct order nonetheless
-        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, "baz",
-                                       {self.at1: "hello world" })
+        ex_foo = URIRef('http://example.org/Foo')
+        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000,
+                                       URIRef("#baz", self.t1.uri),
+                                       {self.at1: "hello world",
+                                        RDF.type: ex_foo,
+                                        })
         self.o2 = self.t1.create_obsel("o2", self.ot1, 2000, 3000, "bar",
                                        {self.at2: 42}, [(self.rt1, self.o3)])
         self.o1 = self.t1.create_obsel("o1", self.ot1,
@@ -1056,7 +1140,7 @@ class TestJsonObsels(KtbsTestCase):
                     'm:at1': 'hello world',
                     'm:at2': { '@id': 'http://example.org/resource' },
                     'hasSourceObsel': ['http://example.org/t1/source-obsel',
-                                       '../t0/o0'],
+                                       '../t0/o0',],
                     'beginDT': '1970-01-01T00:00:01+00:00',
                     'endDT': '1970-01-01T00:00:02+00:00',
                 },
@@ -1071,10 +1155,10 @@ class TestJsonObsels(KtbsTestCase):
                 },
                 {
                     '@id': 'o3',
-                    '@type': 'm:OT1',
+                    '@type': ['m:OT1', 'http://example.org/Foo'],
                     'begin': 3000,
                     'end': 4000,
-                    'subject': 'baz',
+                    'hasSubject': './#baz',
                     'm:at1': 'hello world',
                     '@reverse': {
                         'm:rt1': { '@id': 'o2', 'hasTrace': './' },
@@ -1102,7 +1186,7 @@ class TestJsonObsels(KtbsTestCase):
             'm:at1': 'hello world',
             'm:at2': { '@id': 'http://example.org/resource' },
             'hasSourceObsel': ['http://example.org/t1/source-obsel',
-                               '../t0/o0'],
+                               '../t0/o0',],
             'beginDT': '1970-01-01T00:00:01+00:00',
             'endDT': '1970-01-01T00:00:02+00:00',
         })
@@ -1139,10 +1223,10 @@ class TestJsonObsels(KtbsTestCase):
                 ],
             '@id': 'http://localhost:12345/b1/t1/o3',
             'hasTrace': './',
-            '@type': 'm:OT1',
+            '@type': ['m:OT1', 'http://example.org/Foo'],
             'begin': 3000,
             'end': 4000,
-            'subject': 'baz',
+            "hasSubject": "./#baz",
             'm:at1': 'hello world',
             '@reverse': {
                 'm:rt1': { '@id': 'o2', 'hasTrace': './' },
@@ -1161,7 +1245,7 @@ class TestJsonObsels(KtbsTestCase):
         }), self.t1.uri)
         ret = self.t1.post_graph(graph)
         assert len(ret) == 1
-        newobsel = self.t1.factory(ret[0])
+        newobsel = self.t1.factory(ret[0], [KTBS.Obsel])
         assert isinstance(newobsel, ObselMixin)
         assert newobsel.obsel_type == self.ot1, newobsel.obsel_type
 
@@ -1182,10 +1266,93 @@ class TestJsonObsels(KtbsTestCase):
 
         ret = self.t1.post_graph(graph)
         assert len(ret) == 2
-        newobsel1 = self.t1.factory(ret[0])
+        newobsel1 = self.t1.factory(ret[0], [KTBS.Obsel])
         assert isinstance(newobsel1, ObselMixin)
         assert newobsel1.obsel_type == self.ot1, newobsel1.obsel_type
-        newobsel2 = self.t1.factory(ret[1])
+        newobsel2 = self.t1.factory(ret[1], [KTBS.Obsel])
         assert isinstance(newobsel2, ObselMixin)
         assert newobsel2.obsel_type == self.ot1, newobsel2.obsel_type
 
+class TestJsonStats(KtbsTestCase):
+
+    def setUp(self):
+        super(TestJsonStats, self).setUp()
+        self.base = self.my_ktbs.create_base("b1/")
+        self.model = self.base.create_model("modl",)
+        self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
+        self.ot2 = ot2 = self.model.create_obsel_type("#OT2")
+        self.t1 = self.base.create_stored_trace("t1/", self.model,
+                                                "1970-01-01T00:00:00Z")
+
+    def tearDown(self):
+        super(TestJsonStats, self).tearDown()
+        self.base = None
+        self.model = self.ot1 = self.ot2 = None
+        self.t1 = None
+
+    def populate(self):
+        # create obsel in wrong order, as TestJsonObsels
+        self.o3 = self.t1.create_obsel("o3", self.ot1, 3000, 4000, None)
+        self.o2 = self.t1.create_obsel("o2", self.ot1, 2000, 3000, "bar")
+        self.o1 = self.t1.create_obsel("o1", self.ot1,
+            "1970-01-01T00:00:01Z", "1970-01-01T00:00:02Z", "foo")
+        self.o4 = self.t1.create_obsel("o4", self.ot2, 1000, 2000, "alice")
+        self.o5 = self.t1.create_obsel("o5", self.ot2, 4000, 5000, "bob")
+
+    def test_stats_empty_obsels(self):
+        json_content = "".join(serialize_json_trace_stats(
+            self.t1.trace_statistics.state,
+            self.t1.trace_statistics))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context': [
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+                { 'm': 'http://localhost:12345/b1/modl#',
+                  'stats': 'http://tbs-platform.org/2016/trace-stats#',
+                  'stats:hasObselType': {
+                      '@type': '@id'
+                      },
+                  },
+                ],
+            '@id': './',
+            'hasTraceStatistics': {
+                '@id': '',
+                '@type': 'TraceStatistics',
+            },
+            'stats:obselCount': 0,
+        })
+
+        assert_roundtrip(json_content, self.t1.trace_statistics)
+
+    def test_stats_populated_obsels(self):
+        self.populate()
+        json_content = "".join(serialize_json_trace_stats(
+            self.t1.trace_statistics.state,
+            self.t1.trace_statistics))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context': [
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+                { 'm': 'http://localhost:12345/b1/modl#',
+                  'stats': 'http://tbs-platform.org/2016/trace-stats#',
+                  'stats:hasObselType': {
+                      '@type': '@id'
+                      },
+                  },
+                ],
+            '@id': './',
+            'hasTraceStatistics': {
+                '@id': '',
+                '@type': 'TraceStatistics',
+            },
+            'stats:obselCount': 5,
+            'stats:minTime': 1000,
+            'stats:maxTime': 5000,
+            'stats:duration': 4000,
+            'stats:obselCountPerType': [{'stats:hasObselType': 'm:OT1',
+                                         'stats:nb': 3},
+                                        {'stats:hasObselType': 'm:OT2',
+                                         'stats:nb': 2}]
+        })
+        # Does a roundtrip have a sens for trace statistics ?
+        assert_roundtrip(json_content, self.t1.trace_statistics)

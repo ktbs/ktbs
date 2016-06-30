@@ -9,4 +9,5 @@ General concepts
     concepts/trace
     concepts/method
     concepts/monotonicity
+    concepts/trace_time_management
     concepts/abstract_api

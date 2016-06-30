@@ -118,15 +118,21 @@ def unregister_service(service):
         assert _IMPL_REG_KEYS[i] is service.root_uri
         del _IMPL_REG_KEYS[i]
     
-def factory(uri, _rdf_type=None, _no_spawn=False):
-    """I return a resource of the appropriate class.
+def factory(uri, rdf_types=None, _no_spawn=False):
+    """I return an instance for the resource identified by `uri`.
 
-    If no appropriate implementation can be found, None is returned.
+    This module searches all registered implementations for an appropriate one.
+    If none is found (or if the implementation does not recognize the URI),
+    None will be returned.
+
+    If ``rdf_types`` is provided, the returned instance will inherit
+    all the `registered <register_wrapper>`:meth: mix-in classes
+    corresponding to those types.
 
     :param uri: the URI of the resource to instanciate
     :type  uri: basestring
-    :param _rdf_type: a hint at the expected RDF type of the resource
-    :type  _rdf_type: :class:`~rdflib.URIRef`
+    :param rdf_types: if provided, a list of expected RDF types of the resource
+    :type  rdf_types: list of :class:`rdflib.term.URIRef`
     :param _no_spawn: if True, only *pre-existing* python objects will be
                       returned (may not be honnored by all implementations)
     :type  _no_spawn: bool
@@ -149,7 +155,7 @@ def factory(uri, _rdf_type=None, _no_spawn=False):
         if uri.startswith(i) and len(i) > len(match):
             match = i
     if match:
-        return _IMPL_REGISTRY[match](uri, _rdf_type, _no_spawn)
+        return _IMPL_REGISTRY[match](uri, rdf_types, _no_spawn)
     else:
         return None
     

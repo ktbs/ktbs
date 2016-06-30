@@ -17,18 +17,24 @@
 
 """
 Implementation of the external builtin methods.
+
+IMPORTANT: this method allows kTBS users to run arbitrary commands
+on the server, with the priviledges of the user running kTBS.
+Therefore, it is mostly intended for single-user localhost instances of kTBS.
 """
 import logging
+import traceback
+
 from os import getenv
 from rdflib import Literal, Graph, URIRef
 from rdfrest.util import Diagnosis
 from rdfrest.exceptions import ParseError
 from subprocess import Popen, PIPE
 
-from .interface import IMethod
-from .utils import replace_obsels
-from ..engine.builtin_method import register_builtin_method_impl
-from ..namespace import KTBS
+from ktbs.methods.interface import IMethod
+from ktbs.methods.utils import replace_obsels
+from ktbs.engine.builtin_method import register_builtin_method_impl
+from ktbs.namespace import KTBS
 
 LOG = logging.getLogger(__name__)
 
@@ -110,7 +116,8 @@ class _ExternalMethod(IMethod):
             raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
                             format=rdfformat)
         except Exception, exc:
-            diag.append(str(exc))
+            LOG.warn(traceback.format_exp())
+            diag.append(unicode(exc))
         replace_obsels(computed_trace, raw_graph)
 
         return diag
@@ -145,10 +152,12 @@ class _ExternalMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except ValueError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
                 except ParseError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
@@ -179,5 +188,10 @@ _PARAMETERS_TYPE = {
     "format": str,
 }
 
+def start_plugin(_config):
+    """I get the configuration values from the main kTBS configuration.
 
-register_builtin_method_impl(_ExternalMethod())
+    .. note:: This function is called automatically by the kTBS.
+              It is called once when the kTBS starts, not at each request.
+    """
+    register_builtin_method_impl(_ExternalMethod())

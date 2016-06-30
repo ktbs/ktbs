@@ -50,6 +50,7 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
 
     bnodes = [ i for i in raw_graph.subjects(KTBS.hasBegin, None)
                if isinstance(i, BNode) ]
+    bnode_map = None
     if bnodes:
         bnode_map = {}
         for bnode in bnodes:
@@ -59,16 +60,14 @@ def replace_obsels(computed_trace, raw_graph, inherit=False):
 
     with obsels.edit(_trust=True) as editable:
         obsels._empty() # friend #pylint: disable=W0212
-        editable_add = editable.add
         if bnodes:
             bm_get = bnode_map.get
-            add_triple = lambda t: editable_add([ bm_get(x, x) for x in t])
+            triples = ( [ bm_get(x, x) for x in triple] for triple in raw_graph )
         else:
-            add_triple = editable_add
-        for triple in raw_graph:
-            add_triple(triple)
+            triples = iter(raw_graph)
+        editable.addN( (s, p, o, editable) for s, p, o in triples )
 
-def translate_node(node, transformed_trace, src_uri, multiple_sources):
+def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=None):
     """
     If node is a URI, translate its URI to put it in transfored_trace. Else,
     leave it unchanged.
@@ -82,5 +81,11 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources):
         new_id = "%s_%s" % (tid, oid)
     else:
         _, new_id = node.rsplit("/", 1)
-    return URIRef("%s%s" % (transformed_trace.uri, new_id))
+    ret = URIRef("%s%s" % (transformed_trace.uri, new_id))
+    if prevent is not None and prevent(ret):
+        ret = None
+    return ret
+
+def boolean_parameter(value):
+    return value.strip().lower() not in { "false", "no", "0" }
 

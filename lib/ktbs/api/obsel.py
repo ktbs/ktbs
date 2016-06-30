@@ -54,7 +54,8 @@ class ObselMixin(KtbsResourceMixin):
         """
         I return the trace containing this obsel.
         """
-        return self.factory(self.state.value(self.uri, KTBS.hasTrace))
+        return self.factory(self.state.value(self.uri, KTBS.hasTrace),
+                            [KTBS.AbstractTrace])
         # must be a .trace.AbstractTraceMixin
 
     def get_obsel_type(self):
@@ -101,8 +102,6 @@ class ObselMixin(KtbsResourceMixin):
         I return the subject of the obsel.
         """
         ret = self.state.value(self.uri, KTBS.hasSubject)
-        if ret is not None:
-            ret = unicode(ret)
         return ret
 
     def iter_source_obsels(self):
@@ -111,7 +110,7 @@ class ObselMixin(KtbsResourceMixin):
         """
         factory = self.factory
         for i in self.state.objects(self.uri, KTBS.hasSourceObsel):
-            yield factory(i, KTBS.Obsel)
+            yield factory(i, [KTBS.Obsel])
 
     def iter_attribute_types(self):
         """
@@ -130,7 +129,7 @@ class ObselMixin(KtbsResourceMixin):
         factory = self.factory
         for atype, in self.state.query(query_str): #/!\ returns 1-uples
             if not atype.startswith(KTBS.uri) and atype != RDF.type:
-                yield factory(atype, KTBS.AttributeType)
+                yield factory(atype, [KTBS.AttributeType])
 
     def iter_relation_types(self):
         """
@@ -145,7 +144,7 @@ class ObselMixin(KtbsResourceMixin):
         """ % self.uri
         factory = self.factory
         for rtype, in self.state.query(query_str): #/!\ returns 1-uples
-            yield factory(rtype, KTBS.RelationType)
+            yield factory(rtype, [KTBS.RelationType])
 
     def iter_related_obsels(self, rtype):
         """
@@ -161,7 +160,7 @@ class ObselMixin(KtbsResourceMixin):
         """ % (self.uri, rtype)
         factory = self.factory
         for related, in self.state.query(query_str): #/!\ returns 1-uples
-            yield factory(related, KTBS.Obsel)
+            yield factory(related, [KTBS.Obsel])
 
     def iter_inverse_relation_types(self):
         """
@@ -176,7 +175,7 @@ class ObselMixin(KtbsResourceMixin):
         """ % self.uri
         factory = self.factory
         for rtype, in self.state.query(query_str): #/!\ returns 1-uples
-            yield factory(rtype, KTBS.RelationType)
+            yield factory(rtype, [KTBS.RelationType])
 
     def iter_relating_obsels(self, rtype):
         """
@@ -192,7 +191,7 @@ class ObselMixin(KtbsResourceMixin):
         """ % (rtype, self.uri)
         factory = self.factory
         for relating, in self.state.query(query_str): #/!\ returns 1-uples
-            yield factory(relating, KTBS.Obsel)
+            yield factory(relating, [KTBS.Obsel])
 
     def get_attribute_value(self, atype):
         """
@@ -228,12 +227,12 @@ class ObselProxy(ObselMixin, ICore):
 
     ######## ICore implementation ########
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on the factory of my obsel collection.
         """
-        return self.collection.factory(uri, _rdf_type, _no_spawn)
+        return self.collection.factory(uri, rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement :meth:`.cores.ICore.get_state`.
@@ -283,7 +282,7 @@ class ObselProxy(ObselMixin, ICore):
                 # while the edit context will rely only of this obsel's graph
                 raise ValueError("I do not support *clear* edit context "
                                  "(see docstring).")
-            proper = self.collection.factory(self.uri, KTBS.Obsel)
+            proper = self.collection.factory(self.uri, [KTBS.Obsel])
             if proper is None:
                 raise ValueError("Could not get proper obsel %s" % self)
             assert isinstance(proper, ObselMixin)  and  proper.uri == self.uri
@@ -303,7 +302,7 @@ class ObselProxy(ObselMixin, ICore):
 
         Delegate to proper obsel resource.
         """
-        proper = self.collection.factory(self.uri, KTBS.Obsel)
+        proper = self.collection.factory(self.uri, [KTBS.Obsel])
         if proper is None:
             raise ValueError("Could not get proper obsel %s" % self)
         assert isinstance(proper, ObselMixin)  and  proper.uri == self.uri

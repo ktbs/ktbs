@@ -18,17 +18,14 @@
 """
 Implementation of the filter builtin methods.
 """
-from json import dumps as json_dumps, loads as json_loads
 import logging
 
-from rdflib import Literal, RDF, URIRef
-
-from rdfrest.util.iso8601 import parse_date, ParseError
-from rdfrest.util import check_new, Diagnosis
-from .interface import IMethod
+from rdflib import Literal, RDF, URIRef, Graph
+from rdfrest.util.iso8601 import parse_date
+from rdfrest.util import check_new
+from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
 from .utils import translate_node
 from ..engine.builtin_method import register_builtin_method_impl
-from ..engine.resource import METADATA
 from ..namespace import KTBS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
 
@@ -36,140 +33,120 @@ from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
 
 LOG = logging.getLogger(__name__)
 
-class _FilterMethod(IMethod):
+class _FilterMethod(AbstractMonosourceMethod):
     """I implement the filter builtin method.
     """
     uri = KTBS.filter
 
-    def compute_trace_description(self, computed_trace):
-        """I implement :meth:`.interface.IMethod.compute_trace_description`.
+    parameter_types = {
+        "origin": Literal,
+        "model": URIRef,
+        "before": int,
+        "after": int,
+        "beforeDT": parse_date,
+        "afterDT": parse_date,
+        "bgp": unicode,
+        "otypes":
+            lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
+    }
+
+    def init_state(self, computed_trace, params, cstate, diag):
+        """I implement :meth:`.abstract.AbstractMonosourceMethod.init_state
         """
-        diag = Diagnosis("filter.compute_trace_description")
-        cstate = { "method": "filter",
-                   "before": None,
-                   "after": None,
-                   "otypes": None,
-                   "bgp": None,
-                   "finished": False,
-                   "last_seen": None,
-                   "log_mon_tag": None,
-                   "str_mon_tag": None,
-                   }
+        cstate.update([
+            ("maxtime", None),
+            ("mintime", None),
+            ("otypes", None),
+            ("bgp", None),
+            ("passed_maxtime", False),
+            ("last_seen", None),
+        ])
+        source = computed_trace.source_traces[0]
+        if "before" in params  and  "beforeDT" in params:
+            diag.append("WARN: 'before' and 'beforeDT' are both specified; "
+                        "the latter will be ignored")
 
-        src, params =  self._prepare_source_and_params(computed_trace, diag)
-        if src is not None:
-            assert params is not None
-            model = params.get("model")
-            if model is None:
-                model = src.model_uri
-            else:
-                model = URIRef(model)
-            origin = Literal(params.get("origin")  or  src.origin)
-            with computed_trace.edit(_trust=True) as editable:
-                editable.add((computed_trace.uri, KTBS.hasModel, model))
-                editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
+        if "after" in params  and  "afterDT" in params:
+            diag.append("WARN: 'after' and 'afterDT' are both specified; "
+                        "the latter will be ignored")
+        origin_dt = None
+        converter = None
+        if "beforeDT" in params  or  "afterDT" in params:
+            origin_dt = lit2datetime(source.origin)
+            if origin_dt is None:
+                diag.append("'beforeDT' and/or 'afterDT' used, but trace "
+                            "origin is not a valid dateTime")
+            converter = get_converter_to_unit(source.unit)
+            if converter is None:
+                diag.append("'beforeDT' and/or 'afterDT' used, but no "
+                            "converter is available for unit <%s>"
+                            % source.unit)
+            if origin_dt is None or converter is None:
+                return
 
-            converter = None
-            if "beforeDT" in params  or  "afterDT" in params:
-                origin_dt = lit2datetime(origin)
-                if origin_dt is None:
-                    diag.append("'beforeDT' and/or 'afterDT' used, but trace "
-                                "origin is not a valid dateTime")
-                converter = get_converter_to_unit(computed_trace.unit)
-                if converter is None:
-                    diag.append("'beforeDT' and/or 'afterDT' used, but no "
-                                "converter is available for unit <%s>"
-                                % computed_trace.unit)
-
-            before = params.get("before")
-            if before is None  and  "beforeDT" in params:
-                before = converter(params.get("beforeDT") - origin_dt)
-            cstate["before"] = before
-            after = params.get("after")
-            if after is None  and  "afterDT" in params:
-                after = converter(params.get("afterDT") - origin_dt)
-            cstate["after"] = after
-            cstate["otypes"] = params.get("otypes")
-            cstate["bgp"] = params.get("bgp")
-
-        if not diag:
-            cstate["errors"] = list(diag)
+        maxtime = params.get("before")
+        if maxtime is None  and  "beforeDT" in params:
+            maxtime = converter(params.get("beforeDT") - origin_dt)
+        cstate["maxtime"] = maxtime
+        mintime = params.get("after")
+        if mintime is None  and  "afterDT" in params:
+            mintime = converter(params.get("afterDT") - origin_dt)
+        cstate["mintime"] = mintime
+        cstate["otypes"] = params.get("otypes")
+        cstate["bgp"] = params.get("bgp")
 
 
-        computed_trace.metadata.set((computed_trace.uri,
-                                     METADATA.computation_state,
-                                     Literal(json_dumps(cstate))
-                                     ))
-
-        return diag
-
-    def compute_obsels(self, computed_trace, from_scratch=False):
-        """I implement :meth:`.interface.IMethod.compute_obsels`.
+    def do_compute_obsels(self, computed_trace, cstate, monotonicity, diag):
+        """I implement :meth:`.abstract.AbstractMonosourceMethod.do_compute_obsels
         """
-        diag = Diagnosis("filter.compute_obsels")
-        cstate = json_loads(
-            computed_trace.metadata.value(computed_trace.uri,
-                                          METADATA.computation_state))
-        if from_scratch:
-            for key in ("finished", "last_seen", "log_mon_tag", "str_mon_tag"):
-                cstate[key] = None
-        errors = cstate.get("errors")
-        if errors:
-            for i in errors:
-                diag.append(i)
-                return diag
+        if cstate['passed_maxtime']  and  monotonicity is STRICT_MON:
+            return
 
         source = computed_trace.source_traces[0]
         source_obsels = source.obsel_collection
         target_obsels = computed_trace.obsel_collection
-        after = cstate["after"]
-        before = cstate["before"]
+        mintime = cstate["mintime"]
+        maxtime = cstate["maxtime"]
         otypes = cstate["otypes"]
         bgp = cstate["bgp"]
+        passed_maxtime = cstate["passed_maxtime"]
+        last_seen = cstate["last_seen"]
         if otypes:
             otypes = set( URIRef(i) for i in otypes )
-        old_log_mon_tag = cstate["log_mon_tag"]
-        old_str_mon_tag = cstate["str_mon_tag"]
-        last_seen = cstate["last_seen"]
-        finished = cstate["finished"]
 
-        if finished  and  old_str_mon_tag == source_obsels.str_mon_tag:
-            return diag
-
-        begin = after
-        if old_log_mon_tag != source_obsels.log_mon_tag:
-            # non-monotonic change; empty the graph and start anew
-            target_obsels._empty() # friend #pylint: disable=W0212
+        begin = mintime
+        if monotonicity is NOT_MON:
             LOG.debug("non-monotonic %s", computed_trace)
-        elif old_str_mon_tag == source_obsels.str_mon_tag:
-            # stritcly temporally monotonic change; start at last_seen
+            passed_maxtime = False
+            last_seen = None
+            target_obsels._empty() # friend #pylint: disable=W0212
+        elif monotonicity is STRICT_MON:
             LOG.debug("strictly temporally monotonic %s", computed_trace)
             if last_seen:
                 begin = last_seen
-        else: 
+        elif monotonicity is PSEUDO_MON:
+            LOG.debug("pseudo temporally monotonic %s", computed_trace)
+            if last_seen:
+                begin = last_seen - source.get_pseudomon_range()
+        else:
             LOG.debug("non-temporally monotonic %s", computed_trace)
 
         source_uri = source.uri
         target_uri = computed_trace.uri
         source_state = source_obsels.state
         source_triples = source_state.triples
-        with target_obsels.edit(_trust=True) as editable:
-            target_contains = editable.__contains__
-            target_add = editable.add
+        target_contains = target_obsels.state.__contains__
+        target_add_graph = target_obsels.add_obsel_graph
+        check_new_obs = lambda uri, g=target_obsels.state: check_new(g, uri)
 
+        with target_obsels.edit({"add_obsels_only":1}, _trust=True):
             for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
-                cstate["last_seen"] = obs.begin
-                if after  and  obs.begin < after:
-                    LOG.debug("--- dropping %s", obs)
-                    continue
-                if before:
-                    if obs.begin > before:
-                        LOG.debug("--- finishing on %s", obs)
-                        cstate["finished"] = True
+                last_seen = obs.begin
+                if maxtime:
+                    if obs.end > maxtime:
+                        LOG.debug("--- passing maxtime on %s", obs)
+                        passed_maxtime = True
                         break
-                    elif obs.end > before:
-                        LOG.debug("--- dropping %s", obs)
-                        continue
                 if otypes:
                     obs_uri = obs.uri
                     obs_state = obs.state
@@ -185,96 +162,36 @@ class _FilterMethod(IMethod):
                 if target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
                     LOG.debug("--- skipping %s", new_obs_uri)
                     continue # already added
-                    
+
+
                 LOG.debug("--- keeping %s", obs)
-                target_add((new_obs_uri, KTBS.hasTrace, target_uri))
-                target_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
+                new_obs_graph = Graph()
+                new_obs_add = new_obs_graph.add
+
+                new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
+                new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
 
                 for _, pred, obj in source_triples((obs.uri, None, None)):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_obj = translate_node(obj, computed_trace, source_uri,
-                                             False)
-                    if new_obj != obj and check_new(editable, new_obj):
-                        continue # skip relations to node that are filtered out
-                    target_add((new_obs_uri, pred, new_obj))
+                                             False, check_new_obs)
+                    if new_obj is None:
+                        continue # skip relations to nodes that are filtered out or not created yet
+                    new_obs_add((new_obs_uri, pred, new_obj))
+
                 for subj, pred, _ in source_triples((None, None, obs.uri)):
                     if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
                         continue
                     new_subj = translate_node(subj, computed_trace, source_uri,
-                                              False)
-                    if new_subj != subj and check_new(editable, new_subj):
-                        continue # skip relations to node that are filtered out
-                    target_add((new_subj, pred, new_obs_uri))
+                                              False, check_new_obs)
+                    if new_subj is None:
+                        continue # skip relations from nodes that are filtered out or not created yet
+                    new_obs_add((new_subj, pred, new_obs_uri))
 
-        cstate["str_mon_tag"] = source_obsels.str_mon_tag
-        cstate["log_mon_tag"] = source_obsels.log_mon_tag
+                target_add_graph(new_obs_graph)
 
-        computed_trace.metadata.set((computed_trace.uri,
-                                     METADATA.computation_state,
-                                     Literal(json_dumps(cstate))
-                                     ))
-        return diag
-
-    @staticmethod
-    def _prepare_source_and_params(computed_trace, diag):
-        """I check and prepare the data required by the method.
-
-        I return the unique source of the computed trace, and a dict of
-        useful parameters converted to the expected datatype. If this can not
-        be done, I return ``(None, None)``.
-
-        I also populate `diag` with error/warning messages.
-        """
-        sources = computed_trace.source_traces
-        params = computed_trace.parameters_as_dict
-        critical = False
-
-        if len(sources) != 1:
-            diag.append("Method ktbs:filter expects exactly one source")
-            critical = True
-
-        for key, val in params.items():
-            datatype = _PARAMETERS_TYPE.get(key)
-            if datatype is None:
-                diag.append("WARN: Parameter %s is not used by ktbs:filter"
-                            % key)
-            else:
-                try:
-                    params[key] = datatype(val)
-                except ValueError:
-                    diag.append("Parameter %s has illegal value: %s"
-                                % (key, val))
-                    critical = True
-                except ParseError:
-                    diag.append("Parameter %s has illegal value: %s"
-                                % (key, val))
-                    critical = True
-
-        if "before" in params  and  "beforeDT" in params:
-            diag.append("WARN: 'before' and 'beforeDT' are both specified; "
-                        "the latter will be ignored")
-        if "after" in params  and  "afterDT" in params:
-            diag.append("WARN: 'after' and 'afterDT' are both specified; "
-                        "the latter will be ignored")
-            
-        if critical:
-            return None, None
-        else:
-            return sources[0], params
-
-
-_PARAMETERS_TYPE = {
-    "origin": Literal,
-    "model": URIRef,
-    "before": int,
-    "after": int,
-    "beforeDT": parse_date,
-    "afterDT": parse_date,
-    "bgp": unicode,
-    "otypes":
-        lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
-}
-
+        cstate["passed_maxtime"] = passed_maxtime
+        cstate["last_seen"] = last_seen
 
 register_builtin_method_impl(_FilterMethod())

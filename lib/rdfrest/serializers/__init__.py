@@ -193,9 +193,7 @@ def _serialize_with_rdflib(rdflib_format, graph, bindings, base_uri):
     # copy in another graph to prevent polluting the original graph namespaces
     # TODO LATER find an efficient way to serialize a graph with custom NSs
     ser = Graph()
-    ser_add = ser.add
-    for triple in graph:
-        ser_add(triple)
+    ser.addN( (s, p, o, ser) for s, p, o in graph )
     for prefix, nsuri in bindings.items():
         ser.bind(prefix, nsuri)
     if base_uri is not None and not isinstance(base_uri, URIRef):

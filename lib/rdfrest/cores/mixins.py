@@ -29,7 +29,7 @@ from time import time
 from rdflib import BNode, Graph, Literal, RDF, URIRef, XSD
 
 from ..exceptions import InvalidDataError
-from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node
+from ..util import cache_result, check_new, Diagnosis, parent_uri, replace_node_dense
 from .local import compute_added_and_removed, ILocalCore, NS as RDFREST
 
 
@@ -81,11 +81,16 @@ class BookkeepingMixin(ILocalCore):
         to update bookkeeping metadata.
         """
         super(BookkeepingMixin, self).ack_edit(parameters, prepared)
-        self._update_bk_metadata_in(self.uri, self.metadata)
+        self._update_bk_metadata_in(self.uri, self.metadata, prepared)
 
     @classmethod
-    def _update_bk_metadata_in(cls, uri, graph):
+    def _update_bk_metadata_in(cls, uri, graph, prepared=None):
         """Update the metadata in the given graph.
+
+        Might be called from within the `~.local.ILocalCore.create`:meth: method,
+        or from the `~.local.ILocalCore.ack_edit`:meth: method.
+        In the latter case, `prepared` will contain the object returned by
+        `~.local.ILocalCore.prepare_edit`:meth:.
         """
         now = int(round(time()))
         etag = graph.value(uri, RDFREST.etag)
@@ -175,7 +180,7 @@ class GraphPostableMixin(ILocalCore):
         only executed in `__debug__` mode, this should obviously not be relied
         upon).
         """
-        self.check_parameters(parameters, "post_graph")
+        self.check_parameters(parameters, parameters, "post_graph")
 
         if _created:
             created = _created
@@ -209,7 +214,7 @@ class GraphPostableMixin(ILocalCore):
 
         if not isinstance(created, URIRef):
             new_uri = cls.mint_uri(self, graph, created)
-            replace_node(graph, created, new_uri)
+            replace_node_dense(graph, created, new_uri)
             created = new_uri
         if not _trust:
             cls.complete_new_graph(self.service, created, None, graph)

@@ -127,13 +127,19 @@ class HttpFrontend(object):
 
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
+
+        CAUTION: the conversion of exceptions to HTTP status codes  should be
+        maintained consistent with
+        :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
-        requested_uri, requested_extension = extsplit(Request(environ).path_url)
+        request = Request(environ)
+        requested_uri, requested_extension = extsplit(request.path_url)
         requested_uri = URIRef(requested_uri)
         resource = self._service.get(requested_uri)
         environ['rdfrest.requested.uri'] = requested_uri
         environ['rdfrest.requested.extension'] = requested_extension
         environ['rdfrest.resource'] = resource
+        environ['rdfrest.parameters'] = dict(request.GET.mixed())
 
         if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
             self._middleware_stack = build_middleware_stack(self._core_call)
@@ -141,15 +147,12 @@ class HttpFrontend(object):
 
         return self._middleware_stack(environ, start_response)
 
+
     def _core_call(self, environ, start_response):
         """The actual implementation of this WSGI application.
 
         NB: the __call__ method wraps this function into a middleware_stack,
         including all middlewares registered by plugins.
-
-        CAUTION: the conversion of exceptions to HTTP status codes  should be
-        maintained consistent with
-        :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
         request = MyRequest(environ)
         resource = environ['rdfrest.resource']
@@ -168,79 +171,30 @@ class HttpFrontend(object):
             resp = self.issue_error(405, request, resource,
                                     allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
-        try:
-            with self._service:
-                resource.force_state_refresh()
-                pre_process_request(self._service, request, resource)
-                response = method(request, resource)
-                # NB: even for a GET, we embed method in a "transaction"
-                # because it may nonetheless make some changes (e.g. in
-                # the #metadata graphs)
-        except HttpException, ex:
-            response = ex.get_response(request)
-        except CanNotProceedError, ex:
-            status = "409 Conflict"
-            response = MyResponse("%s - Can not proceed\n%s"
-                                  % (status, ex.message),
-                                  status=status,
-                                  request=request)
-        except InvalidDataError, ex:
-            status = "403 Forbidden"
-            response = MyResponse("%s - Invalid data\n%s"
-                                  % (status, ex.message),
-                                  status=status,
-                                  request=request)
-        except InvalidParametersError, ex:
-            status = "404 Not Found"
-            response = MyResponse("%s - Invalid parameters\n%s"
-                                  % (status, ex.message),
-                                  status=status,
-                                  request=request)
-        except MethodNotAllowedError, ex:
-            status = "405 Method Not Allowed"
-            response = MyResponse("%s\n%s" % (status, ex.message),
-                                  status=status,
-                                  request=request)
-            # TODO LATER find a nice way to populate response.allow ?
-        except ParseError, ex:
-            status = "400 Bad Request"
-            response = MyResponse("%s - Parse error\n%s"
-                                  % (status, ex.message),
-                                  status=status,
-                                  request=request)
-        except ParseException, ex:
-            status = "400 Bad Request"
-            message = "%s at line %s col %s\n\n%s" % \
-                      (ex.msg, ex.lineno, ex.column, ex.markInputline())
-            response = MyResponse("%s - Parse exception\n%s"
-                                  % (status, message),
-                                  status=status,
-                                  request=request)
-        except SerializeError, ex:
-            status = "550 Serialize Error"
-            response = MyResponse("%s\n%s" % (status, ex.message),
-                                  status=status,
-                                  request=request)
-        except RdfRestException, ex:
-            status = "500 Internal Error"
-            response = MyResponse("%s - Other RDF-REST exception\n%s"
-                                  % (status, ex.message),
-                                  status=status,
-                                  request=request)
-
+        
+        with self._service:
+            resource.force_state_refresh()
+            pre_process_request(self._service, request, resource)
+            response = method(request, resource)
+            # NB: even for a GET, we embed method in a "transaction"
+            # because it may nonetheless make some changes (e.g. in
+            # the #metadata graphs)
         return response(environ, start_response)
-
+            
     def http_delete(self, request, resource):
         """Process a DELETE request on the given resource.
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)
-        resource.delete(request.GET.mixed() or None)
+        resource.delete(request.environ['rdfrest.parameters'] or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
         """Process a GET request on the given resource.
         """
+        headerlist = []
+        params = request.environ['rdfrest.parameters']
+
         # find serializer
         rdf_type = resource.RDF_MAIN_TYPE
         ext = request.uri_extension
@@ -249,6 +203,7 @@ class HttpFrontend(object):
             if serializer is None:
                 return self.issue_error(404, request, resource, "Bad extension")
         else:
+            headerlist.append(("vary", "accept"))
             serializer = None
             ctype = request.accept.best_match( 
                 ser[1] for ser in iter_serializers(rdf_type) )
@@ -268,7 +223,6 @@ class HttpFrontend(object):
             serializer, ext = get_serializer_by_content_type(ctype, rdf_type)
 
         # populate response header according to serializer
-        headerlist = []
         if ctype[:5] == "text/":
             headerlist.append(("content-type", ctype+";charset=utf-8"))
         else:
@@ -279,21 +233,24 @@ class HttpFrontend(object):
         iter_etags = getattr(resource, "iter_etags", None)
         if iter_etags is not None:
             etags = " ".join( 'W/"%s"' % taint_etag(i, ctype)
-                              for i in iter_etags(request.GET.mixed() or None) )
+                              for i in iter_etags(params or None) )
             headerlist.append(("etag", etags))
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
             last_modified = datetime.fromtimestamp(last_modified, UTC)
-            headerlist.append(("last-modified", last_modified.isoformat()))
+            headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
         # get graph and redirect if needed
-        request.GET.pop("_", None) # dummy param used by JQuery to invalidate cache
-        params = request.GET.mixed()
+        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
         graph = resource.get_state(params or None)
         redirect = getattr(graph, "redirect_to", None)
         if redirect is not None:
             return self.issue_error(303, request, None,
                                     location=redirect)
+        # also insert navigation links if available
+        next_link = getattr(graph, "next_link", None)
+        if next_link is not None:
+            headerlist.append(("link", '<%s>;rel="next"' % next_link.encode("utf8")))
 
         # check triples & bytes limitations and serialize
         if self.max_triples is not None  and  len(graph) > self.max_triples:
@@ -311,10 +268,13 @@ class HttpFrontend(object):
             app_iter = [payload]
 
         response = MyResponse(headerlist=headerlist, app_iter=app_iter)
-        
-        cache_control = self.cache_control(resource)
-        if cache_control:
-            response.cache_control = cache_control
+
+        if cache_bypass:
+            response.cache_control = "no-cache"
+        else:
+            cache_control = self.cache_control(resource)
+            if cache_control:
+                response.cache_control = cache_control
 
         return response
             
@@ -356,13 +316,15 @@ class HttpFrontend(object):
                 return self.issue_error(413, request, resource,
                                         "max_triples (%s) was exceeded"
                                         % self.max_triples)
-        results = resource.post_graph(graph, request.GET.mixed() or None)
+        params = request.environ['rdfrest.parameters']
+        results = resource.post_graph(graph, params or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
-            content = "\n".join( "<{}>".format(r) for r in results )
+            content = "\r\n".join( "{}".format(r) for r in results ) + "\r\n"
             headerlist = [
                 ("location", str(results[0])),
+                ("content-type", "text/uri-list"),
                 ]
             return MyResponse(content, status=201, headerlist=headerlist,
                                request=request) # Created
@@ -382,6 +344,8 @@ class HttpFrontend(object):
         """
         # too many return statements (7/6) #pylint: disable=R0911
 
+        params = request.environ['rdfrest.parameters']
+
         # find parser
         ext = request.uri_extension
         if ext:
@@ -391,7 +355,6 @@ class HttpFrontend(object):
                 parser, _ = get_parser_by_content_type(ctype)
             if parser is None:
                 return self.issue_error(404, request, resource, "Bad extension")
-            print "===", parser
         else:
             ctype = request.content_type or "text/turtle"
             iter_etags = getattr(resource, "iter_etags", None)
@@ -401,7 +364,7 @@ class HttpFrontend(object):
                         status="403 Forbidden: 'if-match' is required",
                         request=request,
                         )
-                for i in iter_etags(request.GET.mixed() or None):
+                for i in iter_etags(params or None):
                     if taint_etag(i, ctype) in request.if_match:
                         break
                 else: # no matching etag found in 'for' loop
@@ -420,7 +383,7 @@ class HttpFrontend(object):
                                         "max_bytes (%s) was exceeded"
                                         % self.max_bytes)
         try:
-            with resource.edit(request.GET.mixed() or None, True) as graph:
+            with resource.edit(params or None, True) as graph:
                 parser(request.body, resource.uri, request.charset, graph)
                 if self.max_triples is not None:
                     if len(graph) > self.max_triples:
@@ -489,55 +452,6 @@ class _TooManyTriples(Exception):
     """
     pass
 
-class HttpException(Exception):
-    def __init__(self, message, status, **headers):
-        super(HttpException, self).__init__(message)
-        self.status = status
-        self.headers = headers
-
-    def get_body(self):
-        return "%s\n%s" % (self.status, self.message)
-
-    def get_headerlist(self):
-        hlist = []
-        for key, val in self.headers.iteritems():
-            if type(val) is not list:
-                val = [val]
-            for i in val:
-                hlist.append((str(key), str(i)))
-        return  hlist
-
-    def get_response(self, request):
-        return MyResponse(body=self.get_body(),
-                          status=self.status,
-                          headerlist=self.get_headerlist(),
-                          request=request)
-
-
-class UnauthorizedError(HttpException):
-    """An error raised when a remote user is not authorized to perform an
-    action.
-    """
-    def __init__(self, message="", challenge=None, **headers):
-        if challenge is None:
-            challenge = 'Basic Realm="authentication required"'
-        headers['www-authenticate'] = challenge
-        super(UnauthorizedError, self).__init__(message,
-                                                "401 Unauthorized",
-                                                **headers)
-
-class RedirectException(HttpException):
-    """An exception raised to redirect a given query to another URL.
-    """
-    def __init__(self, location, code=303, **headers):
-        self.message = "Redirecting to <%s>" % location
-        self.status = "%s Redirect" % code
-        headers['location'] = location
-        super(RedirectException, self).__init__(self.message, self.status, **headers)
-
-    def get_body(self):
-        return "{0} - Can not proceed\n{1}".format(self.status, self.message)
-
 ################################################################
 #
 # Cache-control functions
@@ -560,7 +474,7 @@ def cache_half_last_modified(resource):
 
 ###############################################################
 #
-# UWSGI Middleware registry
+# WSGI Middleware registry
 #
 
 _MIDDLEWARE_REGISTRY = []
@@ -612,6 +526,139 @@ def unregister_middleware(middleware, quiet=False):
     if not quiet:
         raise ValueError("pre-processor not registered")
 
+
+TOP = 0
+ERROR_HANDLING = 100
+SESSION = 200
+AUTHENTICATION = 400
+AUTHORIZATION = 600
+BOTTOM = 800
+
+###############################################################
+#
+# Error handling middleware
+#
+
+class ErrorHandlerMiddleware(object):
+    """
+    I intercept a wide range of exceptions, and convert them to HTTP errors.
+    """
+    #pylint: disable=R0903
+    #  too few public methods
+
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+        try:
+            return self.app(environ, start_response)
+        
+        except HttpException, ex:
+            response = ex.get_response(MyRequest(environ))
+        except CanNotProceedError, ex:
+            status = "409 Conflict"
+            response = MyResponse("%s - Can not proceed\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except InvalidDataError, ex:
+            status = "403 Forbidden"
+            response = MyResponse("%s - Invalid data\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except InvalidParametersError, ex:
+            status = "404 Not Found"
+            response = MyResponse("%s - Invalid parameters\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except MethodNotAllowedError, ex:
+            status = "405 Method Not Allowed"
+            response = MyResponse("%s\n%s" % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+            # TODO LATER find a nice way to populate response.allow ?
+        except ParseError, ex:
+            status = "400 Bad Request"
+            response = MyResponse("%s - Parse error\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except ParseException, ex:
+            status = "400 Bad Request"
+            message = "%s at line %s col %s\n\n%s" % \
+                      (ex.message, ex.lineno, ex.column, ex.markInputline())
+            response = MyResponse("%s - Parse exception\n%s"
+                                  % (status, message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except SerializeError, ex:
+            status = "550 Serialize Error"
+            response = MyResponse("%s\n%s" % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+        except RdfRestException, ex:
+            status = "500 Internal Error"
+            response = MyResponse("%s - Other RDF-REST exception\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=MyRequest(environ))
+
+        return response(environ, start_response)
+
+register_middleware(TOP, ErrorHandlerMiddleware)
+
+class HttpException(Exception):
+    def __init__(self, message, status, **headers):
+        super(HttpException, self).__init__(message)
+        self.status = status
+        self.headers = headers
+
+    def get_body(self):
+        return "%s\n%s" % (self.status, self.message)
+
+    def get_headerlist(self):
+        hlist = []
+        for key, val in self.headers.iteritems():
+            if type(val) is not list:
+                val = [val]
+            for i in val:
+                hlist.append((str(key), str(i)))
+        return  hlist
+
+    def get_response(self, request):
+        return MyResponse(body=self.get_body(),
+                          status=self.status,
+                          headerlist=self.get_headerlist(),
+                          request=request)
+
+
+class UnauthorizedError(HttpException):
+    """An error raised when a remote user is not authorized to perform an
+    action.
+    """
+    def __init__(self, message="", challenge=None, **headers):
+        if challenge is None:
+            challenge = 'Basic Realm="authentication required"'
+        headers['www-authenticate'] = challenge
+        super(UnauthorizedError, self).__init__(message,
+                                                "401 Unauthorized",
+                                                **headers)
+
+class RedirectException(HttpException):
+    """An exception raised to redirect a given query to another URL.
+    """
+    def __init__(self, location, code=303, **headers):
+        self.message = "Redirecting to <%s>" % location
+        self.status = "%s Redirect" % code
+        headers['location'] = location
+        super(RedirectException, self).__init__(self.message, self.status, **headers)
+
+    def get_body(self):
+        return "{0} - Can not proceed\n{1}".format(self.status, self.message)
+
+
 ###############################################################
 #
 # Request pre-processors registry
@@ -653,9 +700,3 @@ def unregister_pre_processor(preproc, quiet=False):
             return
     if not quiet:
         raise ValueError("pre-processor not registered")
-
-TOP = 0
-SESSION = 200
-AUTHENTICATION = 400
-AUTHORIZATION = 600
-BOTTOM = 800

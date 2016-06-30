@@ -21,7 +21,7 @@
 from nose.tools import raises
 
 import example1 # can not import do_tests directly, nose tries to run it...
-from example1 import GroupMixin, make_example1_service
+from example1 import EXAMPLE, GroupMixin, make_example1_service
 from rdfrest.exceptions import RdfRestException
 from rdfrest.cores.factory import unregister_service
 from rdfrest.util.config import get_service_configuration
@@ -39,7 +39,7 @@ class TestExample1:
         service_config.set('server', 'base-path', '/foo')
         self.service = make_example1_service(service_config)
         self.ROOT_URI = self.service.root_uri
-        self.root = self.service.get(self.ROOT_URI)
+        self.root = self.service.get(self.ROOT_URI, [EXAMPLE.Group])
         assert isinstance(self.root, GroupMixin)
 
     def tearDown(self):

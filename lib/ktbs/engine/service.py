@@ -27,12 +27,14 @@ from rdfrest.cores.local import Service
 from rdfrest.util import parent_uri
 from .builtin_method import get_builtin_method_impl, iter_builtin_method_impl
 from .base import Base
+from .data_graph import DataGraph
 from .ktbs_root import KtbsRoot
 from .method import Method
 from .obsel import Obsel
 from .trace import StoredTrace, ComputedTrace
 from .trace_model import TraceModel
 from .trace_obsels import StoredTraceObsels, ComputedTraceObsels
+from .trace_stats import TraceStatistics
 from ..namespace import KTBS
 from ..config import get_ktbs_configuration
 from .. import __version__ as ktbs_version
@@ -86,7 +88,7 @@ def make_ktbs(root_uri=None, repository=None, create=None):
 
     service = KtbsService(ktbs_config)
 
-    ret = service.get(service.root_uri, _rdf_type=KTBS.KtbsRoot)
+    ret = service.get(service.root_uri, [KTBS.KtbsRoot])
     assert isinstance(ret, KtbsRoot)
     return ret
 
@@ -110,41 +112,42 @@ class KtbsService(Service):
         classes = [ Base,
                     ComputedTrace,
                     ComputedTraceObsels,
+                    DataGraph,
                     KtbsRoot,
                     Method,
                     StoredTrace,
                     StoredTraceObsels,
                     TraceModel,
+                    TraceStatistics,
                     ]
 
         # self.init_ktbs : always give the initialization method
         Service.__init__(self, classes, service_config, self.init_ktbs)
 
-        root = self.get(URIRef(self.root_uri))
-
-        # testing that all built-in methods are still supported
-        for uri in root.state.objects(self.root_uri, KTBS.hasBuiltinMethod):
-            if not get_builtin_method_impl(uri):
-                raise Exception("No implementation for built-in method <%s>"
-                                % uri)
-        # updating version number
+        root = self.get(URIRef(self.root_uri), [KTBS.KtbsRoot])
+        
         with root.edit(_trust=True) as graph:
+            # updating hasBuiltinMethod with registered implementations
+            graph.remove((self.root_uri, KTBS.hasBuiltinMethod, None))
+            for bim in iter_builtin_method_impl():
+                graph.add((self.root_uri, KTBS.hasBuiltinMethod, bim.uri))
+            # updating version number
             graph.set((self.root_uri,
                        KTBS.hasVersion,
                        Literal("%s%s" % (ktbs_version, ktbs_commit))))
 
-    def get(self, uri, _rdf_type=None, _no_spawn=False):
+    def get(self, uri, rdf_types=None, _no_spawn=False):
         """I override :meth:`rdfrest.cores.local.Service.get`
 
         If the original implementation returns None, I try to make an Obsel.
         """
-        ret = super(KtbsService, self).get(uri, _rdf_type, _no_spawn)
+        ret = super(KtbsService, self).get(uri, rdf_types, _no_spawn)
         if ret is None:
             parent = super(KtbsService, self).get(URIRef(parent_uri(uri)), None,
                                                   _no_spawn)
             if parent is not None \
             and parent.RDF_MAIN_TYPE in (KTBS.StoredTrace, KTBS.ComputedTrace):
-                assert _rdf_type is None or _rdf_type == KTBS.Obsel, _rdf_type
+                assert rdf_types is None or KTBS.Obsel in rdf_types, rdf_types
                 ret = Obsel(parent, uri)
         return ret
             
@@ -155,8 +158,6 @@ class KtbsService(Service):
         root_uri = service.root_uri
         graph = Graph(identifier=root_uri)
         graph.add((root_uri, RDF.type, KTBS.KtbsRoot))
-        for bim in iter_builtin_method_impl():
-            graph.add((root_uri, KTBS.hasBuiltinMethod, bim.uri))
         KtbsRoot.create(service, root_uri, graph)
 
 # unused import #pylint: disable=W0611

@@ -323,7 +323,7 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         assert semaphore.value == 0
 
         with assert_raises(posix_ipc.BusyError):
-            self.trace.create_obsel(type=otype, subject='tmp_subject', begin=0)
+            self.trace.create_obsel(type=otype, begin=0)
 
         semaphore.release()
 
@@ -334,7 +334,7 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
         # Create a temporary obsel type so we can use create_obsel()
         otype = self.model.create_obsel_type('#tmp_otype')
-        self.trace.create_obsel(type=otype, subject='tmp_subject', begin=0)
+        self.trace.create_obsel(type=otype, begin=0)
 
         assert semaphore.value == 1
 

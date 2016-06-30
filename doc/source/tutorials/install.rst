@@ -12,6 +12,7 @@ It has been written using Debian like systems : Debian wheezy (> 7.n) and `Ubunt
     install/install-ktbs-dev-version
     install/install-ktbs-behind-apache
     install/install-ktbs-behind-nginx
+    install/install-ktbs-with-virtuoso
 
 .. _common-prerequisites:
 

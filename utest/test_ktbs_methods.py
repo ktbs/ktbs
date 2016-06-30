@@ -18,14 +18,26 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from nose.tools import eq_, raises
+from json import loads
+from nose.tools import assert_raises, eq_
 from unittest import skip
 
+from ktbs.engine.resource import METADATA
 from ktbs.methods.fusion import LOG as FUSION_LOG
 from ktbs.methods.filter import LOG as FILTER_LOG
 from ktbs.namespace import KTBS, KTBS_NS_URI
+from rdfrest.exceptions import CanNotProceedError
 
 from .test_ktbs_engine import KtbsTestCase, HttpKtbsTestCaseMixin
+
+def get_custom_state(computed_trace, key=None):
+        jsonstr = computed_trace.metadata.value(computed_trace.uri,
+                                                METADATA.computation_state)
+        jsonobj = loads(jsonstr)
+        ret = jsonobj.get('custom')
+        if ret is not None and key is not None:
+            ret = ret.get(key)
+        return ret
 
 
 class TestFilter(KtbsTestCase):
@@ -33,7 +45,7 @@ class TestFilter(KtbsTestCase):
     def __init__(self):
         KtbsTestCase.__init__(self)
         self.log = FILTER_LOG
-    
+
     def test_filter_temporal(self):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -42,51 +54,124 @@ class TestFilter(KtbsTestCase):
         ctr = base.create_computed_trace("ctr/", KTBS.filter,
                                          {"after": "10", "before": "20"},
                                          [src],)
+        eq_(get_custom_state(ctr, 'last_seen'), None)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
 
-        self.log.info(">strictly temporally monotonic change: add o00")
+        self.log.info(">first change (considered non-monotonic): add o00")
         o00 = src.create_obsel("o00", otype, 0)
         eq_(len(ctr.obsels), 0)
+        eq_(get_custom_state(ctr, 'last_seen'), None) # not even looked at
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype, 5)
         eq_(len(ctr.obsels), 0)
+        eq_(get_custom_state(ctr, 'last_seen'), None) # not event looked at
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype, 10)
         eq_(len(ctr.obsels), 1)
+        eq_(get_custom_state(ctr, 'last_seen'), 10)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype, 15)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 15)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype, 20)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'last_seen'), 20)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype, 25)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype, 30)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype, 27)
         eq_(len(ctr.obsels), 3)
+
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype, 17)
         eq_(len(ctr.obsels), 4)
+
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype, 7)
         eq_(len(ctr.obsels), 4)
 
+
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype, 35)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
+            editable.remove((None, None, o15.uri))
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
+            editable.remove((None, None, o25.uri))
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+
+
+    def test_filter_temporal_intervals(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"after": "10", "before": "20"},
+                                         [src],)
+
+        self.log.info(">first change (considered non-monotonic): add o00")
+        o8_15 = src.create_obsel("o8_15", otype, 8, 15)
+        eq_(len(ctr.obsels), 0)
+        o9_15 = src.create_obsel("o9_15", otype, 9, 15)
+        eq_(len(ctr.obsels), 0)
+        o10_15 = src.create_obsel("o10_15", otype, 10, 15)
+        eq_(len(ctr.obsels), 1)
+        o11_15 = src.create_obsel("o11_15", otype, 11, 15)
+        eq_(len(ctr.obsels), 2)
+        o13_15 = src.create_obsel("o13_15", otype, 13, 15)
+        eq_(len(ctr.obsels), 3)
+        o13_15a = src.create_obsel("o13_15a", otype, 13, 15)
+        eq_(len(ctr.obsels), 4)
+        o15_15 = src.create_obsel("o15_15", otype, 15, 15)
+        eq_(len(ctr.obsels), 5)
+        o15_17 = src.create_obsel("o15_17", otype, 15, 17)
+        eq_(len(ctr.obsels), 6)
+        o15_20 = src.create_obsel("o15_20", otype, 15, 20)
+        eq_(len(ctr.obsels), 7)
+        o15_21 = src.create_obsel("o15_21", otype, 15, 21)
+        eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        o15_19 = src.create_obsel("o15_19", otype, 15, 19)
+        eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o15_21.uri, None, None))
+            editable.remove((None, None, o15_21.uri))
+        eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+
 
     def test_filter_otypes(self):
         base = self.my_ktbs.create_base("b/")
@@ -104,48 +189,105 @@ class TestFilter(KtbsTestCase):
         self.log.info(">strictly temporally monotonic change: add o00")
         o00 = src.create_obsel("o00", otype1, 0)
         eq_(len(ctr.obsels), 1)
+        eq_(get_custom_state(ctr, 'last_seen'), 0)
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype2, 5)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 5)
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype3, 10)
         eq_(len(ctr.obsels), 2)
+        eq_(get_custom_state(ctr, 'last_seen'), 10)
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype1, 15)
         eq_(len(ctr.obsels), 3)
+        eq_(get_custom_state(ctr, 'last_seen'), 15)
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype2, 20)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'last_seen'), 20)
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype3, 25)
         eq_(len(ctr.obsels), 4)
+        eq_(get_custom_state(ctr, 'last_seen'), 25)
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype1, 30)
         eq_(len(ctr.obsels), 5)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype2, 27)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
         eq_(len(ctr.obsels), 6)
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype1, 17)
         eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype2, 7)
         eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype1, 35)
         eq_(len(ctr.obsels), 9)
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
         eq_(len(ctr.obsels), 8)
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         eq_(len(ctr.obsels), 8)
-        
+        eq_(get_custom_state(ctr, 'last_seen'), 35)
+        self.log.info(">non-monotonic change: removing o35")
+        with src.obsel_collection.edit() as editable:
+            editable.remove((o35.uri, None, None))
+        eq_(len(ctr.obsels), 7)
+        eq_(get_custom_state(ctr, 'last_seen'), 30)
+
+
+    def test_filter_relations(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype = model.create_obsel_type("#ot")
+        rtype = model.create_relation_type("#rt")
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"after": "10", "before": "20"},
+                                         [src],)
+
+        o00 = src.create_obsel("o00", otype, 0)
+        o05 = src.create_obsel("o05", otype, 5)
+        o25 = src.create_obsel("o25", otype, 25)
+        o30 = src.create_obsel("o30", otype, 30)
+        eq_(len(ctr.obsels), 0)
+
+        count_relations = lambda: \
+            len(list(ctr.obsel_collection.state.triples((None, rtype.uri, None))))
+
+        o10 = src.create_obsel("o10", otype, 10, relations=[(rtype, o00)])
+        eq_(len(ctr.obsels), 1)
+        eq_(count_relations(), 0)
+        o11 = src.create_obsel("o11", otype, 11, inverse_relations=[(o05, rtype)])
+        eq_(len(ctr.obsels), 2)
+        eq_(count_relations(), 0)
+        o12 = src.create_obsel("o12", otype, 12, relations=[(rtype, o25)])
+        eq_(len(ctr.obsels), 3)
+        eq_(count_relations(), 0)
+        o13 = src.create_obsel("o13", otype, 13, inverse_relations=[(o30, rtype)])
+        eq_(len(ctr.obsels), 4)
+        eq_(count_relations(), 0)
+        o14 = src.create_obsel("o14", otype, 14, relations=[(rtype, o12)])
+        eq_(len(ctr.obsels), 5)
+        eq_(count_relations(), 1)
+        o15 = src.create_obsel("o15", otype, 15, inverse_relations=[(o13, rtype)])
+        eq_(len(ctr.obsels), 6)
+        eq_(count_relations(), 2)
+
           
 class TestFusion(KtbsTestCase):
 
@@ -263,15 +405,20 @@ class TestSparql(KtbsTestCase):
 
     def __init__(self):
         KtbsTestCase.__init__(self)
-    
+        
+    def setUp(self):
+        super(TestSparql, self).setUp()
+        self.base = self.my_ktbs.create_base("b/")
+        self.model = self.base.create_model("m")
+        self.otype1 = self.model.create_obsel_type("#ot1")
+        self.otype2 = self.model.create_obsel_type("#ot2")
+        self.atype = self.model.create_attribute_type("#at")
+        self.origin = "orig-abc"
+        self.src1 = self.base.create_stored_trace("s1/", self.model,
+                                                  origin=self.origin,
+                                                  default_subject="alice")
+
     def test_sparql_one_source(self):
-        base = self.my_ktbs.create_base("b/")
-        model = base.create_model("m")
-        otype = model.create_obsel_type("#ot")
-        atype = model.create_attribute_type("#at")
-        origin = "orig-abc"
-        src1 = base.create_stored_trace("s1/", model, origin=origin,
-                                        default_subject="alice")
         sparql = """
         PREFIX : <http://example.org/model#>
         PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
@@ -290,51 +437,44 @@ class TestSparql(KtbsTestCase):
             ?sobs a ?ot ; k:hasBegin ?begin .
         }
         """
-        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
-                                             "sparql": sparql,
-                                             "foo": "bar"
-                                         }, [src1],)
+        ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+                                                  "sparql": sparql,
+                                                  "foo": "bar"
+                                              }, [self.src1],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
+        eq_(ctr.model, self.model)
+        eq_(ctr.origin, self.origin)
         eq_(len(ctr.obsels), 0)
 
-        o10 = src1.create_obsel("o10", otype, 0, attributes = {atype: "héhé"})
+        o10 = self.src1.create_obsel("o10", self.otype1, 0,
+                                     attributes = {self.atype: "héhé"})
         # above, we force some non-ascii output of the script,
         # to check that UTF-8 is corectly decoded by the method
         ctr.obsel_collection.force_state_refresh()
         eq_(ctr.diagnosis, None)
 
         eq_(len(ctr.obsels), 1)
-        o21 = src1.create_obsel("o21", otype, 10)
+        o21 = self.src1.create_obsel("o21", self.otype1, 10)
         eq_(len(ctr.obsels), 2)
-        o12 = src1.create_obsel("o12", otype, 20)
+        o12 = self.src1.create_obsel("o12", self.otype1, 20)
         eq_(len(ctr.obsels), 3)
-        o23 = src1.create_obsel("o23", otype, 30)
+        o23 = self.src1.create_obsel("o23", self.otype1, 30)
         eq_(len(ctr.obsels), 4)
-        o11 = src1.create_obsel("o11", otype, 10)
+        o11 = self.src1.create_obsel("o11", self.otype1, 10)
         eq_(len(ctr.obsels), 5)
-        o20 = src1.create_obsel("o20", otype, 0)
+        o20 = self.src1.create_obsel("o20", self.otype1, 0)
         eq_(len(ctr.obsels), 6)
 
-        with src1.obsel_collection.edit() as editable:
+        with self.src1.obsel_collection.edit() as editable:
             editable.remove((o10.uri, None, None))
         eq_(len(ctr.obsels), 5)
 
-        with src1.obsel_collection.edit() as editable:
+        with self.src1.obsel_collection.edit() as editable:
             editable.remove((o21.uri, None, None))
         eq_(len(ctr.obsels), 4)
 
     def test_sparql_inherit_all(self):
         
-        base = self.my_ktbs.create_base("b/")
-        model = base.create_model("m")
-        otype1 = model.create_obsel_type("#ot1")
-        otype2 = model.create_obsel_type("#ot2")
-        atype = model.create_attribute_type("#at")
-        origin = "orig-abc"
-        src1 = base.create_stored_trace("s1/", model, origin=origin,
-                                        default_subject="alice")
         sparql = """
           PREFIX : <%s#>
           PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
@@ -345,38 +485,31 @@ class TestSparql(KtbsTestCase):
           WHERE {
               ?sobs a :ot1 .
           }
-        """ % model.uri
-        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
-                                             "sparql": sparql,
-                                             "inherit": "yes"
-                                         }, [src1],)
+        """ % self.model.uri
+        ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+                                                  "sparql": sparql,
+                                                  "inherit": "yes"
+                                              }, [self.src1],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
+        eq_(ctr.model, self.model)
+        eq_(ctr.origin, self.origin)
         eq_(len(ctr.obsels), 0)
         ctr.obsel_collection.force_state_refresh()
         eq_(ctr.diagnosis, None)
 
-        o1 = src1.create_obsel("o1", otype1, 0, attributes = {atype: "héhé"})
-        eq_(len(src1.obsels), 1)
+        o1 = self.src1.create_obsel("o1", self.otype1, 0,
+                                    attributes = {self.atype: "héhé"})
+        eq_(len(self.src1.obsels), 1)
         eq_(len(ctr.obsels), 1)
         eq_(ctr.obsels[0].obsel_type, o1.obsel_type)
         eq_(ctr.obsels[0].begin, o1.begin)
         eq_(ctr.obsels[0].end, o1.end)
         eq_(ctr.obsels[0].subject, o1.subject)
-        eq_(ctr.obsels[0].get_attribute_value(atype),
-            o1.get_attribute_value(atype))
+        eq_(ctr.obsels[0].get_attribute_value(self.atype),
+            o1.get_attribute_value(self.atype))
 
     def test_sparql_inherit_some(self):
         
-        base = self.my_ktbs.create_base("b/")
-        model = base.create_model("m")
-        otype1 = model.create_obsel_type("#ot1")
-        otype2 = model.create_obsel_type("#ot2")
-        atype = model.create_attribute_type("#at")
-        origin = "orig-abc"
-        src1 = base.create_stored_trace("s1/", model, origin=origin,
-                                        default_subject="alice")
         sparql = """
           PREFIX : <%s#>
           PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
@@ -393,24 +526,226 @@ class TestSparql(KtbsTestCase):
                   ?sobs a :ot1 ; k:hasBegin ?b .
               }
           }
-        """ % model.uri
-        ctr = base.create_computed_trace("ctr/", KTBS.sparql, {
-                                             "sparql": sparql,
-                                             "inherit": "yes"
-                                         }, [src1],)
+        """ % self.model.uri
+        ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+                                                  "sparql": sparql,
+                                                  "inherit": "yes"
+                                              }, [self.src1],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
+        eq_(ctr.model, self.model)
+        eq_(ctr.origin, self.origin)
         eq_(len(ctr.obsels), 0)
         ctr.obsel_collection.force_state_refresh()
         eq_(ctr.diagnosis, None)
 
-        o1 = src1.create_obsel("o1", otype1, 0, attributes = {atype: "héhé"})
-        eq_(len(src1.obsels), 1)
+        o1 = self.src1.create_obsel("o1", self.otype1, 0, attributes = {self.atype: "héhé"})
+        eq_(len(self.src1.obsels), 1)
         eq_(len(ctr.obsels), 1)
-        eq_(ctr.obsels[0].obsel_type, otype2)
+        eq_(ctr.obsels[0].obsel_type, self.otype2)
         eq_(ctr.obsels[0].begin, o1.begin)
         eq_(ctr.obsels[0].end, o1.begin + 1)
         eq_(ctr.obsels[0].subject, o1.subject)
-        eq_(ctr.obsels[0].get_attribute_value(atype), "overridden")
+        eq_(ctr.obsels[0].get_attribute_value(self.atype), "overridden")
+
+    def test_sparql_bad_scope(self):
+        sparql = """
+        PREFIX : <http://example.org/model#>
+        PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+        CONSTRUCT {
+            [ k:hasTrace <%(__destination__)s> ;
+              a ?ot ;
+              k:hasBegin ?begin ;
+              k:hasEnd   ?begin ;
+              k:hasSubject "anonymous" ;
+              k:hasSourceObsel ?sobs ;
+              :at "foo"
+            ]
+        }
+        WHERE {
+            ?sobs a ?ot ; k:hasBegin ?begin .
+        }
+        """
+
+        ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+            "sparql": sparql,
+            "scope": "foo",
+        }, [self.src1], )
+
+        assert ctr.diagnosis is not None
+
+    def test_sparql_scope_base(self):
+        def test_sparql_inherit_all(self):
+            sparql = """
+              PREFIX : <%s#>
+              PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+              CONSTRUCT {
+                  [ k:hasSourceObsel ?sobs ] .
+              }
+              WHERE {
+                  ?sobs :hasTrace <%(__source__)s> ; a ?obstype .
+                  ?obstype a :ObselType .
+              }
+            """ % self.model.uri
+            ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+                "sparql": sparql,
+                "inherit": "yes",
+                "scope": "base"
+            }, [self.src1], )
+
+            eq_(ctr.model, self.model)
+            eq_(ctr.origin, self.origin)
+            eq_(len(ctr.obsels), 0)
+            ctr.obsel_collection.force_state_refresh()
+            eq_(ctr.diagnosis, None)
+
+            o1 = self.src1.create_obsel("o1", KTBS.Obsel, 0,
+                                        attributes={self.atype: "héhé"})
+            eq_(len(self.src1.obsels), 1)
+            eq_(len(ctr.obsels), 0)
+
+
+            o2 = self.src1.create_obsel("o2", self.otype1, 1,
+                                        attributes={self.atype: "haha"})
+            eq_(len(self.src1.obsels), 2)
+            eq_(len(ctr.obsels), 1)
+            eq_(ctr.obsels[0].obsel_type, o2.obsel_type)
+            eq_(ctr.obsels[0].begin, o2.begin)
+            eq_(ctr.obsels[0].end, o2.end)
+            eq_(ctr.obsels[0].subject, o2.subject)
+            eq_(ctr.obsels[0].get_attribute_value(self.atype),
+                o1.get_attribute_value(self.atype))
+
+            o3 = self.src1.create_obsel("o3", self.otype2, 2,
+                                        attributes={self.atype: "hoho"})
+            eq_(len(self.src1.obsels), 3)
+            eq_(len(ctr.obsels), 2)
+            eq_(ctr.obsels[0].obsel_type, o3.obsel_type)
+            eq_(ctr.obsels[0].begin, o3.begin)
+            eq_(ctr.obsels[0].end, o3.end)
+            eq_(ctr.obsels[0].subject, o3.subject)
+            eq_(ctr.obsels[0].get_attribute_value(self.atype),
+                o1.get_attribute_value(self.atype))
+
+    def test_sparql_scope_trace(self):
+        def test_sparql_scope_base(self):
+            def test_sparql_inherit_all(self):
+                sparql = """
+                  PREFIX : <%s#>
+                  PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+                  CONSTRUCT {
+                      [ k:hasSourceObsel ?sobs ] .
+                  }
+                  WHERE {
+                      ?sobs :hasTrace <%(__source__)s> ; a ?obstype .
+                      ?obstype a :ObselType . # only in the model
+                  }
+                """ % self.model.uri
+                ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+                    "sparql": sparql,
+                    "inherit": "yes",
+                    "scope": "trace"
+                }, [self.src1], )
+
+                eq_(ctr.model, self.model)
+                eq_(ctr.origin, self.origin)
+                eq_(len(ctr.obsels), 0)
+                ctr.obsel_collection.force_state_refresh()
+                eq_(ctr.diagnosis, None)
+
+                o1 = self.src1.create_obsel("o1", KTBS.Obsel, 0,
+                                            attributes={self.atype: "héhé"})
+                eq_(len(self.src1.obsels), 1)
+                eq_(len(ctr.obsels), 0)
+
+                o2 = self.src1.create_obsel("o2", self.otype1, 1,
+                                            attributes={self.atype: "haha"})
+                eq_(len(self.src1.obsels), 2)
+                eq_(len(ctr.obsels), 0)
+
+                o3 = self.src1.create_obsel("o3", self.otype2, 2,
+                                            attributes={self.atype: "hoho"})
+                eq_(len(self.src1.obsels), 3)
+                eq_(len(ctr.obsels), 0)
+
+
+class TestIssue28(KtbsTestCase):
+    def __init__(self):
+        KtbsTestCase.__init__(self)
+
+    def setUp(self):
+        super(TestIssue28, self).setUp()
+        self.base = self.my_ktbs.create_base("b/")
+        self.model = self.base.create_model("m")
+        self.origin = "orig-abc"
+        self.src1 = self.base.create_stored_trace("s1/", self.model,
+                                                  origin=self.origin,
+                                                  default_subject="alice")
+
+    def test_diagnosis(self):
+        ctr1 = self.base.create_computed_trace(
+            "c1/", KTBS.sparql,
+            {
+                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                u"hà": u"foo",
+            }, [self.src1]
+        )
+        assert ctr1.diagnosis is not None
+
+
+    def test_obsel_collection(self):
+        ctr1 = self.base.create_computed_trace(
+            "c1/", KTBS.sparql,
+            {
+                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                u"hà": u"foo",
+            }, [self.src1]
+        )
+        assert_raises(CanNotProceedError,
+                      ctr1.obsel_collection.get_state)
+
+class TestOverrideParameter(KtbsTestCase):
+
+    def setUp(self):
+        super(TestOverrideParameter, self).setUp()
+        self.base = self.my_ktbs.create_base("b/")
+        model = self.base.create_model("m")
+        otype1 = self.otype1 = model.create_obsel_type("#ot1")
+        otype2 = self.otype2 = model.create_obsel_type("#ot2")
+        src = self.base.create_stored_trace("s/", model, origin="now")
+        src.create_obsel(None, otype1)
+        src.create_obsel(None, otype2)
+        src.create_obsel(None, otype2)
+        self.meth1 = self.base.create_method("meth1", KTBS.filter,
+                                            {"otypes": otype1.uri})
+        self.ctr = self.base.create_computed_trace("ctr/", self.meth1,
+                                                   sources=[src])
+
+    def test_overriden_parameter_in_computed_trace(self):
+        assert len(self.ctr.obsels) == 1
+        self.ctr.set_parameter("otypes", self.otype2.uri)
+        assert len(self.ctr.obsels) == 2
+        self.ctr.set_parameter("otypes", None)
+        assert len(self.ctr.obsels) == 1
+        # deleting it a second time should have no effect
+        self.ctr.set_parameter("otypes", None)
+        assert len(self.ctr.obsels) == 1
+
+    def test_overriden_parameter_in_method(self):
+        meth2 = self.base.create_method("meth2", self.meth1,
+                                            {"otypes": self.otype2.uri})
+        self.ctr.method = meth2
+        assert len(self.ctr.obsels) == 2
+        self.ctr.set_parameter("otypes", self.otype1.uri)
+        assert len(self.ctr.obsels) == 1
+        meth2.set_parameter("otypes", None)
+        assert len(self.ctr.obsels) == 1
+        meth2.set_parameter("otypes", self.otype2.uri)
+        assert len(self.ctr.obsels) == 1
+        self.ctr.set_parameter("otypes", None)
+        assert len(self.ctr.obsels) == 2
+        meth2.set_parameter("otypes", None)
+        assert len(self.ctr.obsels) == 1
 

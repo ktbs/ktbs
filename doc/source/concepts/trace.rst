@@ -4,7 +4,8 @@ Trace
 A trace is a container of obsels, and is described by the following attributes:
 
 * a trace model with which it should complies,
-* an origin.
+* an origin,
+* optionally, one or more RDF graph containing contextual data about that trace.
 
 Model compliance
 ----------------
@@ -19,6 +20,19 @@ Origin
 Typically, the origin of a trace is a timestamp. However, it can also be an opaque string, meaning that the precise time when the trace was collected is not known.
 
 This opaque string can nevertheless be reused across several traces (especially `computed traces <concept-computed-trace>`:ref:) deriving from another one), to indicate that timestamps are *comparable* across those traces.
+
+Contextual data
+---------------
+
+The contextual data of a trace is any information that can not be captured by the trace model nor the obsels of that trace,
+but is useful to interpret the trace.
+For example, the contextual data may contain information about the subjects referred to by the obsels (their name, address, occupation...).
+
+Obviously, the contextual data of a trace should be valid for the whole duration of that trace.
+This limits the kind of information that it can contain:
+in the example above, if the subjects' occupation was expected to change in the time-span of the trace,
+they should rather be represented as obsels in the trace
+(with explicit timestamps).
 
 Stored traces
 -------------

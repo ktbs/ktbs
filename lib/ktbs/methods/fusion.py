@@ -18,6 +18,7 @@
 """
 Implementation of the fusion builtin methods.
 """
+import traceback
 from json import dumps as json_dumps, loads as json_loads
 import logging
 
@@ -195,10 +196,12 @@ class _FusionMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except ValueError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
                 except ParseError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True

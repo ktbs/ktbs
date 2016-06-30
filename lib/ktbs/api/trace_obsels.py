@@ -23,9 +23,10 @@ I provide the pythonic interface to kTBS obsel collections.
 """
 from rdfrest.cores import ICore
 from rdfrest.util import cache_result
+from rdfrest.wrappers import register_wrapper
+from rdflib import RDF
 
 from ..namespace import KTBS
-from rdfrest.wrappers import register_wrapper
 
 
 @register_wrapper(KTBS.StoredTraceObsels)
@@ -42,6 +43,14 @@ class AbstractTraceObselsMixin(ICore):
     def trace(self):
         """I return the trace owning this obsel collection.
         """
+        global _TYPECONV
         trace_uri = self.state.value(None, KTBS.hasObselCollection, self.uri)
-        return self.factory(trace_uri)
+        self_type = self.state.value(self.uri, RDF.type)
+        trace_type = _TYPECONV[self_type]
+        return self.factory(trace_uri, [trace_type])
         # must be a .trace.AbstractTraceMixin
+
+_TYPECONV = {
+    KTBS.StoredTraceObsels: KTBS.StoredTrace,
+    KTBS.ComputedTraceObsels: KTBS.ComputedTrace,
+}

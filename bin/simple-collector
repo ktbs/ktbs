@@ -38,6 +38,7 @@ from datetime import datetime
 from rdflib import Namespace
 
 from rdfrest.util import coerce_to_uri, parent_uri, urisplit
+from rdfrest.util.proxystore import ResourceAccessError
 
 from ktbs.api.base import BaseMixin as KtbsBase
 from ktbs.api.trace import StoredTraceMixin as StoredTrace
@@ -131,14 +132,14 @@ class ObselCollector(object):
 
         base_uri = parent_uri(trace_uri)
         tbase = root.get_base(base_uri)
-        if tbase is None:
+        try:
+            self.display("----- base.label: %s" % tbase.label)
+
+        except ResourceAccessError:
             self.display("----- No matching base found, creating ...")
             tbase = root.create_base(base_uri)
             # Add a default model
-            #tbase.create_model(id=MODEL_URI)
-
-        if tbase is not None:
-            self.display("----- base.label: %s" % tbase.label)
+            # tbase.create_model(id=MODEL_URI)
 
         return tbase
 
@@ -148,8 +149,14 @@ class ObselCollector(object):
         If found, check the model and the origin.
         If it does not exist, create it.
         """
-        ttrace = base.get(trace_uri)
-        if ttrace is not None: 
+        ttrace = None
+        trace_list = [ t.uri for t in base.list_traces() ]
+        if trace_uri in trace_list:
+            # base.get() déclenche une AssertionError si on demande une URI
+            #  qui n'existe pas encore (api/base.py)
+            ttrace = base.get(trace_uri)
+
+        if ttrace is not None:
             self.display("----- The trace %s already exists" % trace_uri)
             assert isinstance(ttrace, StoredTrace)
 

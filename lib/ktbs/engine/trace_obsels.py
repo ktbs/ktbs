@@ -18,6 +18,7 @@
 """
 I provide the implementation of kTBS obsel collections.
 """
+import traceback
 from itertools import chain
 from logging import getLogger
 
@@ -27,6 +28,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.cores.local import NS as RDFREST
+from rdfrest.util import Diagnosis
 from .resource import KtbsResource, METADATA
 from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
@@ -119,53 +121,35 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     log_mon_tag = property(get_log_mon_tag, set_log_mon_tag)
 
 
-    _in_add_graph = False  # used to inform ack_edit not to update last_obsel
+    def add_obsel_graph(self, graph, _trust=True):
+        """Add an obsel described in `graph`.
 
-    def add_graph(self, graph, _trust=True):
-        """Add all the arcs in `graph` to this obsel collection's state.
+        If you need to add only one obsel,
+        you can use this method *without* using any `~rdfrest.cores.ICore.edit`:meth: context.
+
+        If you need to call this method multiple time,
+        it is more efficient to wrap all the calls to ``add_obsel_graph``
+        inside a single `~rdfrest.cores.ICore.edit`:meth: context,
+        which then *must* have the ``add_obsels_only`` parameter set.
+
 
         This should be used instead of the
         `~rdfrest.cores.ICore.edit`:meth: context when no arc has to
         be removed, as it will not change the
         `log_mon_tag`:meth`.
         """
-        old_str_mon_tag = self.metadata.value(self.uri, METADATA.str_mon_tag)
-        old_pse_mon_tag = self.metadata.value(self.uri, METADATA.pse_mon_tag)
-        old_log_mon_tag = self.metadata.value(self.uri, METADATA.log_mon_tag)
-        old_last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
+        ectx = self._edit_context
+        assert ectx is None or ectx[0], \
+            "No point in calling add_obsel_graph inside an untrusted edit context"
 
-        with self.edit(_trust=_trust) as editable:
+        with self.edit({"add_obsels_only": 1}, _trust=_trust) \
+        as editable:
+            prepared = self._edit_context[2]
             # inner context is used to apply the changes and have them
             # go through check_new_graph
-            _add = editable.add
-            for triple in graph:
-                _add(triple)
-            
-            # find the last obsel (this is quicker than what ack_edit does;
-            # by setting self._in_add_graph, we thus inform ack_edit to skip
-            # its own search)
-            new_last_obsel, new_last_end = self._get_new_last_obsel(
-                graph, old_last_obsel)
-            self.metadata.set((self.uri, METADATA.last_obsel, new_last_obsel))
-            self._in_add_graph = True
+            editable.addN( (s, p, o, editable) for (s, p, o) in graph)
 
-        # inspect the changes we just made...
-        if old_last_obsel is None:
-            # all obsels are new, so change is monotonic
-            str_mon, pse_mon = True, True
-        else:
-            old_last_end = int(self.state.value(old_last_obsel, KTBS.hasEnd))
-            pse_mon_limit = new_last_end - self.trace.pseudomon_range
-            str_mon, pse_mon = self._detect_mon_change(graph, old_last_end,
-                                                       pse_mon_limit)
-
-        # ...and reset monotonicity tags accordingly
-        # NB: log_mon would always be true, as we only *add* triples
-        self.metadata.set((self.uri, METADATA.log_mon_tag, old_log_mon_tag))
-        if pse_mon:
-            self.metadata.set((self.uri, METADATA.pse_mon_tag, old_pse_mon_tag))
-        if str_mon:
-            self.metadata.set((self.uri, METADATA.str_mon_tag, old_str_mon_tag))
+            self._detect_mon_change(graph, prepared)
 
 
     ######## ICore implementation  ########
@@ -189,7 +173,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             or "refresh" in parameters and len(parameters) == 1): 
             return super(AbstractTraceObsels, self).get_state(None)
         else:
-            self.check_parameters(parameters, "get_state")
+            self.check_parameters(parameters, parameters, "get_state")
             graph = Graph(identifier=self.uri)
             graph_add = graph.add
 
@@ -202,7 +186,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # build SPARQL query to retrieve matching obsels
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
-            query_epilogue = "ORDER BY ?e ?b"
             minb = parameters.get("minb")
             if minb is not None:
                 query_filter.append("?b >= %s" % minb)
@@ -215,60 +198,143 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             maxe = parameters.get("maxe")
             if maxe is not None:
                 query_filter.append("?e <= %s" % maxe)
+            after = parameters.get("after")
+            if after is not None:
+                query_filter.append(
+                    "?e > {2} || "
+                    "?e = {2} && ?b > {1} || "
+                    "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
+                        after.uri, after.begin, after.end,
+                    ))
+            before = parameters.get("before")
+            if before is not None:
+                query_filter.append(
+                    "?e < {2} || "
+                    "?e = {2} && ?b < {1} || "
+                    "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
+                        before.uri, before.begin, before.end
+                    ))
+            if query_filter:
+                query_filter = "FILTER((%s))" % (") && (".join(query_filter))
+            else:
+                query_filter = ""
+
+            query_epilogue = ""
+            reverse = (parameters.get("reverse", "no").lower()
+                       not in ("false", "no", "0"))
+            if reverse:
+                query_epilogue += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
+            else:
+                query_epilogue += "ORDER BY ?e ?b ?obs"
             limit = parameters.get("limit")
             if limit is not None:
                 query_epilogue += " LIMIT %s" % limit
             offset = parameters.get("offset")
             if offset is not None:
                 query_epilogue += " OFFSET %s" % offset
-            if query_filter:
-                query_filter = "FILTER(%s)" % (" && ".join(query_filter))
-            else:
-                query_filter = ""
+
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
             SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
             """ % (query_filter, query_epilogue)
 
             # add description of all matching obsels
-            # TODO LATER include bounded description of obsels
-            # rather than just adjacent arcs
             self_state = self.state
+            obs = None
             for obs, in self.state.query(query_str): #/!\ returns 1-uples
                 get_obsel_bounded_description(obs, self_state, graph)
+
+            if limit and obs:
+                obs_id = obs.rsplit("/", 1)[1]
+                if reverse:
+                    qstr = "?reverse&limit=%s&before=%s" % (limit, obs_id)
+                else:
+                    qstr = "?limit=%s&after=%s" % (limit, obs_id)
+                if minb:
+                    qstr += "&minb=%s" % minb
+                if maxb:
+                    qstr += "&maxb=%s" % maxb
+                if mine:
+                    qstr += "&mine=%s" % mine
+                if maxe:
+                    qstr += "&maxe=%s" % maxe
+                graph.next_link = self.uri + qstr
 
             return graph
 
 
     ######## ILocalCore (and mixins) implementation  ########
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
 
         I also convert parameters values from strings to usable datatypes.
         """
-        if parameters is not None \
-        and method in ("get_state", "force_state_refresh"):
-            for key, val in parameters.items():
-                if key in ("minb", "maxb", "mine", "maxe", "limit", "offset"):
-                    try:
-                        parameters[key] = int(val)
-                    except ValueError:
-                        raise InvalidParametersError("%s should be an integer"
-                                                     "(got %s" % (key, val))
-                elif key == "refresh":
-                    if val not in _REFRESH_VALUES:
-                        raise InvalidParametersError("Invalid value for"
-                                                     "'refresh' (%s)" % val)
-                elif key == "quick":
-                    raise InvalidParameterError("Deprecated parameter 'quick',"
-                                                "use refresh=no instead")
-                else:
-                    raise InvalidParametersError("Unsupported parameters %s"
-                                                 % key)
-            parameters = None # hide all parameters for super call below
-        super(AbstractTraceObsels, self).check_parameters(parameters, method)
+        if to_check is not None:
+            to_check_again = None
+            if method in ("get_state", "force_state_refresh"):
+                for key in to_check:
+                    val = parameters[key]
+                    if key in ("minb", "maxb", "mine", "maxe", "limit", "offset"):
+                        try:
+                            parameters[key] = int(val)
+                        except ValueError:
+                            raise InvalidParametersError(
+                                "%s should be an integer (got %s" % (key, val))
+                    elif key == "refresh":
+                        if val not in _REFRESH_VALUES:
+                            raise InvalidParametersError(
+                                "Invalid value for 'refresh' (%s)" % val)
+                    elif key == "quick":
+                        raise InvalidParametersError(
+                            "Deprecated parameter 'quick', "
+                            "use refresh=no instead")
+                    elif key in ("after", "before"):
+                        parameters[key] = obs = self.trace.get_obsel(val)
+                        try:
+                            begin = obs.begin
+                        except TypeError, AttributeError:
+                            obs = None
+                        if obs is None:
+                            raise InvalidParametersError(
+                                "%s should be an existing obsel"
+                                "(got %s)" % (key, val))
+                    elif key == "reverse":
+                        pass
+                    else:
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
+            elif method in ("edit"):
+                for key in to_check:
+                    if "add_obsels_only":
+                        pass
+                    else:
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
+            else:
+                to_check_again = to_check
+            if to_check_again:
+                super(AbstractTraceObsels, self).check_parameters(to_check_again,
+                                                                  parameters,
+                                                                  method)
     
-    def ack_edit(self, parameters, prepared, _query_cache=[None]):
+    def prepare_edit(self, parameters):
+        """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
+
+        I store old values related to monotonicity.
+        change in :meth:`ack_edit`.
+        """
+        ret = super(AbstractTraceObsels, self).prepare_edit(parameters)
+        ret.last_obsel = obs = self.metadata.value(self.uri, METADATA.last_obsel)
+        if obs is not None:
+            ret.last_begin = int(self.state.value(obs, KTBS.hasBegin))
+            ret.last_end = int(self.state.value(obs, KTBS.hasEnd))
+        ret.str_mon = ret.pse_mon = ret.log_mon = (
+            parameters and "add_obsels_only" in parameters)
+        return ret
+
+    def ack_edit(self, parameters, prepared):
         """I override :meth:`rdfrest.cores.local.ILocalCore.ack_edit`
         to update bookkeeping metadata and force transformed trace to refresh.
         """
@@ -276,40 +342,27 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # additional argument _query_cache #pylint: disable=W0221
         super(AbstractTraceObsels, self).ack_edit(parameters, prepared)
 
-        if not self._in_add_graph:
-            # find the last obsel and store it in metadata
-            query = _query_cache[0]
-            if query is None:
-                query = _query_cache[0] = prepareQuery("""
-                    PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-                    SELECT ?e ?o {
-                        ?o :hasEnd ?e .
-                        FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
-                    }
-                    ORDER BY DESC(?e) LIMIT 1
-                """)
+        # find the last obsel and store it in metadata
+        if parameters and "add_obsels_only" in parameters:
+            new_last_obsel = prepared.last_obsel
+        else:
             init_bindings = {}
-            last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
-            if last_obsel is not None:
-                last_end = self.state.value(last_obsel, KTBS.hasEnd)
+            if prepared.last_obsel is not None:
+                last_end = self.state.value(prepared.last_obsel, KTBS.hasEnd)
                 # NB: last_end can still be None if last_obsel has been deleted
                 if last_end is not None:
-                    init_bindings['last_end'] = last_end
-            results = list(self.state.query(query, initBindings=init_bindings))
+                    init_bindings['last_end'] = Literal(prepared.last_end)
+            results = list(self.state.query(FIND_LAST_OBSEL,
+                                            initBindings=init_bindings))
             if results:
-                new_last_obsel = results[0][1]
-                self.metadata.set((self.uri,
-                                   METADATA.last_obsel,
-                                   new_last_obsel))
+                new_last_obsel = results[0][0]
             else:
                 new_last_obsel = None
-                self.metadata.remove((self.uri,
-                                      METADATA.last_obsel,
-                                      None))
+
+        if new_last_obsel is not None:
+            self.metadata.set((self.uri, METADATA.last_obsel, new_last_obsel))
         else:
-            # last_obsel has already been set, more efficiently, by add_graph;
-            # we only have to reset self._in_add_graph
-            self._in_add_graph = False
+            self.metadata.remove((self.uri, METADATA.last_obsel, None))
 
         # force transformed traces to refresh
         trace = self.trace
@@ -320,15 +373,18 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.
 
-        Obsel collections can not be deleted individually.
-        Delete the owning trace instead.
+        Deleting an obsel collection simply empties it,
+        but does not actually destroy the resource.
         """
         if _trust:
             # this should only be set of the owning trace
             super(AbstractTraceObsels, self).delete(None, _trust)
         else:
-            raise MethodNotAllowedError("Can not delete obsel collection; "
-                                        "delete its owning trace instead.")
+            self.check_parameters(parameters, parameters, "delete")
+            with self.edit(_trust=True) as editable:
+                trace_uri = self.trace.uri
+                editable.remove((None, None, None))
+                self.init_graph(editable, self.uri, trace_uri)
 
     # TODO SOON implement check_new_graph on ObselCollection?
     # we should check that the graph only contains well formed obsels
@@ -356,7 +412,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
     ######## Private methods ########
 
     @classmethod
-    def _update_bk_metadata_in(cls, uri, graph):
+    def _update_bk_metadata_in(cls, uri, graph, prepared=None):
         """I override
         :meth:`rdfrest.cores.mixins.BookkeepingMixin._update_bk_metadata_in`
 
@@ -364,50 +420,72 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         """
         super(AbstractTraceObsels, cls)._update_bk_metadata_in(uri, graph)
         token = str(graph.value(uri, RDFREST.etag))
-        graph.set((uri, METADATA.str_mon_tag, Literal(token+"s")))
-        graph.set((uri, METADATA.pse_mon_tag, Literal(token+"p")))
-        graph.set((uri, METADATA.log_mon_tag, Literal(token+"l")))
+        if prepared is None  or   not prepared.str_mon:
+            graph.set((uri, METADATA.str_mon_tag, Literal(token+"s")))
+        if prepared is None  or  not prepared.pse_mon:
+            graph.set((uri, METADATA.pse_mon_tag, Literal(token+"p")))
+        if prepared is None  or  not prepared.log_mon:
+            graph.set((uri, METADATA.log_mon_tag, Literal(token+"l")))
     
-    def _get_new_last_obsel(self, graph, last_obsel):
-        """Find the new last obsel once this graph is added.
-
-        Return the obsel URI and its end timestamp.
-        """
-        if last_obsel is not None:
-            last_end = int(self.state.value(last_obsel, KTBS.hasEnd))
-        else:
-            last_end = None
-        for obs, _, end in graph.triples((None, KTBS.hasEnd, None)):
-            end = int(end)
-            if last_end is None or end > last_end:
-                last_end = end
-                last_obsel = obs
-        return last_obsel, last_end
-
-    def _detect_mon_change(self, graph, old_last_end, pse_mon_limit):
-        """Detect monotonicity changed induced by 'graph'.
+    def _detect_mon_change(self, graph, prepared):
+        """Detect monotonicity changed induced by 'graph', and update `prepared` accordingly.
         
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
+        trace_uri = self.trace.uri
+        new_obs = graph.value(None, KTBS.hasTrace, trace_uri)
+        if prepared.last_obsel is None:
+            prepared.last_obsel = new_obs
+            prepared.last_begin = int(graph.value(new_obs, KTBS.hasBegin))
+            prepared.last_end = int(graph.value(new_obs, KTBS.hasEnd))
+            return
+
+        old_last_obsel = prepared.last_obsel
+        old_last_begin = prepared.last_begin
+        old_last_end = prepared.last_end
+        pseudomon_range = self.trace.pseudomon_range
+        pse_mon_b_limit = old_last_begin - pseudomon_range
+        pse_mon_e_limit = old_last_end - pseudomon_range
+
         str_mon = True
         pse_mon = True
-        trace_uri = self.trace.uri
         self_state_value = self.state.value
-        # we used a SPARQL query before, but this seems to be more efficient
-        for new_obs in graph.subjects(KTBS.hasTrace, trace_uri):
-            for obs in chain( [new_obs],
-                              graph.objects(new_obs, None),
-                              graph.subjects(None, new_obs)):
-                end = self_state_value(obs, KTBS.hasEnd)
-                if end is None:
-                    continue
-                end = int(end)
-                if end < old_last_end:
+        # we used a SPARQL query before, but this seems to be more efficient...
+        # check all new obsels, but also their *related* obsels
+        # (as the relation changes *both* obsels)
+        for obs in chain( [new_obs],
+                          graph.objects(new_obs, None),
+                          graph.subjects(None, new_obs)):
+            if not obs.startswith(trace_uri):
+                continue # not an obsel of this trace, skip it
+            end = self_state_value(obs, KTBS.hasEnd)
+            if end is None:
+                continue # not an obsel, skip it
+            end = int(end)
+            begin = None
+            if end < old_last_end:
+                str_mon = False
+                if end < pse_mon_e_limit:
+                    pse_mon = False
+            elif end == old_last_end:
+                begin = int(self_state_value(obs, KTBS.hasBegin))
+                if begin < old_last_begin:
                     str_mon = False
-                    if end < pse_mon_limit:
+                    if begin < pse_mon_b_limit:
                         pse_mon = False
-        return str_mon, pse_mon
+                elif begin == old_last_begin:
+                    if obs <= old_last_obsel:
+                        str_mon = False
+            if obs is new_obs and str_mon:
+                prepared.last_obsel = new_obs
+                if begin is None:
+                    begin = int(graph.value(new_obs, KTBS.hasBegin))
+                prepared.last_begin = begin
+                prepared.last_end = end
+
+        prepared.str_mon = prepared.str_mon and str_mon
+        prepared.pse_mon = prepared.pse_mon and pse_mon
 
 
 
@@ -463,7 +541,14 @@ class ComputedTraceObsels(AbstractTraceObsels):
                 self.metadata.remove((self.uri, METADATA.dirty, None))
                 trace.force_state_refresh()
                 impl = trace._method_impl # friend #pylint: disable=W0212
-                diag = impl.compute_obsels(trace, refresh_param >= 2)
+                try:
+                    diag = impl.compute_obsels(trace, refresh_param >= 2)
+                except BaseException, ex:
+                    LOG.warn(traceback.format_exc())
+                    diag = Diagnosis(
+                        "exception raised while computing obsels",
+                        [ex.message]
+                    )
                 if not diag:
                     self.metadata.set((self.uri, METADATA.dirty,
                                           Literal("yes")))
@@ -482,6 +567,17 @@ class ComputedTraceObsels(AbstractTraceObsels):
             return super(ComputedTraceObsels, self).edit(parameters, clear,
                                                          _trust)
 
+    def delete(self, parameters=None, _trust=False):
+        """I override :meth:`.AbstractTraceObsels.delete`.
+
+        You can not empty a computed trace.
+        """
+        if _trust:
+            # this should only be set of the owning trace
+            super(AbstractTraceObsels, self).delete(None, _trust)
+        else:
+            raise MethodNotAllowedError("Can not empty a computed trace.")
+
     ######## Protected methods ########
 
     def _empty(self):
@@ -494,6 +590,15 @@ class ComputedTraceObsels(AbstractTraceObsels):
             trace_uri = editable.value(None, KTBS.hasObselCollection, self.uri)
             editable.remove((None, None, None))
             self.init_graph(editable, self.uri, trace_uri)
+
+FIND_LAST_OBSEL = prepareQuery("""
+    PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
+    SELECT ?o {
+        ?o :hasEnd ?e .
+        FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
+    }
+    ORDER BY DESC(?e) LIMIT 1
+""")
 
 _REFRESH_VALUES = {
     "no": 0,

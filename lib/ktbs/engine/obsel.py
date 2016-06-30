@@ -18,6 +18,8 @@
 """
 I provide the implementation of ktbs:Obsel .
 """
+import traceback
+
 from rdflib import Literal, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
 import re
@@ -28,14 +30,14 @@ from rdfrest.util.iso8601 import UTC
 from rdfrest.cores.local import ILocalCore
 from rdfrest.cores.mixins import WithCardinalityMixin, WithReservedNamespacesMixin, \
     WithTypedPropertiesMixin
-from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, \
-    parent_uri
+from rdfrest.util import bounded_description, Diagnosis, make_fresh_uri, parent_uri
 from ..api.obsel import ObselMixin
 from ..namespace import KTBS, RDF
 from ..utils import SKOS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
 
-
+import logging
+LOG = logging.getLogger(__name__)
 
 # pylint is confused by a module named time (as built-in module)
     
@@ -64,12 +66,12 @@ class _ObselImpl(ILocalCore):
 
     ######## ICore implementation  ########
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.cores.ICore.factory`.
 
         I simply rely on my service's get method.
         """
-        return self.service.get(URIRef(uri), _rdf_type, _no_spawn)
+        return self.service.get(URIRef(uri), rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement `.cores.ICore.get_state`.
@@ -78,7 +80,7 @@ class _ObselImpl(ILocalCore):
         """
         # TODO LATER return a state that automatically follows changes in
         # self.home?
-        self.check_parameters(parameters, "get_state")
+        self.check_parameters(parameters, parameters, "get_state")
         ret = self._state
         if ret is None:
             ret = self._state = get_obsel_bounded_description(
@@ -92,7 +94,7 @@ class _ObselImpl(ILocalCore):
         """I override `.cores.hosted.HostedCore.force_state_refresh`.
         """
         # nothing to do, there is no cache involved
-        self.check_parameters(parameters, "force_state_refresh")
+        self.check_parameters(parameters, parameters, "force_state_refresh")
         if self._state is not None:
             self._state.remove((None, None, None))
             bounded_description(self.uri, self.home.get_state(), self._state)
@@ -141,7 +143,7 @@ class _ObselImpl(ILocalCore):
                             (KTBS.hasBeginDT, 0, 1),
                             (KTBS.hasEnd, 1, 1),
                             (KTBS.hasEndDT, 0, 1),
-                            (KTBS.hasSubject, 1, 1),
+                            (KTBS.hasSubject, 0, 1),
                             (KTBS.hasTrace, 1, 1),
                             ]
     RDF_TYPED_PROP =      [ (KTBS.hasBegin,   "literal", XSD.integer),
@@ -155,7 +157,7 @@ class _ObselImpl(ILocalCore):
     # so if the graph also contains ktbs:hasTrace pointing to a literal,
     # this will violate the cardinality constraint.
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`ILocalCore.check_parameters`.
 
         I accepts no parameter (not even an empty query string).
@@ -164,13 +166,9 @@ class _ObselImpl(ILocalCore):
         # argument 'method' is not used #pylint: disable=W0613
 
         # Do NOT call super method, as this is the base implementation.
-        if parameters is not None:
-            if not parameters:
-                raise InvalidParametersError("Unsupported parameters "
-                                             "(empty dict instead of None)")
-            else:
-                raise InvalidParametersError("Unsupported parameter(s):" +
-                                             ", ".join(parameters.keys()))
+        if to_check:
+            raise InvalidParametersError("Unsupported parameter(s):" +
+                                         ", ".join(to_check))
 
     @classmethod
     def complete_new_graph(cls, service, uri, parameters, new_graph,
@@ -197,7 +195,7 @@ class _ObselImpl(ILocalCore):
         if subject is None:
             default_subject = trace.get_default_subject()
             if default_subject is not None:
-                new_graph.add((uri, KTBS.hasSubject, Literal(default_subject)))
+                new_graph.add((uri, KTBS.hasSubject, default_subject))
 
         # compute begin and/or end if beginDT and/or endDT are provided
         delta2unit = None
@@ -252,6 +250,7 @@ class _ObselImpl(ILocalCore):
                 diag.append("End timestamp is before begin timestamp [%s,%s]"
                             % (begin, end))
         except ValueError:
+            LOG.info(traceback.format_exc())
             diag.append("Can not convert timestamps to int: [%s,%s]"
                         % (begin, end))
 
@@ -280,9 +279,8 @@ class _ObselImpl(ILocalCore):
         """
         # Do NOT call super method, as this is the base implementation.
 
-        bdesc = bounded_description(uri, new_graph)
         trace = cls._get_trace_from_uri(service, uri)
-        trace.obsel_collection.add_graph(bdesc, True)
+        trace.obsel_collection.add_obsel_graph(new_graph, True)
 
     ######## Private methods ########
 

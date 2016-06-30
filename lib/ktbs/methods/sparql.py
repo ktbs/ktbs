@@ -18,6 +18,8 @@
 """
 Implementation of the sparql builtin methods.
 """
+import traceback
+
 from pyparsing import ParseException
 from rdfrest.exceptions import ParseError
 from rdfrest.util import Diagnosis
@@ -25,10 +27,15 @@ from rdflib import BNode, Literal, URIRef
 from rdflib.graph import ConjunctiveGraph
 import rdflib.plugins.sparql.algebra
 
+from rdfrest.util.prefix_conjunctive_view import PrefixConjunctiveView
 from .interface import IMethod
 from .utils import replace_obsels
 from ..namespace import KTBS
 from ..engine.builtin_method import register_builtin_method_impl
+
+import logging
+
+LOG = logging.getLogger(__name__)
 
 class _SparqlMethod(IMethod):
     """I implement the sparql builtin method.
@@ -65,21 +72,20 @@ class _SparqlMethod(IMethod):
         parameters["__destination__"] = computed_trace.uri
         parameters["__source__"] = source.uri
 
-        config = computed_trace.service.config
-        full_state = config.has_section("sparql") \
-                     and config.has_option("sparql", "full_dataset") \
-                     and config.getboolean("sparql", "full_dataset")
-        
+        scope = parameters.get('scope', 'trace')
         try:
-            if full_state:
-                data = ConjunctiveGraph(source.service.store, source.uri)
+            if scope == 'base':
+                data = PrefixConjunctiveView(source.base.uri,
+                                             source.service.store)
             else:
+                # scope == 'trace'
                 data = source.obsel_collection.get_state({"refresh":"no"})
             sparql = parameters["sparql"] % parameters
             result = data.query(sparql, base=source.obsel_collection.uri).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except Exception, exc:
-            diag.append(str(exc))
+            LOG.warn(traceback.format_exc())
+            diag.append(unicode(exc))
 
         return diag
 
@@ -117,10 +123,12 @@ class _SparqlMethod(IMethod):
                 try:
                     params[key] = datatype(val)
                 except ValueError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
                 except ParseError:
+                    LOG.info(traceback.format_exc())
                     diag.append("Parameter %s has illegal value: %s"
                                 % (key, val))
                     critical = True
@@ -130,11 +138,17 @@ class _SparqlMethod(IMethod):
         else:
             return sources[0], params
 
+def _scope_datatype(value):
+    if value in {'trace', 'base'}:
+        return value
+    raise ValueError(value)
+
 _PARAMETERS_TYPE = {
     "origin": Literal,
     "model": URIRef,
     "sparql": str,
     "inherit": str,
+    "scope": _scope_datatype,
 }
 
 # monkeypatch to fix issue #381 in rdflib.plugins.sparql

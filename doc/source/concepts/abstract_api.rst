@@ -100,7 +100,7 @@ Base (Base)
 
     Return the element of this base identified by the given URI, or null.
 
-    :rtype: Trace|Model|Method
+    :rtype: Trace|Model|Method|Base|DataGraph
 
 .. function:: list_traces()
 
@@ -111,6 +111,24 @@ Base (Base)
     List the models stored in that base.
 
     :rtype: [Model]
+
+.. function:: list_methods()
+
+    List the methods stored in that base.
+
+    :rtype: [Method]
+
+.. function:: list_bases()
+
+    List the bases stored in that base.
+
+    :rtype: [Base]
+
+.. function:: list_data_graphs()
+
+    List the data graphs stored in that base.
+
+    :rtype: [DataGraph]
 
 .. function:: create_stored_trace(id:uri?, model:Model, origin:str?, default_subject:str?, label:str?, )
 
@@ -133,7 +151,15 @@ Base (Base)
 
     :rtype: Method
 
-    
+.. function:: create_base(id:uri?, label:str?)
+
+    :rtype: Base
+
+.. function:: create_data_graph(id:uri?, label:str?)
+
+    :rtype: DataGraph
+
+
 Trace (Resource)
 ----------------
 
@@ -151,6 +177,34 @@ Trace (Resource)
     two traces with the same origin can be temporally compared.
 
     :rtype: str
+    
+.. function:: get_trace_begin()
+
+    The timestamp from which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: int
+
+.. function:: get_trace_begin_dt()
+
+    The datetime from which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: str
+
+.. function:: get_trace_end()
+
+    The timestamp until which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: int
+
+.. function:: get_trace_end_dt()
+
+    The datetime until which this trace was being collected,
+    relative to the origin. This may be omitted (and then return null).
+
+    :rtype: str
 
 .. function:: list_source_traces()
 
@@ -161,6 +215,13 @@ Trace (Resource)
     Return the list of the traces of which this trace is a source.
 
     :rtype: [Trace]
+
+
+.. function:: list_contexts()
+
+    Return the data graphs providing contextual information for this trace.
+
+    :rtype: [DataGraph]
 
 .. function:: list_obsels(begin:int?, end:int?, reverse:bool?)
 
@@ -181,6 +242,14 @@ StoredTrace (Trace)
 .. function:: set_model(model:Model)
 
 .. function:: set_origin(origin:str)
+
+.. function:: set_trace_begin(begin:int)
+
+.. function:: set_trace_begin_dt(begin_dt:str)
+
+.. function:: set_trace_end(end:int)
+
+.. function:: set_trace_end_dt(end_dt:str)
 
 .. function:: get_default_subject()
 
@@ -293,21 +362,21 @@ Model (Resource)
 
     :rtype: ObselType
 
-.. function:: create_attribute_type(id:uri?, obsel_type:ObselType?, data_type:uri?, \
+.. function:: create_attribute_type(id:uri?, obsel_types:[ObselType]?, data_types:[uri]?, \
               value_is_list:bool?, label:str)
 
     NB: if data_type represent a "list datatype", value_is_list must not be
     true
     NB: if id is not provided, label is used to mint a human-friendly URI
     TODO specify a minimum list of datatypes that must be supported
-    TODO define a URI for representing "list of X" for each supported datatype
+    TODO define a URI for representing "list of X" for each supported datatype?
 
     :param data_type: uri is an XML-Schema datatype URI.
     :param value_is_list: indicates whether the attributes accepts a single value
                           (false, default) or a list of values (true).
     :rtype: AttributeType
 
-.. function:: create_relation_type(id:uri?, origin:ObselType?, destination:ObselType?, \
+.. function:: create_relation_type(id:uri?, origins:[ObselType]?, destinations:[ObselType]?, \
               supertypes:[RelationType]?, label:str)
 
     NB: if id is not provided, label is used to mint a human-friendly URI
@@ -357,6 +426,12 @@ Method (Resource)
     Unset a parameter.
     An exception must be raised if the parameter is inherited.
 
+
+DataGraph (Resource)
+--------------------
+
+This class has no additional method.
+
     
 ObselType (Resource)
 --------------------
@@ -372,6 +447,11 @@ ObselType (Resource)
     :param include_indirect: defaults to false; if true, all supertypes are listed,
                              including indirect supertypes and this obsel type itself
     :rtype: [ObselType]
+
+
+.. function:: add_supertype(ot:ObselType)
+
+.. function:: remove_supertype(ot:ObselType)
 
 .. function:: list_subtypes(include_indirect:bool?)
 
@@ -406,7 +486,7 @@ ObselType (Resource)
                               inherited from supertypes should be included
     :rtype: [RelationType]
 
-.. function:: create_attribute_type(id:uri?, data_type:uri?, value_is_list:book?, \
+.. function:: create_attribute_type(id:uri?, data_types:[uri]?, value_is_list:book?, \
               label:str)
 
     Shortcut to get_model().create_attribute_type where this ObselType is the
@@ -414,17 +494,13 @@ ObselType (Resource)
 
     :rtype: AttributeType
 
-.. function:: create_relation_type(id:uri?, destination:ObselType?, \
+.. function:: create_relation_type(id:uri?, destinations:[ObselType]?, \
               supertypes:[RelationType]?, label:str)
 
     Shortcut to get_model().create_relation_type where this ObselType is the
     origin.
 
     :rtype: RelationType
-
-.. function:: add_supertype(ot:ObselType)
-
-.. function:: remove_supertype(ot:ObselType)
 
       
     
@@ -435,24 +511,27 @@ AttributeType (Resource)
 
     :rtype: Model
 
-.. function:: get_obsel_type()
+.. function:: list_obsel_types()
 
-    :rtype: ObselType
+    :rtype: [ObselType]
 
-.. function:: set_obsel_type(ot:ObselType)
+.. function:: add_obsel_type(ot:ObselType)
 
-.. function:: get_data_type()
+.. function:: remove_obsel_type(ot:ObselType)
 
-    :rtype: uri
+.. function:: list_data_types()
 
-.. function:: set_data_type(data_type:uri, is_list:bool?)
+    :rtype: [uri]
+            
+.. function:: add_data_type(data_type:uri, is_list:bool?)
 
     NB: if data_type represent a "list datatype", value_is_list must not be
     true
 
     :param is_list: indicates whether the attribute accepts a single value (false,
                     default) or a list of values (true)
-    :rtype: 
+
+.. function:: remove_data_type(data_type:uri)
 
     
 RelationType (Resource)
@@ -470,6 +549,10 @@ RelationType (Resource)
                              including indirect supertypes and this relation type itself
     :rtype: [RelationType]
 
+.. function:: add_supertype(rt:RelationType)
+
+.. function:: remove_supertype(rt:RelationType)
+
 .. function:: list_subtypes(include_indirect:bool?)
 
     List the subtypes of this relation type from the same model.
@@ -479,21 +562,22 @@ RelationType (Resource)
                              relation type itself
     :rtype: [RelationType]
 
-.. function:: get_origin()
 
-    :rtype: ObselType
+.. function:: list_origins()
 
-.. function:: set_origin(ot:ObselType)
+    :rtype: [ObselType]
 
-.. function:: get_destination()
+.. function:: add_origin(ot:ObselType)
 
-    :rtype: ObselType
+.. function:: remove_origin(ot:ObselType)
 
-.. function:: set_destination(ot:ObselType)
+.. function:: list_destinations()
 
-.. function:: add_supertype(rt:RelationType)
+    :rtype: [ObselType]
 
-.. function:: remove_supertype(rt:RelationType)
+.. function:: add_destination(ot:ObselType)
+
+.. function:: remove_destination(ot:ObselType)
 
 
     

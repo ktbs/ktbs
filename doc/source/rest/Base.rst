@@ -16,6 +16,15 @@ GET
 
 Retrieve a description of the base. This description contains information about the base (label, owner, etc.) and the list of items (`Trace`:doc:, `Model`:doc:, `Method`:doc:) it contains, with their types.
 
+It is also possible to enrich the graph returned by GET with information about the items of the base,
+using the property ``prop`` containing a comma-separated list of the following properties:
+
+* ``comment`` to display the ``rdfs:comment``\ s of items,
+* ``hasModel`` to display the model of traces,
+* ``hasSource`` to display the sources of traces,
+* ``label`` to display the ``rdfs:label``\ s of ``skos:prefLabel`` of items,
+* ``obselCount`` to display the number of obsels of traces.
+
 PUT
 ---
 

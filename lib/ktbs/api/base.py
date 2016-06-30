@@ -23,6 +23,7 @@ I provide the pythonic interface of ktbs:Base .
 """
 
 from rdflib import Graph, Literal, RDF, URIRef
+from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.util import coerce_to_node, coerce_to_uri, parent_uri
@@ -42,36 +43,64 @@ class BaseMixin(KtbsResourceMixin):
     def __iter__(self):
         self_factory = self.factory
         for uri, typ in self._iter_contained():
-            yield self_factory(uri, typ)
+            yield self_factory(uri, [typ])
 
     ######## Abstract kTBS API ########
+
+    def iter_bases(self):
+        """
+        Iter over all the sub-bases of this base.
+
+        :rtype: an iterable of `~.base.BaseMixin`:class:
+        """
+        self_factory = self.factory
+        for uri, typ in self._iter_contained():
+            if typ == KTBS.Base:
+                yield self_factory(uri, [typ])
 
     def iter_traces(self):
         """
         Iter over all the traces (stored or computed) of this base.
+
+        :rtype: an iterable of `~.trace.AbstractTraceMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.StoredTrace or typ == KTBS.ComputedTrace:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def iter_models(self):
         """
         Iter over all the trace models of this base.
+
+        :rtype: an iterable of `~.trace_model.TraceModelMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.TraceModel:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
 
     def iter_methods(self):
         """
         Iter over all the methods of this base.
+
+        :rtype: an iterable of `~.method.MethodMixin`:class:
         """
         self_factory = self.factory
         for uri, typ in self._iter_contained():
             if typ == KTBS.Method:
-                yield self_factory(uri, typ)
+                yield self_factory(uri, [typ])
+
+    def iter_data_graphs(self):
+        """
+        Iter over all the methods of this base.
+
+        :rtype: an iterable of `~.method.MethodMixin`:class:
+        """
+        self_factory = self.factory
+        for uri, typ in self._iter_contained():
+            if typ == KTBS.DataGraph:
+                yield self_factory(uri, [typ])
 
     def get(self, id):
         """
@@ -81,22 +110,63 @@ class BaseMixin(KtbsResourceMixin):
                    base
         :type  id: str
 
-        :rtype: `~.trace_model.TraceModelMixin`:class:,
+        :rtype: `~.base.BaseMixin`:class:, `~.trace_model.TraceModelMixin`:class:,
                 `~.method.Method`:class: or `~.trace.AbstractTraceMixin`:class:
         """
         #  Redefining built-in id #pylint: disable-msg=W0622
         elt_uri = coerce_to_uri(id, self.uri)
-        ret = self.factory(elt_uri)
-        assert ret is None  or  isinstance(ret, InBaseMixin)
+        elt_type = self.state.value(elt_uri, RDF.type)
+        ret = self.factory(elt_uri, [elt_type])
+        assert ret is None  or  isinstance(ret, InBaseMixin)  or  isinstance(ret, BaseMixin)
         return ret
 
-    def get_root(self):
+    def get_parent(self):
         """
         Return the root of the KTBS containing this base.
+
+        :rtype: `~.ktbs_root.KtbsRootMixin`:class:
         """
-        root_uri = URIRef("..", self.uri)
-        return self.factory(root_uri, KTBS.KtbsRoot)
-        # assert must be .ktbs_root.KtbsRootMixin
+        parent_uri = self.state.value(None, KTBS.hasBase, self.uri)
+        if parent_uri:
+            parent_type = KTBS.KtbsRoot
+        else:
+            parent_uri = self.state.value(None, KTBS.contains, self.uri)
+            parent_type = KTBS.Base
+        return self.factory(parent_uri, [parent_type])
+
+    def get_depth(self):
+        """
+        Return the distance of this base to the kTBS root.
+        """
+        p = self.get_parent()
+        if p.state.value(p.uri, RDF.type) == KTBS.KtbsRoot:
+            return 1
+        else:
+            return p.get_depth()+1
+
+
+    def create_base(self, id=None, label=None, graph=None):
+        """Create a new base in this kTBS.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param label: TODO DOC explain
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `~.base.BaseMixin`:class:
+        """
+        # redefining built-in 'id' #pylint: disable-msg=W0622
+        trust = graph is None  and  id is None
+        node = coerce_to_node(id, self.uri)
+        if graph is None:
+            graph = Graph()
+        graph.add((self.uri, KTBS.contains, node))
+        graph.add((node, RDF.type, KTBS.Base))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+        uris = self.post_graph(graph, None, trust, node, KTBS.Base)
+        assert len(uris) == 1
+        return self.factory(uris[0], [KTBS.Base])
+        # must be a BaseMixin
 
     def create_model(self, id=None, parents=None, label=None, graph=None):
         """Create a new model in this trace base.
@@ -107,7 +177,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.model.Model`
+        :rtype: `~.tace_model.TraceModelMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
 
@@ -126,7 +196,7 @@ class BaseMixin(KtbsResourceMixin):
             graph.add((node, KTBS.hasParentModel, parent))
         uris = self.post_graph(graph, None, trust, node, KTBS.TraceModel)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.TraceModel)
+        return self.factory(uris[0], [KTBS.TraceModel])
         # must be a .trace_model.TraceModelMixin
 
     def create_method(self, id=None, parent=None, parameters=None, label=None,
@@ -139,7 +209,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.method.Method`
+        :rtype: `~.method.MethodMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable-msg=W0622
 
@@ -178,7 +248,7 @@ class BaseMixin(KtbsResourceMixin):
             graph.add((node, SKOS.prefLabel, Literal(label)))
         uris = self.post_graph(graph, None, trust, node, KTBS.Method)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.Method)
+        return self.factory(uris[0], [KTBS.Method])
         # must be a .method.MethodMixin
 
 
@@ -196,7 +266,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.trace.StoredTrace`
+        :rtype: `~.trace.StoredTraceMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable=W0622
 
@@ -223,13 +293,15 @@ class BaseMixin(KtbsResourceMixin):
         graph.add((node, KTBS.hasModel, model))
         graph.add((node, KTBS.hasOrigin, Literal(origin)))
         if default_subject is not None:
-            graph.add((node, KTBS.hasDefaultSubject, Literal(default_subject)))
+            if not isinstance(default_subject, URIRef):
+                default_subject = Literal(default_subject)
+            graph.add((node, KTBS.hasDefaultSubject, default_subject))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
 
         uris = self.post_graph(graph, None, trust, node, KTBS.StoredTrace)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.StoredTrace)
+        return self.factory(uris[0], [KTBS.StoredTrace])
         # must be a .trace.StoredTraceMixin
 
     def create_computed_trace(self, id=None, method=None, parameters=None,
@@ -243,7 +315,7 @@ class BaseMixin(KtbsResourceMixin):
         :param label: explain.
         :param graph: see :ref:`ktbs-resource-creation`
 
-        :rtype: `ktbs.client.trace.ComputedTrace`
+        :rtype: `~.trace.ComputedTraceMixin`:class:
         """
         # redefining built-in 'id' #pylint: disable=W0622
 
@@ -296,15 +368,38 @@ class BaseMixin(KtbsResourceMixin):
 
         uris = self.post_graph(graph, None, trust, node, KTBS.ComputedTrace)
         assert len(uris) == 1
-        return self.factory(uris[0], KTBS.ComputedTrace)
+        return self.factory(uris[0], [KTBS.ComputedTrace])
         # must be a .trace.StoredTraceMixin
+
+    def create_data_graph(self, id=None, label=None, graph=None):
+        """Create a new base in this kTBS.
+
+        :param id: see :ref:`ktbs-resource-creation`
+        :param label: TODO DOC explain
+        :param graph: see :ref:`ktbs-resource-creation`
+
+        :rtype: `~.base.InBaseMixin`:class:
+        """
+        # redefining built-in 'id' #pylint: disable-msg=W0622
+        trust = graph is None and id is None
+        node = coerce_to_node(id, self.uri)
+        if graph is None:
+            graph = Graph()
+        graph.add((self.uri, KTBS.contains, node))
+        graph.add((node, RDF.type, KTBS.DataGraph))
+        if label:
+            graph.add((node, SKOS.prefLabel, Literal(label)))
+        uris = self.post_graph(graph, None, trust, node, KTBS.Base)
+        assert len(uris) == 1
+        return self.factory(uris[0], [KTBS.DataGraph])
+        # must be a InBaseMixin (no special mixin for DataGraph, this is just a graph)
 
     def remove(self):
         """Delete this base from the kTBS.
         """
-        root = self.get_root()
+        parent = self.get_parent()
         super(BaseMixin, self).remove()
-        root.force_state_refresh()
+        parent.force_state_refresh()
 
     ######## Private methods ########
 
@@ -312,15 +407,21 @@ class BaseMixin(KtbsResourceMixin):
         """
         Yield the URI and type of every element of this base.
         """
-        query_template = """
-            PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT DISTINCT ?s ?t
-            WHERE { <%s> k:contains ?s . ?s a ?t . }
-        """
-        return iter(self.state.query(query_template % self.uri))
+        return iter(self.state.query(_ITER_CONTAINED_QUERY,
+                    initBindings={"base": self.uri}))
+
+_ITER_CONTAINED_QUERY = prepareQuery("""
+    PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+    SELECT DISTINCT ?s ?t
+    WHERE { $base k:contains ?s . ?s a ?t . }
+""")
             
 
 
+# NB: the register_wrapper below does not mean that KTBS.DataGraph is the
+# *only* type corresponding to InBaseMixin, but this particulat type has no
+# mixin of its own, so we register it directly here.
+@register_wrapper(KTBS.DataGraph)
 @extend_api
 class InBaseMixin(KtbsResourceMixin):
     """
@@ -338,7 +439,7 @@ class InBaseMixin(KtbsResourceMixin):
         :rtype: `BaseMixin`:class:
         """
         base_uri = parent_uri(self.uri)
-        ret = self.factory(base_uri, KTBS.Base)
+        ret = self.factory(base_uri, [KTBS.Base])
         assert isinstance(ret, BaseMixin)
         return ret
 

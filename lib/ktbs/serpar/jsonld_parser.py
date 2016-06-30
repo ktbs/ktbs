@@ -23,6 +23,7 @@ JSON-LD parser and serializer for KTBS.
 """
 import logging
 
+from ktbs.namespace import KTBS
 from rdfrest.cores.factory import factory
 
 
@@ -108,9 +109,10 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             json_data.setdefault(u"inRoot", unicode(base_uri))
 
         elif json_data.get("@type") in ("StoredTrace",
-                                      "ComputedTrace",
-                                      "TraceModel",
-                                      "Method"):
+                                        "ComputedTrace",
+                                        "DataGraph",
+                                        "TraceModel",
+                                        "Method"):
             json_data.setdefault(u"inBase", unicode(base_uri))
 
         elif "@graph" in json_data:
@@ -119,7 +121,9 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             # with the first item representing the trace model
             json_data["@graph"][0].setdefault(u"inBase", unicode(base_uri))
         elif ((json_data.get("hasObselList") is None)
-              and 
+              and
+              (json_data.get("hasTraceStatistics") is None)
+              and
               (json_data.get("hasBuiltinMethod") is None)):
             # must be an obsel
             obsel_context = True
@@ -130,7 +134,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             if not obsel_context:
                 json_data["@context"] = CONTEXT_URI
             else:
-                model_uri = factory(base_uri).model_uri
+                model_uri = factory(base_uri, [KTBS.AbstractTrace]).model_uri
                 if model_uri[-1] not in { "/", "#" }:
                     model_uri += "#"
                 json_data["@context"] = [
@@ -155,11 +159,13 @@ CONTEXT_JSON = """{"@context":{
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "skos": "http://www.w3.org/2004/02/skos/core#",
     "k": "http://liris.cnrs.fr/silex/2009/ktbs#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
 
     "AttributeType": "k:AttributeType",
     "Base": "k:Base",
     "BuiltinMethod": "k:BuiltinMethod",
     "ComputedTrace": "k:ComputedTrace",
+    "DataGraph": "k:DataGraph",
     "KtbsRoot": "k:KtbsRoot",
     "Method": "k:Method",
     "Obsel": "k:Obsel",
@@ -167,6 +173,7 @@ CONTEXT_JSON = """{"@context":{
     "RelationType": "k:RelationType",
     "StoredTrace": "k:StoredTrace",
     "StoredTraceObsels": "k:StoredTraceObsels",
+    "TraceStatistics": "k:TraceStatistics",
     "TraceModel": "k:TraceModel",
 
     "contains": { "@id": "k:contains", "@type": "@id" },
@@ -176,13 +183,18 @@ CONTEXT_JSON = """{"@context":{
     "begin": { "@id": "k:hasBegin", "@type": "xsd:integer" },
     "beginDT": { "@id": "k:hasBeginDT", "@type": "xsd:dateTime" },
     "hasBuiltinMethod": { "@id": "k:hasBuiltinMethod", "@type": "@vocab" },
+    "hasContext": { "@id": "k:hasContext", "@type": "@id" },
     "version": "k:hasVersion",
     "defaultSubject": "k:hasDefaultSubject",
+    "hasDefaultSubject": { "@id": "k:hasDefaultSubject", "@type": "@id" },
+    "diagnosis": "k:hasDiagnosis",
     "end": { "@id": "k:hasEnd", "@type": "xsd:integer" },
     "endDT": { "@id": "k:hasEndDT", "@type": "xsd:dateTime" },
     "hasMethod": { "@id": "k:hasMethod", "@type": "@vocab" },
     "hasModel": { "@id": "k:hasModel", "@type": "@id" },
+    "obselCount": { "@id": "k:hasObselCount", "@type": "xsd:integer" },
     "hasObselList": { "@id": "k:hasObselCollection", "@type": "@id" },
+    "hasTraceStatistics": { "@id": "k:hasTraceStatistics", "@type": "@id" },
     "origin": { "@id": "k:hasOrigin" },
     "parameter": "k:hasParameter",
     "hasParentMethod": { "@id": "k:hasParentMethod", "@type": "@vocab" },
@@ -192,10 +204,11 @@ CONTEXT_JSON = """{"@context":{
     "hasSource": { "@id": "k:hasSource", "@type": "@id" },
     "hasSourceObsel": { "@id": "k:hasSourceObsel", "@type": "@id" },
     "subject": "k:hasSubject",
+    "hasSubject": { "@id": "k:hasSubject", "@type": "@id" },
     "hasSuperObselType": { "@id": "k:hasSuperObselType", "@type": "@id" },
     "hasSuperRelationType": { "@id": "k:hasSuperRelationType", "@type": "@id" },
     "hasTrace": { "@id": "k:hasTrace", "@type": "@id" },
-    "traceBegin": { "@id": "k:hasTraceBeginse", "@type": "xsd:integer" },
+    "traceBegin": { "@id": "k:hasTraceBegin", "@type": "xsd:integer" },
     "traceBeginDT": { "@id": "k:hasTraceBeginDT", "@type": "xsd:dateTime" },
     "traceEnd": { "@id": "k:hasTraceEnd", "@type": "xsd:integer" },
     "traceEndDT": { "@id": "k:hasTraceEndDT", "@type": "xsd:dateTime" },
@@ -203,6 +216,7 @@ CONTEXT_JSON = """{"@context":{
 
     "external": "k:external",
     "filter": "k:filter",
+    "fsa": "k:fsa",
     "fusion": "k:fusion",
     "sparql": "k:sparql",
 

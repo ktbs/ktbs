@@ -28,17 +28,17 @@ implement the concerns of the server.
   manage.
 
 * More precisely, the classes passed to a `Service`:class: must implement
-  :class:`ILocalCore`, a sub-interface of `~.interface.Resource`:class:
+  :class:`ILocalCore`, a sub-interface of `~rdfrest.cores.ICore`:class:
   augmenting it with attributes and hooks methods aimed at managing the concerns
   of the server (integrity checking, update propagations...).
 
 * This module provides default implementations of :class:`ILocalCore`:
   :class:`LocalCore` (supporting only "read" operations) and
-  :class:`EditableCore` (supporting :meth:`~.interface.Resource.edit` and
-  :meth:`~.interface.Resource.delete`).
+  :class:`EditableCore` (supporting :meth:`~rdfrest.cores.ICore.edit` and
+  :meth:`~rdfrest.cores.ICore.delete`).
 
 * Subclasses of :class:`ILocalCore` can also benefit from a number of mix-in
-  classes provided in the `.mixins`:mod: module.
+  classes provided in the `~rdfrest.cores.mixins`:mod: module.
 """
 from contextlib import contextmanager
 import traceback
@@ -138,8 +138,7 @@ class Service(object):
         self._resource_cache = WeakValueDictionary()
         self._context_level = 0
 
-        root_metadata_uri = URIRef(root_uri + "#metadata")
-        metadata_graph = Graph(store, root_metadata_uri)
+        metadata_graph = self.get_metadata_graph(root_uri)
         initialized = list(metadata_graph.triples((self.root_uri,
                                                    NS.hasImplementation,
                                                    None)))
@@ -160,13 +159,13 @@ class Service(object):
             pass
 
     @HostedCore.handle_fragments
-    def get(self, uri, _rdf_type=None, _no_spawn=False):
+    def get(self, uri, rdf_types=None, _no_spawn=False):
         """Get a resource from this service.
 
         :param uri:      the URI of the resource
         :type  uri:      :class:`~rdflib.URIRef`
-        :param _rdf_type: a hint at the expected RDF type of the resource
-        :type  _rdf_type: :class:`~rdflib.URIRef`
+        :param rdf_types: if provided, a list of expected RDF types of the resource
+        :type  rdf_types: list of :class:`rdflib.term.URIRef`
         :param _no_spawn: if True, only *pre-existing* python objects will be
                           returned
         :type  _no_spawn: bool
@@ -177,7 +176,7 @@ class Service(object):
         TODO NOW: if no resource is found, try to get it from parent resource
 
         NB: if uri contains a fragment-id, the returned resource will be a
-        `~.cores.hosted.HostedCore`:class: hosted by a resource from this
+        `~rdfrest.cores.hosted.HostedCore`:class: hosted by a resource from this
         service.
 
         When using this function, it is a good practice to indicate the expected
@@ -187,6 +186,8 @@ class Service(object):
             assert isinstance(returned_object, expected_class)
         """
         assert isinstance(uri, URIRef)
+        assert rdf_types is None  or  isinstance(rdf_types, list)
+
         querystr, fragid = urisplit(uri)[3:]
         if querystr is not None  or  fragid is not None:
             # fragid is managed by the decorator HostedCore.handle_fragment
@@ -194,30 +195,35 @@ class Service(object):
         resource = self._resource_cache.get(uri)
         if resource is None  and  not _no_spawn:
             # find base rdf:type
-            metadata = Graph(self.store, URIRef(uri + "#metadata"))
+            metadata = self.get_metadata_graph(uri)
             if len(metadata) == 0:
                 return None
-            if _rdf_type:
-                assert (uri, NS.hasImplementation, _rdf_type) in metadata
-                typ = _rdf_type
-            else:
-                types = list(
-                    metadata.objects(uri, NS.hasImplementation))
-                assert len(types) == 1, types
-                typ = types[0]
-            # find base python class
+            types = list(
+                metadata.objects(uri, NS.hasImplementation))
+            assert len(types) == 1, types
+            typ = types[0]
+
+            # find base python class and wrap it
             py_class = self.class_map.get(typ)
             if py_class is None:
                 raise ValueError("No implementation for type <%s> of <%s>"
                                  % (types[0], uri))
-            # derive subclass bas
-            graph = Graph(self.store, uri)
-            types = [ i for i in graph.objects(uri, RDF.type) if i != typ ]
-            py_class = get_wrapped(py_class, types)
+            if rdf_types:
+                py_class = get_wrapped(py_class, rdf_types)
+
             # make resource and store it in "cache"
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
         return resource
+
+    def get_metadata_graph(self, uri):
+        """Return the metadata graph for the resource identified by uri
+
+        :param uri: the URI of the resou
+        :return: the metadata graph
+        :rtype: :class:`rdflib.graph.Graph`
+        """
+        return Graph(self.store, URIRef(uri + '#metadata'))
 
     def __enter__(self):
         """Start to modifiy this service.
@@ -250,6 +256,8 @@ class Service(object):
             using does support rollback, you should assume that the store is
             corrupted when exiting abnormally from the service context.
         """
+        if self._context_level == 0 and self.store.transaction_aware:
+            self.store.transaction()
         self._context_level += 1
 
     def __exit__(self, typ, _value, _traceback):
@@ -294,19 +302,24 @@ class ILocalCore(ICore):
 
     """
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I checks whether parameters are acceptable.
+        I may also alter parameters to normalize or format its values.
 
-        This hook method is to be called whenever a method from
+        This hook method is called whenever a method from
         :class:`.interface.ICore` is invoked, and raises an
         `~.exceptions.InvalidParametersError`:class: if the given
         parameters are not acceptable for the given method.
 
-        NB: an empty dict means that an empty query string has been appended
-        to the original URI (trailing ``?``), while None means no query string
-        at all.
+        When a subclass does not recognizes some of the parameters,
+        it must call the superclass's `check_parameters`, including *only*
+        the names of the unrecognized parameters in `to_check`.
+        On the other hand, if it exhausts the parameter list,
+        the subclass is not required to call the superclass's `check_parameters`.
 
-        :param parameters: the query string parameters passed to `edit` if any
+        :param to_check:   the names if the parameters to check
+        :type  to_check:   iterable of keys existing in `parameters`, or None
+        :param parameters: the dict containing the parameters
         :type  parameters: dict or None
         :param method:     the name of the calling python method
         :type  method:     unicode
@@ -521,7 +534,7 @@ class LocalCore(ILocalCore):
 
         self.service = service
         self.uri = uri
-        self.metadata = Graph(service.store, URIRef(uri+"#metadata"))
+        self.metadata = service.get_metadata_graph(uri)
         self._graph = Graph(service.store, uri)
         if __debug__:
             self._readonly_graph = ReadOnlyGraph(self._graph)
@@ -533,7 +546,7 @@ class LocalCore(ILocalCore):
     # .interface.Resource implementation
     #
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement :meth:`.interface.ICore.factory`.
         """
         # while it is not technically an error to violate the assertion below
@@ -542,9 +555,7 @@ class LocalCore(ILocalCore):
         # be used instead
         assert uri.startswith(self.service.root_uri), uri
 
-        # we do not use rdfrest.get_wrapped
-        # (see comment at the top of the file for explanations)
-        return self.service.get(coerce_to_uri(uri), _rdf_type, _no_spawn)
+        return self.service.get(coerce_to_uri(uri), rdf_types, _no_spawn)
 
     def get_state(self, parameters=None):
         """I implement :meth:`.interface.ICore.get_state`.
@@ -554,7 +565,7 @@ class LocalCore(ILocalCore):
         The returned graph may have an attribute `redirected_to`, which is
         used to inform :mod:`http_server` that it should perform a redirection.
         """
-        self.check_parameters(parameters, "get_state")
+        self.check_parameters(parameters, parameters, "get_state")
         if __debug__:
             return self._readonly_graph
         else:
@@ -565,7 +576,7 @@ class LocalCore(ILocalCore):
 
         I will first invoke :meth:`check_parameters`.
         """
-        self.check_parameters(parameters, "force_state_refresh")
+        self.check_parameters(parameters, parameters, "force_state_refresh")
         # nothing to do, there is no cache involved
 
     def edit(self, parameters=None, clear=False, _trust=False):
@@ -597,20 +608,16 @@ class LocalCore(ILocalCore):
     # ILocalCore implementation
     #
 
-    def check_parameters(self, parameters, method):
+    def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`ILocalCore.check_parameters`.
 
-        I accepts no parameter (not even an empty query string).
+        I accepts no parameter.
         """
         # self is not used #pylint: disable=R0201
         # argument 'method' is not used #pylint: disable=W0613
-        if parameters is not None:
-            if parameters:
-                raise InvalidParametersError("Unsupported parameter(s):" +
-                                             ", ".join(parameters.keys()))
-            else:
-                raise InvalidParametersError("Unsupported parameters "
-                                             "(empty dict instead of None)")
+        if to_check:
+            raise InvalidParametersError("Unsupported parameter(s):" +
+                                         ", ".join(to_check))
 
 
     @classmethod
@@ -657,12 +664,11 @@ class LocalCore(ILocalCore):
         this class in the metadata graph.
         """
         assert isinstance(uri, URIRef)
-        metadata = Graph(service.store, URIRef(uri + "#metadata"))
+        metadata = service.get_metadata_graph(uri)
         metadata.add((uri, NS.hasImplementation, cls.RDF_MAIN_TYPE))
 
-        graph_add = Graph(service.store, uri).add
-        for triple in new_graph:
-            graph_add(triple)
+        graph = Graph(service.store, uri)
+        service.store.addN( (s, p, o, graph) for s, p, o in new_graph )
 
     RDF_MAIN_TYPE = RDFS.Resource
 
@@ -726,7 +732,7 @@ class EditableCore(LocalCore):
               detail in the commented source).
 
         """
-        self.check_parameters(parameters, "edit")
+        self.check_parameters(parameters, parameters, "edit")
         if parameters is not None:
             parameters = parameters.copy()
             # protects us agains changes to 'parameters' inside 'with' statement
@@ -747,7 +753,7 @@ class EditableCore(LocalCore):
         After calling this method, the resource object is unsusable and should
         be *immediatetly discarded*.
         """
-        self.check_parameters(parameters, "delete")
+        self.check_parameters(parameters, parameters, "delete")
         diag = self.check_deletable(parameters)
         if not diag:
             raise CanNotProceedError(unicode(diag))
@@ -813,8 +819,8 @@ class EditableCore(LocalCore):
             outermost = False
         else:
             outermost = True
-            self._edit_context = (True, parameters)
             prepared = self.prepare_edit(parameters)
+            self._edit_context = (True, parameters, prepared)
 
         with self.service:
             try:
@@ -854,16 +860,21 @@ class EditableCore(LocalCore):
         """
         if self._edit_context:
             raise RdfRestException("Can not embed untrusted edit context")
-        self._edit_context = (False, parameters)
         prepared = self.prepare_edit(parameters)
-        editable = Graph(identifier=self.uri)
-        if not clear:
-            editable_add = editable.add
-            for triple in self._graph: 
-                editable_add(triple)
+        self._edit_context = (False, parameters, prepared)
+        if self._graph.store.transaction_aware:
+            editable = self._graph
+        else:
+            editable = Graph(identifier=self.uri)
+            if not clear:
+                editable_add = editable.add
+                for triple in self._graph: 
+                    editable_add(triple)
 
         with self.service:
             try:
+                if clear and editable is self._graph:
+                    editable.remove((None, None, None))
                 yield editable
                 self.complete_new_graph(self.service, self.uri, parameters,
                                         editable, self)
@@ -872,26 +883,24 @@ class EditableCore(LocalCore):
                 if not diag:
                     raise InvalidDataError(unicode(diag))
 
-                # we replace self._graph by editable
-                # We assume that
-                # * most triples between the two graphs are the same
-                # * testing that a graph contains a triple is less
-                #   costly than adding it or removing it (which involves
-                #   updating several indexes -- this is verified by
-                #   IOMemory, and roughly so by Sleepycat)
-                # so the following should more efficient than simply
-                # emptying self_graph and then filling it with
-                # editable_graph
-                g_add = self._graph.add
-                g_remove = self._graph.remove
-                g_contains = self._graph.__contains__
-                e_contains = editable.__contains__
-                for triple in self._graph:
-                    if not e_contains(triple):
-                        g_remove(triple)
-                for triple in editable:
-                    if not g_contains(triple):
-                        g_add(triple)
+                if not editable is self._graph:
+                    # we replace self._graph by editable
+                    # We assume that
+                    # * most triples between the two graphs are the same
+                    # * testing that a graph contains a triple is less
+                    #   costly than adding it or removing it (which involves
+                    #   updating several indexes -- this is verified by
+                    #   IOMemory, and roughly so by Sleepycat)
+                    # so the following should more efficient than simply
+                    # emptying self_graph and then filling it with
+                    # editable_graph
+                    g = self._graph
+                    g_remove = g.remove
+                    e_contains = editable.__contains__
+                    for triple in g:
+                        if not e_contains(triple):
+                            g_remove(triple)
+                    g.addN( (s, p, o, g) for s, p, o in editable )
                 # alter _edit_context so that ack_edit can embed an edit ctxt:
                 self._edit_context = (True, parameters)
                 self.ack_edit(parameters, prepared)
@@ -952,7 +961,7 @@ class _DeletedCore(ICore):
         """
         raise TypeError(self._message)
 
-    def factory(self, uri, _rdf_type=None, _no_spawn=False):
+    def factory(self, uri, rdf_types=None, _no_spawn=False):
         """I implement `interface.ICore.factory`.
         """
         raise TypeError(self._message)

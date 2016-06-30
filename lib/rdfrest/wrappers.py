@@ -69,7 +69,7 @@ def get_wrapped(cls, rdf_types):
         cls_name = cls.__name__
         for typ in rdf_types:
             mixin = _WRAPPER_REGISTRY.get(typ)
-            if mixin is None:
+            if mixin is None  or  issubclass(cls, mixin):
                 continue
             else:
                 parents.append(mixin)

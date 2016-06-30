@@ -48,7 +48,6 @@ def main():
     if ktbs_config.getboolean('server', 'resource-cache'):
         LOG.warning("option --resource-cache is deprecated; it has no effect")
 
-    ktbs_config.set("logging", "loggers", "rdfrest ktbs");
     apply_global_config(ktbs_config)
 
     LOG.info("KTBS pid: %d" % getpid())
@@ -141,10 +140,9 @@ def parse_configuration_options(options=None):
             config.set('server', 'resource-cache', 'true')
 
         if options.loggers is not None:
-            config.set('logging', 'loggers', str(options.loggers))
-
-        if options.loggers is not None:
             config.set('logging', 'loggers', ' '.join(options.loggers))
+        else:
+            config.set('logging', 'loggers', 'ktbs rdfrest')
 
         if options.console_level is not None:
             config.set('logging', 'console-level', str(options.console_level))
