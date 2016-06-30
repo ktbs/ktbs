@@ -40,6 +40,7 @@ setup(name = 'kTBS',
                'bin/ktbs-infos',
                'bin/ktbs-rebase', 
                'bin/ktbs-reset-locks', 
+               'bin/ktbs-add-stats', 
                'bin/simple-collector',
            ],
 
