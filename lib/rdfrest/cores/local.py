@@ -138,8 +138,7 @@ class Service(object):
         self._resource_cache = WeakValueDictionary()
         self._context_level = 0
 
-        root_metadata_uri = URIRef(root_uri + "#metadata")
-        metadata_graph = Graph(store, root_metadata_uri)
+        metadata_graph = self.get_metadata_graph(root_uri)
         initialized = list(metadata_graph.triples((self.root_uri,
                                                    NS.hasImplementation,
                                                    None)))
@@ -196,7 +195,7 @@ class Service(object):
         resource = self._resource_cache.get(uri)
         if resource is None  and  not _no_spawn:
             # find base rdf:type
-            metadata = Graph(self.store, URIRef(uri + "#metadata"))
+            metadata = self.get_metadata_graph(uri)
             if len(metadata) == 0:
                 return None
             types = list(
@@ -216,6 +215,15 @@ class Service(object):
             resource = py_class(self, uri)
             self._resource_cache[uri] = resource
         return resource
+
+    def get_metadata_graph(self, uri):
+        """Return the metadata graph for the resource identified by uri
+
+        :param uri: the URI of the resou
+        :return: the metadata graph
+        :rtype: :class:`rdflib.graph.Graph`
+        """
+        return Graph(self.store, URIRef(uri + '#metadata'))
 
     def __enter__(self):
         """Start to modifiy this service.
@@ -526,7 +534,7 @@ class LocalCore(ILocalCore):
 
         self.service = service
         self.uri = uri
-        self.metadata = Graph(service.store, URIRef(uri+"#metadata"))
+        self.metadata = service.get_metadata_graph(uri)
         self._graph = Graph(service.store, uri)
         if __debug__:
             self._readonly_graph = ReadOnlyGraph(self._graph)
@@ -656,7 +664,7 @@ class LocalCore(ILocalCore):
         this class in the metadata graph.
         """
         assert isinstance(uri, URIRef)
-        metadata = Graph(service.store, URIRef(uri + "#metadata"))
+        metadata = service.get_metadata_graph(uri)
         metadata.add((uri, NS.hasImplementation, cls.RDF_MAIN_TYPE))
 
         graph = Graph(service.store, uri)

@@ -416,6 +416,14 @@ KTBS_NS_TTL = """
         rdfs:range :AbstractTraceObsels ;
     .
 
+    :hasTraceStatistics
+        a owl:ObjectProperty, owl:FunctionalProperty,
+          owl:InverseFunctionalProperty ;
+        rdfs:label "has trace statistics"@en, "a pour statistiques de trace"@fr;
+        rdfs:domain :AbstractTrace ;
+        rdfs:range :TraceStatistics ;
+    .
+
     :hasDiagnosis
         a owl:DatatypeProperty, owl:FunctionalProperty;
         rdfs:label "has diagnosis"@en, "a pour diagnostic"@fr;
@@ -465,6 +473,12 @@ KTBS_NS_TTL = """
         owl:someValuesFrom :ComputedTraceObsels ;
     ].
 
+
+:TraceStatistics
+    a owl:Class ;
+    rdfs:label "Trace statistics"@en,
+               "Statistiques de trace"@fr;
+.
 
 ################################################################
 #

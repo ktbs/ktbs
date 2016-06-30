@@ -121,7 +121,9 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             # with the first item representing the trace model
             json_data["@graph"][0].setdefault(u"inBase", unicode(base_uri))
         elif ((json_data.get("hasObselList") is None)
-              and 
+              and
+              (json_data.get("hasTraceStatistics") is None)
+              and
               (json_data.get("hasBuiltinMethod") is None)):
             # must be an obsel
             obsel_context = True
@@ -171,6 +173,7 @@ CONTEXT_JSON = """{"@context":{
     "RelationType": "k:RelationType",
     "StoredTrace": "k:StoredTrace",
     "StoredTraceObsels": "k:StoredTraceObsels",
+    "TraceStatistics": "k:TraceStatistics",
     "TraceModel": "k:TraceModel",
 
     "contains": { "@id": "k:contains", "@type": "@id" },
@@ -191,6 +194,7 @@ CONTEXT_JSON = """{"@context":{
     "hasModel": { "@id": "k:hasModel", "@type": "@id" },
     "obselCount": { "@id": "k:hasObselCount", "@type": "xsd:integer" },
     "hasObselList": { "@id": "k:hasObselCollection", "@type": "@id" },
+    "hasTraceStatistics": { "@id": "k:hasTraceStatistics", "@type": "@id" },
     "origin": { "@id": "k:hasOrigin" },
     "parameter": "k:hasParameter",
     "hasParentMethod": { "@id": "k:hasParentMethod", "@type": "@vocab" },

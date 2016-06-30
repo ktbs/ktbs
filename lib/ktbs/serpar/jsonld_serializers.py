@@ -24,12 +24,14 @@ from itertools import chain, groupby
 from json import dumps
 from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdflib.plugins.sparql.processor import prepareQuery
+from pyld.jsonld import compact
 from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
 
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
-from .jsonld_parser import  CONTEXT_URI
+from .jsonld_parser import CONTEXT_URI, load_document
+from ..engine.trace_stats import NS as KTBS_NS_STATS
 
 LEN_KTBS = len(KTBS_NS_URI)+1
 
@@ -547,7 +549,8 @@ def serialize_json_trace(graph, trace, bindings=None):
     "@context": "%s",
     "@id": "%s",
     "@type": "%s",
-    "hasObselList": "@obsels" """ % (
+    "hasObselList": "@obsels",
+    "hasTraceStatistics": "@stats" """ % (
         CONTEXT_URI,
         trace.uri,
         trace.RDF_MAIN_TYPE[LEN_KTBS:],
@@ -793,6 +796,126 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     tobsels_dict = trace_obsels_to_json(graph, tobsels, bindings)
 
     yield dumps(tobsels_dict, ensure_ascii=False, indent=4)
+
+def trace_stats_to_json(graph, tstats, bindings=None):
+    """
+    I create an Ordered dictionary for a further json-ld serialization.
+
+    :param graph: ? graph
+    :param tstats: TraceStatistics object
+    :param bindings: ?
+    :return: The dictionnary created.
+    """
+    tstats_dict = OrderedDict()
+
+    trace_uri = tstats.trace.uri
+    model_uri = tstats.trace.model_uri
+    if model_uri[-1] not in { "/", "#" }:
+        model_uri += "#"
+    valconv = ValueConverter(trace_uri)
+    valconv_uri = valconv.uri
+    val2jsonobj = valconv.val2jsonobj
+
+    tstats_dict['@context'] = CONTEXT_URI
+    tstats_dict['@id'] = './'
+    tstats_dict['hasTraceStatistics'] = {
+        '@id': '',
+        '@type': 'TraceStatistics'
+    }
+
+    initNs = {'': unicode(KTBS_NS_URI),
+              'stats': unicode(KTBS_NS_STATS)
+              }
+    initBindings = {'trace': trace_uri}
+
+    # How could I get predicates in the form stat:xxxxx
+    # in the results, InitNs does not seem to be enough
+    # Is it because of the filter clause ?
+    stats_infos = graph.query("""
+        SELECT ?pred ?obj
+        {{
+            ?trace ?pred ?obj
+
+            filter (strstarts(xsd:string(?pred), "{0:s}"))
+        }}
+    """.format(KTBS_NS_STATS),
+                              initNs=initNs,
+                              initBindings=initBindings)
+
+    for pred, obj in stats_infos:
+        if pred != KTBS_NS_STATS.obselCountPerType:
+            tstats_dict[pred] = val2jsonobj(obj)
+
+    # Recover data inside blank nodes : another request needed
+    stats_infos = graph.query("""
+        SELECT ?bn ?pred ?obj
+        {
+            ?trace stats:obselCountPerType ?bn .
+
+            ?bn ?pred ?obj .
+        }
+        ORDER BY ?bn
+        """,
+                              initNs=initNs,
+                              initBindings=initBindings)
+
+    if len(stats_infos) > 0:
+        tstats_dict[KTBS_NS_STATS.obselCountPerType] = ocpt =  []
+        for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
+            ot_infos = {}
+            for _, pred, obj in tuples:
+                pred = unicode(pred) # cast URIRef to plain unicode
+                ot_infos[pred] = val2jsonobj(obj)
+
+            ocpt.append(ot_infos)
+
+    compact_context = {'@context': [ CONTEXT_URI,
+                                     {'stats': KTBS_NS_STATS,
+                                    'stats:hasObselType': {'@type': '@id'},
+                                    'm': model_uri}
+                                   ]
+                        }
+
+    tstats_dict = compact(tstats_dict, compact_context,
+                          {'base': tstats.uri,
+                           'documentLoader': load_document})
+
+    final = OrderedDict()
+    final['@context'] = None
+    final['@id'] = None
+    final['hasTraceStatistics'] = None
+    final['stats:obselCount'] = None
+    # None as no meaning in jsonld, if there is no arc in the graph there
+    # should be no value. We could remove the keys which values are None
+    # instead of this test
+    if tstats_dict.get('stats:minTime') is not None:
+        final['stats:minTime'] = None
+        final['stats:maxTime'] = None
+        final['stats:duration'] = None
+    final.update(tstats_dict)
+
+    # PyLD return "@stats" for the current URI which is not wrong
+    # but we prefer an empty string for the sake of consistency
+    final['hasTraceStatistics']['@id'] = ''
+
+    return final
+
+@register_serializer(JSONLD, "jsonld", 85, KTBS.TraceStatistics)
+@register_serializer(JSON, "json", 60, KTBS.TraceStatistics)
+@wrap_exceptions(SerializeError)
+@encode_unicodes
+def serialize_json_trace_stats(graph, tstats, bindings=None):
+    """
+    I serialize the trace stats to a json-ld string.
+
+    :param graph:
+    :param tstats:
+    :param bindings:
+    :return:
+    """
+    tstats_dict = trace_stats_to_json(graph, tstats, bindings)
+
+    yield dumps(tstats_dict, ensure_ascii=False, indent=4)
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Obsel)
 @register_serializer(JSON, "json", 60, KTBS.Obsel)
