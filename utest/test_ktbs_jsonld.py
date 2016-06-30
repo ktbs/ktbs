@@ -1267,12 +1267,7 @@ class TestJsonStats(KtbsTestCase):
             },
             'stats:obselCount': 0,
         })
-        
-        """
-        'stats:minTime': 0,
-        'stats:maxTime': 0,
-        'stats:duration': 0,
-        """
+
         assert_roundtrip(json_content, self.t1.trace_statistics)
 
     def test_stats_populated_obsels(self):
