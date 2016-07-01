@@ -205,7 +205,7 @@ COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
 COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \
                    'GROUP BY ?t ORDER BY ?t'
 DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
-SELECT (min(?b) as ?minb) (max(?e) as ?maxe)  where {
+SELECT ?trace (min(?b) as ?minb) (max(?e) as ?maxe)  where {
         ?o :hasTrace ?trace ;
            :hasBegin ?b ;
            :hasEnd ?e .
