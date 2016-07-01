@@ -33,7 +33,7 @@ Documentation
 Tests
 =====
 
-.. image:: https://travis-ci.org/ktbs/ktbs.png?branch=develop
+.. image:: https://travis-ci.org/ktbs/ktbs.svg?branch=develop
     :target: https://travis-ci.org/ktbs/ktbs
 
 Licence
