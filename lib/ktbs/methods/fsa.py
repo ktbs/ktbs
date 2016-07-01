@@ -67,7 +67,7 @@ def match_sparql_ask(transition, event, token, fsa):
         pred = None
     return fsa.source_obsels_graph.query(
         "ASK { %s }" % transition['condition'],
-        initNs={"m": m_ns},
+        initNs={"": KTBS, "m": m_ns},
         initBindings={"obs": URIRef(event), "pred": pred},
     ).askAnswer
 

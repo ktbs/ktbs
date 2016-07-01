@@ -97,8 +97,9 @@ with the following specificities:
 
 * An additional matcher is also provided: ``sparql-ask``.
   It interprets conditions as the WHERE clause of a SPARQL ASK query,
-  where prefix ``m:`` is bound to the source trace model,
-  and variable ``?obs`` is bound to the considered obsel,
+  where prefix ``:`` and ``m:`` are bound to the kTBS namespace and the source trace model,
+  respectively,
+  variable ``?obs`` is bound to the considered obsel,
   and a variable ``?pred`` is bound to the previous matching obsel (if any).
   This matcher allows for more expressive conditions.
 
