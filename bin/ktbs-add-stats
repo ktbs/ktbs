@@ -50,7 +50,7 @@ def main():
 
     for base in root.bases:
         for trace in base.traces:
-            if trace.trace_statistics is None:
+            if trace.trace_statistics is not None:
                 continue
             print trace
             stats_uri = URIRef(trace.uri + "@stats")
