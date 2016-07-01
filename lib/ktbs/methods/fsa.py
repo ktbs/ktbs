@@ -254,35 +254,51 @@ def _count(data, index):
 def _sum(data, index):
     lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(sum(lst))
+        try:
+            return Literal(sum(lst))
+        except TypeError:
+            return Literal(sum( float(i) for i in lst ))
     else:
         return None
 
 def _avg(data, index):
     lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(sum(lst)/float(len(lst)))
+        try:
+            sumval = sum(lst)
+        except TypeError:
+            sumval = sum( float(i) for i in lst )
+        try:
+            return Literal(sumval/float(len(lst)))
+        except TypeError:
+            return Literal(float(sumval)/float(len(lst)))
     else:
         return None
 
 def _min(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(min(lst))
+        return min(lst)
     else:
         return None
 
 def _max(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(max(lst))
+        return max(lst)
     else:
         return None
 
 def _span(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(max(lst).toPython()-min(lst).toPython())
+        minval = min(lst).toPython()
+        maxval = max(lst).toPython()
+        try:
+            val = maxval - minval
+        except TypeError:
+            val = float(maxval) - float(minval)
+        return Literal(val)
     else:
         return None
 
