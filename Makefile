@@ -18,7 +18,7 @@ lint:
 	${PYPATH} pylint ${PYLINT_FILES} ${PYLINT_OPT} ${PYLINT_DISABLED} --report=n
 
 unit-tests:
-	@${PYPATH} nosetests utest
+	@${PYPATH} py.test utest
 
 doc-rdfrest:
 	@cd doc-rdfrest; make html 2>&1

@@ -22,8 +22,8 @@
 """
 Nose unit-testing for the kTBS model client API.
 """
-from unittest import TestCase, skip
-from nose.tools import eq_, assert_raises, assert_list_equal
+from unittest import skip
+from pytest import raises as assert_raises
 
 from rdflib import URIRef, XSD
 
@@ -39,63 +39,54 @@ KTBS_ROOT = "http://localhost:12345/"
 class _TestIterObselsMixin(object):
 
     def test_no_param(self):
-        assert_list_equal(self.obsels,
-                          self.t.list_obsels())
+        assert self.obsels == self.t.list_obsels()
 
     def test_begin(self):
-        assert_list_equal(self.obsels[2:],
-                          self.t.list_obsels(begin=15))
+        assert self.obsels[2:] == self.t.list_obsels(begin=15)
 
     def test_end(self):
-        assert_list_equal(self.obsels[:5],
-                          self.t.list_obsels(end=45))
+        assert self.obsels[:5] == self.t.list_obsels(end=45)
 
     def test_after(self):
-        assert_list_equal(self.obsels[3:],
-                          self.t.list_obsels(after=self.o2))
+        assert self.obsels[3:] == self.t.list_obsels(after=self.o2)
 
     def test_before(self):
         print([o.uri for o in self.t.list_obsels(before=self.o3)])
-        assert_list_equal(self.obsels[:3],
-                          self.t.list_obsels(before=self.o3))
+        assert self.obsels[:3] == self.t.list_obsels(before=self.o3)
 
     def test_reverse(self):
-        assert_list_equal(self.obsels[::-1],
-                          self.t.list_obsels(reverse=True))
+        assert self.obsels[::-1] == self.t.list_obsels(reverse=True)
 
     def test_bgb_single_type(self):
         bgp = """
             ?obs a m:OT2.
         """
-        assert_list_equal([self.o0, self.o2, self.o4],
-                          self.t.list_obsels(bgp=bgp))
+        assert [self.o0, self.o2, self.o4] == self.t.list_obsels(bgp=bgp)
 
     def test_bgb_filter(self):
         bgp = """
             ?obs m:OT1-at1 ?at1 ; m:OT1-at2 ?at2.
             FILTER(?at1 > ?at2)
         """
-        assert_list_equal([self.o0, self.o3],
-                          self.t.list_obsels(bgp=bgp))
+        assert [self.o0, self.o3] == self.t.list_obsels(bgp=bgp)
 
     def test_bgp_timestamps(self):
         bgp = """
             FILTER(?e < (?b+40))
         """
-        assert_list_equal(self.obsels,
-                          self.t.list_obsels(bgp=bgp))
+        assert self.obsels == self.t.list_obsels(bgp=bgp)
 
     def test_multiple_params(self):
         bgp = """
             ?obs a m:OT2.
         """
-        assert_list_equal([self.o4, self.o2],
-                          self.t.list_obsels(begin=5, end=45, reverse=True, bgp=bgp))
+        assert [self.o4, self.o2] == \
+            self.t.list_obsels(begin=5, end=45, reverse=True, bgp=bgp)
 
 class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
 
-    def setUp(self):
-        KtbsTestCase.setUp(self)
+    def setup(self):
+        KtbsTestCase.setup(self)
         self.b = self.my_ktbs.create_base("b/")
         self.m = self.b.create_model("m")
         self.ot1 = self.m.create_obsel_type("#OT1")
@@ -135,17 +126,17 @@ class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
         })
         self.obsels = [ self.o0, self.o1, self.o2, self.o3, self.o4, self.o5]
 
-    def tearDown(self):
+    def teardown(self):
         self.t.delete()
         self.m.delete()
         self.b.delete()
-        KtbsTestCase.tearDown(self)
+        KtbsTestCase.teardown(self)
 
 
 class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
 
-    def setUp(self):
-        KtbsTestCase.setUp(self)
+    def setup(self):
+        KtbsTestCase.setup(self)
         self.b = self.my_ktbs.create_base("b/")
         self.m = self.b.create_model("m")
         self.ot1 = self.m.create_obsel_type("#OT1")
@@ -185,9 +176,9 @@ class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
         })
         self.obsels = [ self.o0, self.o1, self.o2, self.o3, self.o4, self.o5]
 
-    def tearDown(self):
+    def teardown(self):
         self.t.delete()
         self.m.delete()
         self.b.delete()
-        KtbsTestCase.tearDown(self)
+        KtbsTestCase.teardown(self)
 

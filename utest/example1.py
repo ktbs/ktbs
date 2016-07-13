@@ -40,12 +40,13 @@ We finally define function `main`:func: and auxiliary functions to test this
 example.
 
 """
+from pytest import raises as assert_raises
+
 from sys import argv
 from threading import Thread
 from time import sleep
 from wsgiref.simple_server import make_server
 
-from nose.tools import assert_raises, eq_ # WTH! #pylint: disable=E0611
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
 from re import compile as RegExp
 
@@ -74,7 +75,7 @@ bind_prefix("ex", "http://example.org/example/")
 @register_wrapper(EXAMPLE.Item)
 class ItemMixin(ICore):
     """Interface of a simple item"""
-    
+
     __state = None
 
     @property
@@ -114,7 +115,7 @@ class ItemMixin(ICore):
             editable.remove((self.uri, EXAMPLE.label, None))
 
     label = property(_get_label, _set_label, _del_label)
-        
+
 
     def iter_tags(self):
         """Iter over the tags of this item"""
@@ -266,7 +267,7 @@ class GroupMixin(ItemMixin):
     def groups(self):
         """List of groups in this group"""
         return set(self.iter_groups())
-            
+
     def create_new_simple_item(self, ident):
         """Create a new simple item in this group"""
         check_ident(ident)
@@ -343,7 +344,7 @@ class ItemImplementation(ItemMixin, EditableCore):
             service, uri, parameters, new_graph, resource, added, removed)
         if not (uri, RDF.type, cls.RDF_MAIN_TYPE) in new_graph:
             diag.append("Expected rdf:type <%s>" % cls.RDF_MAIN_TYPE)
-        return diag 
+        return diag
 
     def ack_delete(self, parameters):
         """I implement :meth:`rdfrest.cores.local.EditableCore.ack_delete`.
@@ -365,7 +366,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
     def find_created(self, new_graph):
         """I implement :meth:`rdfrest.cores.local.GraphPostableMixin.find_created`.
         """
-        query = ("SELECT ?c WHERE { <%s> <%s> ?c }" 
+        query = ("SELECT ?c WHERE { <%s> <%s> ?c }"
                  % (self.uri, EXAMPLE.contains))
         return self._find_created_default(new_graph, query)
 
@@ -415,7 +416,7 @@ class GroupImplementation(GroupMixin, FolderishMixin, GraphPostableMixin,
         graph = Graph(identifier=root_uri)
         graph.add((root_uri, RDF.type, cls.RDF_MAIN_TYPE))
         cls.create(service, root_uri, graph)
-        
+
 
 @register_serializer("text/html", "htm", 90, EXAMPLE.Item)
 def serialize_item_in_html(resource, _parameters=None, _bindings=None,
@@ -536,8 +537,8 @@ def do_tests(root):
     check_content(group1, [item11])
     test_label_and_tags(item11)
 
-    eq_(item1.identifier, item11.identifier)
-    eq_(group1.identifier, "group1")
+    assert item1.identifier == item11.identifier
+    assert group1.identifier == "group1"
     assert item1  in root   and  item1  not in group1
     assert item11 in group1 and  item11 not in root
 
@@ -550,7 +551,7 @@ def do_tests(root):
     item1 = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
     assert item1 is None
 
-    
+
     # clean everything
     root.remove_item("item1")
     check_content(root, [item2, group1])
@@ -596,18 +597,20 @@ def make_example1_httpd(service=None, service_config=None):
 def check_content(group, ref_items):
     """Checks the content of a group against a reference list"""
     ref_items = set(ref_items)
-    eq_(group.items, ref_items)
-    eq_(len(group), len(ref_items))
-    eq_(group.simple_items,
-        set( i for i in ref_items if not isinstance(i, GroupMixin) ))
-    eq_(group.groups,
-        set( i for i in ref_items if isinstance(i, GroupMixin) ))
+    assert group.items == ref_items
+    assert len(group) == len(ref_items)
+    assert group.simple_items == set (
+        i for i in ref_items if not isinstance(i, GroupMixin)
+    )
+    assert group.groups == set (
+        i for i in ref_items if isinstance(i, GroupMixin)
+    )
 
     for i in group:
         assert i in group
         assert group.contains_item_with_id(i.identifier)
-        eq_(i.parent, group)
-        eq_(group.get_item(i.identifier), i)
+        assert i.parent == group
+        assert group.get_item(i.identifier) == i
 
 def test_label_and_tags(item):
     """Test label- and tag-related functionalities on item"""
@@ -624,25 +627,25 @@ def test_label_and_tags(item):
     del item.label
     assert item.label is None
     # adding tags
-    eq_(item.tags, set([]))
+    assert item.tags == set([])
     item.add_tag(u"tag1")
-    eq_(item.tags, set([Literal("tag1")]))
+    assert item.tags == set([Literal("tag1")])
     item.add_tag(u"tag1")
-    eq_(list(item.iter_tags()), [Literal("tag1")]) # tags do not duplicate
+    assert list(item.iter_tags()) == [Literal("tag1")] # tags do not duplicate
     item.add_tag(u"tag2")
-    eq_(item.tags, set([Literal("tag1"), Literal("tag2")]))
+    assert item.tags, set([Literal("tag1") == Literal("tag2")])
     item.add_tag(u"tag3")
-    eq_(item.tags, set([Literal("tag1"), Literal("tag2"), Literal("tag3")]))
+    assert item.tags, set([Literal("tag1"), Literal("tag2") == Literal("tag3")])
     # removing tags
     item.rem_tag(u"tag2")
-    eq_(item.tags, set([Literal("tag1"), Literal("tag3")]))
+    assert item.tags, set([Literal("tag1") == Literal("tag3")])
     item.rem_tag(u"tag2") # removing tag twice has no effect
-    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
+    assert item.tags, set([Literal("tag1") == Literal("tag3")])
     item.rem_tag(u"tag4") # removing inexisting tag has no effect
-    eq_(item.tags, set([Literal("tag1"), Literal("tag3")])) 
+    assert item.tags, set([Literal("tag1") == Literal("tag3")])
     # unicode tags
     item.add_tag(u"tagué")
-    eq_(item.tags, set([Literal("tag1"), Literal("tag3"), Literal(u"tagué")])) 
+    assert item.tags, set([Literal("tag1"), Literal("tag3") == Literal(u"tagué")])
 
 
 if __name__ == "__main__":

@@ -22,7 +22,6 @@ from rdfrest.util import add_uri_params, bounded_description, cache_result, \
     coerce_to_uri, Diagnosis, urisplit, uriunsplit, wrap_exceptions, \
     wrap_generator_exceptions
 
-from nose.tools import eq_
 from rdflib import Graph, Namespace, URIRef
 from rdflib.compare import isomorphic
 from StringIO import StringIO
@@ -33,56 +32,56 @@ NS2 = Namespace("http://ns2.net/#")
 
 class TestCoerceToUri(object):
     def test_already_uriref(self):
-        eq_(coerce_to_uri(NS1.foo), NS1.foo)
+        assert coerce_to_uri(NS1.foo) == NS1.foo
 
     def test_str(self):
-        eq_(coerce_to_uri(str(NS1.foo)), NS1.foo)
+        assert coerce_to_uri(str(NS1.foo)) == NS1.foo
 
     def test_obj(self):
         class Obj(object):
             uri = NS1.foo
-        eq_(coerce_to_uri(Obj()), NS1.foo)
+        assert coerce_to_uri(Obj()) == NS1.foo
 
     def test_obj_str(self):
         class Obj(object):
             uri = str(NS1.foo)
-        eq_(coerce_to_uri(Obj()), NS1.foo)
+        assert coerce_to_uri(Obj()) == NS1.foo
 
     def test_relative_str(self):
-        eq_(coerce_to_uri("#foo", str(NS1)), NS1.foo)
+        assert coerce_to_uri("#foo", str(NS1)) == NS1.foo
 
     def test_relative_obj_str(self):
         class Obj(object):
             uri = "#foo"
-        eq_(coerce_to_uri(Obj(), str(NS1)), NS1.foo)
+        assert coerce_to_uri(Obj(), str(NS1)) == NS1.foo
 
     def test_uriref_with_base(self):
-        eq_(coerce_to_uri(NS1.foo, str(NS2)), NS1.foo)
+        assert coerce_to_uri(NS1.foo, str(NS2)) == NS1.foo
 
     def test_str_with_base(self):
-        eq_(coerce_to_uri(str(NS1.foo), str(NS2)), NS1.foo)
+        assert coerce_to_uri(str(NS1.foo), str(NS2)) == NS1.foo
 
 def test_urisplit():
-      eq_(urisplit('http://a.b/c/d'), ('http', 'a.b', '/c/d', None, None))
-      eq_(urisplit('http://a.b/c/d?'), ('http', 'a.b', '/c/d', '', None))
-      eq_(urisplit('http://a.b/c/d#'), ('http', 'a.b', '/c/d', None, ''))
-      eq_(urisplit('http://a.b/c/d?#'), ('http', 'a.b', '/c/d', '', ''))
-      eq_(urisplit('http://a.b/c/d?q'), ('http', 'a.b', '/c/d', 'q', None))
-      eq_(urisplit('http://a.b/c/d#f'), ('http', 'a.b', '/c/d', None, 'f'))
-      eq_(urisplit('http://a.b/c/d?q#'), ('http', 'a.b', '/c/d', 'q', ''))
-      eq_(urisplit('http://a.b/c/d?#f'), ('http', 'a.b', '/c/d', '', 'f'))
-      eq_(urisplit('http://a.b/c/d?q#f'), ('http', 'a.b', '/c/d', 'q', 'f'))
+      assert urisplit('http://a.b/c/d'), ('http', 'a.b', '/c/d', None == None)
+      assert urisplit('http://a.b/c/d?'), ('http', 'a.b', '/c/d', '' == None)
+      assert urisplit('http://a.b/c/d#'), ('http', 'a.b', '/c/d', None == '')
+      assert urisplit('http://a.b/c/d?#'), ('http', 'a.b', '/c/d', '' == '')
+      assert urisplit('http://a.b/c/d?q'), ('http', 'a.b', '/c/d', 'q' == None)
+      assert urisplit('http://a.b/c/d#f'), ('http', 'a.b', '/c/d', None == 'f')
+      assert urisplit('http://a.b/c/d?q#'), ('http', 'a.b', '/c/d', 'q' == '')
+      assert urisplit('http://a.b/c/d?#f'), ('http', 'a.b', '/c/d', '' == 'f')
+      assert urisplit('http://a.b/c/d?q#f'), ('http', 'a.b', '/c/d', 'q' == 'f')
 
 def test_urisplit():
-      eq_('http://a.b/c/d', uriunsplit(('http', 'a.b', '/c/d', None, None)))
-      eq_('http://a.b/c/d?', uriunsplit(('http', 'a.b', '/c/d', '', None)))
-      eq_('http://a.b/c/d#', uriunsplit(('http', 'a.b', '/c/d', None, '')))
-      eq_('http://a.b/c/d?#', uriunsplit(('http', 'a.b', '/c/d', '', '')))
-      eq_('http://a.b/c/d?q', uriunsplit(('http', 'a.b', '/c/d', 'q', None)))
-      eq_('http://a.b/c/d#f', uriunsplit(('http', 'a.b', '/c/d', None, 'f')))
-      eq_('http://a.b/c/d?q#', uriunsplit(('http', 'a.b', '/c/d', 'q', '')))
-      eq_('http://a.b/c/d?#f', uriunsplit(('http', 'a.b', '/c/d', '', 'f')))
-      eq_('http://a.b/c/d?q#f', uriunsplit(('http', 'a.b', '/c/d', 'q', 'f')))
+      assert 'http://a.b/c/d', uriunsplit(('http', 'a.b', '/c/d', None == None))
+      assert 'http://a.b/c/d?', uriunsplit(('http', 'a.b', '/c/d', '' == None))
+      assert 'http://a.b/c/d#', uriunsplit(('http', 'a.b', '/c/d', None == ''))
+      assert 'http://a.b/c/d?#', uriunsplit(('http', 'a.b', '/c/d', '' == ''))
+      assert 'http://a.b/c/d?q', uriunsplit(('http', 'a.b', '/c/d', 'q' == None))
+      assert 'http://a.b/c/d#f', uriunsplit(('http', 'a.b', '/c/d', None == 'f'))
+      assert 'http://a.b/c/d?q#', uriunsplit(('http', 'a.b', '/c/d', 'q' == ''))
+      assert 'http://a.b/c/d?#f', uriunsplit(('http', 'a.b', '/c/d', '' == 'f'))
+      assert 'http://a.b/c/d?q#f', uriunsplit(('http', 'a.b', '/c/d', 'q' == 'f'))
 
 def test_add_uri_parameters():
     def the_test(uri):
@@ -92,10 +91,10 @@ def test_add_uri_parameters():
         got = add_uri_params(uri, params)
         got_split = urisplit(got)
 
-        eq_(uri_split[0], got_split[0]) # URI scheme
-        eq_(uri_split[1], got_split[1]) # netloc
-        eq_(uri_split[2], got_split[2]) # path
-        eq_(uri_split[4], got_split[4]) # fragment-id
+        assert uri_split[0] == got_split[0] # URI scheme
+        assert uri_split[1] == got_split[1] # netloc
+        assert uri_split[2] == got_split[2] # path
+        assert uri_split[4] == got_split[4] # fragment-id
 
         if uri_split[3] is None:
             assert got_split[3] in ("q=Q2&r=R", "r=R&q=Q2"), got_split[3]
@@ -157,41 +156,41 @@ def test_bounded_description():
 
     gbd = bounded_description(URIRef("http://example.org/node"), g1)
     assert isomorphic(gref, gbd)
-    
+
 
 class TestDiagnosis():
     def test_default_creation(self):
         diag = Diagnosis()
         assert diag
-        eq_(str(diag), "diagnosis: ok")
+        assert str(diag) == "diagnosis: ok"
 
     def test_with_title(self):
         diag = Diagnosis("foo")
         assert diag
-        eq_(str(diag), "foo: ok")
-    
+        assert str(diag) == "foo: ok"
+
     def test_with_values(self):
         diag = Diagnosis("foo", ["error 1", "error 2"])
         assert not diag
-        eq_(str(diag), "foo: ko\n* error 1\n* error 2\n")
+        assert str(diag) == "foo: ko\n* error 1\n* error 2\n"
 
     def test_append(self):
         diag = Diagnosis()
         diag.append("error 1")
         assert not diag
-        eq_(str(diag), "diagnosis: ko\n* error 1\n")
+        assert str(diag) == "diagnosis: ko\n* error 1\n"
 
     def test_and(self):
         diag1 = Diagnosis("foo", ["error 1"])
         diag2 = Diagnosis("bar", ["error 2"])
         diag = diag1 & diag2
         assert not diag
-        eq_(str(diag), "foo: ko\n* error 1\n* error 2\n")
+        assert str(diag) == "foo: ko\n* error 1\n* error 2\n"
 
 class TestCacheResult():
     counter = 0
 
-    def setUp(self):
+    def setup(self):
         class A(object):
             class_counter = 0
 
@@ -214,34 +213,34 @@ class TestCacheResult():
 
         self.A = A
         self.B = B
-            
-    def tearDown(self):
+
+    def teardown(self):
         del self.A
         del self.B
 
     def test_instance_method(self):
         inst = self.A()
-        eq_(inst.counter, 0)
-        eq_(inst.get_counter(), 1)
-        eq_(inst.counter, 1)
-        eq_(inst.get_counter(), 1) # second time
-        eq_(inst.counter, 1) # second time
+        assert inst.counter == 0
+        assert inst.get_counter() == 1
+        assert inst.counter == 1
+        assert inst.get_counter() == 1 # second time
+        assert inst.counter == 1 # second time
 
     def test_class_method(self):
-        eq_(self.A.class_counter, 0)
-        eq_(self.A.get_class_counter(), 1)
-        eq_(self.A.class_counter, 1)
-        eq_(self.A.get_class_counter(), 1) # second time
-        eq_(self.A.class_counter, 1) # second time
+        assert self.A.class_counter == 0
+        assert self.A.get_class_counter() == 1
+        assert self.A.class_counter == 1
+        assert self.A.get_class_counter() == 1 # second time
+        assert self.A.class_counter == 1 # second time
 
     def test_subclass_method(self):
-        eq_(self.A.get_class_counter(), 1) # mess up by storing cache for A
-        eq_(self.B.class_counter, 41)
-        eq_(self.B.get_class_counter(), 42)
-        eq_(self.B.class_counter, 42)
-        eq_(self.B.get_class_counter(), 42) # second time
-        eq_(self.B.class_counter, 42) # second time
-            
+        assert self.A.get_class_counter() == 1 # mess up by storing cache for A
+        assert self.B.class_counter == 41
+        assert self.B.get_class_counter() == 42
+        assert self.B.class_counter == 42
+        assert self.B.get_class_counter() == 42 # second time
+        assert self.B.class_counter == 42 # second time
+
 
 class MyException(Exception):
     def __init__(self, ex):

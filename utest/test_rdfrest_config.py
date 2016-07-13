@@ -22,96 +22,92 @@
 Nose unit-testing for the RDF-REST configuration part.
 """
 
-from unittest import TestCase
-
-from nose.tools import eq_
-
 from rdfrest.util.config import get_service_configuration
 
 
-class TestServiceConfigDefaults(TestCase):
+class TestServiceConfigDefaults(object):
     """
     Test RDF-REST Service creation with default values.
     """
 
-    def setUp(self):
+    def setup(self):
         self.service_config = get_service_configuration()
 
-    def tearDown(self):
+    def teardown(self):
         del self.service_config
 
     def test_server_section(self):
-        eq_(self.service_config.has_section('server'), True)
+        assert self.service_config.has_section('server') == True
 
     def test_server_hostname(self):
         """
         Do we have to check lower/upper/mixed-case or make the test accept any
         of them ?
         """
-        eq_(self.service_config.get('server', 'host-name', 1), 'localhost')
+        assert self.service_config.get('server', 'host-name', 1) == 'localhost'
 
     def test_server_hostport(self):
-        eq_(self.service_config.getint('server', 'port'), 8001)
+        assert self.service_config.getint('server', 'port') == 8001
 
     def test_server_basepath(self):
-        eq_(self.service_config.get('server', 'base-path', 1), '')
+        assert self.service_config.get('server', 'base-path', 1) == ''
 
     def test_server_ipv4(self):
-        eq_(self.service_config.getboolean('server', 'force-ipv4'), False)
+        assert self.service_config.getboolean('server', 'force-ipv4') == False
 
     def test_server_maxbytes(self):
-        eq_(self.service_config.getint('server', 'max-bytes'), -1)
+        assert self.service_config.getint('server', 'max-bytes') == -1
 
     def test_server_nocache(self):
-        eq_(self.service_config.getboolean('server', 'no-cache'), False)
+        assert self.service_config.getboolean('server', 'no-cache') == False
 
     def test_server_flashallow(self):
-        eq_(self.service_config.getboolean('server', 'flash-allow'), False)
+        assert self.service_config.getboolean('server', 'flash-allow') == False
 
     def test_server_maxtriples(self):
-        eq_(self.service_config.getint('server', 'max-triples'), -1)
+        assert self.service_config.getint('server', 'max-triples') == -1
 
     def test_server_corsalloworigin(self):
-        eq_(self.service_config.get('server', 'cors-allow-origin', 1), '')
+        assert self.service_config.get('server', 'cors-allow-origin', 1) == ''
 
     def test_server_resourcecache(self):
-        eq_(self.service_config.getboolean('server', 'resource-cache'), False)
+        assert self.service_config.getboolean('server', 'resource-cache') == False
 
     def test_ns_prefix_section(self):
-        eq_(self.service_config.has_section('ns_prefix'), True)
+        assert self.service_config.has_section('ns_prefix') == True
 
     def test_plugins_section(self):
         """
         TODO This section should be empty
         """
-        eq_(self.service_config.has_section('plugins'), True)
+        assert self.service_config.has_section('plugins') == True
 
     def test_rdf_database_section(self):
-        eq_(self.service_config.has_section('rdf_database'), True)
+        assert self.service_config.has_section('rdf_database') == True
 
     def test_rdf_database_repository(self):
-        eq_(self.service_config.get('rdf_database', 'repository', 1), '')
+        assert self.service_config.get('rdf_database', 'repository', 1) == ''
 
     def test_rdf_database_forceinit(self):
-        eq_(self.service_config.getboolean('rdf_database', 'force-init'), False)
+        assert self.service_config.getboolean('rdf_database', 'force-init') == False
 
     def test_logging_section(self):
-        eq_(self.service_config.has_section('logging'), True)
+        assert self.service_config.has_section('logging') == True
 
     def test_logging_loggers(self):
-        eq_(self.service_config.get('logging', 'loggers', 1), '')
+        assert self.service_config.get('logging', 'loggers', 1) == ''
 
     def test_logging_consolelevel(self):
-        eq_(self.service_config.get('logging', 'console-level', 1), 'INFO')
+        assert self.service_config.get('logging', 'console-level', 1) == 'INFO'
 
     def test_logging_filename(self):
-        eq_(self.service_config.get('logging', 'filename', 1), '')
+        assert self.service_config.get('logging', 'filename', 1) == ''
 
     def test_logging_filelevel(self):
-        eq_(self.service_config.get('logging', 'file-level', 1), 'INFO')
+        assert self.service_config.get('logging', 'file-level', 1) == 'INFO'
 
     def test_logging_jsonconfigurationfilename(self):
         """
         Future implementation.
         """
-        eq_(self.service_config.get('logging', 'json-configuration-filename', 1), 'logging.json')
+        assert self.service_config.get('logging', 'json-configuration-filename', 1) == 'logging.json'

@@ -1,6 +1,6 @@
 from test_ktbs_engine import KtbsTestCase
-from nose.tools import assert_raises
 from unittest import skipUnless
+from pytest import raises as assert_raises
 
 from ktbs.engine.lock import WithLockMixin
 from ktbs.engine.lock import get_semaphore_name
@@ -22,12 +22,12 @@ class KtbsBaseTestCase(KtbsTestCase):
     tmp_base = None
     tmp_base_name = 'tmp_base/'
 
-    def setUp(self):
-        super(KtbsBaseTestCase, self).setUp()
+    def setup(self):
+        super(KtbsBaseTestCase, self).setup()
         self.tmp_base = self.my_ktbs.create_base(self.tmp_base_name)
 
-    def tearDown(self):
-        super(KtbsBaseTestCase, self).tearDown()
+    def teardown(self):
+        super(KtbsBaseTestCase, self).teardown()
         self.tmp_base.delete()
 
 
@@ -159,13 +159,13 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
-    def setUp(self):
-        super(KtbsModelTestCase, self).setUp()
+    def setup(self):
+        super(KtbsModelTestCase, self).setup()
         self.model = self.tmp_base.create_model()
 
-    def tearDown(self):
+    def teardown(self):
         self.model.delete()
-        super(KtbsModelTestCase, self).tearDown()
+        super(KtbsModelTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -223,13 +223,13 @@ class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
 
-    def setUp(self):
-        super(KtbsMethodTestCase, self).setUp()
+    def setup(self):
+        super(KtbsMethodTestCase, self).setup()
         self.method = self.tmp_base.create_method(parent=KTBS.filter)
 
-    def tearDown(self):
+    def teardown(self):
         self.method.delete()
-        super(KtbsMethodTestCase, self).tearDown()
+        super(KtbsMethodTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -282,13 +282,13 @@ class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None
 
-    def setUp(self):
-        super(KtbsTraceTestCase, self).setUp()
+    def setup(self):
+        super(KtbsTraceTestCase, self).setup()
         self.trace = self.tmp_base.create_stored_trace(model=self.model)
 
-    def tearDown(self):
+    def teardown(self):
         self.trace.delete()
-        super(KtbsTraceTestCase, self).tearDown()
+        super(KtbsTraceTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)

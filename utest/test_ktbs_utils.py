@@ -51,7 +51,7 @@ def test_extend_api():
         @extend_api_ignore
         def iter_not_extendeds(self):
             pass # just to test that no 'not_extendeds' property is generated
-    
+
     assert hasattr(Foo, "iter_foos")
     assert hasattr(Foo, "list_foos")
     assert hasattr(Foo, "foos")

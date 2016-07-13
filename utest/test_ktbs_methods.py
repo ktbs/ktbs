@@ -18,9 +18,10 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
-from json import loads
-from nose.tools import assert_raises, eq_
 from unittest import skip
+from pytest import raises as assert_raises
+
+from json import loads
 
 from ktbs.engine.resource import METADATA
 from ktbs.methods.fusion import LOG as FUSION_LOG
@@ -42,9 +43,7 @@ def get_custom_state(computed_trace, key=None):
 
 class TestFilter(KtbsTestCase):
 
-    def __init__(self):
-        KtbsTestCase.__init__(self)
-        self.log = FILTER_LOG
+    log = FILTER_LOG
 
     def test_filter_temporal(self):
         base = self.my_ktbs.create_base("b/")
@@ -54,82 +53,82 @@ class TestFilter(KtbsTestCase):
         ctr = base.create_computed_trace("ctr/", KTBS.filter,
                                          {"after": "10", "before": "20"},
                                          [src],)
-        eq_(get_custom_state(ctr, 'last_seen'), None)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert get_custom_state(ctr, 'last_seen') == None
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">first change (considered non-monotonic): add o00")
         o00 = src.create_obsel("o00", otype, 0)
-        eq_(len(ctr.obsels), 0)
-        eq_(get_custom_state(ctr, 'last_seen'), None) # not even looked at
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 0
+        assert get_custom_state(ctr, 'last_seen') == None # not even looked at
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype, 5)
-        eq_(len(ctr.obsels), 0)
-        eq_(get_custom_state(ctr, 'last_seen'), None) # not event looked at
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 0
+        assert get_custom_state(ctr, 'last_seen') == None # not event looked at
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype, 10)
-        eq_(len(ctr.obsels), 1)
-        eq_(get_custom_state(ctr, 'last_seen'), 10)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 1
+        assert get_custom_state(ctr, 'last_seen') == 10
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype, 15)
-        eq_(len(ctr.obsels), 2)
-        eq_(get_custom_state(ctr, 'last_seen'), 15)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 2
+        assert get_custom_state(ctr, 'last_seen') == 15
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype, 20)
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'last_seen'), 20)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'last_seen') == 20
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype, 25)
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'passed_maxtime') == True
 
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype, 30)
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'passed_maxtime') == True
 
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype, 27)
-        eq_(len(ctr.obsels), 3)
+        assert len(ctr.obsels) == 3
 
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype, 17)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
 
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype, 7)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
 
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype, 35)
-        eq_(len(ctr.obsels), 4)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 4
+        assert get_custom_state(ctr, 'passed_maxtime') == True
 
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
             editable.remove((None, None, o15.uri))
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'passed_maxtime') == True
 
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
             editable.remove((None, None, o25.uri))
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'passed_maxtime') == True
 
 
     def test_filter_temporal_intervals(self):
@@ -143,34 +142,34 @@ class TestFilter(KtbsTestCase):
 
         self.log.info(">first change (considered non-monotonic): add o00")
         o8_15 = src.create_obsel("o8_15", otype, 8, 15)
-        eq_(len(ctr.obsels), 0)
+        assert len(ctr.obsels) == 0
         o9_15 = src.create_obsel("o9_15", otype, 9, 15)
-        eq_(len(ctr.obsels), 0)
+        assert len(ctr.obsels) == 0
         o10_15 = src.create_obsel("o10_15", otype, 10, 15)
-        eq_(len(ctr.obsels), 1)
+        assert len(ctr.obsels) == 1
         o11_15 = src.create_obsel("o11_15", otype, 11, 15)
-        eq_(len(ctr.obsels), 2)
+        assert len(ctr.obsels) == 2
         o13_15 = src.create_obsel("o13_15", otype, 13, 15)
-        eq_(len(ctr.obsels), 3)
+        assert len(ctr.obsels) == 3
         o13_15a = src.create_obsel("o13_15a", otype, 13, 15)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
         o15_15 = src.create_obsel("o15_15", otype, 15, 15)
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
         o15_17 = src.create_obsel("o15_17", otype, 15, 17)
-        eq_(len(ctr.obsels), 6)
+        assert len(ctr.obsels) == 6
         o15_20 = src.create_obsel("o15_20", otype, 15, 20)
-        eq_(len(ctr.obsels), 7)
+        assert len(ctr.obsels) == 7
         o15_21 = src.create_obsel("o15_21", otype, 15, 21)
-        eq_(len(ctr.obsels), 7)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 7
+        assert get_custom_state(ctr, 'passed_maxtime') == True
         o15_19 = src.create_obsel("o15_19", otype, 15, 19)
-        eq_(len(ctr.obsels), 8)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), True)
+        assert len(ctr.obsels) == 8
+        assert get_custom_state(ctr, 'passed_maxtime') == True
         with src.obsel_collection.edit() as editable:
             editable.remove((o15_21.uri, None, None))
             editable.remove((None, None, o15_21.uri))
-        eq_(len(ctr.obsels), 8)
-        eq_(get_custom_state(ctr, 'passed_maxtime'), False)
+        assert len(ctr.obsels) == 8
+        assert get_custom_state(ctr, 'passed_maxtime') == False
 
 
     def test_filter_otypes(self):
@@ -188,66 +187,66 @@ class TestFilter(KtbsTestCase):
 
         self.log.info(">strictly temporally monotonic change: add o00")
         o00 = src.create_obsel("o00", otype1, 0)
-        eq_(len(ctr.obsels), 1)
-        eq_(get_custom_state(ctr, 'last_seen'), 0)
+        assert len(ctr.obsels) == 1
+        assert get_custom_state(ctr, 'last_seen') == 0
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype2, 5)
-        eq_(len(ctr.obsels), 2)
-        eq_(get_custom_state(ctr, 'last_seen'), 5)
+        assert len(ctr.obsels) == 2
+        assert get_custom_state(ctr, 'last_seen') == 5
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype3, 10)
-        eq_(len(ctr.obsels), 2)
-        eq_(get_custom_state(ctr, 'last_seen'), 10)
+        assert len(ctr.obsels) == 2
+        assert get_custom_state(ctr, 'last_seen') == 10
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype1, 15)
-        eq_(len(ctr.obsels), 3)
-        eq_(get_custom_state(ctr, 'last_seen'), 15)
+        assert len(ctr.obsels) == 3
+        assert get_custom_state(ctr, 'last_seen') == 15
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype2, 20)
-        eq_(len(ctr.obsels), 4)
-        eq_(get_custom_state(ctr, 'last_seen'), 20)
+        assert len(ctr.obsels) == 4
+        assert get_custom_state(ctr, 'last_seen') == 20
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype3, 25)
-        eq_(len(ctr.obsels), 4)
-        eq_(get_custom_state(ctr, 'last_seen'), 25)
+        assert len(ctr.obsels) == 4
+        assert get_custom_state(ctr, 'last_seen') == 25
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype1, 30)
-        eq_(len(ctr.obsels), 5)
-        eq_(get_custom_state(ctr, 'last_seen'), 30)
+        assert len(ctr.obsels) == 5
+        assert get_custom_state(ctr, 'last_seen') == 30
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype2, 27)
-        eq_(get_custom_state(ctr, 'last_seen'), 30)
-        eq_(len(ctr.obsels), 6)
+        assert get_custom_state(ctr, 'last_seen') == 30
+        assert len(ctr.obsels) == 6
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype1, 17)
-        eq_(len(ctr.obsels), 7)
-        eq_(get_custom_state(ctr, 'last_seen'), 30)
+        assert len(ctr.obsels) == 7
+        assert get_custom_state(ctr, 'last_seen') == 30
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype2, 7)
-        eq_(len(ctr.obsels), 8)
-        eq_(get_custom_state(ctr, 'last_seen'), 30)
+        assert len(ctr.obsels) == 8
+        assert get_custom_state(ctr, 'last_seen') == 30
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype1, 35)
-        eq_(len(ctr.obsels), 9)
-        eq_(get_custom_state(ctr, 'last_seen'), 35)
+        assert len(ctr.obsels) == 9
+        assert get_custom_state(ctr, 'last_seen') == 35
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
-        eq_(len(ctr.obsels), 8)
-        eq_(get_custom_state(ctr, 'last_seen'), 35)
+        assert len(ctr.obsels) == 8
+        assert get_custom_state(ctr, 'last_seen') == 35
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
-        eq_(len(ctr.obsels), 8)
-        eq_(get_custom_state(ctr, 'last_seen'), 35)
+        assert len(ctr.obsels) == 8
+        assert get_custom_state(ctr, 'last_seen') == 35
         self.log.info(">non-monotonic change: removing o35")
         with src.obsel_collection.edit() as editable:
             editable.remove((o35.uri, None, None))
-        eq_(len(ctr.obsels), 7)
-        eq_(get_custom_state(ctr, 'last_seen'), 30)
+        assert len(ctr.obsels) == 7
+        assert get_custom_state(ctr, 'last_seen') == 30
 
 
     def test_filter_relations(self):
@@ -264,36 +263,33 @@ class TestFilter(KtbsTestCase):
         o05 = src.create_obsel("o05", otype, 5)
         o25 = src.create_obsel("o25", otype, 25)
         o30 = src.create_obsel("o30", otype, 30)
-        eq_(len(ctr.obsels), 0)
+        assert len(ctr.obsels) == 0
 
         count_relations = lambda: \
             len(list(ctr.obsel_collection.state.triples((None, rtype.uri, None))))
 
         o10 = src.create_obsel("o10", otype, 10, relations=[(rtype, o00)])
-        eq_(len(ctr.obsels), 1)
-        eq_(count_relations(), 0)
+        assert len(ctr.obsels) == 1
+        assert count_relations() == 0
         o11 = src.create_obsel("o11", otype, 11, inverse_relations=[(o05, rtype)])
-        eq_(len(ctr.obsels), 2)
-        eq_(count_relations(), 0)
+        assert len(ctr.obsels) == 2
+        assert count_relations() == 0
         o12 = src.create_obsel("o12", otype, 12, relations=[(rtype, o25)])
-        eq_(len(ctr.obsels), 3)
-        eq_(count_relations(), 0)
+        assert len(ctr.obsels) == 3
+        assert count_relations() == 0
         o13 = src.create_obsel("o13", otype, 13, inverse_relations=[(o30, rtype)])
-        eq_(len(ctr.obsels), 4)
-        eq_(count_relations(), 0)
+        assert len(ctr.obsels) == 4
+        assert count_relations() == 0
         o14 = src.create_obsel("o14", otype, 14, relations=[(rtype, o12)])
-        eq_(len(ctr.obsels), 5)
-        eq_(count_relations(), 1)
+        assert len(ctr.obsels) == 5
+        assert count_relations() == 1
         o15 = src.create_obsel("o15", otype, 15, inverse_relations=[(o13, rtype)])
-        eq_(len(ctr.obsels), 6)
-        eq_(count_relations(), 2)
+        assert len(ctr.obsels) == 6
+        assert count_relations() == 2
 
-          
+
 class TestFusion(KtbsTestCase):
 
-    def __init__(self):
-        KtbsTestCase.__init__(self)
-    
     def test_fusion(self):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -306,36 +302,33 @@ class TestFusion(KtbsTestCase):
         ctr = base.create_computed_trace("ctr/", KTBS.fusion, {},
                                          [src1, src2],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
-        eq_(len(ctr.obsels), 0)
+        assert ctr.model == model
+        assert ctr.origin == origin
+        assert len(ctr.obsels) == 0
 
         o10 = src1.create_obsel("o10", otype, 0)
-        eq_(len(ctr.obsels), 1)
+        assert len(ctr.obsels) == 1
         o21 = src2.create_obsel("o21", otype, 10)
-        eq_(len(ctr.obsels), 2)
+        assert len(ctr.obsels) == 2
         o12 = src1.create_obsel("o12", otype, 20)
-        eq_(len(ctr.obsels), 3)
+        assert len(ctr.obsels) == 3
         o23 = src2.create_obsel("o23", otype, 30)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
         o11 = src1.create_obsel("o11", otype, 10)
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
         o20 = src2.create_obsel("o20", otype, 0)
-        eq_(len(ctr.obsels), 6)
+        assert len(ctr.obsels) == 6
 
         with src1.obsel_collection.edit() as editable:
             editable.remove((o10.uri, None, None))
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
 
         with src2.obsel_collection.edit() as editable:
             editable.remove((o21.uri, None, None))
-        eq_(len(ctr.obsels), 4)
-        
+        assert len(ctr.obsels) == 4
+
 
 class TestExternal(KtbsTestCase):
-
-    def __init__(self):
-        KtbsTestCase.__init__(self)
 
     def test_external_no_source(self):
         base = self.my_ktbs.create_base("b/")
@@ -355,11 +348,11 @@ class TestExternal(KtbsTestCase):
                                              "origin": origin,
                                          }, [],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
-        eq_(len(ctr.obsels), 0)
-        
-    
+        assert ctr.model == model
+        assert ctr.origin == origin
+        assert len(ctr.obsels) == 0
+
+
     def test_external_one_source(self):
         base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -375,39 +368,36 @@ class TestExternal(KtbsTestCase):
                                              "foo": "bar"
                                          }, [src1],)
 
-        eq_(ctr.model, model)
-        eq_(ctr.origin, origin)
-        eq_(len(ctr.obsels), 0)
+        assert ctr.model == model
+        assert ctr.origin == origin
+        assert len(ctr.obsels) == 0
 
         o10 = src1.create_obsel("o10", otype, 0)
-        eq_(len(ctr.obsels), 1)
+        assert len(ctr.obsels) == 1
         o21 = src1.create_obsel("o21", otype, 10)
-        eq_(len(ctr.obsels), 2)
+        assert len(ctr.obsels) == 2
         o12 = src1.create_obsel("o12", otype, 20)
-        eq_(len(ctr.obsels), 3)
+        assert len(ctr.obsels) == 3
         o23 = src1.create_obsel("o23", otype, 30)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
         o11 = src1.create_obsel("o11", otype, 10)
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
         o20 = src1.create_obsel("o20", otype, 0)
-        eq_(len(ctr.obsels), 6)
+        assert len(ctr.obsels) == 6
 
         with src1.obsel_collection.edit() as editable:
             editable.remove((o10.uri, None, None))
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
 
         with src1.obsel_collection.edit() as editable:
             editable.remove((o21.uri, None, None))
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
 
 
 class TestSparql(KtbsTestCase):
 
-    def __init__(self):
-        KtbsTestCase.__init__(self)
-        
-    def setUp(self):
-        super(TestSparql, self).setUp()
+    def setup(self):
+        super(TestSparql, self).setup()
         self.base = self.my_ktbs.create_base("b/")
         self.model = self.base.create_model("m")
         self.otype1 = self.model.create_obsel_type("#ot1")
@@ -442,39 +432,39 @@ class TestSparql(KtbsTestCase):
                                                   "foo": "bar"
                                               }, [self.src1],)
 
-        eq_(ctr.model, self.model)
-        eq_(ctr.origin, self.origin)
-        eq_(len(ctr.obsels), 0)
+        assert ctr.model == self.model
+        assert ctr.origin == self.origin
+        assert len(ctr.obsels) == 0
 
         o10 = self.src1.create_obsel("o10", self.otype1, 0,
                                      attributes = {self.atype: "héhé"})
         # above, we force some non-ascii output of the script,
         # to check that UTF-8 is corectly decoded by the method
         ctr.obsel_collection.force_state_refresh()
-        eq_(ctr.diagnosis, None)
+        assert ctr.diagnosis == None
 
-        eq_(len(ctr.obsels), 1)
+        assert len(ctr.obsels) == 1
         o21 = self.src1.create_obsel("o21", self.otype1, 10)
-        eq_(len(ctr.obsels), 2)
+        assert len(ctr.obsels) == 2
         o12 = self.src1.create_obsel("o12", self.otype1, 20)
-        eq_(len(ctr.obsels), 3)
+        assert len(ctr.obsels) == 3
         o23 = self.src1.create_obsel("o23", self.otype1, 30)
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
         o11 = self.src1.create_obsel("o11", self.otype1, 10)
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
         o20 = self.src1.create_obsel("o20", self.otype1, 0)
-        eq_(len(ctr.obsels), 6)
+        assert len(ctr.obsels) == 6
 
         with self.src1.obsel_collection.edit() as editable:
             editable.remove((o10.uri, None, None))
-        eq_(len(ctr.obsels), 5)
+        assert len(ctr.obsels) == 5
 
         with self.src1.obsel_collection.edit() as editable:
             editable.remove((o21.uri, None, None))
-        eq_(len(ctr.obsels), 4)
+        assert len(ctr.obsels) == 4
 
     def test_sparql_inherit_all(self):
-        
+
         sparql = """
           PREFIX : <%s#>
           PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
@@ -491,25 +481,25 @@ class TestSparql(KtbsTestCase):
                                                   "inherit": "yes"
                                               }, [self.src1],)
 
-        eq_(ctr.model, self.model)
-        eq_(ctr.origin, self.origin)
-        eq_(len(ctr.obsels), 0)
+        assert ctr.model == self.model
+        assert ctr.origin == self.origin
+        assert len(ctr.obsels) == 0
         ctr.obsel_collection.force_state_refresh()
-        eq_(ctr.diagnosis, None)
+        assert ctr.diagnosis == None
 
         o1 = self.src1.create_obsel("o1", self.otype1, 0,
                                     attributes = {self.atype: "héhé"})
-        eq_(len(self.src1.obsels), 1)
-        eq_(len(ctr.obsels), 1)
-        eq_(ctr.obsels[0].obsel_type, o1.obsel_type)
-        eq_(ctr.obsels[0].begin, o1.begin)
-        eq_(ctr.obsels[0].end, o1.end)
-        eq_(ctr.obsels[0].subject, o1.subject)
-        eq_(ctr.obsels[0].get_attribute_value(self.atype),
-            o1.get_attribute_value(self.atype))
+        assert len(self.src1.obsels) == 1
+        assert len(ctr.obsels) == 1
+        assert ctr.obsels[0].obsel_type == o1.obsel_type
+        assert ctr.obsels[0].begin == o1.begin
+        assert ctr.obsels[0].end == o1.end
+        assert ctr.obsels[0].subject == o1.subject
+        assert ctr.obsels[0].get_attribute_value(self.atype) == \
+            o1.get_attribute_value(self.atype)
 
     def test_sparql_inherit_some(self):
-        
+
         sparql = """
           PREFIX : <%s#>
           PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
@@ -532,20 +522,20 @@ class TestSparql(KtbsTestCase):
                                                   "inherit": "yes"
                                               }, [self.src1],)
 
-        eq_(ctr.model, self.model)
-        eq_(ctr.origin, self.origin)
-        eq_(len(ctr.obsels), 0)
+        assert ctr.model == self.model
+        assert ctr.origin == self.origin
+        assert len(ctr.obsels) == 0
         ctr.obsel_collection.force_state_refresh()
-        eq_(ctr.diagnosis, None)
+        assert ctr.diagnosis == None
 
         o1 = self.src1.create_obsel("o1", self.otype1, 0, attributes = {self.atype: "héhé"})
-        eq_(len(self.src1.obsels), 1)
-        eq_(len(ctr.obsels), 1)
-        eq_(ctr.obsels[0].obsel_type, self.otype2)
-        eq_(ctr.obsels[0].begin, o1.begin)
-        eq_(ctr.obsels[0].end, o1.begin + 1)
-        eq_(ctr.obsels[0].subject, o1.subject)
-        eq_(ctr.obsels[0].get_attribute_value(self.atype), "overridden")
+        assert len(self.src1.obsels) == 1
+        assert len(ctr.obsels) == 1
+        assert ctr.obsels[0].obsel_type == self.otype2
+        assert ctr.obsels[0].begin == o1.begin
+        assert ctr.obsels[0].end == o1.begin + 1
+        assert ctr.obsels[0].subject == o1.subject
+        assert ctr.obsels[0].get_attribute_value(self.atype) == "overridden"
 
     def test_sparql_bad_scope(self):
         sparql = """
@@ -594,39 +584,39 @@ class TestSparql(KtbsTestCase):
                 "scope": "base"
             }, [self.src1], )
 
-            eq_(ctr.model, self.model)
-            eq_(ctr.origin, self.origin)
-            eq_(len(ctr.obsels), 0)
+            assert ctr.model == self.model
+            assert ctr.origin == self.origin
+            assert len(ctr.obsels) == 0
             ctr.obsel_collection.force_state_refresh()
-            eq_(ctr.diagnosis, None)
+            assert ctr.diagnosis == None
 
             o1 = self.src1.create_obsel("o1", KTBS.Obsel, 0,
                                         attributes={self.atype: "héhé"})
-            eq_(len(self.src1.obsels), 1)
-            eq_(len(ctr.obsels), 0)
+            assert len(self.src1.obsels) == 1
+            assert len(ctr.obsels) == 0
 
 
             o2 = self.src1.create_obsel("o2", self.otype1, 1,
                                         attributes={self.atype: "haha"})
-            eq_(len(self.src1.obsels), 2)
-            eq_(len(ctr.obsels), 1)
-            eq_(ctr.obsels[0].obsel_type, o2.obsel_type)
-            eq_(ctr.obsels[0].begin, o2.begin)
-            eq_(ctr.obsels[0].end, o2.end)
-            eq_(ctr.obsels[0].subject, o2.subject)
-            eq_(ctr.obsels[0].get_attribute_value(self.atype),
-                o1.get_attribute_value(self.atype))
+            assert len(self.src1.obsels) == 2
+            assert len(ctr.obsels) == 1
+            assert ctr.obsels[0].obsel_type == o2.obsel_type
+            assert ctr.obsels[0].begin == o2.begin
+            assert ctr.obsels[0].end == o2.end
+            assert ctr.obsels[0].subject == o2.subject
+            assert ctr.obsels[0].get_attribute_value(self.atype) == \
+                o1.get_attribute_value(self.atype)
 
             o3 = self.src1.create_obsel("o3", self.otype2, 2,
                                         attributes={self.atype: "hoho"})
-            eq_(len(self.src1.obsels), 3)
-            eq_(len(ctr.obsels), 2)
-            eq_(ctr.obsels[0].obsel_type, o3.obsel_type)
-            eq_(ctr.obsels[0].begin, o3.begin)
-            eq_(ctr.obsels[0].end, o3.end)
-            eq_(ctr.obsels[0].subject, o3.subject)
-            eq_(ctr.obsels[0].get_attribute_value(self.atype),
-                o1.get_attribute_value(self.atype))
+            assert len(self.src1.obsels) == 3
+            assert len(ctr.obsels) == 2
+            assert ctr.obsels[0].obsel_type == o3.obsel_type
+            assert ctr.obsels[0].begin == o3.begin
+            assert ctr.obsels[0].end == o3.end
+            assert ctr.obsels[0].subject == o3.subject
+            assert ctr.obsels[0].get_attribute_value(self.atype) == \
+                o1.get_attribute_value(self.atype)
 
     def test_sparql_scope_trace(self):
         def test_sparql_scope_base(self):
@@ -649,34 +639,32 @@ class TestSparql(KtbsTestCase):
                     "scope": "trace"
                 }, [self.src1], )
 
-                eq_(ctr.model, self.model)
-                eq_(ctr.origin, self.origin)
-                eq_(len(ctr.obsels), 0)
+                assert ctr.model == self.model
+                assert ctr.origin == self.origin
+                assert len(ctr.obsels) == 0
                 ctr.obsel_collection.force_state_refresh()
-                eq_(ctr.diagnosis, None)
+                assert ctr.diagnosis == None
 
                 o1 = self.src1.create_obsel("o1", KTBS.Obsel, 0,
                                             attributes={self.atype: "héhé"})
-                eq_(len(self.src1.obsels), 1)
-                eq_(len(ctr.obsels), 0)
+                assert len(self.src1.obsels) == 1
+                assert len(ctr.obsels) == 0
 
                 o2 = self.src1.create_obsel("o2", self.otype1, 1,
                                             attributes={self.atype: "haha"})
-                eq_(len(self.src1.obsels), 2)
-                eq_(len(ctr.obsels), 0)
+                assert len(self.src1.obsels) == 2
+                assert len(ctr.obsels) == 0
 
                 o3 = self.src1.create_obsel("o3", self.otype2, 2,
                                             attributes={self.atype: "hoho"})
-                eq_(len(self.src1.obsels), 3)
-                eq_(len(ctr.obsels), 0)
+                assert len(self.src1.obsels) == 3
+                assert len(ctr.obsels) == 0
 
 
 class TestIssue28(KtbsTestCase):
-    def __init__(self):
-        KtbsTestCase.__init__(self)
 
-    def setUp(self):
-        super(TestIssue28, self).setUp()
+    def setup(self):
+        super(TestIssue28, self).setup()
         self.base = self.my_ktbs.create_base("b/")
         self.model = self.base.create_model("m")
         self.origin = "orig-abc"
@@ -708,8 +696,8 @@ class TestIssue28(KtbsTestCase):
 
 class TestOverrideParameter(KtbsTestCase):
 
-    def setUp(self):
-        super(TestOverrideParameter, self).setUp()
+    def setup(self):
+        super(TestOverrideParameter, self).setup()
         self.base = self.my_ktbs.create_base("b/")
         model = self.base.create_model("m")
         otype1 = self.otype1 = model.create_obsel_type("#ot1")
@@ -748,4 +736,3 @@ class TestOverrideParameter(KtbsTestCase):
         assert len(self.ctr.obsels) == 2
         meth2.set_parameter("otypes", None)
         assert len(self.ctr.obsels) == 1
-

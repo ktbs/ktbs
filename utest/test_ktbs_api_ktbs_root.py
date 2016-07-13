@@ -23,7 +23,7 @@
 Nose unit-testing for the kTBS root client API.
 """
 from unittest import TestCase, skip
-from nose.tools import assert_raises, eq_
+from pytest import raises as assert_raises
 
 from rdflib import BNode, Graph, RDF, URIRef
 from rdfrest.exceptions import InvalidDataError, RdfRestException
@@ -41,12 +41,12 @@ class TestKtbsRoot(KtbsTestCase):
     def test_list_bases(self):
         base = self.my_ktbs.create_base()
         lb = self.my_ktbs.list_bases()
-        eq_(lb, [base])
+        assert lb == [base]
 
     def test_get_base(self):
         bas1 = self.my_ktbs.create_base("BaseWithID/")
         bas2 = self.my_ktbs.get_base(id="BaseWithID/")
-        eq_(bas1, bas2)
+        assert bas1 == bas2
 
     def test_list_builtin_methods(self):
         for m in self.my_ktbs.list_builtin_methods():
@@ -65,7 +65,7 @@ class TestKtbsRoot(KtbsTestCase):
     def test_create_base_with_id(self):
         b = self.my_ktbs.create_base(id="BaseWithID/")
         generated_uri = URIRef(KTBS_ROOT + "BaseWithID/")
-        eq_(b.get_uri(), generated_uri)
+        assert b.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -83,14 +83,14 @@ class TestKtbsRoot(KtbsTestCase):
         b = self.my_ktbs.create_base(id="BaseWithIDAndLabel/",
                                      label="Base with ID and label")
         generated_uri = URIRef(KTBS_ROOT + "BaseWithIDAndLabel/")
-        eq_(b.get_uri(), generated_uri)
+        assert b.get_uri() == generated_uri
 
     def test_create_two_bases(self):
         # check that independantly created bases have different URIs,
         # even if they have the same label
         bas1 = self.my_ktbs.create_base(label="Duplicate label")
         bas2 = self.my_ktbs.create_base(label="Duplicate label")
-        eq_(bas1.label, bas2.label)
+        assert bas1.label == bas2.label
         assert bas1.uri != bas2.uri
 
     def test_create_bad_base(self):

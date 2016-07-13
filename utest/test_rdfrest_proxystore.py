@@ -21,16 +21,16 @@
 
 
 """
-ProxyStore test program. 
+ProxyStore test program.
 Use nose, http://somethingaboutorange.com/mrl/projects/nose/1.0.0/testing.html
-TODO use setup and teardown methods for test fixture teardown could remove 
+TODO use setup and teardown methods for test fixture teardown could remove
 the http cache.
 """
 
 from unittest import skip
+from pytest import raises as assert_raises
 
 from rdflib.graph import Graph
-from nose.tools import raises
 
 from rdfrest.util.proxystore import ProxyStore
 from rdfrest.util.proxystore import StoreIdentifierError
@@ -40,20 +40,20 @@ from .example1 import make_example1_httpd
 THREAD = None
 HTTPD = None
 
-def setUp():
+def setup_module():
     global THREAD, HTTPD
     THREAD, HTTPD = make_example1_httpd()
     # disabling logging
     HTTPD.RequestHandlerClass.log_message = (lambda *args: None)
 
-def tearDown():
+def teardown_module():
     global THREAD, HTTPD
     if HTTPD is not None:
         HTTPD.shutdown()
     if THREAD is not None:
         THREAD.join()
     THREAD, HTTPD = None, None
-    
+
 
 def test_identifier_no_open():
     """ Pass the URI as identifier to __init__() but does not explicitely
@@ -126,36 +126,36 @@ def test_uri_with_good_credentials_in_open():
     graph.open(configuration={PS_CONFIG_HTTP_CX: http,})
     graph.close()
 
-@raises(StoreIdentifierError)
 def test_no_uri():
     """ Pass no URI to __init__() nor to open().
     """
+    with assert_raises(StoreIdentifierError):
 
-    store = ProxyStore()
-    graph = Graph(store=store)
-    graph.open({})
-    graph.close()
+        store = ProxyStore()
+        graph = Graph(store=store)
+        graph.open({})
+        graph.close()
 
-@raises(StoreIdentifierError)
 def test_different_uris():
     """ Pass different URIs to __init__() and to open().
     """
+    with assert_raises(StoreIdentifierError):
 
-    store = ProxyStore(identifier="http://localhost:1234/foo/")
-    graph = Graph(store=store)
-    graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/group1/"})
-    graph.close()
+        store = ProxyStore(identifier="http://localhost:1234/foo/")
+        graph = Graph(store=store)
+        graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/group1/"})
+        graph.close()
 
-@raises(AssertionError)
 def test_no_uri_no_open():
     """ Nothing passed to __init__(), and open() is not called either.
         Try to manipulate the graph, should trigger an error.
     """
+    with assert_raises(AssertionError):
 
-    store = ProxyStore()
-    graph = Graph(store=store)
-    gs = graph.serialize()
-    graph.close()
+        store = ProxyStore()
+        graph = Graph(store=store)
+        gs = graph.serialize()
+        graph.close()
 
 if __name__ == '__main__':
     """ Useful if I want the ProxyStore logs."""

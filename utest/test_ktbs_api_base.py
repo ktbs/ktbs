@@ -22,8 +22,8 @@
 """
 Nose unit-testing for the kTBS base client API.
 """
-from unittest import TestCase, skip
-from nose.tools import assert_raises, eq_
+from unittest import skip
+from pytest import raises as assert_raises
 
 from rdflib import URIRef
 from rdfrest.exceptions import InvalidDataError, RdfRestException
@@ -36,41 +36,41 @@ KTBS_ROOT = "http://localhost:12345/"
 
 class TestKtbsBase(KtbsTestCase):
 
-    def setUp(self):
-        KtbsTestCase.setUp(self)
+    def setup(self):
+        KtbsTestCase.setup(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
 
     ######## get information ########
 
     def test_get_base_uri(self):
         reference_uri = URIRef(KTBS_ROOT + "BaseTest/")
-        eq_(self.base.get_uri(), reference_uri)
+        assert self.base.get_uri() == reference_uri
 
     @skip("Resource.get_sync_status() is not yet implemented")
     def test_get_sync_status(test):
-        eq_(self.base.get_sync_status(), "ok")
+        assert self.base.get_sync_status() == "ok"
 
     def test_get_readonly(self):
-        eq_(self.base.get_readonly(), False)
+        assert self.base.get_readonly() == False
 
     def test_get_base_label(self):
-        eq_(self.base.get_label(), "Test base")
+        assert self.base.get_label() == "Test base"
 
     def test_get_base_depth(self):
-        eq_(self.base.get_depth(), 1)
+        assert self.base.get_depth() == 1
 
     def test_get_base_parent(self):
-        eq_(self.base.get_parent(), self.my_ktbs)
+        assert self.base.get_parent() == self.my_ktbs
 
     ######## set information ########
 
     def test_set_base_label(self):
         self.base.set_label("New base label")
-        eq_(self.base.get_label(), "New base label")
+        assert self.base.get_label() == "New base label"
 
     def test_reset_base_label(self):
         self.base.reset_label()
-        eq_(self.base.get_label(), "BaseTest")
+        assert self.base.get_label() == "BaseTest"
 
     ######## add base ########
 
@@ -85,7 +85,7 @@ class TestKtbsBase(KtbsTestCase):
     def test_create_base_with_folderish_id(self):
         mod = self.base.create_base(id="BaseWithID/")
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/BaseWithID/")
-        eq_(mod.get_uri(), generated_uri)
+        assert mod.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -104,7 +104,7 @@ class TestKtbsBase(KtbsTestCase):
         # even if they have the same label
         mod1 = self.base.create_base(label="Duplicate label")
         mod2 = self.base.create_base(label="Duplicate label")
-        eq_(mod1.label, mod2.label)
+        assert mod1.label == mod2.label
         assert mod1.uri != mod2.uri
 
     def test_create_bad_base_id(self):
@@ -134,7 +134,7 @@ class TestKtbsBase(KtbsTestCase):
     def test_create_model_with_id(self):
         mod = self.base.create_model(id="ModelWithID")
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID")
-        eq_(mod.get_uri(), generated_uri)
+        assert mod.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -143,7 +143,7 @@ class TestKtbsBase(KtbsTestCase):
     def test_create_model_with_folderish_id(self):
         mod = self.base.create_model(id="ModelWithID/")
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ModelWithID/")
-        eq_(mod.get_uri(), generated_uri)
+        assert mod.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -162,7 +162,7 @@ class TestKtbsBase(KtbsTestCase):
         # even if they have the same label
         mod1 = self.base.create_model(label="Duplicate label")
         mod2 = self.base.create_model(label="Duplicate label")
-        eq_(mod1.label, mod2.label)
+        assert mod1.label == mod2.label
         assert mod1.uri != mod2.uri
 
     def test_create_bad_model_id(self):
@@ -192,7 +192,7 @@ class TestKtbsBase(KtbsTestCase):
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/StoredTraceWithID/")
         st = self.base.create_stored_trace(id="StoredTraceWithID/",
                                            model="http://example.org/model")
-        eq_(st.get_uri(), generated_uri)
+        assert st.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -200,7 +200,7 @@ class TestKtbsBase(KtbsTestCase):
                                            model="http://example.org/model")
 
     def test_create_stored_trace_with_label(self):
-        st = self.base.create_stored_trace(model="http://example.org/model", 
+        st = self.base.create_stored_trace(model="http://example.org/model",
                                            label="stored-trace-with-label")
         # it should just work, but we don't really care about the URI
 
@@ -216,7 +216,7 @@ class TestKtbsBase(KtbsTestCase):
                                              label="Duplicate label")
         trc2 = self.base.create_stored_trace(model="http://example.org/model",
                                              label="Duplicate label")
-        eq_(trc1.label, trc2.label)
+        assert trc1.label == trc2.label
         assert trc1.uri != trc2.uri
 
     def test_create_bad_stored_trace(self):
@@ -239,7 +239,7 @@ class TestKtbsBase(KtbsTestCase):
         # no model
         with assert_raises(ValueError):
             self.base.create_stored_trace(id="StoredTraceWithID/")
-                
+
     ######## add method ########
 
     def test_create_method_no_id_no_label(self):
@@ -253,7 +253,7 @@ class TestKtbsBase(KtbsTestCase):
     def test_create_method_with_id(self):
         meth = self.base.create_method(id="MethodWithID", parent=KTBS.filter)
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/MethodWithID")
-        eq_(meth.get_uri(), generated_uri)
+        assert meth.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -274,7 +274,7 @@ class TestKtbsBase(KtbsTestCase):
                                        label="Duplicate label")
         met2 = self.base.create_method(parent=KTBS.filter,
                                        label="Duplicate label")
-        eq_(met1.label, met2.label)
+        assert met1.label == met2.label
         assert met1.uri != met2.uri
 
     def test_create_bad_method(self):
@@ -317,7 +317,7 @@ class TestKtbsBase(KtbsTestCase):
                                              method=KTBS.external,
                                              parameters=FAKE_PARAMETERS)
         generated_uri = URIRef(KTBS_ROOT + "BaseTest/ComputedTraceWithID/")
-        eq_(ct.get_uri(), generated_uri)
+        assert ct.get_uri() == generated_uri
 
         # check duplicate URI
         with assert_raises(InvalidDataError):
@@ -346,7 +346,7 @@ class TestKtbsBase(KtbsTestCase):
         ctr2 = self.base.create_computed_trace(method=KTBS.external,
                                                parameters=FAKE_PARAMETERS,
                                                label="Duplicate label")
-        eq_(ctr1.label, ctr2.label)
+        assert ctr1.label == ctr2.label
         assert ctr1.uri != ctr2.uri
 
     def test_create_bad_computed_trace(self):
@@ -374,26 +374,26 @@ class TestKtbsBase(KtbsTestCase):
         with assert_raises(ValueError):
             self.base.create_computed_trace(id="ComputedTraceWithID/",
                                             parameters=FAKE_PARAMETERS)
-                
+
     ######## remove base ########
 
     def test_remove_base(self):
         base_uri = self.base.get_uri()
         self.base.remove()
-        eq_(self.my_ktbs.get_base(base_uri), None)
+        assert self.my_ktbs.get_base(base_uri) == None
 
 
 class TestKtbsBasePopulated(KtbsTestCase):
 
-    def setUp(self):
-        KtbsTestCase.setUp(self)
+    def setup(self):
+        KtbsTestCase.setup(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
         self.subbase = self.base.create_base(id="BaseWithId/",
                                             label="Test subbase")
         self.model = self.base.create_model(id="ModelWithID",
                                             label="Test model")
         self.stored_trace = self.base.create_stored_trace(
-                                          id="StoredTraceWithID/", 
+                                          id="StoredTraceWithID/",
                                           model=self.model,
                                           label="Test stored trace")
         self.method = self.base.create_method(id="MethodWithID",
@@ -407,47 +407,47 @@ class TestKtbsBasePopulated(KtbsTestCase):
 
     def test_list_bases(self):
         lmod = self.base.list_bases()
-        eq_(lmod, [self.subbase])
+        assert lmod == [self.subbase]
 
     def test_get_base(self):
         mod = self.base.get("BaseWithId/")
-        eq_(mod, self.subbase)
-        
+        assert mod == self.subbase
+
     def test_list_models(self):
         lmod = self.base.list_models()
-        eq_(lmod, [self.model])
+        assert lmod == [self.model]
 
     def test_get_model(self):
         mod = self.base.get("ModelWithID")
-        eq_(mod, self.model)
+        assert mod == self.model
 
     def test_list_traces(self):
         lt = self.base.list_traces()
-        eq_(set(lt), set([self.stored_trace, self.computed_trace]))
+        assert set(lt), set([self.stored_trace == self.computed_trace])
 
     def test_get_stored_trace(self):
         st = self.base.get("StoredTraceWithID/")
-        eq_(st, self.stored_trace)
+        assert st == self.stored_trace
 
     def test_get_computed_trace(self):
         st = self.base.get("ComputedTraceWithID/")
-        eq_(st, self.computed_trace)
+        assert st == self.computed_trace
 
     def test_list_methods(self):
         lt = self.base.list_methods()
-        eq_(lt, [self.method])
+        assert lt == [self.method]
 
     def test_get_method(self):
         meth = self.base.get("MethodWithID")
-        eq_(meth, self.method)
+        assert meth == self.method
 
     ######## get subbase information ########
 
     def test_get_subbase_depth(self):
-        eq_(self.subbase.get_depth(), 2)
+        assert self.subbase.get_depth() == 2
 
     def test_get_subbase_parent(self):
-        eq_(self.subbase.get_parent(), self.base)
+        assert self.subbase.get_parent() == self.base
 
 
 FAKE_PARAMETERS = {

@@ -128,7 +128,7 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
                 ret = ReadOnlyGraph(target.get_state(parameters))
             ret.redirect_to = str(target_uri)
         return ret
-                
+
     def ack_edit(self, parameters, prepared):
         """I override :meth:`rdfrest.cores.local.EditableMixin.ack_edit`
 
@@ -160,7 +160,7 @@ class Ex2Service(Service):
                 ret = super(Ex2Service, self).get(self.root_uri, rdf_types,
                                                   _no_spawn)
         return ret
-        
+
 
 def main():
     """Runs an HTTP server serving items and groups.
