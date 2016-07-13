@@ -482,6 +482,8 @@ KTBS_NS_TTL = """
                                         "SPARQL"@fr .
 :fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
                                         "Automate à états fini"@fr .
+:translation a :BuiltinMethod ; rdfs:label "Vocabulary translation"@en,
+                                        "Traduction de vocabulaire"@fr .
 
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .
