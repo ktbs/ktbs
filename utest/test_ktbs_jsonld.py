@@ -36,6 +36,11 @@ from ktbs import __version__ as ktbs_version
 from ktbs import __commitno__ as ktbs_commit
 from .test_ktbs_engine import KtbsTestCase
 
+BUILTIN_METHODS = [
+    'filter', 'external', 'fusion', 'sparql', 'fsa', 'translation',
+]
+
+
 
 def unordered_json(json):
     """I transform a json object by replacing all lists by sets,
@@ -83,9 +88,8 @@ class TestJsonRoot(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
-                'version': '%s%s' % (ktbs_version, ktbs_commit),
+            'hasBuiltinMethod': BUILTIN_METHODS,
+            'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
 
@@ -123,8 +127,7 @@ class TestJsonRoot(KtbsTestCase):
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
+            'hasBuiltinMethod': BUILTIN_METHODS,
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
@@ -153,8 +156,7 @@ class TestJsonRoot(KtbsTestCase):
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
+            'hasBuiltinMethod': BUILTIN_METHODS,
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],

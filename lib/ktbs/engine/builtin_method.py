@@ -83,8 +83,9 @@ class _FakeMethod(IMethod):
 import ktbs.api.builtin_method # unused import #pylint: disable=W0611
 
 # ensure that all shipped built-in method implementations are registered
-import ktbs.methods.filter   # reimport(?) #pylint: disable=W0404
-import ktbs.methods.fsa      # reimport(?) #pylint: disable=W0404
-import ktbs.methods.fusion   # reimport(?) #pylint: disable=W0404
-import ktbs.methods.sparql   # reimport(?) #pylint: disable=W0404
+import ktbs.methods.filter      # reimport(?) #pylint: disable=W0404
+import ktbs.methods.fsa         # reimport(?) #pylint: disable=W0404
+import ktbs.methods.fusion      # reimport(?) #pylint: disable=W0404
+import ktbs.methods.sparql      # reimport(?) #pylint: disable=W0404
+import ktbs.methods.translation # reimport(?) #pylint: disable=W0404
 
