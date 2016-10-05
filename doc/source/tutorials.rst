@@ -5,9 +5,10 @@ This chapter contains an number of tutorials to help you familiarize yourself wi
 
 .. toctree::
     :glob:
-    :maxdepth: 2 
-    
+    :maxdepth: 2
+
     tutorials/install
-    tutorials/rest-turtle
     tutorials/rest-json
+    tutorials/model-rest-json
+    tutorials/rest-turtle
     tutorials/model-rest-turtle

@@ -386,6 +386,8 @@ This creates a computed trace named ``fusioned1`` which is
 a merge of the ``filtered1`` and the ``joinRelated1`` traces.
 
 
+.. _about-at-context:
+
 So what about this ``@context`` thing?
 ++++++++++++++++++++++++++++++++++++++
 
