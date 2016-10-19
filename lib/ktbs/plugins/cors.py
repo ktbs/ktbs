@@ -29,6 +29,7 @@ from webob import Request
 LOG = logging.getLogger(__name__)
 
 ALLOW_ORIGIN = None
+EXPOSE_HEADERS = ['etag', 'location', 'link', 'content-location']
 
 class CorsMiddleware(object):
     #pylint: disable=R0903
@@ -36,6 +37,7 @@ class CorsMiddleware(object):
 
     def __init__(self, app):
         self.app = app
+        self.expose_headers = ', '.join(EXPOSE_HEADERS)
 
     def __call__(self, environ, start_response):
         request = Request(environ)
@@ -48,7 +50,7 @@ class CorsMiddleware(object):
                 response.headerlist.extend([
                     ("access-control-allow-origin", origin),
                     ("access-control-allow-credentials", "true"),
-                    ("access-control-expose-headers", "etag, location"),
+                    ("access-control-expose-headers", self.expose_headers),
                 ])
                 if request.method.lower() == "options":
                     response.headerlist.append(
