@@ -83,6 +83,14 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 #response iframe {
   border: none;
 }
+
+#loading, #error {
+  display: none;
+}
+
+.loading #loading, .error #error {
+  display: block
+}
     </style>
     <style id="theme" type="text/css">
 /* importing theme.css */
@@ -136,7 +144,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
           <option>*/*</option>
           <option>x-gereco/*</option>
           <option>application/json</option>
-          <option>application/sparql-query</option>
           <option>application/xml</option>
           <option>text/html</option>
           <option>text/plain</option>
@@ -151,7 +158,10 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
     <textarea id="payload" disabled=""></textarea>
 
-    <pre id="response"></pre>
+    <pre id="response">
+      <span id="loading">loading...</span>
+      <span id="error">error XXX</span>
+    </pre>
 
     <table id="response-headers"></table>
 
@@ -173,8 +183,12 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             send = document.getElementById("send"),
             payload = document.getElementById("payload"),
             response = document.getElementById("response"),
+            loading = document.getElementById("loading"),
+            error = document.getElementById("error"),
             responseHeaders = document.getElementById("response-headers"),
-            etag = null;
+            etag = null,
+            req = null,
+            enhancing = null;
 
         // define functions
 
@@ -197,19 +211,23 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             }
         }
 
-        function enhanceResponse(req) {
-            var ctype = req.getResponseHeader("content-type");
-            var html = response.innerHTML;
-            if (/json/.test(ctype) || /html/.test(ctype) || /xml/.test(ctype)) {
-                html = html.replace(/""/g, '<a href="">""</a>');
-                html = html.replace(/"([^">\n]+)"/g, '"<a href="$1">$1</a>"');
-            } else if (/text\/uri-list/.test(ctype)) {
-                html = html.replace(/^.*$/gm, '<a href="$&">$&</a>');
-            } else {
-                html = html.replace(/&lt;&gt;/g, '<a href="">&lt;&gt;</a>');
-                html = html.replace(/&lt;([^\n]+?)&gt;/g, '&lt;<a href="$1">$1</a>&gt;');
+        function enhanceContent(elements, ctype, i) {
+            enhancing = null;
+            if (i < elements.length) {
+                var elt = elements[i];
+                var html = elt.innerHTML;
+                if (/json/.test(ctype) || /html/.test(ctype) || /xml/.test(ctype)) {
+                    html = html.replace(/""/g, '<a href="">""</a>');
+                    html = html.replace(/"([^">\n]+)"/g, '"<a href="$1">$1</a>"');
+                } else if (/text\/uri-list/.test(ctype)) {
+                    html = html.replace(/^.*$/gm, '<a href="$&">$&</a>');
+                } else {
+                    html = html.replace(/&lt;&gt;/g, '<a href="">&lt;&gt;</a>');
+                    html = html.replace(/&lt;([^\n]+?)&gt;/g, '&lt;<a href="$1">$1</a>&gt;');
+                }
+                elt.innerHTML = html;
+                enhancing = setTimeout(enhanceContent.bind(self, elements, ctype, i+1), 0);
             }
-            response.innerHTML = html;
         }
 
         function updateCtypeSelect(newCtype) {
@@ -234,7 +252,11 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 methodSelect.selectedIndex = 0;
                 updateCombo({ target: methodSelect });
             }
-            var req = new XMLHttpRequest(),
+            if (req !== null) {
+                req.abort();
+                console.log("aborting previous request");
+            }
+            req = new XMLHttpRequest(),
                 method = methodInput.value || "GET",
                 url = addressbar.value;
             base.href = addressbar.value;
@@ -281,14 +303,22 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                     window.history.pushState({}, newUrl, newUrl);
                 }
             }
+            if (enhancing !== null) {
+                //clearTimeout(enhancing);
+            }
             response.textContent = "";
+            response.appendChild(loading);
+            response.appendChild(error);
             response.classList.remove("error");
             response.classList.add("loading");
-            response.textContent = "loading...";
             responseHeaders.innerHTML = "";
+            var oldLength = 0;
+            var ctype;
+            var remaining = "";
 
             req.onreadystatechange = function() {
                 if (req.readyState === 2) {
+                    //console.log("received header");
 
                     // display response headers
                     req.getAllResponseHeaders().split("\n").forEach(function(rh) {
@@ -323,19 +353,39 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                         etag = req.getResponseHeader("etag");
 
                         // content-type
-                        var ctype = req.getResponseHeader("content-type");
+                        ctype = req.getResponseHeader("content-type");
                         if (ctype) {
                             updateCtypeSelect(ctype.split(";", 1)[0]);
                         }
                     }
                 } else if (req.readyState === 3) {
-                    response.textContent = req.responseText;
+                    //console.log("received content part");
+                    remaining += req.responseText.substr(oldLength);
+                    oldLength = req.responseText.length;
+                    var lines = remaining.split('\n');
+                    if (lines.length && remaining[-1] !== '\n') {
+                        remaining = lines.pop(-1);
+                    } else {
+                        remaining = "";
+                    }
+                    for (var i=0; i<lines.length; i+=1) {
+                        var line = lines[i];
+                        var span = document.createElement('span');
+                        span.textContent = line + '\n';
+                        response.appendChild(span);
+                    }
                 } else if (req.readyState === 4) {
+                    //console.log("received end of response");
+                    if (remaining) {
+                        var span = document.createElement('span');
+                        span.textContent = remaining;
+                        response.appendChild(span);
+                    }
+                    enhanceContent(response.children, ctype, 0);
                     document.title = "REST Console - " + addressbar.value;
                     response.classList.remove("loading");
                     if (Math.floor(req.status / 100) === 2) {
                         response.classList.remove("error");
-                        response.innerHTML = "";
                         if (req.getResponseHeader("content-type").startsWith('x-gereco') &&
                               // only trust x-gereco/* mime-types if they come from the same server
                               addressbar.value === window.location.toString()) {
@@ -356,22 +406,18 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                             };
                             iframe.srcdoc = req.responseText;
                             response.appendChild(iframe);
-                        } else {
-                            response.textContent = req.responseText;
-                            if (req.responseText.length < 1000000) {
-                                enhanceResponse(req);
-                            }
                         }
                     } else {
                         response.classList.add("error");
                         if (req.statusText) {
-                            response.textContent =
+                            error.textContent =
                                 req.status + " " + req.statusText + "\n\n" +
                                 req.responseText;
                         } else {
-                            response.textContent = "Can not reach " + addressbar.value;
+                            error.textContent = "Can not reach " + addressbar.value;
                         }
                     }
+                    req = null;
                 }
             };
             if (payload.disabled) req.send();
@@ -379,7 +425,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         }
 
         function interceptLinks (evt) {
-            foobar = evt.target;
             if (evt.target.nodeName === "A" &&
                   !evt.ctrlKey &&
                   (!evt.target.target || evt.target.target === '_self')) {
