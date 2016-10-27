@@ -70,7 +70,6 @@ class ValueConverter(object):
 
     def uri(self, uri, _len_ktbs=LEN_KTBS):
         """Convert URI"""
-        print "===", self._base, uri
         if uri.startswith(KTBS_NS_URI):
             return uri[_len_ktbs:]
         for ns, prefix, len_ns in self._prefixes:
@@ -78,16 +77,13 @@ class ValueConverter(object):
                 return "%s:%s" % (prefix, uri[len_ns:])
         if self._base is not None:
             if uri.startswith(self._base_hash):
-                print "===", 1, uri[self._len_base:]
                 return uri[self._len_base:]
             if uri.startswith(self._dir):
-                print "===", 2, uri[self._len_dir:] or "./"
                 ret = uri[self._len_dir:]
                 if not ret or ret[0] == '#':
                     ret = "./%s" % ret
                 return ret or "./"
             elif self._parent and uri.startswith(self._parent):
-                print "===", 3, "../%s" % uri[self._len_parent:]
                 return "../%s" % uri[self._len_parent:]
         return uri
 
