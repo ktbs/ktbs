@@ -222,6 +222,14 @@ class HttpFrontend(object):
             # else we can be certain that the serializer exists, so:
             serializer, ext = get_serializer_by_content_type(ctype, rdf_type)
 
+        # get graph and redirect if needed
+        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
+        graph = resource.get_state(params or None)
+        redirect = getattr(graph, "redirect_to", None)
+        if redirect is not None:
+            return self.issue_error(303, request, None,
+                                    location=redirect)
+
         # populate response header according to serializer
         if ctype[:5] == "text/":
             headerlist.append(("content-type", ctype+";charset=utf-8"))
@@ -230,23 +238,24 @@ class HttpFrontend(object):
         if ext is not None:
             headerlist.append(("content-location",
                                str("%s.%s" % (resource.uri, ext))))
-        iter_etags = getattr(resource, "iter_etags", None)
-        if iter_etags is not None:
+
+        # also insert etags, if available
+        etag_list = getattr(graph, "etags", None)
+        if etag_list is None:
+            iter_etags = getattr(resource, "iter_etags", None)
+            if iter_etags is not None:
+                etag_list = list(iter_etags(params or None))
+        if etag_list:
             etags = " ".join( 'W/"%s"' % taint_etag(i, ctype)
-                              for i in iter_etags(params or None) )
+                              for i in etag_list )
             headerlist.append(("etag", etags))
+
+        # also insert last-modified, if available
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
             last_modified = datetime.fromtimestamp(last_modified, UTC)
             headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
-        # get graph and redirect if needed
-        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
-        graph = resource.get_state(params or None)
-        redirect = getattr(graph, "redirect_to", None)
-        if redirect is not None:
-            return self.issue_error(303, request, None,
-                                    location=redirect)
         # also insert navigation links if available
         next_link = getattr(graph, "next_link", None)
         if next_link is not None:
@@ -277,7 +286,7 @@ class HttpFrontend(object):
                 response.cache_control = cache_control
 
         return response
-            
+
 
     def http_head(self, request, resource):
         """Process a HEAD request on the given resource.

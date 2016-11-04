@@ -234,15 +234,21 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 query_epilogue += " OFFSET %s" % offset
 
             query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
+            SELECT ?obs ?e { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
             """ % (query_filter, query_epilogue)
 
             # add description of all matching obsels
             self_state = self.state
             obs = None
-            for obs, in self.state.query(query_str): #/!\ returns 1-uples
+            maxe = None
+            for obs, end in self.state.query(query_str): #/!\ returns 1-uples
+                if reverse and maxe is None:
+                    maxe = end
                 get_obsel_bounded_description(obs, self_state, graph)
+            if maxe is None:
+                maxe = end
 
+            # compute link to next page
             if limit and obs:
                 obs_id = obs.rsplit("/", 1)[1]
                 if reverse:
@@ -258,6 +264,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 if maxe:
                     qstr += "&maxe=%s" % maxe
                 graph.next_link = self.uri + qstr
+
+            # compute etags
+            graph.etags = list(self.iter_etags({'maxe': end}))
 
             return graph
 
@@ -394,6 +403,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 
         I return self.etag, plus the appropriate monotonicity tag depending
         on the given parameters.
+
+        IMPORTANT: the only parameter actually used to determine monotonicity
+        etags is 'maxe', as it would be too costly to determine it for other
+        parameters.
+        Note however that get_state() does use this method with an accurate
+        'maxe' value (based on the actual obsels rather than on paremeters),
+        in order to precisely get etags.
         """
         yield self.etag
         if parameters is not None:
