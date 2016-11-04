@@ -41,14 +41,14 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 }
 
 
-.combo input:disabled ,
-.combo input:enabled + select
-{
-    width: 0;
-}
 .combo input:disabled
 {
+    width: 0;
     opacity: 0;
+}
+.combo input:enabled + select
+{
+    width: .5em;
 }
 
 #method input:enabled ,
@@ -144,6 +144,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
           <option>*/*</option>
           <option>x-gereco/*</option>
           <option>application/json</option>
+          <option>application/sparql-query</option>
           <option>application/xml</option>
           <option>text/html</option>
           <option>text/plain</option>
@@ -358,8 +359,8 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                             updateCtypeSelect(ctype.split(";", 1)[0]);
                         }
                     }
-                } else if (req.readyState === 3) {
-                    //console.log("received content part");
+                } else if (req.readyState >= 3) {
+                    //console.log("received content part: " + req.responseText.substr(oldLength));
                     remaining += req.responseText.substr(oldLength);
                     oldLength = req.responseText.length;
                     var lines = remaining.split('\n');
@@ -374,50 +375,52 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                         span.textContent = line + '\n';
                         response.appendChild(span);
                     }
-                } else if (req.readyState === 4) {
-                    //console.log("received end of response");
-                    if (remaining) {
-                        var span = document.createElement('span');
-                        span.textContent = remaining;
-                        response.appendChild(span);
-                    }
-                    enhanceContent(response.children, ctype, 0);
-                    document.title = "REST Console - " + addressbar.value;
-                    response.classList.remove("loading");
-                    if (Math.floor(req.status / 100) === 2) {
-                        response.classList.remove("error");
-                        if (req.getResponseHeader("content-type").startsWith('x-gereco') &&
-                              // only trust x-gereco/* mime-types if they come from the same server
-                              addressbar.value === window.location.toString()) {
-                            var iframe = document.createElement('iframe');
-                            iframe.seamless = true;
-                            iframe.scrolling = "no";
-                            iframe.onload = function() {
-                                var ifdoc = iframe.contentDocument;
-                                iframe.style.height = (ifdoc.body.scrollHeight+32) + 'px';
-                                iframe.style.width = (ifdoc.body.scrollWidth+32) + 'px';
-                                var theme = document.querySelector('style#theme');
-                                ifdoc.head.insertBefore(
-                                    theme.cloneNode(true),
-                                    ifdoc.head.children[0]
-                                );
 
-                                ifdoc.body.addEventListener("click", interceptLinks);
-                            };
-                            iframe.srcdoc = req.responseText;
-                            response.appendChild(iframe);
+                    if (req.readyState === 4) {
+                        //console.log("received end of response");
+                        if (remaining) {
+                            var span = document.createElement('span');
+                            span.textContent = remaining;
+                            response.appendChild(span);
                         }
-                    } else {
-                        response.classList.add("error");
-                        if (req.statusText) {
-                            error.textContent =
-                                req.status + " " + req.statusText + "\n\n" +
-                                req.responseText;
+                        enhanceContent(response.children, ctype, 0);
+                        document.title = "REST Console - " + addressbar.value;
+                        response.classList.remove("loading");
+                        if (Math.floor(req.status / 100) === 2) {
+                            response.classList.remove("error");
+                            if (req.getResponseHeader("content-type").startsWith('x-gereco') &&
+                                  // only trust x-gereco/* mime-types if they come from the same server
+                                  addressbar.value === window.location.toString()) {
+                                var iframe = document.createElement('iframe');
+                                iframe.seamless = true;
+                                iframe.scrolling = "no";
+                                iframe.onload = function() {
+                                    var ifdoc = iframe.contentDocument;
+                                    iframe.style.height = (ifdoc.body.scrollHeight+32) + 'px';
+                                    iframe.style.width = (ifdoc.body.scrollWidth+32) + 'px';
+                                    var theme = document.querySelector('style#theme');
+                                    ifdoc.head.insertBefore(
+                                        theme.cloneNode(true),
+                                        ifdoc.head.children[0]
+                                    );
+
+                                    ifdoc.body.addEventListener("click", interceptLinks);
+                                };
+                                iframe.srcdoc = req.responseText;
+                                response.appendChild(iframe);
+                            }
                         } else {
-                            error.textContent = "Can not reach " + addressbar.value;
+                            response.classList.add("error");
+                            if (req.statusText) {
+                                error.textContent =
+                                    req.status + " " + req.statusText + "\n\n" +
+                                    req.responseText;
+                            } else {
+                                error.textContent = "Can not reach " + addressbar.value;
+                            }
                         }
-                    }
-                    req = null;
+                        req = null;
+                        }
                 }
             };
             if (payload.disabled) req.send();
