@@ -83,14 +83,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 #response iframe {
   border: none;
 }
-
-#loading, #error {
-  display: none;
-}
-
-.loading #loading, .error #error {
-  display: block
-}
     </style>
     <style id="theme" type="text/css">
 /* importing theme.css */
@@ -161,7 +153,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
     <pre id="response">
       <span id="loading">loading...</span>
-      <span id="error">error XXX</span>
     </pre>
 
     <table id="response-headers"></table>
@@ -185,7 +176,6 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             payload = document.getElementById("payload"),
             response = document.getElementById("response"),
             loading = document.getElementById("loading"),
-            error = document.getElementById("error"),
             responseHeaders = document.getElementById("response-headers"),
             etag = null,
             req = null,
@@ -308,10 +298,9 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                 //clearTimeout(enhancing);
             }
             response.textContent = "";
-            response.appendChild(loading);
-            response.appendChild(error);
             response.classList.remove("error");
             response.classList.add("loading");
+            response.appendChild(loading);
             responseHeaders.innerHTML = "";
             var oldLength = 0;
             var ctype;
@@ -383,9 +372,10 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                             span.textContent = remaining;
                             response.appendChild(span);
                         }
-                        enhanceContent(response.children, ctype, 0);
-                        document.title = "REST Console - " + addressbar.value;
                         response.classList.remove("loading");
+                        response.removeChild(loading);
+                        document.title = "REST Console - " + addressbar.value;
+                        enhanceContent(response.children, ctype, 0);
                         if (Math.floor(req.status / 100) === 2) {
                             response.classList.remove("error");
                             if (req.getResponseHeader("content-type").startsWith('x-gereco') &&
@@ -412,11 +402,11 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                         } else {
                             response.classList.add("error");
                             if (req.statusText) {
-                                error.textContent =
+                                response.textContent =
                                     req.status + " " + req.statusText + "\n\n" +
                                     req.responseText;
                             } else {
-                                error.textContent = "Can not reach " + addressbar.value;
+                                response.textContent = "Can not reach " + addressbar.value;
                             }
                         }
                         req = null;
