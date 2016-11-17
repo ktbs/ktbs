@@ -30,6 +30,8 @@ def parse_args():
                         help="the number of obsels to send per post")
     parser.add_argument("--no-clean", action="store_true",
                         help="if set, do not clean kTBS after stressing")
+    parser.add_argument("-c", "--cold-start", type=int, default=0,
+                        help="the number of iterations to ignore in the average")
     ARGS = parser.parse_args()
 
 def setUp():
@@ -67,6 +69,7 @@ def task():
         res = timeit(create_P_obsels, number=1)
         print "%ss" % res
         results.append(res)
+    results = results[ARGS.cold_start:]
     print "average: %ss" % (sum(results)/len(results))
 
 def tearDown():
