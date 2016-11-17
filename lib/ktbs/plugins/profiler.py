@@ -31,6 +31,9 @@ from datetime import datetime
 from os.path import join
 from webob import Request
 
+import logging
+LOG = logging.getLogger(__name__)
+
 from rdfrest.http_server import \
     register_middleware, unregister_middleware, MyResponse, TOP
 
@@ -68,6 +71,8 @@ def start_plugin(config):
     register_middleware(TOP, ProfilerMiddleware)
     if config.has_section('profiler') and config.has_option('profiler', 'directory'):
         ProfilerMiddleware.DIRECTORY = config.get('profiler', 'directory')
+    else:
+        LOG.error("No profiler section in config; profiler disabled")
 
 def stop_plugin():
     unregister_middleware(ProfilerMiddleware)
