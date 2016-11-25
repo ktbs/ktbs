@@ -62,6 +62,33 @@ class TraceModelMixin(InBaseMixin):
         with self.edit(_trust=True) as graph:
             graph.set((self.uri, KTBS.hasUnit, unit))
 
+    def get_jsonld_context(self):
+        """
+        Return a json-ld context built from to current model to exchange
+        simple json data with the users.
+
+        :return: A dictionnary that is a json-ld context for the model
+        """
+        model_context = { } # "m": unicode(self.uri) }
+
+        for ot in self.obsel_types:
+            model_context[ot.id[1:]] = { "@id": unicode(ot.uri),
+                                         "@type": "@id" }
+
+        for at in self.attribute_types:
+            data_type = at.data_types if not(isinstance(at.data_types,
+                                                        list)) \
+                                      else at.data_types[0]
+
+            model_context[at.id[1:]] = { "@id": unicode(at.uri),
+                                         "@type": unicode(data_type) }
+
+        for rt in self.relation_types:
+            model_context[rt.id[1:]] = { "@id": unicode(rt.uri),
+                                         "@type": "@id" }
+
+        return model_context
+
     def get(self, id):
         """
         Return the pythonic instance corresponding to the given id, or None.

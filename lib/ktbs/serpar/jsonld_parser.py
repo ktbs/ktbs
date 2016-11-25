@@ -134,14 +134,11 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             if not obsel_context:
                 json_data["@context"] = CONTEXT_URI
             else:
-                model_uri = factory(base_uri, [KTBS.AbstractTrace]).model_uri
-                if model_uri[-1] not in { "/", "#" }:
-                    model_uri += "#"
+                model = factory(base_uri, [KTBS.AbstractTrace]).model
                 json_data["@context"] = [
                     CONTEXT_URI,
-                    { "m": unicode(model_uri) },
                 ]
-
+                json_data["@context"].append(model.get_jsonld_context())
 
         # ... then parse!
         normalized_json = normalize(json_data, pylod_options(base_uri))

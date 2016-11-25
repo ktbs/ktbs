@@ -120,7 +120,7 @@ holding the set of resources together in its ``@graph`` attribute.
 
    Note that all relative IRIs in this example are interpreted against the IRI *of the model*
    (as it is the target IRI of the PUT request).
-   For the sake of clarity, the ``@id`` of the obsel contains its full IRI,
+   For the sake of clarity, the ``@id`` of the model contains its full IRI,
    but the empty relative IRI ``""`` would work as well.
    All components of the models have their IRI starting with ``#``,
    so ``#EnterChatRoom`` is a shorthand for ``http://localhost:8001/base1/model1#EnterChatRoom``,
