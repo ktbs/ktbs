@@ -1241,7 +1241,7 @@ class TestJsonObsels(KtbsTestCase):
         self.t1.default_subject = "foobar"
         graph = parse_json(dumps(
         {
-            "@type": "m:OT1",
+            "@type": "OT1",
         }), self.t1.uri)
         ret = self.t1.post_graph(graph)
         assert len(ret) == 1
@@ -1256,11 +1256,11 @@ class TestJsonObsels(KtbsTestCase):
         self.t1.default_subject = "foobar"
         graph = parse_json(dumps(
         [{
-            "@type": "m:OT1",
+            "@type": "OT1",
             "begin": 4000,
         },
         {
-            "@type": "m:OT1",
+            "@type": "OT1",
             "begin": 5000,
         }]), self.t1.uri)
 

@@ -21,7 +21,7 @@
 """
 I provide the pythonic interface of ktbs:TraceModel .
 """
-from rdflib import Literal, RDF
+from rdflib import Literal, RDF, XSD
 from warnings import warn
 
 from rdfrest.cores.factory import factory as universal_factory
@@ -76,9 +76,14 @@ class TraceModelMixin(InBaseMixin):
                                          "@type": "@id" }
 
         for at in self.attribute_types:
-            data_type = at.data_types if not(isinstance(at.data_types,
-                                                        list)) \
-                                      else at.data_types[0]
+            # at.data_types can be empty
+            if isinstance(at.data_types, list):
+                if len(at.data_types) > 0:
+                    data_type = at.data_types[0]
+                else:
+                    data_type = XSD.String
+            else:
+                data_type = at.data_types
 
             model_context[at.id[1:]] = { "@id": unicode(at.uri),
                                          "@type": unicode(data_type) }
