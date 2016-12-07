@@ -29,6 +29,7 @@ to ensure that all the code is actually ran in the profiler
 from cProfile import runctx as run_in_profiler
 from datetime import datetime
 from os.path import join
+from tempfile import gettempdir
 from webob import Request
 
 import logging
@@ -39,7 +40,7 @@ from rdfrest.http_server import \
 
 class ProfilerMiddleware(object):
 
-    DIRECTORY = "/tmp"
+    DIRECTORY = gettempdir()
 
     def __init__(self, app):
         self.app = app
@@ -68,11 +69,9 @@ RET = list(resp(environ, start_response))
             return my_globals['RET']
 
 def start_plugin(config):
-    register_middleware(TOP, ProfilerMiddleware)
     if config.has_section('profiler') and config.has_option('profiler', 'directory'):
         ProfilerMiddleware.DIRECTORY = config.get('profiler', 'directory')
-    else:
-        LOG.error("No profiler section in config; profiler disabled")
+    register_middleware(TOP, ProfilerMiddleware)
 
 def stop_plugin():
     unregister_middleware(ProfilerMiddleware)
