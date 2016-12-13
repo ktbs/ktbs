@@ -22,11 +22,12 @@
 I provide the pythonic interface of ktbs:TraceModel .
 """
 from rdflib import Literal, RDF, XSD
+from rdfrest.cores.hosted import HostedCore
 from warnings import warn
 
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.util import coerce_to_uri, parent_uri
-from rdfrest.wrappers import register_wrapper
+from rdfrest.wrappers import register_wrapper, get_wrapped
 from .base import InBaseMixin
 from .resource import KtbsResourceMixin
 from ..namespace import KTBS, KTBS_NS_URI
@@ -114,7 +115,7 @@ class TraceModelMixin(InBaseMixin):
             if rdf_type in (KTBS.AttributeType,
                             KTBS.ObselType,
                             KTBS.RelationType):
-                ret = self.factory(uri, [rdf_type])
+                ret = self.element_factory(uri, [rdf_type])
                 assert isinstance(ret, _ModelElementMixin)
                 return ret
         return None
@@ -136,11 +137,22 @@ class TraceModelMixin(InBaseMixin):
                         cache.add(i)
                         yield i
 
+    def element_factory(self, uri, types):
+        """
+        A specific factory method for elements belonging to that model.
+        """
+        if types:
+            py_class = get_wrapped(HostedCore, types)
+        else:
+            py_class = HostedCore
+        return py_class(self, uri)
+
+
     def iter_attribute_types(self, include_inherited=True):
         """
         I iter over the attribute types used in this trace model.
         """
-        factory = self.factory
+        factory = self.element_factory
         for uri in self.state.subjects(RDF.type, KTBS.AttributeType):
             yield factory(uri, [KTBS.AttributeType])
         if include_inherited:
@@ -152,7 +164,7 @@ class TraceModelMixin(InBaseMixin):
         """
         I iter over the obsel types used in this trace model.
         """
-        factory = self.factory
+        factory = self.element_factory
         for uri in self.state.subjects(RDF.type, KTBS.ObselType):
             yield factory(uri, [KTBS.ObselType])
         if include_inherited:
@@ -164,7 +176,7 @@ class TraceModelMixin(InBaseMixin):
         """
         I iter over the relation types used in this trace model.
         """
-        factory = self.factory
+        factory = self.element_factory
         for uri in self.state.subjects(RDF.type, KTBS.RelationType):
             yield factory(uri, [KTBS.RelationType])
         if include_inherited:
@@ -211,7 +223,7 @@ class TraceModelMixin(InBaseMixin):
             for i in supertypes:
                 graph_add((uri, KTBS.hasSuperObselType,
                            coerce_to_uri(i, base_uri)))
-        ret = self.factory(uri, [KTBS.ObselType])
+        ret = self.element_factory(uri, [KTBS.ObselType])
         assert isinstance(ret, ObselTypeMixin)
         return ret
 
@@ -257,7 +269,7 @@ class TraceModelMixin(InBaseMixin):
             for i in supertypes:
                 graph_add((uri, KTBS.hasSuperRelationType,
                      coerce_to_uri(i, base_uri)))
-        ret = self.factory(uri, [KTBS.RelationType])
+        ret = self.element_factory(uri, [KTBS.RelationType])
         assert isinstance(ret, RelationTypeMixin)
         return ret
 
@@ -304,7 +316,7 @@ class TraceModelMixin(InBaseMixin):
             # TODO SOON make use of value_is_list
             # ... in the meantime, we lure pylint into ignoring it:
             _ = value_is_list
-        ret = self.factory(uri, [KTBS.AttributeType])
+        ret = self.element_factory(uri, [KTBS.AttributeType])
         assert isinstance(ret, AttributeTypeMixin)
         return ret
 

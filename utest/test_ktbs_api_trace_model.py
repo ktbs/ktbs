@@ -25,7 +25,7 @@ Nose unit-testing for the kTBS model client API.
 from unittest import skip
 from pytest import raises as assert_raises
 
-from rdflib import URIRef, XSD
+from rdflib import URIRef, RDF, XSD
 
 from rdfrest.exceptions import InvalidDataError
 
@@ -374,6 +374,14 @@ class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
                                              obsel_types=[orig.uri],
                                              data_types=[XSD.integer])
         assert orig.attribute_types == [attribute_type]
+
+    def test_access_foreign_attribute_type(self):
+        foreign_uri = URIRef('http://example.org/some-attribute')
+        with self.model.edit() as g:
+            g.add((foreign_uri, RDF.type, KTBS.AttributeType))
+        ats = self.model.attribute_types
+        assert len(ats) == 1
+        assert ats[0].uri == foreign_uri
 
     ######## remove ########
 
