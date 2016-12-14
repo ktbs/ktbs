@@ -1,9 +1,12 @@
+#!/usr/bin/env python
 from argparse import ArgumentParser
 from sys import stderr
 from timeit import timeit
 
 from os import fork
 
+from rdflib import Graph, BNode
+from rdflib import Literal
 from rdfrest.cores.http_client import set_http_option
 from ktbs.client import get_ktbs
 from ktbs.engine.service import make_ktbs
@@ -42,7 +45,7 @@ def setUp():
         ARGS.ktbs = my_ktbs.uri
     elif ARGS.ktbs.startswith("file://"):
         ktbs_config = get_ktbs_configuration()
-        config.set('rdf_database', 'repository', ARGS.ktbs[7:])
+        ktbs_config.set('rdf_database', 'repository', ARGS.ktbs[7:])
         my_ktbs = make_ktbs(ktbs_config)
         ARGS.ktbs = my_ktbs.uri
     else:
@@ -62,10 +65,18 @@ def task():
     for i in xrange(ARGS.iterations):
         def create_P_obsels():
             for j in xrange(ARGS.nbpost):
-                if ARGS.nbobs > 1:
-                    raise NotImplementedError("batch post not supported yet")
-                trace.create_obsel(None, "#obsel", subject="Alice",
-                                   no_return=True)
+                if ARGS.nbobs == 1:
+                    trace.create_obsel(None, "#obsel", subject="Alice",
+                                       no_return=True)
+                else:
+                    g = Graph()
+                    for k in range(ARGS.nbobs):
+                        obs = BNode()
+                        g.add((obs, KTBS.hasTrace, trace.uri))
+                        g.add((obs, KTBS.hasBegin, Literal(i*ARGS.nbpost + j*ARGS.nbobs + k)))
+                        g.add((obs, KTBS.hasSubject, Literal("Alice")))
+                    trace.post_graph(g)
+
         res = timeit(create_P_obsels, number=1)
         print "%ss" % res
         results.append(res)
