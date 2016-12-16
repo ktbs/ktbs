@@ -70,7 +70,8 @@ class TraceModelMixin(InBaseMixin):
 
         :return: A dictionnary that is a json-ld context for the model
         """
-        model_context = { } # "m": unicode(self.uri) }
+        model_context = {"id": "@id",
+                         "type": "@type"}
 
         for ot in self.obsel_types:
             model_context[ot.id[1:]] = { "@id": unicode(ot.uri),
