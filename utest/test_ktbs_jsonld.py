@@ -21,9 +21,12 @@
 from pprint import pformat
 from unittest import skip
 
+from webtest import TestApp
+
 from rdflib.compare import graph_diff
 
 from rdfrest.cores.factory import unregister_service
+from rdfrest.http_server import HttpFrontend
 from ktbs.api.base import BaseMixin
 from ktbs.api.method import MethodMixin
 from ktbs.api.obsel import ObselMixin
@@ -1272,6 +1275,43 @@ class TestJsonObsels(KtbsTestCase):
         newobsel2 = self.t1.factory(ret[1], [KTBS.Obsel])
         assert isinstance(newobsel2, ObselMixin)
         assert newobsel2.obsel_type == self.ot1, newobsel2.obsel_type
+
+class TestFunctionnalJsonObsels(KtbsTestCase):
+
+    def setup(self):
+        super(TestFunctionnalJsonObsels, self).setup()
+        self.base = self.my_ktbs.create_base("b1/")
+        self.model = self.base.create_model("modl",)
+        self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
+        self.at1 = self.model.create_attribute_type("#at1", [ot1])
+        self.at2 = self.model.create_attribute_type("#at2", [ot1])
+        self.rt1 = self.model.create_attribute_type("#rt1", [ot1], [ot1])
+        self.t1 = self.base.create_stored_trace("t1/", self.model,
+                                                "1970-01-01T00:00:00Z")
+
+        application = HttpFrontend(self.service, self.service.config)
+
+        self.app = TestApp(application)
+
+    def teardown(self):
+        super(TestFunctionnalJsonObsels, self).teardown()
+        self.base = None
+        self.model = self.ot1 = self.at1 = self.at2 = self.rt1 = None
+        self.t1 = None
+
+    def test_o1(self):
+        """Test posting a pure json obsel now that we build a smart json-ld
+        context with the model and the kTBS data.
+        """
+        simple_obsel = {
+            "id": "obsel-1",
+            "type": "OT1"
+        }
+
+        resp = self.app.post_json(str(self.t1.uri),
+                                  simple_obsel)
+        assert resp.status_int == 201
+        assert resp.location.endswith("obsel-1")
 
 class TestJsonStats(KtbsTestCase):
 
