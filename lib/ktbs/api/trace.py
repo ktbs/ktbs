@@ -97,7 +97,7 @@ class AbstractTraceMixin(InBaseMixin):
             origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, refresh=None):
+    def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, limit=None, refresh=None):
         """
         Iter over the obsels of this trace.
 
@@ -117,6 +117,7 @@ class AbstractTraceMixin(InBaseMixin):
         * before: an obsel
         * reverse: an object with a truth value
         * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
+        * limit: an int
         * refresh: 
 
           - if "no", prevent force_state_refresh to be called
@@ -177,6 +178,8 @@ class AbstractTraceMixin(InBaseMixin):
             postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
         else:
             postface += "ORDER BY ?e ?b ?obs"
+        if limit is not None:
+            postface += " LIMIT %s" % limit
         if bgp is None:
             bgp = ""
         else:
@@ -207,6 +210,7 @@ class AbstractTraceMixin(InBaseMixin):
                 %s
             } %s
         """ % (self.uri, filters, bgp, postface)
+        print "===", query_str
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for obs_uri, in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)

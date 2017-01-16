@@ -76,6 +76,14 @@ class _TestIterObselsMixin(object):
         """
         assert self.obsels == self.t.list_obsels(bgp=bgp)
 
+    def test_limit(self):
+        assert self.obsels[:1] == self.t.list_obsels(limit=1)
+        assert self.obsels[:3] == self.t.list_obsels(limit=3)
+        assert self.obsels == self.t.list_obsels(limit=len(self.obsels)+1)
+
+    def test_limit_reverse(self):
+        assert self.obsels[-1:] == self.t.list_obsels(reverse=True, limit=1)
+
     def test_multiple_params(self):
         bgp = """
             ?obs a m:OT2.
