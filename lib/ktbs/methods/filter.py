@@ -24,7 +24,7 @@ from rdflib import Literal, RDF, URIRef, Graph
 from rdfrest.util.iso8601 import parse_date
 from rdfrest.util import check_new
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
-from .utils import translate_node
+from .utils import copy_obsel, translate_node
 from ..engine.builtin_method import register_builtin_method_impl
 from ..namespace import KTBS
 from ..time import get_converter_to_unit, lit2datetime #pylint: disable=E0611
@@ -134,7 +134,6 @@ class _FilterMethod(AbstractMonosourceMethod):
         source_uri = source.uri
         target_uri = computed_trace.uri
         source_state = source_obsels.state
-        source_triples = source_state.triples
         target_contains = target_obsels.state.__contains__
         target_add_graph = target_obsels.add_obsel_graph
         check_new_obs = lambda uri, g=target_obsels.state: check_new(g, uri)
@@ -163,32 +162,11 @@ class _FilterMethod(AbstractMonosourceMethod):
                     LOG.debug("--- skipping %s", new_obs_uri)
                     continue # already added
 
-
                 LOG.debug("--- keeping %s", obs)
-                new_obs_graph = Graph()
-                new_obs_add = new_obs_graph.add
-
-                new_obs_add((new_obs_uri, KTBS.hasTrace, target_uri))
-                new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obs.uri))
-
-                for _, pred, obj in source_triples((obs.uri, None, None)):
-                    if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
-                        continue
-                    new_obj = translate_node(obj, computed_trace, source_uri,
-                                             False, check_new_obs)
-                    if new_obj is None:
-                        continue # skip relations to nodes that are filtered out or not created yet
-                    new_obs_add((new_obs_uri, pred, new_obj))
-
-                for subj, pred, _ in source_triples((None, None, obs.uri)):
-                    if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
-                        continue
-                    new_subj = translate_node(subj, computed_trace, source_uri,
-                                              False, check_new_obs)
-                    if new_subj is None:
-                        continue # skip relations from nodes that are filtered out or not created yet
-                    new_obs_add((new_subj, pred, new_obs_uri))
-
+                new_obs_graph = copy_obsel(obs, computed_trace, source,
+                                           new_obs_uri=new_obs_uri,
+                                           check_new_obs=check_new_obs,
+                )
                 target_add_graph(new_obs_graph)
 
         cstate["passed_maxtime"] = passed_maxtime
