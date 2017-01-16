@@ -35,6 +35,7 @@ from rdflib import Graph, RDF, URIRef
 from rdflib.namespace import ClosedNamespace
 
 from rdfrest.cores.local import LocalCore, Service
+from rdfrest.util.helper_service import make_helper_service
 
 
 KTBS_NS_URI = "http://liris.cnrs.fr/silex/2009/ktbs"
@@ -520,29 +521,7 @@ KTBS = ClosedNamespace(KTBS_NS_URI + "#",
                        KTBS_IDENTIFIERS,
                        )
 
-class _KtbsNsResource(LocalCore):
-    """I am the only resource class of KTBS_NS_SERVICE.
-
-    KTBS_NS_SERVICE provides a local copy of the kTBS namespace.
-    """
-    # too few public methods (1/2) #pylint: disable=R0903
-    RDF_MAIN_TYPE = URIRef("http://www.w3.org/2002/07/owl#Ontology")
-
-    @classmethod
-    def init_service(cls, service):
-        """I populate a service the kTBS namespace at its root.
-        """
-        cls.create(service, KTBS_NS_URIREF, KTBS_NS_GRAPH)
-
-from rdfrest.util.config import get_service_configuration
-
-service_config = get_service_configuration()
-
-service_config.set('server', 'fixed-root-uri', KTBS_NS_URI)
-#rdflib_plugin.get("IOMemory", Store)(""),
-
-KTBS_NS_SERVICE = Service(classes=[_KtbsNsResource], service_config=service_config,
-                          init_with=_KtbsNsResource.init_service)
+KTBS_NS_SERVICE = make_helper_service(KTBS_NS_URI, KTBS_NS_GRAPH)
 
 if __name__ == "__main__":
     import sys
