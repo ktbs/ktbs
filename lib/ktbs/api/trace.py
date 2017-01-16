@@ -199,7 +199,7 @@ class AbstractTraceMixin(InBaseMixin):
             # (pylint does not know that, hence the directive below)
             obsels_graph = collection.state #pylint: disable=E1101
         query_str = """
-            SELECT ?b ?e ?obs WHERE {
+            SELECT DISTINCT ?obs WHERE {
                 ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
                      <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e .
@@ -208,7 +208,7 @@ class AbstractTraceMixin(InBaseMixin):
             } %s
         """ % (self.uri, filters, bgp, postface)
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
-        for _, _, obs_uri in tuples:
+        for obs_uri, in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
             cls = get_wrapped(ObselProxy, types)
             yield cls(obs_uri, collection, obsels_graph, parameters)
