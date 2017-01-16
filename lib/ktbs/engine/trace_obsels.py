@@ -546,6 +546,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
             LOG.debug("forcing state refresh <%s>", self.uri)
             super(ComputedTraceObsels, self).force_state_refresh(parameters)
             trace = self.trace
+            if refresh_param == 2:
+                parameters['refresh'] = 'default' # do not transmit 'force' to sources
             for src in trace.iter_source_traces():
                 src.obsel_collection.force_state_refresh(parameters)
             if (self.metadata.value(self.uri, METADATA.dirty, None) is not None
