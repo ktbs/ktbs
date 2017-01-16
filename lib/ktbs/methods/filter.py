@@ -60,6 +60,7 @@ class _FilterMethod(AbstractMonosourceMethod):
             ("bgp", None),
             ("passed_maxtime", False),
             ("last_seen", None),
+            ("last_seen_b", None),
         ])
         source = computed_trace.source_traces[0]
         if "before" in params  and  "beforeDT" in params:
@@ -111,25 +112,34 @@ class _FilterMethod(AbstractMonosourceMethod):
         bgp = cstate["bgp"]
         passed_maxtime = cstate["passed_maxtime"]
         last_seen = cstate["last_seen"]
+        if last_seen:
+            last_seen = URIRef(last_seen)
+        last_seen_b = cstate["last_seen_b"]
         if otypes:
             otypes = set( URIRef(i) for i in otypes )
 
         begin = mintime
+        after = None
         if monotonicity is NOT_MON:
             LOG.debug("non-monotonic %s", computed_trace)
             passed_maxtime = False
-            last_seen = None
+            last_seen = last_seen_b = None
             target_obsels._empty() # friend #pylint: disable=W0212
         elif monotonicity is STRICT_MON:
             LOG.debug("strictly temporally monotonic %s", computed_trace)
             if last_seen:
-                begin = last_seen
+                after = last_seen
         elif monotonicity is PSEUDO_MON:
             LOG.debug("pseudo temporally monotonic %s", computed_trace)
-            if last_seen:
-                begin = last_seen - source.get_pseudomon_range()
+            if last_seen_b is not None:
+                begin = last_seen_b - source.get_pseudomon_range()
         else:
             LOG.debug("non-temporally monotonic %s", computed_trace)
+
+        if otypes:
+            filter_otypes = ', '.join( otype.n3() for otype in otypes )
+            bgp = (bgp or '') + '''?obs a ?_filter_otype_.
+            FILTER(?_filter_otype_ in (%s))''' % filter_otypes
 
         source_uri = source.uri
         target_uri = computed_trace.uri
@@ -139,26 +149,14 @@ class _FilterMethod(AbstractMonosourceMethod):
         check_new_obs = lambda uri, g=target_obsels.state: check_new(g, uri)
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
-            for obs in source.iter_obsels(begin=begin, bgp=bgp, refresh="no"):
-                last_seen = obs.begin
-                if maxtime:
-                    if obs.end > maxtime:
-                        LOG.debug("--- passing maxtime on %s", obs)
-                        passed_maxtime = True
-                        break
-                if otypes:
-                    obs_uri = obs.uri
-                    obs_state = obs.state
-                    for otype in otypes:
-                        if (obs_uri, RDF.type, otype) in obs_state:
-                            break
-                    else: # goes with the for (NOT the if)
-                        LOG.debug("--- dropping %s", obs)
-                        continue
-
+            for obs in source.iter_obsels(after=after, begin=begin, end=maxtime, bgp=bgp,
+                                          refresh="no"):
                 new_obs_uri = translate_node(obs.uri, computed_trace,
                                              source_uri, False)
                 if target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
+                    # NB: may happen even when monotonicity is STRICT_MON,
+                    # because last_seen is currently a timestamp
+                    # (and several obsels may have the same ti
                     LOG.debug("--- skipping %s", new_obs_uri)
                     continue # already added
 
@@ -169,7 +167,16 @@ class _FilterMethod(AbstractMonosourceMethod):
                 )
                 target_add_graph(new_obs_graph)
 
+        for obs in source.iter_obsels(begin=begin, reverse=True, limit=1):
+            # iter only once on the last obsel, if any
+            last_seen = obs.uri
+            last_seen_b = obs.begin
+            passed_maxtime = (maxtime is not None  and  obs.end > maxtime)
+
         cstate["passed_maxtime"] = passed_maxtime
+        if last_seen is not None:
+            last_seen = unicode(last_seen)
         cstate["last_seen"] = last_seen
+        cstate["last_seen_b"] = last_seen_b
 
 register_builtin_method_impl(_FilterMethod())
