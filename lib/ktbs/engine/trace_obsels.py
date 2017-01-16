@@ -21,6 +21,7 @@ I provide the implementation of kTBS obsel collections.
 import traceback
 from itertools import chain
 from logging import getLogger
+import sys
 
 from rdflib import Graph, Literal, RDF
 from rdflib.plugins.sparql.processor import prepareQuery
@@ -566,12 +567,14 @@ class ComputedTraceObsels(AbstractTraceObsels):
                         LOG.warn(traceback.format_exc())
                         diag = Diagnosis(
                             "exception raised while computing obsels",
-                            [ex.message]
+                            [ex.message],
+                            sys.exc_traceback,
                         )
                     if not diag:
                         self.metadata.set((self.uri, METADATA.dirty,
                                               Literal("yes")))
-                        raise CanNotProceedError(unicode(diag))
+                        
+                        raise CanNotProceedError, unicode(diag), diag.traceback
         finally:
             del self.__forcing_state_refresh
 
