@@ -21,12 +21,20 @@
 I provide a convenient way to build a helper service wrapping a single graph.
 """
 from ConfigParser import SafeConfigParser
-from rdflib import RDF, URIRef
+from rdflib import Graph, RDF, URIRef
 
 from rdfrest.cores.local import LocalCore, Service
 
 
-def make_helper_service(uri, graph):
+def make_helper_service(uri, graph, format=None):
+
+    if isinstance(graph, basestring):
+        assert format != None
+        data = graph
+        graph = Graph()
+        graph.parse(data=data, format=format)
+    else:
+        assert isinstance(graph, Graph)
 
     config = SafeConfigParser(allow_no_value=True)
     config.add_section('logging')
