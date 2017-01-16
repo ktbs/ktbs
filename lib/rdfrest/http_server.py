@@ -172,13 +172,9 @@ class HttpFrontend(object):
                                     allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
         
-        with self._service:
-            resource.force_state_refresh()
-            pre_process_request(self._service, request, resource)
-            response = method(request, resource)
-            # NB: even for a GET, we embed method in a "transaction"
-            # because it may nonetheless make some changes (e.g. in
-            # the #metadata graphs)
+        resource.force_state_refresh()
+        pre_process_request(self._service, request, resource)
+        response = method(request, resource)
         return response(environ, start_response)
             
     def http_delete(self, request, resource):
@@ -186,7 +182,8 @@ class HttpFrontend(object):
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)
-        resource.delete(request.environ['rdfrest.parameters'] or None)
+        with self._service:
+            resource.delete(request.environ['rdfrest.parameters'] or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
@@ -326,7 +323,8 @@ class HttpFrontend(object):
                                         "max_triples (%s) was exceeded"
                                         % self.max_triples)
         params = request.environ['rdfrest.parameters']
-        results = resource.post_graph(graph, params or None)
+        with self._service:
+            results = resource.post_graph(graph, params or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
