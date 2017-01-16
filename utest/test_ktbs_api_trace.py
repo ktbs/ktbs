@@ -47,12 +47,17 @@ class _TestIterObselsMixin(object):
     def test_end(self):
         assert self.obsels[:5] == self.t.list_obsels(end=45)
 
-    def test_after(self):
+    def test_after_obsel(self):
         assert self.obsels[3:] == self.t.list_obsels(after=self.o2)
 
-    def test_before(self):
-        print([o.uri for o in self.t.list_obsels(before=self.o3)])
+    def test_after_uri(self):
+        assert self.obsels[3:] == self.t.list_obsels(after=self.o2.uri)
+
+    def test_before_obsel(self):
         assert self.obsels[:3] == self.t.list_obsels(before=self.o3)
+
+    def test_before_uri(self):
+        assert self.obsels[:3] == self.t.list_obsels(before=self.o3.uri)
 
     def test_reverse(self):
         assert self.obsels[::-1] == self.t.list_obsels(reverse=True)

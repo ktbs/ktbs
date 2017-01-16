@@ -29,6 +29,7 @@ from rdflib.term import Node
 
 from datetime import datetime
 
+from ktbs.namespace import KTBS_NS_URI
 from ktbs.time import lit2datetime
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
@@ -113,8 +114,8 @@ class AbstractTraceMixin(InBaseMixin):
 
         * begin: an int, datetime
         * end: an int, datetime
-        * after: an obsel
-        * before: an obsel
+        * after: an obsel, URIRef
+        * before: an obsel, URIRef
         * reverse: an object with a truth value
         * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
         * limit: an int
@@ -138,6 +139,10 @@ class AbstractTraceMixin(InBaseMixin):
         parameters = {}
         filters = []
         postface = ""
+        if bgp is None:
+            bgp = ""
+        else:
+            bgp = "%s" % bgp
         if begin is not None:
             if isinstance(begin, Real):
                 pass # nothing else to do
@@ -159,31 +164,37 @@ class AbstractTraceMixin(InBaseMixin):
             filters.append("?e <= %s" % end)
             parameters["maxe"] = end
         if after is not None:
-            if not isinstance(after, ObselMixin):
+            if isinstance(after, URIRef):
+                bgp += "<{}> :hasBegin ?_after_b_ ; :hasEnd ?_after_e_ . {}" \
+                       .format(after, bgp)
+                after_values = (after, "?_after_b_", "?_after_e_")
+            elif isinstance(after, ObselMixin):
+                after_values = (after.uri, after.begin, after.end)
+            else:
                 raise ValueError("Invalid value for `after` (%r)" % after)
             filters.append("?e > {2} || "
                            "?e = {2} && ?b > {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
-                                after.uri, after.begin, after.end,
-            ))
+                           "?e = {2} && ?b = {1} && str(?obs) > \"{0}\""
+                           .format(*after_values))
         if before is not None:
-            if not isinstance(before, ObselMixin):
+            if isinstance(before, URIRef):
+                bgp = "<{}> :hasBegin ?_before_b_ ; :hasEnd ?_before_e_ . {}" \
+                      .format(before, bgp)
+                before_values = (before, "?_before_b_", "?_before_e_")
+            elif isinstance(before, ObselMixin):
+                before_values = (before.uri, before.begin, before.end)
+            else:
                 raise ValueError("Invalid value for `before` (%r)" % before)
             filters.append("?e < {2} || "
                            "?e = {2} && ?b < {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
-                                before.uri, before.begin, before.end
-            ))
+                           "?e = {2} && ?b = {1} && str(?obs) < \"{0}\""
+                           .format(*before_values))
         if reverse:
             postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
         else:
             postface += "ORDER BY ?e ?b ?obs"
         if limit is not None:
             postface += " LIMIT %s" % limit
-        if bgp is None:
-            bgp = ""
-        else:
-            bgp = "%s" % bgp
         if refresh:
             parameters['refresh'] = refresh
         if not parameters:
@@ -202,15 +213,13 @@ class AbstractTraceMixin(InBaseMixin):
             # (pylint does not know that, hence the directive below)
             obsels_graph = collection.state #pylint: disable=E1101
         query_str = """
+            PREFIX : <%s#>
             SELECT DISTINCT ?obs WHERE {
-                ?obs <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <%s> ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasBegin> ?b ;
-                     <http://liris.cnrs.fr/silex/2009/ktbs#hasEnd> ?e .
+                ?obs :hasTrace <%s>;:hasBegin ?b;:hasEnd ?e .
                 %s
                 %s
             } %s
-        """ % (self.uri, filters, bgp, postface)
-        print "===", query_str
+        """ % (KTBS_NS_URI, self.uri, filters, bgp, postface)
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for obs_uri, in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
