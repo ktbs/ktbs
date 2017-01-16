@@ -674,6 +674,8 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     }
     tobsels_dict['obsels'] = obsel_list = []
 
+    yield tobsels_dict
+
     obsels = graph.query("""
         PREFIX : <%s#>
         SELECT ?obs ?pred ?other ?rev ?trc
@@ -755,7 +757,7 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
 
         obsel_list.append(obs_dict)
 
-    return tobsels_dict
+        yield obs_dict
 
 _OBSEL_TEMPLATE = OrderedDict([
     ('@id', None),
@@ -789,9 +791,23 @@ def serialize_json_trace_obsels(graph, tobsels, bindings=None):
     :param bindings:
     :return:
     """
-    tobsels_dict = trace_obsels_to_json(graph, tobsels, bindings)
+    trace_obsels = trace_obsels_to_json(graph, tobsels, bindings)
 
-    yield dumps(tobsels_dict, ensure_ascii=False, indent=4)
+    globalstruct = dumps(trace_obsels.next(), ensure_ascii=False, indent=4)
+
+    cr_ouvrant = globalstruct.rindex('[')
+    yield globalstruct[:cr_ouvrant+1]
+
+    try:
+        comma = u''
+        for obsel in trace_obsels:
+            yield comma + dumps(obsel, ensure_ascii=False, indent=4)
+            comma = u','
+    except StopIteration:
+        pass
+
+    cr_fermant = globalstruct.rindex(']')
+    yield globalstruct[cr_fermant:]
 
 def trace_stats_to_json(graph, tstats, bindings=None):
     """
