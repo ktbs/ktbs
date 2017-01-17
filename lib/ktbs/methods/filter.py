@@ -59,7 +59,7 @@ class _FilterMethod(AbstractMonosourceMethod):
             ("otypes", None),
             ("bgp", None),
             ("passed_maxtime", False),
-            ("last_seen", None),
+            ("last_seen_u", None),
             ("last_seen_b", None),
         ])
         source = computed_trace.source_traces[0]
@@ -109,26 +109,33 @@ class _FilterMethod(AbstractMonosourceMethod):
         mintime = cstate["mintime"]
         maxtime = cstate["maxtime"]
         otypes = cstate["otypes"]
-        bgp = cstate["bgp"]
-        passed_maxtime = cstate["passed_maxtime"]
-        last_seen = cstate["last_seen"]
-        if last_seen:
-            last_seen = URIRef(last_seen)
-        last_seen_b = cstate["last_seen_b"]
         if otypes:
             otypes = set( URIRef(i) for i in otypes )
+        bgp = cstate["bgp"]
+        passed_maxtime = cstate["passed_maxtime"]
+        try:
+            last_seen_u = cstate["last_seen_u"]
+            if last_seen_u:
+                last_seen_u = URIRef(last_seen_u)
+            last_seen_b = cstate["last_seen_b"]
+        except KeyError:
+            # might be the cstate of an older version of 'filter'
+            last_seen_b = cstate.pop("last_seen", None)
+            last_seen_u = None
+            if monotonicity is STRICT_MON:
+                monotonicity = PSEUDO_MON # ensures a save recovery
 
         begin = mintime
         after = None
         if monotonicity is NOT_MON:
             LOG.debug("non-monotonic %s", computed_trace)
             passed_maxtime = False
-            last_seen = last_seen_b = None
+            last_seen_u = last_seen_b = None
             target_obsels._empty() # friend #pylint: disable=W0212
         elif monotonicity is STRICT_MON:
             LOG.debug("strictly temporally monotonic %s", computed_trace)
-            if last_seen:
-                after = last_seen
+            if last_seen_u:
+                after = last_seen_u
         elif monotonicity is PSEUDO_MON:
             LOG.debug("pseudo temporally monotonic %s", computed_trace)
             if last_seen_b is not None:
@@ -153,11 +160,9 @@ class _FilterMethod(AbstractMonosourceMethod):
                                           refresh="no"):
                 new_obs_uri = translate_node(obs.uri, computed_trace,
                                              source_uri, False)
-                if target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
-                    # NB: may happen even when monotonicity is STRICT_MON,
-                    # because last_seen is currently a timestamp
-                    # (and several obsels may have the same ti
-                    LOG.debug("--- skipping %s", new_obs_uri)
+                if monotonicity is not STRICT_MON\
+                and target_contains((new_obs_uri, KTBS.hasTrace, target_uri)):
+                    LOG.debug("--- already seen %s", new_obs_uri)
                     continue # already added
 
                 LOG.debug("--- keeping %s", obs)
@@ -169,14 +174,14 @@ class _FilterMethod(AbstractMonosourceMethod):
 
         for obs in source.iter_obsels(begin=begin, reverse=True, limit=1):
             # iter only once on the last obsel, if any
-            last_seen = obs.uri
+            last_seen_u = obs.uri
             last_seen_b = obs.begin
             passed_maxtime = (maxtime is not None  and  obs.end > maxtime)
 
         cstate["passed_maxtime"] = passed_maxtime
-        if last_seen is not None:
-            last_seen = unicode(last_seen)
-        cstate["last_seen"] = last_seen
+        if last_seen_u is not None:
+            last_seen_u = unicode(last_seen_u)
+        cstate["last_seen_u"] = last_seen_u
         cstate["last_seen_b"] = last_seen_b
 
 register_builtin_method_impl(_FilterMethod())
