@@ -106,8 +106,6 @@ class _FSAMethod(AbstractMonosourceMethod):
         source_obsels = source.obsel_collection
         target_obsels = computed_trace.obsel_collection
         last_seen = cstate["last_seen"]
-        if last_seen is not None:
-            last_seen = source.service.get(URIRef(last_seen))
 
         fsa = FSA(cstate['fsa'], False) # do not check structure again
         if fsa.default_matcher is None:
@@ -135,11 +133,11 @@ class _FSAMethod(AbstractMonosourceMethod):
         target_uri = computed_trace.uri
         target_model_uri = computed_trace.model_uri
         target_add_graph = target_obsels.add_obsel_graph
+        after = last_seen and URIRef(last_seen)
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
-            for obs in source.iter_obsels(after=last_seen, refresh="no"):
-                last_seen = obs
-                event = unicode(obs.uri)
+            for obs in source.iter_obsels(after=after, refresh="no"):
+                last_seen = event = unicode(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
                     state = KtbsFsaState(fsa, token['state'],
@@ -192,7 +190,7 @@ class _FSAMethod(AbstractMonosourceMethod):
 
                     target_add_graph(new_obs_graph)
 
-        cstate["last_seen"] = last_seen and unicode(last_seen.uri)
+        cstate["last_seen"] = last_seen
         cstate["tokens"] = fsa.export_tokens_as_dict()
 
         if cstate["expose_tokens"]:
