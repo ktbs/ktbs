@@ -249,7 +249,14 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             if maxe is None:
                 maxe = end
 
-            # compute link to next page
+            # canonical link
+            graph.links = links = [{
+                'uri': self.uri,
+                'rel': 'canonical',
+                'etag': iter(self.iter_etags()).next(),
+                'mstable-etag': self.get_str_mon_tag(),
+            }]
+            # link to next page
             if limit and obs:
                 obs_id = obs.rsplit("/", 1)[1]
                 if reverse:
@@ -264,7 +271,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                     qstr += "&mine=%s" % mine
                 if maxe:
                     qstr += "&maxe=%s" % maxe
-                graph.next_link = self.uri + qstr
+                graph.link = self.uri + qstr
+                links.append({'uri': self.uri + qstr, 'rel': 'next'})
 
             # compute etags
             graph.etags = list(self.iter_etags({'maxe': end}))
