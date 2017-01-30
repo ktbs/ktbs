@@ -253,10 +253,13 @@ class HttpFrontend(object):
             last_modified = datetime.fromtimestamp(last_modified, UTC)
             headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
-        # also insert navigation links if available
-        next_link = getattr(graph, "next_link", None)
-        if next_link is not None:
-            headerlist.append(("link", '<%s>;rel="next"' % next_link.encode("utf8")))
+        # also insert links (navigation and other) if available
+        links = getattr(graph, "links", ())
+        for link in links:
+            uri = link.pop('uri')
+            link_props = ';'.join( '%s="%s"' % item for item in link.items() )
+            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf8')
+            headerlist.append(("link", link_val))
 
         # check triples & bytes limitations and serialize
         if self.max_triples is not None  and  len(graph) > self.max_triples:
