@@ -162,7 +162,7 @@ class AbstractTraceObselsMixin(ICore):
             filters = ""
 
         query_str = (
-            "SELECT DISTINCT %s WHERE {"
+            "SELECT %s WHERE {"
                 "?obs ktbs:hasTrace <%s>;ktbs:hasBegin ?b;ktbs:hasEnd ?e."
                 "%s "
                 "%s "

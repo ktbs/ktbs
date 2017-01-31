@@ -166,7 +166,8 @@ class AbstractTraceMixin(InBaseMixin):
             obsels_graph = collection.state #pylint: disable=E1101
         query_str = "PREFIX ktbs: <%s#> %s" % (
             KTBS_NS_URI,
-            collection.build_select(begin, end, after, before, reverse, bgp, limit),
+            collection.build_select(begin, end, after, before, reverse, bgp,
+                                    limit, "DISTINCT ?obs" if bgp else "?obs"),
         )
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for obs_uri, in tuples:
