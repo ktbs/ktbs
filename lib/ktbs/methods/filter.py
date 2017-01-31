@@ -154,10 +154,11 @@ class _FilterMethod(AbstractMonosourceMethod):
         target_contains = target_obsels.state.__contains__
         target_add_graph = target_obsels.add_obsel_graph
         check_new_obs = lambda uri, g=target_obsels.state: check_new(g, uri)
+        source_obsels = source.iter_obsels(after=after, begin=begin,
+                                           end=maxtime, bgp=bgp, refresh="no")
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
-            for obs in source.iter_obsels(after=after, begin=begin, end=maxtime, bgp=bgp,
-                                          refresh="no"):
+            for obs in source_obsels:
                 new_obs_uri = translate_node(obs.uri, computed_trace,
                                              source_uri, False)
                 if monotonicity is not STRICT_MON\
