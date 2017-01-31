@@ -589,7 +589,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         my_ktbs = self.my_ktbs
         with assert_raises(MethodNotAllowedError):
             my_ktbs.delete()
-        assert len(my_ktbs.builtin_methods) == 5
+        assert len(my_ktbs.builtin_methods) == 6
         assert my_ktbs.bases == []
         base = my_ktbs.create_base(label="My new base")
         print "--- base:", base
