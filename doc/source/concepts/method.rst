@@ -149,6 +149,66 @@ a new obsel is generated:
 
 
 
+Incremental Sparql (ISparql)
+````````````````````````````
+This method applies a SPARQL SELECT query to the source trace,
+and builds new obsels with the result.
+
+:sources: 1
+:parameters:
+  :model: the model of the computed trace
+  :origin: the origin of the computed trace
+  :sparql: a SPARQL SELECT query (required)
+:extensible: yes (see below)
+
+The SPARQL query must be a SELECT query.
+Its WHERE clause must contain the magic string ``%(__subselect__)s``,
+which will be replaced with a `subquery`_.
+For each obsel of the source trace,
+this subquery will yield its URI, begin timestamp and end timestamp as
+``?sourceObsel``, ``?sourceBegin`` and ``?sourceEnd``.
+You may then complement the WHERE clause as you see fit.
+
+.. _subquery: https://www.w3.org/TR/sparql11-query/#subqueries
+
+Each row returned by your SELECT query will create a new obsel in the computed trace;
+each variable will add information to the obsel,
+based on the name of the variable, as explained by the table below.
+Note that variables followed with a star (*) are mandatory :
+
+.. list-table::
+   
+   * - ``sourceObsel`` *
+     - a source obsel (``ktbs:sourceObsel``),
+       also used to mint the URI of the computed obsel
+   * - ``type`` *
+     - the obsel type (``rdf:type``)
+   * - ``begin`` *
+     - the begin timestamp (``ktbs:begin``)
+   * - ``end``
+     - the end timestamp (``ktbs:begin``),
+       copied from ``begin`` if not provided
+   * - ``beginDT``
+     - the begin datetime (``ktbs:begin``);
+       note that kTBS does *not* check the consistency with ``begin``
+   * - ``endDT``
+     - the end datetime (``ktbs:begin``),
+       note that kTBS does *not* check the consistency with ``end``
+   * - ``subject``
+     - the subject of the obsel
+   * - (any name starting with ``sourceObsel``)
+     - an additional source obsel (``ktbs:sourceObsel``)
+   * - (any other name)
+     - an attribute built by concatenating the variable name
+       to the namespace of the computed trace's model
+
+If parameter ``model`` (resp. ``origin``) is not provided,
+the model (resp. origin) of the source trace will be used instead.
+
+The SPARQL query can contain magic strings of the form ``%(param_name)s``,
+that will be replaced by the value of
+an additional parameter named ``param_name``.
+
 Sparql
 ``````
 
@@ -204,6 +264,7 @@ Note that the following special parameters are automatically provided:
 ======================== ======================================================
 
 Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
+
 
 External
 ````````
