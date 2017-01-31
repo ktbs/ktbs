@@ -23,7 +23,7 @@ from itertools import chain
 from logging import getLogger
 import sys
 
-from rdflib import Graph, Literal, RDF
+from rdflib import Graph, Literal, RDF, URIRef
 from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
@@ -121,7 +121,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         self.metadata.set((self.uri, METADATA.log_mon_tag, "%sl" % val))
     log_mon_tag = property(get_log_mon_tag, set_log_mon_tag)
 
-
     def add_obsel_graph(self, graph, _trust=True):
         """Add an obsel described in `graph`.
 
@@ -188,8 +187,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
             minb = parameters.get("minb")
-            if minb is not None:
-                query_filter.append("?b >= %s" % minb)
             maxb = parameters.get("maxb")
             if maxb is not None:
                 query_filter.append("?b <= %s" % maxb)
@@ -197,46 +194,25 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             if mine is not None:
                 query_filter.append("?e >= %s" % mine)
             maxe = parameters.get("maxe")
-            if maxe is not None:
-                query_filter.append("?e <= %s" % maxe)
             after = parameters.get("after")
             if after is not None:
-                query_filter.append(
-                    "?e > {2} || "
-                    "?e = {2} && ?b > {1} || "
-                    "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
-                        after.uri, after.begin, after.end,
-                    ))
+                after = URIRef(after)
             before = parameters.get("before")
             if before is not None:
-                query_filter.append(
-                    "?e < {2} || "
-                    "?e = {2} && ?b < {1} || "
-                    "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
-                        before.uri, before.begin, before.end
-                    ))
+                before = URIRef(before)
             if query_filter:
                 query_filter = "FILTER((%s))" % (") && (".join(query_filter))
             else:
                 query_filter = ""
 
-            query_epilogue = ""
             reverse = (parameters.get("reverse", "no").lower()
                        not in ("false", "no", "0"))
-            if reverse:
-                query_epilogue += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
-            else:
-                query_epilogue += "ORDER BY ?e ?b ?obs"
             limit = parameters.get("limit")
-            if limit is not None:
-                query_epilogue += " LIMIT %s" % limit
-            offset = parameters.get("offset")
-            if offset is not None:
-                query_epilogue += " OFFSET %s" % offset
 
-            query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?obs ?e { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
-            """ % (query_filter, query_epilogue)
+            query_str = (
+                "PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> %s"
+                % self.build_select(minb, maxe, after, before, reverse, query_filter, limit, "?obs ?e")
+            )
 
             # add description of all matching obsels
             self_state = self.state
@@ -400,9 +376,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         else:
             self.check_parameters(parameters, parameters, "delete")
             with self.edit(_trust=True) as editable:
-                trace_uri = self.trace.uri
                 editable.remove((None, None, None))
-                self.init_graph(editable, self.uri, trace_uri)
+                self.init_graph(editable, self.uri, self.trace_uri)
 
     # TODO SOON implement check_new_graph on ObselCollection?
     # we should check that the graph only contains well formed obsels
@@ -458,7 +433,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
-        trace_uri = self.trace.uri
+        trace_uri = self.trace_uri
         new_obs = graph.value(None, KTBS.hasTrace, trace_uri)
         if prepared.last_obsel is None:
             prepared.last_obsel = new_obs

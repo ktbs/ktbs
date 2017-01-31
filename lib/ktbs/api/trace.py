@@ -31,6 +31,7 @@ from datetime import datetime
 
 from ktbs.namespace import KTBS_NS_URI
 from ktbs.time import lit2datetime
+from rdfrest.cores.local import ILocalCore
 from rdfrest.cores.factory import factory as universal_factory
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
 from rdfrest.util.iso8601 import parse_date, ParseError, UTC
@@ -137,72 +138,23 @@ class AbstractTraceMixin(InBaseMixin):
         timestamps and identifiers.
         """
         parameters = {}
-        filters = []
-        postface = ""
-        if bgp is None:
-            bgp = ""
-        else:
-            bgp = "%s" % bgp
-        if begin is not None:
-            if isinstance(begin, Real):
-                pass # nothing else to do
-            elif isinstance(begin, datetime):
-                raise NotImplementedError(
-                    "datetime as begin is not implemented yet")
-            else:
-                raise ValueError("Invalid value for `begin` (%r)" % begin)
-            filters.append("?b >= %s" % begin)
-            parameters["minb"] = begin
-        if end is not None:
-            if isinstance(end, Real):
-                pass # nothing else to do
-            elif isinstance(end, datetime):
-                raise NotImplementedError(
-                    "datetime as end is not implemented yet")
-            else:
-                raise ValueError("Invalid value for `end` (%r)" % end)
-            filters.append("?e <= %s" % end)
-            parameters["maxe"] = end
-        if after is not None:
-            if isinstance(after, URIRef):
-                bgp += "<{}> :hasBegin ?_after_b_ ; :hasEnd ?_after_e_ . {}" \
-                       .format(after, bgp)
-                after_values = (after, "?_after_b_", "?_after_e_")
-            elif isinstance(after, ObselMixin):
-                after_values = (after.uri, after.begin, after.end)
-            else:
-                raise ValueError("Invalid value for `after` (%r)" % after)
-            filters.append("?e > {2} || "
-                           "?e = {2} && ?b > {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) > \"{0}\""
-                           .format(*after_values))
-        if before is not None:
-            if isinstance(before, URIRef):
-                bgp = "<{}> :hasBegin ?_before_b_ ; :hasEnd ?_before_e_ . {}" \
-                      .format(before, bgp)
-                before_values = (before, "?_before_b_", "?_before_e_")
-            elif isinstance(before, ObselMixin):
-                before_values = (before.uri, before.begin, before.end)
-            else:
-                raise ValueError("Invalid value for `before` (%r)" % before)
-            filters.append("?e < {2} || "
-                           "?e = {2} && ?b < {1} || "
-                           "?e = {2} && ?b = {1} && str(?obs) < \"{0}\""
-                           .format(*before_values))
-        if reverse:
-            postface += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
-        else:
-            postface += "ORDER BY ?e ?b ?obs"
-        if limit is not None:
-            postface += " LIMIT %s" % limit
+        if not isinstance(self, ILocalCore):
+            # if this resource is remote,
+            # it is better to push as many constraint as possible to the server
+            # if this resource is local,
+            # it is better to leave it to our SPARQL query to handle them
+            if begin is not None:
+                parameters["minb"] = begin
+            if end is not None:
+                parameters["maxe"] = end
+            if after is not None:
+                parameters["after"] = unicode(coerce_to_uri(after))
+            if before is not None:
+                parameters["before"] = unicode(coerce_to_uri(before))
         if refresh:
             parameters['refresh'] = refresh
         if not parameters:
             parameters = None
-        if filters:
-            filters = "FILTER(%s)" % (" && ".join(filters))
-        else:
-            filters = ""
 
         collection = self.obsel_collection
         collection.force_state_refresh(parameters)
@@ -212,14 +164,10 @@ class AbstractTraceMixin(InBaseMixin):
             # we have the raw resource instead, so we access the whole graph
             # (pylint does not know that, hence the directive below)
             obsels_graph = collection.state #pylint: disable=E1101
-        query_str = """
-            PREFIX : <%s#>
-            SELECT DISTINCT ?obs WHERE {
-                ?obs :hasTrace <%s>;:hasBegin ?b;:hasEnd ?e .
-                %s
-                %s
-            } %s
-        """ % (KTBS_NS_URI, self.uri, filters, bgp, postface)
+        query_str = "PREFIX ktbs: <%s#> %s" % (
+            KTBS_NS_URI,
+            collection.build_select(begin, end, after, before, reverse, bgp, limit),
+        )
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for obs_uri, in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
