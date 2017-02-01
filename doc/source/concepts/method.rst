@@ -179,25 +179,25 @@ Note that variables followed with a star (*) are mandatory :
 .. list-table::
    
    * - ``sourceObsel`` *
-     - a source obsel (``ktbs:sourceObsel``),
+     - a source obsel (``ktbs:hasSourceObsel``),
        also used to mint the URI of the computed obsel
    * - ``type`` *
      - the obsel type (``rdf:type``)
    * - ``begin`` *
-     - the begin timestamp (``ktbs:begin``)
+     - the begin timestamp (``ktbs:hasBegin``)
    * - ``end``
-     - the end timestamp (``ktbs:begin``),
+     - the end timestamp (``ktbs:hasEnd``),
        copied from ``begin`` if not provided
    * - ``beginDT``
-     - the begin datetime (``ktbs:begin``);
+     - the begin datetime (``ktbs:hasBeginDT``);
        note that kTBS does *not* check the consistency with ``begin``
    * - ``endDT``
-     - the end datetime (``ktbs:begin``),
+     - the end datetime (``ktbs:hasEndDT``),
        note that kTBS does *not* check the consistency with ``end``
    * - ``subject``
-     - the subject of the obsel
+     - the subject of the obsel (``ktbs:hasSubject``)
    * - (any name starting with ``sourceObsel``)
-     - an additional source obsel (``ktbs:sourceObsel``)
+     - an additional source obsel (``ktbs:hasSourceObsel``)
    * - (any other name)
      - an attribute built by concatenating the variable name
        to the namespace of the computed trace's model
