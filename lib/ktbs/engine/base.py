@@ -62,6 +62,16 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                         }
                     ''', initNs=initNs, initBindings=initBindings)
                 )
+            elif prop == 'hasMethod':
+                enriched_state.addN(
+                    (s, KTBS.hasMethod, o, enriched_state)
+                    for s, o in whole.query('''
+                            SELECT ?t ?m {
+                                GRAPH ?base { ?base :contains ?t }
+                                GRAPH ?t    { ?t :hasMethod ?m }
+                            }
+                        ''', initNs=initNs, initBindings=initBindings)
+                )
             elif prop == 'hasModel':
                 enriched_state.addN(
                     (s, KTBS.hasModel, o, enriched_state)

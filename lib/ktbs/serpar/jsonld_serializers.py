@@ -354,6 +354,10 @@ def serialize_json_base(graph, base, bindings=None):
             if len(rdfs_comments) > 1: rdfs_comments = rdfs_comments[0]
             item['rdf:comments'] = rdfs_comments
 
+        method = graph.value(i.uri, KTBS.hasMethod)
+        if method:
+            item['hasMethod'] = valconv_uri(method)
+
         model = graph.value(i.uri, KTBS.hasModel)
         if model:
             item['hasModel'] = valconv_uri(model)

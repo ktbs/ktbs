@@ -234,7 +234,7 @@ class TestJsonBase(KtbsTestCase):
         self.base.create_stored_trace("t1/", "model", "alonglongtimeago", label="the trace")
         self.base.create_computed_trace("t2/", KTBS.filter, sources=['t1/'])
 
-        params = lambda: {'prop':'comment,hasModel,hasSource,label,obselCount',}
+        params = lambda: {'prop':'comment,hasModel,hasMethod,hasSource,label,obselCount',}
         json_content = "".join(
             serialize_json_base(self.base.get_state(params()), self.base))
         json = loads(json_content)
@@ -251,6 +251,7 @@ class TestJsonBase(KtbsTestCase):
                 { '@id': 't1/', '@type': 'StoredTrace', 'label':"the trace",
                   'hasModel':"model", 'obselCount':obselCount },
                 { '@id': 't2/', '@type': 'ComputedTrace', 'hasModel':"model",
+                  'hasMethod': 'filter',
                   'hasSource':["t1/"], 'obselCount':obselCount },
             ],
         })
