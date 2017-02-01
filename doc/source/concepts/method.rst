@@ -6,6 +6,8 @@ A method is used by a computed trace to determine its model and origin, and to g
 Built-in methods
 ----------------
 
+.. _method_filter:
+
 Filter
 ``````
 
@@ -50,6 +52,8 @@ the obsel, its begin timestamp and its end timestamp.
 The prefix ``m:`` is bound to the source trace model URI.
 
 
+.. _method_fusion:
+
 Fusion
 ``````
 
@@ -66,6 +70,8 @@ then parameter ``model`` (resp. ``origin``) is not required,
 and in that case the computed trace will have
 the same model (resp. origin) as its source(s).
 
+
+.. _method_fsa:
 
 FSA
 ```
@@ -149,6 +155,8 @@ a new obsel is generated:
 
 
 
+.. _method_isparql:
+
 Incremental Sparql (ISparql)
 ````````````````````````````
 This method applies a SPARQL SELECT query to the source trace,
@@ -209,6 +217,27 @@ The SPARQL query can contain magic strings of the form ``%(param_name)s``,
 that will be replaced by the value of
 an additional parameter named ``param_name``.
 
+.. _isparql_limitation:
+
+.. important::
+
+   For the sake of performance, this method works *incrementally*:
+   everytime the trace is re-computed,
+   the `subquery`_ inserted at ``%(__subselect__)s``
+   magically selects only source obsels that have not been considered yet.
+
+   As a consequence,
+   each results of the query should **not depend**
+   on information that appears "later" in the trace than ``?sourceObsel``.
+   Otherwise, the content of the computed trace may vary unpredictably,
+   depending on when the trace is actually computed.
+
+   If you can not guarantee the property above,
+   then you should probably use the `sparql <method_sparql>`:ref: method below instead,
+   understanding that it will not behave as well performancewise.
+
+.. _method_sparql:
+
 Sparql
 ``````
 
@@ -263,8 +292,16 @@ Note that the following special parameters are automatically provided:
  ``__source__``           The URI of the source trace.
 ======================== ======================================================
 
-Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
+.. important::
+   
+  Unlike other methods,
+  this method does not work incrementally: each time the source trace is modified,
+  the whole computed trace is re-generated.
 
+  Therefore,
+  you should consider using the `incremental sparql <method_isparql>`:ref: instead,
+  unless `its limitations <isparql_limitation>`:ref: are too constraining for your needs.
+  
 
 External
 ````````
@@ -322,9 +359,18 @@ Note that this is only possible when there is exactly one source,
 and the format used to serialize the obsels
 will be the same as parameter ``format``.
 
-Note also that, unlike other methods, this method does not work incrementally: each time the source trace is modified, the whole computed trace is re-generated. This may be optimized in the future.
+.. important::
+   
+  Unlike other methods,
+  this method does not work incrementally: each time the source trace is modified,
+  the whole computed trace is re-generated.
 
-
+  Also,
+  this method can raise security issues,
+  as it allows users to run arbitrary commands on the kTBS server.
+  For this reason,
+  this method is not anymore provided by default.
+  It is available as a plugin, which must be explicitly enabled.
 
 
 User-defined methods
