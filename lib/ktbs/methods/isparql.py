@@ -106,6 +106,7 @@ class _ISparqlMethod(AbstractMonosourceMethod):
             i_begin = columns.index('begin')
             rows = ( list(row) + [row[i_begin]] for row in rows )
             columns.append('end')
+        i_sourceObsel = columns.index('sourceObsel')
         columns = [ var2predicate(i, computed_trace.model_uri) for i in columns ]
 
         source_uri = source.uri
@@ -114,7 +115,7 @@ class _ISparqlMethod(AbstractMonosourceMethod):
         target_add_graph = target_obsels.add_obsel_graph
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
             for row in rows:
-                sourceObsel = row['sourceObsel']
+                sourceObsel = row[i_sourceObsel]
 
                 new_obs_uri = translate_node(sourceObsel, computed_trace,
                                              source_uri, False)

@@ -24,7 +24,7 @@ from json import dumps, loads
 from rdflib import Literal, XSD
 
 from ktbs.engine.resource import METADATA
-from ktbs.methods.fsa import LOG as FSA_LOG
+from ktbs.methods.isparql import LOG as ISPARQL_LOG
 from ktbs.namespace import KTBS, KTBS_NS_URI
 
 from .test_ktbs_engine import KtbsTestCase
@@ -47,11 +47,11 @@ def assert_source_obsels(obsel, source_obsels):
 
 
 
-class TestFSA(KtbsTestCase):
+class TestISparql(KtbsTestCase):
 
     def setup(self):
         KtbsTestCase.setup(self)
-        self.log = FSA_LOG
+        self.log = ISPARQL_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")
         self.A= self.model_src.create_obsel_type("#A")
@@ -134,3 +134,62 @@ class TestFSA(KtbsTestCase):
         assert get_custom_state(ctr, 'last_seen_b') == orig_obs.begin
         assert_obsel_type(new_obs, self.Y)
         assert new_obs.get_attribute_value(self.fubar) == 101-42
+
+    def test_simple_no_end(self):
+        sparql = """
+        PREFIX ms: <%(base)s/ms#>
+        PREFIX md: <%(base)s/md#>
+
+        SELECT ?sourceObsel ?type (?sourceBegin as ?begin) ?fubar
+        {
+            %%(__subselect__)s
+
+            {
+              ?sourceObsel a ms:A .
+              BIND(md:X as ?type)
+              BIND(1 as ?mult)
+            }
+            UNION
+            {
+              ?sourceObsel a ms:B .
+              BIND(md:Y as ?type)
+              BIND(-1 as ?mult)
+            }
+
+            ?sourceObsel ms:foo ?foo.
+            OPTIONAL {?sourceObsel ms:bar ?bar }
+            BIND(?foo+?bar*?mult as ?fubar)
+
+        }
+        """ % { 'base': self.base.uri[:-1], }
+        ctr = self.base.create_computed_trace("ctr/", KTBS.isparql,
+                                         {"sparql": sparql,
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        assert len(ctr.obsels) == 0
+
+        oA0 = self.src.create_obsel("oA0", self.A, 0, attributes={self.foo: 42})
+        orig_obs = oA0
+        assert len(ctr.obsels) == 1
+        new_obs = ctr.obsels[-1]
+        assert_source_obsels(new_obs, [orig_obs])
+        assert new_obs.begin == orig_obs.begin
+        assert new_obs.end == orig_obs.begin
+
+        oA1 = self.src.create_obsel("oA1", self.A, 1, attributes={
+            self.foo: 101, self.bar: 42})
+        orig_obs = oA1
+        assert len(ctr.obsels) == 2
+        new_obs = ctr.obsels[-1]
+        assert_source_obsels(new_obs, [orig_obs])
+        assert new_obs.begin == orig_obs.begin
+        assert new_obs.end == orig_obs.begin
+
+        oB2 = self.src.create_obsel("oB2", self.B, 2, 4, attributes={
+            self.foo: 101, self.bar: 42})
+        orig_obs = oB2
+        assert len(ctr.obsels) == 3
+        new_obs = ctr.obsels[-1]
+        assert_source_obsels(new_obs, [orig_obs])
+        assert new_obs.begin == orig_obs.begin
+        assert new_obs.end == orig_obs.begin
