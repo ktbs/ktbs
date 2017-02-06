@@ -514,6 +514,7 @@ class TestObsels(KtbsTestCase):
         self.base = b = self.my_ktbs.create_base("b/")
         self.model = m = b.create_model("m")
         self.ot = m.create_obsel_type("#OT1")
+        self.at = m.create_obsel_type("#at1")
         self.trace = t = b.create_stored_trace("t/", m,
                                                origin="1970-01-01T00:00:00Z")
 
@@ -568,6 +569,16 @@ class TestObsels(KtbsTestCase):
         t.obsel_collection.delete()
         assert len(t.obsels) == 0
 
+    def test_delete_obsel_collection_is_non_monotonic(self):
+        t = self.trace
+        ot = self.ot
+        log_mon_tag = t.obsel_collection.log_mon_tag
+        t.create_obsel(type=ot)
+        t.create_obsel(type=ot)
+        assert log_mon_tag == t.obsel_collection.log_mon_tag
+        t.obsel_collection.delete()
+        assert log_mon_tag != t.obsel_collection.log_mon_tag
+
     def test_delete_obsel_collection_with_parameters(self):
         # NB: in the future, this might be allowed
         t = self.trace
@@ -581,6 +592,35 @@ class TestObsels(KtbsTestCase):
         t2 = self.base.create_computed_trace(None, KTBS.filter, {}, [self.trace])
         with assert_raises(MethodNotAllowedError):
             t2.obsel_collection.delete()
+
+    def test_delete_obsel(self):
+        t = self.trace
+        ot = self.ot
+        assert len(t.obsels) == 0
+        o1 = t.create_obsel(id="o1", type=ot)
+        o2 = t.create_obsel(id="o2", type=ot)
+        o3 = t.create_obsel(id="o3", type=ot)
+        assert list(t.obsels) == [o1, o2, o3]
+        o2.delete()
+        assert list(t.obsels) == [o1, o3]
+
+    def test_delete_computed_obsel(self):
+        self.trace.create_obsel(id="o1", type=self.ot)
+        t2 = self.base.create_computed_trace(None, KTBS.filter, {}, [self.trace])
+        assert len(t2.obsels) == 1
+        with assert_raises(MethodNotAllowedError):
+            t2.obsels[0].delete()
+
+    def test_delete_obsel_is_non_monotonic(self):
+        ot = self.ot
+        t = self.trace
+        log_mon_tag = t.obsel_collection.log_mon_tag
+        o1 = t.create_obsel(type=ot)
+        o2 = t.create_obsel(type=ot)
+        o3 = t.create_obsel(type=ot)
+        assert log_mon_tag == t.obsel_collection.log_mon_tag
+        o2.delete()
+        assert log_mon_tag != t.obsel_collection.log_mon_tag
 
 
 class TestKtbsSynthetic(KtbsTestCase):
