@@ -38,12 +38,11 @@ Here are the steps necessary to do so:
     pip install git+https://github.com/maparent/pyodbc@v3-virtuoso
 
 * Finally, you need the ``virtuoso-python`` module,
-  available at https://github.com/pchampin/virtuoso-python,
-  in the branch ``rdflib_improvements``.
+  available at https://github.com/maparent/virtuoso-python.
 
   One way to achieve that is the following::
 
-    pip install git+https://github.com/pchampin/virtuoso-python@rdflib_improvements
+    pip install git+https://github.com/maparent/virtuoso-python
 
 * Finally,
   all you need to do is to configure the RDF store used by kTBS to::
