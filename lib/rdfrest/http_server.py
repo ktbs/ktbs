@@ -243,9 +243,10 @@ class HttpFrontend(object):
             if iter_etags is not None:
                 etag_list = list(iter_etags(params or None))
         if etag_list:
-            etags = " ".join( 'W/"%s"' % taint_etag(i, ctype)
-                              for i in etag_list )
-            headerlist.append(("etag", etags))
+            etag_list = [ 'W/"%s"' % taint_etag(i, ctype)
+                          for i in etag_list ]
+            headerlist.append(("etag", etag_list[-1]))
+            headerlist.append(("x-etags", " ".join(etag_list)))
 
         # also insert last-modified, if available
         last_modified = getattr(resource, "last_modified", None)

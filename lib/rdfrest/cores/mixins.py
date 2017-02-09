@@ -55,6 +55,10 @@ class BookkeepingMixin(ILocalCore):
         This implementation only yields one etag, regardless of `parameters`,
         but subclasses could override this to yield more, and return different
         etags depending on `parameters`.
+
+        If several etags are returned,
+        they must be ordered by increasing stability
+        (i.e. the etag most prone to change must be first).
         """
         # unused arg `parameter` #pylint: disable=W0613
         yield str(self.metadata.value(self.uri, RDFREST.etag))
