@@ -220,12 +220,13 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             self_state = self.state
             obs = None
             maxe = None
+            end = None
             for obs, end in self.state.query(query_str):
                 if reverse and maxe is None:
-                    maxe = end
+                    maxe = end.toPython()
                 get_obsel_bounded_description(obs, self_state, graph)
-            if maxe is None:
-                maxe = end
+            if maxe is None and end is not None:
+                maxe = end.toPython()
 
             # canonical link
             graph.links = links = [{
@@ -253,7 +254,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 links.append({'uri': self.uri + qstr, 'rel': 'next'})
 
             # compute etags
-            graph.etags = list(self.iter_etags({'maxe': end}))
+            graph.etags = list(self.iter_etags({'maxe': maxe, 'before': before}))
 
             return graph
 
@@ -391,8 +392,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         on the given parameters.
 
         IMPORTANT: the only parameter actually used to determine monotonicity
-        etags is 'maxe', as it would be too costly to determine it for other
-        parameters.
+        etags are 'maxe' and 'before',
+        as it would be too costly to determine it for other parameters.
         Note however that get_state() does use this method with an accurate
         'maxe' value (based on the actual obsels rather than on paremeters),
         in order to precisely get etags.
@@ -402,12 +403,19 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
             if last_obsel is not None:
                 last_end = int(self.state.value(last_obsel, KTBS.hasEnd))
-                pse_mon_limit = last_end - self.trace.pseudomon_range
                 maxe = parameters.get("maxe")
-                if maxe is not None:
-                    maxe = int(maxe)
+                before = parameters.get("before")
+                if before == last_obsel:
+                    yield self.str_mon_tag
+                elif maxe is not None or before is not None:
+                    if maxe is not None:
+                        maxe = int(maxe)
+                    if before is not None:
+                        before_end = int(self.state.value(before, KTBS.hasEnd))
+                        maxe = max(maxe or before_end, before_end)
                     if maxe < last_end:
                         yield self.str_mon_tag
+                        pse_mon_limit = last_end - self.trace.pseudomon_range
                         if maxe < pse_mon_limit:
                             yield self.pse_mon_tag
 
