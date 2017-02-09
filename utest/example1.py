@@ -548,8 +548,10 @@ def do_tests(root):
     item1bis = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
     assert item1bis is item1
     del item1, item1bis
-    item1 = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
-    assert item1 is None
+    # the following asserts rely on the garbage collector,
+    # so they fail in some situations and depend on the interpreter
+    #item1 = root.factory(URIRef("item1", root.uri), [EXAMPLE.Item], _no_spawn=True)
+    #assert item1 is None
 
 
     # clean everything

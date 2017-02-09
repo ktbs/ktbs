@@ -436,8 +436,10 @@ class TestKtbs(KtbsTestCase):
         t1.create_obsel("o25", myot, 25)
         assert len(t1.obsels) == 5
         FILTER_LOG.info("getting t3")
-        assert b.factory(b.uri + "t2/", _no_spawn=True) is None
-        assert b.factory(b.uri + "t3/", _no_spawn=True) is None
+        # the following asserts rely on the garbage collector,
+        # so they fail in some situations and depend on the interpreter
+        #assert b.factory(b.uri + "t2/", _no_spawn=True) is None
+        #assert b.factory(b.uri + "t3/", _no_spawn=True) is None
         t3 = b.get("t3/")
         assert len(t3.obsels) == 3
         FILTER_LOG.info("getting t2")
