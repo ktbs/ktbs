@@ -99,7 +99,7 @@ class AbstractTraceMixin(InBaseMixin):
             origin = unicode(origin)
         return origin
 
-    def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, limit=None, refresh=None):
+    def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, limit=None, offset=None, refresh=None):
         """
         Iter over the obsels of this trace.
 
@@ -120,6 +120,7 @@ class AbstractTraceMixin(InBaseMixin):
         * reverse: an object with a truth value
         * bgp: an additional SPARQL Basic Graph Pattern to filter obsels
         * limit: an int
+        * offset: an int
         * refresh: 
 
           - if "no", prevent force_state_refresh to be called
@@ -138,11 +139,22 @@ class AbstractTraceMixin(InBaseMixin):
         timestamps and identifiers.
         """
         parameters = {}
-        if not isinstance(self, ILocalCore):
-            # if this resource is remote,
-            # it is better to push as many constraint as possible to the server
-            # if this resource is local,
-            # it is better to leave it to our SPARQL query to handle them
+        if refresh is not None:
+            parameters['refresh'] = refresh
+
+        collection = self.obsel_collection
+        collection.force_state_refresh(parameters or None)
+        if isinstance(self, ILocalCore):
+            # we have direct access to the raw resource instead,
+            # so we directly query the graph
+            # (pylint does not know that, hence the directive below)
+            obsels_graph = collection.state #pylint: disable=E1101
+            select = collection.build_select(begin, end, after, before, reverse, bgp,
+                                             limit, offset,
+                                             "DISTINCT ?obs" if bgp else "?obs")
+        else:
+            # we are remote,
+            # so we push as much as possible of the parameters to the server
             if begin is not None:
                 parameters["minb"] = begin
             if end is not None:
@@ -151,29 +163,19 @@ class AbstractTraceMixin(InBaseMixin):
                 parameters["after"] = unicode(coerce_to_uri(after))
             if before is not None:
                 parameters["before"] = unicode(coerce_to_uri(before))
-        if refresh:
-            parameters['refresh'] = refresh
-        if not parameters:
-            parameters = None
-
-        collection = self.obsel_collection
-        collection.force_state_refresh(parameters)
-        if isinstance(collection, OpportunisticObselCollection):
+            if limit is not None:
+                parameters['limit'] = limit
+            if offset is not None:
+                parameters['offset'] = offset
             obsels_graph = collection.get_state(parameters)
-        else:
-            # we have the raw resource instead, so we access the whole graph
-            # (pylint does not know that, hence the directive below)
-            obsels_graph = collection.state #pylint: disable=E1101
-        query_str = "PREFIX ktbs: <%s#> %s" % (
-            KTBS_NS_URI,
-            collection.build_select(begin, end, after, before, reverse, bgp,
-                                    limit, "DISTINCT ?obs" if bgp else "?obs"),
-        )
+            select = collection.build_select(
+                bgp=bgp, selected="DISTINCT ?obs" if bgp else "?obs")
+        query_str = "PREFIX ktbs: <%s#> %s" % (KTBS_NS_URI, select)
         tuples = list(obsels_graph.query(query_str, initNs={"m": self.model_prefix}))
         for obs_uri, in tuples:
             types = obsels_graph.objects(obs_uri, RDF.type)
             cls = get_wrapped(ObselProxy, types)
-            yield cls(obs_uri, collection, obsels_graph, parameters)
+            yield cls(obs_uri, collection, obsels_graph, parameters or None)
 
     def iter_source_traces(self):
         """

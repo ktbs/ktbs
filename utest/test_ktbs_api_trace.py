@@ -86,6 +86,10 @@ class _TestIterObselsMixin(object):
         assert self.obsels[:3] == self.t.list_obsels(limit=3)
         assert self.obsels == self.t.list_obsels(limit=len(self.obsels)+1)
 
+    def test_limit_offset(self):
+        assert self.obsels[1:2] == self.t.list_obsels(limit=1, offset=1)
+        assert self.obsels[2:4] == self.t.list_obsels(limit=2, offset=2)
+
     def test_limit_reverse(self):
         assert self.obsels[-1:] == self.t.list_obsels(reverse=True, limit=1)
 

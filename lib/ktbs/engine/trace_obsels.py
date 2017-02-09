@@ -208,17 +208,19 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             reverse = (parameters.get("reverse", "no").lower()
                        not in ("false", "no", "0"))
             limit = parameters.get("limit")
+            offset = parameters.get("offset")
 
             query_str = (
                 "PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> %s"
-                % self.build_select(minb, maxe, after, before, reverse, query_filter, limit, "?obs ?e")
+                % self.build_select(minb, maxe, after, before, reverse, query_filter,
+                                    limit, offset, "?obs ?e")
             )
 
             # add description of all matching obsels
             self_state = self.state
             obs = None
             maxe = None
-            for obs, end in self.state.query(query_str): #/!\ returns 1-uples
+            for obs, end in self.state.query(query_str):
                 if reverse and maxe is None:
                     maxe = end
                 get_obsel_bounded_description(obs, self_state, graph)

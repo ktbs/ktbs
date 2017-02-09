@@ -63,7 +63,8 @@ class AbstractTraceObselsMixin(ICore):
         return trace_uri
 
     def build_select(self, begin=None, end=None, after=None, before=None,
-                     reverse=False, bgp=None, limit=None, selected="?obs"):
+                     reverse=False, bgp=None, limit=None, offset=None,
+                     selected="?obs"):
         """
         Build a SPARQL query listing the obsels of this trace.
 
@@ -156,6 +157,8 @@ class AbstractTraceObselsMixin(ICore):
             postface += "ORDER BY ?e ?b ?obs"
         if limit is not None:
             postface += " LIMIT %s" % limit
+        if offset is not None:
+            postface += " OFFSET %s" % offset
         if filters:
             filters = "FILTER(%s)" % (" && ".join(filters))
         else:
