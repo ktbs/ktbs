@@ -20,6 +20,11 @@ This kTBS plugin allows to run the profiler on a per-request basis.
 
 To enable the profiler, simply add 'profiler' as a URL parameter.
 
+It will generate a temporary file named with the datetime and the URL,
+which you can view with bin/view-profiler-dat, or a tool like
+https://github.com/pwaller/pyprof2calltree.
+
+
 Note that the profiler does not run the exact same code as the normal code:
 it converts to a list the iterable returned by the WSGI application,
 to ensure that all the code is actually ran in the profiler
@@ -47,7 +52,7 @@ class ProfilerMiddleware(object):
 
     def __call__(self, environ, start_response):
         req = Request(environ)
-        params = req.GET # URL parameters, regardless of the actual method
+        params = environ['rdfrest.parameters']
         do_profiling = params.pop('profiler', None)
         if do_profiling is None:
             resp = req.get_response(self.app)
