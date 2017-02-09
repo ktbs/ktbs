@@ -29,7 +29,7 @@ from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.cores.local import NS as RDFREST
-from rdfrest.util import Diagnosis
+from rdfrest.util import Diagnosis, coerce_to_uri
 from .resource import KtbsResource, METADATA
 from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
@@ -196,10 +196,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             maxe = parameters.get("maxe")
             after = parameters.get("after")
             if after is not None:
-                after = URIRef(after)
+                after = coerce_to_uri(after)
             before = parameters.get("before")
             if before is not None:
-                before = URIRef(before)
+                before = coerce_to_uri(before)
             if query_filter:
                 query_filter = "FILTER((%s))" % (") && (".join(query_filter))
             else:
