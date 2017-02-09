@@ -36,9 +36,9 @@ try:
         try:
             repo = git.Repo(path)
             if git.__version__ > '0.1.7':
-                commit_no = repo.active_branch.commit.hexsha
+                commit_no = repo.head.commit.hexsha
             else:
-                lcommits = repo.commits(start=repo.active_branch, max_count=1)
+                lcommits = repo.commits(start=repo.head, max_count=1)
                 if len(lcommits) > 0:
                     commit_no = lcommits[0].id
 
