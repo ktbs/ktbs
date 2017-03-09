@@ -104,6 +104,8 @@ def main(argv):
     setUp()
     try:
         task()
+    except KeyboardInterrupt:
+        print("Interrupted")
     finally:
         tearDown()
 
