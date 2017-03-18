@@ -57,7 +57,6 @@ def get_service_configuration(configfile_handler=None):
     config.set('server', 'flash-allow', 'false')
     config.set('server', 'max-triples', '-1')
     config.set('server', 'cors-allow-origin', '')
-    config.set('server', 'resource-cache', 'false')
 
     config.add_section('ns_prefix')
 

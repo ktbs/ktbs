@@ -44,10 +44,6 @@ def main():
     # or command line configuration OPTIONS
     ktbs_config = parse_configuration_options(cmdline_options)
 
-    # TODO : remove this option ?
-    if ktbs_config.getboolean('server', 'resource-cache'):
-        LOG.warning("option --resource-cache is deprecated; it has no effect")
-
     apply_global_config(ktbs_config)
 
     LOG.info("KTBS pid: %d" % getpid())
@@ -135,10 +131,6 @@ def parse_configuration_options(options=None):
         if options.force_init is not None:
             config.set('rdf_database', 'force-init', 'true')
 
-        if options.resource_cache is not None:
-            #config.set('server', 'resource-cache', options.resource_cache)
-            config.set('server', 'resource-cache', 'true')
-
         if options.loggers is not None:
             config.set('logging', 'loggers', ' '.join(options.loggers))
         else:
@@ -190,11 +182,6 @@ def build_cmdline_options():
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
-    ogr = OptionGroup(opt, "Deprecated options")
-    ogr.add_option("--resource-cache", action="store",
-                   help="not used anymore")
-    opt.add_option_group(ogr)
-    
     ogr = OptionGroup(opt, "Logging options")
     ogr.add_option("--loggers", action="append",
                    help="for which module(s), you want to activate logging (ktbs, rdfrest, rdflib, ...)")

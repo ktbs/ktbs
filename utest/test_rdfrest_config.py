@@ -70,9 +70,6 @@ class TestServiceConfigDefaults(object):
     def test_server_corsalloworigin(self):
         assert self.service_config.get('server', 'cors-allow-origin', 1) == ''
 
-    def test_server_resourcecache(self):
-        assert self.service_config.getboolean('server', 'resource-cache') == False
-
     def test_ns_prefix_section(self):
         assert self.service_config.has_section('ns_prefix') == True
 
