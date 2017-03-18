@@ -67,6 +67,9 @@ class TestServiceConfigDefaults(object):
     def test_server_corsalloworigin(self):
         assert self.service_config.get('server', 'cors-allow-origin', 1) == ''
 
+    def test_server_resetconnection(self):
+        assert self.service_config.getboolean('server', 'reset-connection') == False
+
     def test_ns_prefix_section(self):
         assert self.service_config.has_section('ns_prefix') == True
 

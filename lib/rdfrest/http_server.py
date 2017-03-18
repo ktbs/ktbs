@@ -20,6 +20,7 @@ I implement a WSGI-based HTTP server
 wrapping a given :class:`.cores.local.Service`.
 """
 from bisect import insort
+from contextlib import closing
 from time import time
 
 from pyparsing import ParseException
@@ -123,10 +124,16 @@ class HttpFrontend(object):
         else:
             self.max_triples = None
 
+        self.reset_connection = \
+            service_config.getboolean('server', 'reset-connection')
+
         # HttpFrondend does not receive a dictionary any more
         # Other options should be explicitely set
         #self._options = options or {}
         self._options = {}
+
+        if self.reset_connection:
+            self._service.store.close()
 
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
@@ -135,20 +142,26 @@ class HttpFrontend(object):
         maintained consistent with
         :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
-        request = Request(environ)
-        requested_uri, requested_extension = extsplit(request.path_url)
-        requested_uri = URIRef(requested_uri)
-        resource = self._service.get(requested_uri)
-        environ['rdfrest.requested.uri'] = requested_uri
-        environ['rdfrest.requested.extension'] = requested_extension
-        environ['rdfrest.resource'] = resource
-        environ['rdfrest.parameters'] = dict(request.GET.mixed())
+        if self.reset_connection:
+            self._service.store.open(self._service.store_config_str)
+        try:
+            request = Request(environ)
+            requested_uri, requested_extension = extsplit(request.path_url)
+            requested_uri = URIRef(requested_uri)
+            resource = self._service.get(requested_uri)
+            environ['rdfrest.requested.uri'] = requested_uri
+            environ['rdfrest.requested.extension'] = requested_extension
+            environ['rdfrest.resource'] = resource
+            environ['rdfrest.parameters'] = dict(request.GET.mixed())
 
-        if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
-            self._middleware_stack = build_middleware_stack(self._core_call)
-            self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+            if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
+                self._middleware_stack = build_middleware_stack(self._core_call)
+                self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
 
-        return self._middleware_stack(environ, start_response)
+            return self._middleware_stack(environ, start_response)
+        finally:
+            if self.reset_connection:
+                self._service.store.close()
 
 
     def _core_call(self, environ, start_response):

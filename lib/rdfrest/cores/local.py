@@ -124,6 +124,7 @@ class Service(object):
         _, store_type, config_str = repository.split(":", 2)
         store = rdflib_plugin.get(store_type, Store)(config_str)
 
+        self.store_config_str = config_str
         self.store = store
         self.class_map = class_map = {}
         for cls in classes:
@@ -154,6 +155,7 @@ class Service(object):
 
     def __del__(self):
         try:
+            self.store.close()
             unregister_service(self)
         except BaseException:
             pass
