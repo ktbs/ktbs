@@ -18,10 +18,10 @@
 """I provide an entry point to create a local kTBS.
 """
 
-import urlparse
-
+import logging
 from os import getpid
 from rdflib import Graph, RDF, URIRef, Literal
+import urlparse
 
 from rdfrest.cores.local import Service
 from rdfrest.util import parent_uri
@@ -40,6 +40,8 @@ from ..config import get_ktbs_configuration
 from .. import __version__ as ktbs_version
 from .. import __commitno__ as ktbs_commit
 import ktbs.serpar
+
+LOG = logging.getLogger(__name__)
 
 
 # make ktbs:/ URIs use relative, query, fragments
@@ -125,7 +127,8 @@ class KtbsService(Service):
         Service.__init__(self, classes, service_config, self.init_ktbs)
 
         root = self.get(URIRef(self.root_uri), [KTBS.KtbsRoot])
-        
+
+        LOG.debug("updating built-in methods")
         with root.edit(_trust=True) as graph:
             # updating hasBuiltinMethod with registered implementations
             graph.remove((self.root_uri, KTBS.hasBuiltinMethod, None))
