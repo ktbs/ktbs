@@ -58,9 +58,6 @@ class TestServiceConfigDefaults(object):
     def test_server_maxbytes(self):
         assert self.service_config.getint('server', 'max-bytes') == -1
 
-    def test_server_nocache(self):
-        assert self.service_config.getboolean('server', 'no-cache') == False
-
     def test_server_flashallow(self):
         assert self.service_config.getboolean('server', 'flash-allow') == False
 

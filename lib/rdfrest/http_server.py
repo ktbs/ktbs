@@ -87,10 +87,7 @@ class HttpFrontend(object):
 
         Additionally, the following configuration options are recognized:
 
-        - cache_control: either a string to be used as the cache-control
-          header field, or a callable accepting a resource and returning
-          either None or the value of the cache-control header field.
-          Defaults to :func:`cache_half_last_modified`.
+        - cache_control: a string to be used as the cache-control header field,
         - cors_allow_origin: if provided, cross-domain requests will be
           allowed from the given domains, by implementing
           http://www.w3.org/TR/cors/ .
@@ -105,10 +102,16 @@ class HttpFrontend(object):
         self._middleware_stack_version = None
         self._middleware_stack = None
 
-        cache_control = cache_half_last_modified
-        if service_config.getboolean('server', 'no-cache'):
-            cache_control = (lambda x: None)
-        self.cache_control = cache_control
+        self.cache_control = 'max-age=1'
+        if service.config.has_option('server', 'cache-control'):
+            self.cache_control = service.config.get('server', 'cache-control')
+            if service.config.has_option('server', 'no-cache'):
+                LOG.error("Deprecated option no-cache is ignored, "
+                          "as it is overridden by cache-control")
+        elif service.config.has_option('server', 'no-cache'):
+            LOG.error("Option no-cache is deprecated, use cache-control instead")
+            if service.config.getboolean('server', 'no-cache'):
+                self.cache_control = ''
 
         if service_config.getint('server', 'max-bytes') >= 0:
             self.max_bytes = service_config.getint('server', 'max-bytes')
@@ -282,9 +285,8 @@ class HttpFrontend(object):
         if cache_bypass:
             response.cache_control = "no-cache"
         else:
-            cache_control = self.cache_control(resource)
-            if cache_control:
-                response.cache_control = cache_control
+            if self.cache_control:
+                response.cache_control = self.cache_control
 
         return response
 
@@ -462,26 +464,6 @@ class _TooManyTriples(Exception):
     """This exception class is used to abort edit context during PUT.
     """
     pass
-
-################################################################
-#
-# Cache-control functions
-#
-
-def cache_half_last_modified(resource):
-    """I use last-modified to provide cache-control directive.
-
-    If resource has a last_modified property (assumed to return a number of
-    seconds since EPOCH), I allow to cache resource for half the time since
-    it was last modified.
-
-    Else, I return None.
-    """
-    last_mod = getattr(resource, "last_modified", None)
-    if last_mod is not None:
-        return "max-age=%s" % (int(time() - last_mod) / 2)
-    else:
-        return None
 
 ###############################################################
 #

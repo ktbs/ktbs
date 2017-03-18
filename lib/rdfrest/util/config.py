@@ -53,7 +53,6 @@ def get_service_configuration(configfile_handler=None):
     config.set('server', 'base-path', '')
     config.set('server', 'force-ipv4', 'false')
     config.set('server', 'max-bytes', '-1')
-    config.set('server', 'no-cache', 'false')
     config.set('server', 'flash-allow', 'false')
     config.set('server', 'max-triples', '-1')
     config.set('server', 'cors-allow-origin', '')

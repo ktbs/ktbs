@@ -114,8 +114,11 @@ def parse_configuration_options(options=None):
             # TODO max_bytes us not defined as an int value in OptionParser ?
             config.set('server', 'max-bytes', options.max_bytes)
 
+        if options.cache_control is not None:
+            config.set('server', 'cache-control', options.cache_control)
+
         if options.no_cache is not None:
-            config.set('server', 'no-cache', 'true')
+            config.set('server', 'cache-control', "")
 
         if options.flash_allow is not None:
             config.set('server', 'flash-allow', 'true')
@@ -169,8 +172,10 @@ def build_cmdline_options():
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
+    ogr.add_option("-C", "--cache-control",
+                   help="customize Cache-Control header of HTTP server")
     ogr.add_option("-N", "--no-cache", action="store_true",
-                   help="prevent kTBS to send cache-control directives")
+                   help="disable Cache-Control header (equivalent to -C \"\")")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
     ogr.add_option("-T", "--max-triples",

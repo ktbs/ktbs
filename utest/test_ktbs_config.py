@@ -90,6 +90,16 @@ class TestkTBSCmdlineConfig(object):
         ktbs_config = parse_configuration_options(options)
         assert ktbs_config.getint('server', 'max-bytes') == 1500
 
+    def test_server_cachecontrol(self):
+        """Be careful in ConfigParser this parameter is treated as boolean.
+           In standalone, it is defined as an integer !!!
+        """
+        options, args = self.opt.parse_args(['ktbs',
+                                             '--cache-control=max-age=2'])
+
+        ktbs_config = parse_configuration_options(options)
+        assert ktbs_config.get('server', 'cache-control') == "max-age=2"
+
     def test_server_nocache(self):
         """Be careful in ConfigParser this parameter is treated as boolean.
            In standalone, it is defined as an integer !!!
@@ -98,7 +108,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--no-cache'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.getboolean('server', 'no-cache') == True
+        assert ktbs_config.get('server', 'cache-control') == ""
 
     def test_server_flashallow(self):
         options, args = self.opt.parse_args(['ktbs',
