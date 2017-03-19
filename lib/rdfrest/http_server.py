@@ -127,6 +127,9 @@ class HttpFrontend(object):
         self.reset_connection = \
             service_config.getboolean('server', 'reset-connection')
 
+        self.send_traceback = \
+            service_config.getboolean('server', 'send-traceback')
+
         # HttpFrondend does not receive a dictionary any more
         # Other options should be explicitely set
         #self._options = options or {}
@@ -153,6 +156,7 @@ class HttpFrontend(object):
             environ['rdfrest.requested.extension'] = requested_extension
             environ['rdfrest.resource'] = resource
             environ['rdfrest.parameters'] = dict(request.GET.mixed())
+            environ['rdfrest.send-traceback'] = self.send_traceback
 
             if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
                 self._middleware_stack = build_middleware_stack(self._core_call)
@@ -601,13 +605,19 @@ class ErrorHandlerMiddleware(object):
                                   request=MyRequest(environ))
         except SerializeError, ex:
             status = "550 Serialize Error"
-            response = MyResponse("%s\n%s" % (status, ex.message),
+            message = ex.message
+            if environ.get('rdfrest.send-traceback'):
+                message = "%s\n%s" % (message, traceback.format_exc())
+            response = MyResponse("%s\n%s" % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except RdfRestException, ex:
+        except Exception, ex:
             status = "500 Internal Error"
-            response = MyResponse("%s - Other RDF-REST exception\n%s"
-                                  % (status, ex.message),
+            message = ex.message
+            if environ.get('rdfrest.send-traceback'):
+                message = "%s\n%s" % (message, traceback.format_exc())
+            response = MyResponse("%s - Unexpected exception\n%s"
+                                  % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
 

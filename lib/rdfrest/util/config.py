@@ -57,6 +57,7 @@ def get_service_configuration(configfile_handler=None):
     config.set('server', 'max-triples', '-1')
     config.set('server', 'cors-allow-origin', '')
     config.set('server', 'reset-connection', 'false')
+    config.set('server', 'send-traceback', 'false')
 
     config.add_section('ns_prefix')
 
