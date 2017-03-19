@@ -397,6 +397,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
                                     ifdoc.body.addEventListener("click", interceptLinks);
                                 };
                                 iframe.srcdoc = req.responseText;
+                                response.textContent = "";
                                 response.appendChild(iframe);
                             }
                         } else {
