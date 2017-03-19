@@ -37,7 +37,6 @@ def make_helper_service(uri, graph, format=None):
         assert isinstance(graph, Graph)
 
     config = SafeConfigParser(allow_no_value=True)
-    config.add_section('logging')
     config.add_section('rdf_database')
     config.set('rdf_database', 'repository', '')
     config.set('rdf_database', 'force-init', 'true')

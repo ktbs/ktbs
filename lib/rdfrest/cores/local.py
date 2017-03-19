@@ -106,8 +106,6 @@ class Service(object):
             "Invalid URI <%s>" % root_uri
         self.root_uri = coerce_to_uri(root_uri)
 
-        apply_logging_config(service_config)
-
         init_repo = False
         repository = service_config.get('rdf_database', 'repository', 1)
         if not repository:

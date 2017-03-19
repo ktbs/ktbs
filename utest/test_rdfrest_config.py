@@ -21,8 +21,9 @@
 """
 Nose unit-testing for the RDF-REST configuration part.
 """
+import logging
 
-from rdfrest.util.config import get_service_configuration
+from rdfrest.util.config import get_service_configuration, make_log_config_dict
 
 
 class TestServiceConfigDefaults(object):
@@ -89,22 +90,84 @@ class TestServiceConfigDefaults(object):
         assert self.service_config.getboolean('rdf_database', 'force-init') == False
 
     def test_logging_section(self):
-        assert self.service_config.has_section('logging') == True
+        assert self.service_config.has_section('logging')
+        log_cfg = make_log_config_dict(self.service_config)
+        assert log_cfg.get('version', 1)
+        assert 'loggers' in log_cfg
+        assert 'handlers' in log_cfg
+        assert 'console' in log_cfg['handlers']
+        assert 'filelog' not in log_cfg['handlers']
+        assert 'ktbslog' not in log_cfg['handlers']
+        assert 'formatters' in log_cfg
+        assert 'simple' in log_cfg['formatters']
 
     def test_logging_loggers(self):
-        assert self.service_config.get('logging', 'loggers', 1) == ''
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'root' in log_cfg
+        assert 'ktbs' in log_cfg['loggers']
+        assert 'rdfrest' in log_cfg['loggers']
 
-    def test_logging_consolelevel(self):
-        assert self.service_config.get('logging', 'console-level', 1) == 'INFO'
+    def test_logging_console_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['console']['level'] == "DEBUG"
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG
 
-    def test_logging_filename(self):
-        assert self.service_config.get('logging', 'filename', 1) == ''
+    def test_logging_console_format(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'console-format', 'foo')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'console' in log_cfg['formatters']
+        assert log_cfg['formatters']['console']['format'] == 'foo'
+        assert log_cfg['handlers']['console']['formatter'] == 'console'
 
-    def test_logging_filelevel(self):
-        assert self.service_config.get('logging', 'file-level', 1) == 'INFO'
+    def test_logging_file(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'filename', '/tmp/test.log')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'filelog' in log_cfg['handlers']
+        assert log_cfg['handlers']['filelog']['class'] == 'logging.FileHandler'
+        assert log_cfg['handlers']['filelog']['filename'] == '/tmp/test.log'
 
-    def test_logging_jsonconfigurationfilename(self):
-        """
-        Future implementation.
-        """
-        assert self.service_config.get('logging', 'json-configuration-filename', 1) == 'logging.json'
+    def test_logging_file_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'WARNING')
+        cfg.set('logging', 'filename', '/tmp/test.log')
+        cfg.set('logging', 'file-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['filelog']['level'] == "DEBUG"
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG
+
+    def test_logging_ktbs(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'ktbs-logurl', 'http://localhost:8001/logs/log/')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'ktbslog' in log_cfg['handlers']
+        assert log_cfg['handlers']['ktbslog']['class'] == 'rdfrest.util.ktbsloghandler.kTBSHandler'
+        assert log_cfg['handlers']['ktbslog']['url'] == 'http://localhost:8001/logs/log/'
+
+    def test_logging_ktbs_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'WARNING')
+        cfg.set('logging', 'ktbs-logurl', 'http://localhost:8001/logs/log/')
+        cfg.set('logging', 'ktbs-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['ktbslog']['level'] == "DEBUG"
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG
