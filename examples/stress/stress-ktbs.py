@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
+from getpass import getpass
 from sys import stderr
 from timeit import timeit
 
@@ -7,7 +8,7 @@ from os import fork
 
 from rdflib import Graph, BNode
 from rdflib import Literal
-from rdfrest.cores.http_client import set_http_option
+from rdfrest.cores.http_client import set_http_option, add_http_credentials
 from ktbs.client import get_ktbs
 from ktbs.engine.service import make_ktbs
 from ktbs.namespace import KTBS
@@ -23,6 +24,8 @@ def parse_args():
     parser.add_argument("-k", "--ktbs",
                         help="the URI of the kTBS to stress (a local "
                              "in-memory kTBS will be used if none is giveb)")
+    parser.add_argument("-u", "--username",
+                        help="the username to use (will also prompt for a password)")
     parser.add_argument("-f", "--forks", type=int, default=1,
                         help="the number of processes to fork")
     parser.add_argument("-i", "--iterations", type=int, default=10,
@@ -91,6 +94,12 @@ def tearDown():
 
 def main(argv):
     parse_args()
+
+    if ARGS.username is not None:
+        pw = getpass('Enter password for %s> ' % ARGS.username)
+        add_http_credentials(ARGS.username, pw)
+        del pw
+
     forks = ARGS.forks
     while forks > 1:
         forks -= 1
