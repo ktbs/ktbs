@@ -25,6 +25,7 @@ from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from wsgiref.simple_server import WSGIServer, make_server
 
 from rdfrest.util.config import apply_global_config
+from rdfrest.util.wsgi import SimpleRouter
 from rdfrest.http_server import HttpFrontend
 from .config import get_ktbs_configuration
 
@@ -55,6 +56,10 @@ def main():
 
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
+
+    if ktbs_config.has_option('server', 'base-path'):
+        base_path = ktbs_config.get('server', 'base-path')
+        application = SimpleRouter([(base_path, application)])
 
     httpd = make_server(ktbs_config.get('server', 'host-name', 1),
                         ktbs_config.getint('server', 'port'),

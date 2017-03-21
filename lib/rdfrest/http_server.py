@@ -149,8 +149,9 @@ class HttpFrontend(object):
             self._service.store.open(self._service.store_config_str)
         try:
             request = Request(environ)
-            requested_uri, requested_extension = extsplit(request.path_url)
-            requested_uri = URIRef(requested_uri)
+            requested_path, requested_extension = extsplit(request.path_info)
+            requested_uri = URIRef("%s%s" % (
+                self._service.root_uri[:-1], requested_path))
             resource = self._service.get(requested_uri)
             environ['rdfrest.requested.uri'] = requested_uri
             environ['rdfrest.requested.extension'] = requested_extension

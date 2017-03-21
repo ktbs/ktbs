@@ -60,6 +60,7 @@ from rdfrest.cores.mixins import FolderishMixin, GraphPostableMixin
 from rdfrest.serializers import bind_prefix, register_serializer
 from rdfrest.util import coerce_to_uri, parent_uri
 from rdfrest.util.config import get_service_configuration
+from rdfrest.util.wsgi import SimpleRouter
 
 
 
@@ -579,16 +580,17 @@ def make_example1_httpd(service=None, service_config=None):
 
     NB: the service is assumed to be located on localhost:1234
     """
+    BASE_PATH = '/foo'
     if service is None:
         if service_config is None:
             service_config = get_service_configuration()
             service_config.set('server', 'port', '1234')
-            service_config.set('server', 'base-path', '/foo')
+            service_config.set('server', 'base-path', BASE_PATH)
 
         service = make_example1_service(service_config)
 
     # cache_control="max-age=60")
-    app = HttpFrontend(service, service_config)
+    app = SimpleRouter([(BASE_PATH, HttpFrontend(service, service_config))])
     _httpd = make_server(service_config.get('server', 'host-name', 1),
                          service_config.getint('server', 'port'),
                          app)

@@ -45,6 +45,7 @@ from rdfrest.cores.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin
 from rdfrest.util import ReadOnlyGraph
 from rdfrest.util.config import get_service_configuration
+from rdfrest.util.wsgi import SimpleRouter
 from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
 
@@ -169,10 +170,11 @@ def main():
     :mod:`.example1` on the service.
     """
     test = len(argv) > 1 and argv[1] == "test"
+    BASE_PATH = '/foo'
 
     service_config = get_service_configuration()
     service_config.set('server', 'port', '1234')
-    service_config.set('server', 'base-path', '/foo')
+    service_config.set('server', 'base-path', BASE_PATH)
 
     # TODO Store management : special tests ?
 
@@ -184,7 +186,7 @@ def main():
         do_tests(serv.get(root_uri))
         print "Local tests passed"
 
-    app = HttpFrontend(serv, service_config)
+    app = SimpleRouter([(BASE_PATH, HttpFrontend(serv, service_config))])
     _httpd = make_server(service_config.get('server', 'host-name', 1),
                          service_config.getint('server', 'port'),
                          app)
