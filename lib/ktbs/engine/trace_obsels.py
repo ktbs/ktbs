@@ -211,20 +211,32 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             offset = parameters.get("offset")
 
             query_str = (
-                "PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> %s"
+                """
+                PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> 
+                SELECT ?obs ?pred ?other ?rev ?trc ?e
+                {
+                  {%s}
+                  { ?obs ?pred ?other. } UNION { ?other ?pred ?obs. BIND(1 as ?rev) }
+                  OPTIONAL { ?other ktbs:hasTrace ?trc }
+                }
+                """
                 % self.build_select(minb, maxe, after, before, reverse, query_filter,
                                     limit, offset, "?obs ?e")
             )
 
             # add description of all matching obsels
-            self_state = self.state
-            obs = None
             maxe = None
             end = None
-            for obs, end in self.state.query(query_str):
+            graph_add = graph.add
+            for obs, pred, other, rev, trc, end in self.state.query(query_str):
                 if reverse and maxe is None:
                     maxe = end.toPython()
-                get_obsel_bounded_description(obs, self_state, graph)
+                if rev is None:
+                    graph_add((obs, pred, other))
+                else:
+                    graph_add((other, pred, obs))
+                if trc is not None:
+                    graph_add((other, KTBS.hasTrace, trc))
             if maxe is None and end is not None:
                 maxe = end.toPython()
 
