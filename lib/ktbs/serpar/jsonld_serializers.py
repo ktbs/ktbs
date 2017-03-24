@@ -18,7 +18,7 @@
 """
 I provide kTBS JSON-LD serializers.
 """
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 from copy import deepcopy
 from itertools import chain, groupby
 from json import dumps
@@ -678,78 +678,76 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     }
     tobsels_dict['obsels'] = obsel_list = []
 
-    obsels = graph.query("""
-        PREFIX : <%s#>
-        SELECT ?obs ?pred ?other ?rev ?trc
-        {
-            ?obs :hasBegin ?begin ;
-                 :hasEnd ?end .
-            {
-                ?obs ?pred ?other .
-                BIND (0 as ?rev)
-            }
-            UNION
-            {
-                ?other ?pred ?obs .
-                BIND (1 as ?rev)
-            }
-            OPTIONAL { ?other :hasTrace ?trc } .
-        } ORDER BY ?end ?begin ?obs ?rev ?pred ?other
-    """ % (KTBS_NS_URI))
+    wbegin = set(graph.subjects(KTBS.hasBegin, None))
+    wtrace = set(graph.subjects(KTBS.hasTrace, None))
+    obs_by_id = defaultdict(lambda: deepcopy(_OBSEL_TEMPLATE))
+    for subj, pred, obj in graph:
+        if subj in wbegin:
+            obs = subj
+            other = obj
+            rev = 0
+        elif obj in wbegin:
+            obs = obj
+            other = subj
+            rev = 1
+        else:
+            continue
+        if other in wtrace:
+            trc = tobsels.trace.uri
+        else:
+            trc = None
 
+        obs_id = valconv_uri(obs)
+        obs_dict = obs_by_id[obs_id]
+        if obs_dict['@id'] != obs_id:
+            obs_dict['@id'] = obs_id
+            obsel_list.append(obs_dict)
 
-    for obs, tuples in groupby(obsels, lambda tpl: tpl[0]):
-        obs_dict = deepcopy(_OBSEL_TEMPLATE)
-        obs_dict['@id'] = valconv_uri(obs)
-        rev_dict = OrderedDict()
-
-        for _, pred, other, rev, trc in tuples:
-
-            # handle special predicates
-            if pred == _RDF_TYPE and not rev:
-                at_type = obs_dict['@type']
-                if at_type is None:
-                    obs_dict['@type'] = valconv_uri(other)
-                else:
-                    if not type(at_type) is list:
-                        obs_dict['@type'] = at_type = [at_type]
-                    at_type.append(valconv_uri(other))
-                continue
-            if pred == _KTBS_HAS_TRACE:
-                # ignored here, implied by the 'obsels' key in the parent dict
-                continue
-            if pred == _KTBS_HAS_SOURCE_OBSEL:
-                # '@id' is implied by hasSourceObsel
-                obs_dict['hasSourceObsel'].append(valconv_uri(other))
-                continue
-
-
-            if rev:
-                the_dict = rev_dict
+        # handle special predicates
+        if pred == _RDF_TYPE and not rev:
+            at_type = obs_dict['@type']
+            if at_type is None:
+                obs_dict['@type'] = valconv_uri(other)
             else:
-                the_dict = obs_dict
+                if not type(at_type) is list:
+                    obs_dict['@type'] = at_type = [at_type]
+                at_type.append(valconv_uri(other))
+            continue
+        if pred == _KTBS_HAS_TRACE:
+            # ignored here, implied by the 'obsels' key in the parent dict
+            continue
+        if pred == _KTBS_HAS_SOURCE_OBSEL:
+            # '@id' is implied by hasSourceObsel
+            obs_dict['hasSourceObsel'].append(valconv_uri(other))
+            continue
 
-            pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
-            new_val = val2jsonobj(other)
-            if pred_key == 'subject' and type(new_val) is OrderedDict:
-                # nicer representation of URI subject
-                pred_key = 'hasSubject'
-                new_val = new_val['@id']
-            elif trc:
-                # other is a related obsel URI, so new_val must be a dict
-                new_val['hasTrace'] = valconv_uri(trc)
 
-            old_val = the_dict.get(pred_key)
-            if old_val is None:
-                the_dict[pred_key] = new_val
-            elif type(old_val) == list:
-                old_val.append(new_val)
-            else:
-                the_dict[pred_key] = [old_val, new_val]
+        if rev:
+            the_dict = obs_dict.get('@reverse')
+            if the_dict is None:
+                the_dict = obs_dict['@reverse'] = {}
+        else:
+            the_dict = obs_dict
 
-        if rev_dict:
-            obs_dict['@reverse'] = rev_dict
+        pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
+        new_val = val2jsonobj(other)
+        if pred_key == 'subject' and type(new_val) is OrderedDict:
+            # nicer representation of URI subject
+            pred_key = 'hasSubject'
+            new_val = new_val['@id']
+        elif trc:
+            # other is a related obsel URI, so new_val must be a dict
+            new_val['hasTrace'] = valconv_uri(trc)
 
+        old_val = the_dict.get(pred_key)
+        if old_val is None:
+            the_dict[pred_key] = new_val
+        elif type(old_val) == list:
+            old_val.append(new_val)
+        else:
+            the_dict[pred_key] = [old_val, new_val]
+
+    for obs_dict in obsel_list:
         todel = []
         for key, val in obs_dict.items():
             if val is None or val == []:
@@ -757,7 +755,7 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
         for key in todel:
             del obs_dict[key]
 
-        obsel_list.append(obs_dict)
+    obsel_list.sort(key=lambda x: (x['end'], x['begin'], x['@id']))
 
     return tobsels_dict
 
