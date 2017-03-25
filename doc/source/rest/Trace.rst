@@ -64,11 +64,14 @@ Some of these parameters
 rely on the :ref:`obsel_total_ordering`.
 For example, ``@obsels?limit=10`` will return the first ten obsels,
 while ``@obsels?reverse&limit=10`` will return the last ten obsels.
-Remember however that most RDF serializations are no notion of order
+Remember however that most RDF serializations have no notion of order
 (they convey a *set* of triples)
 so the representation of those resources may appear unordered.
+The JSON-LD serializer in kTBS is a notable exception:
+the obsel list is sorted according to the obsel ordering.
 
-This still allows to retrieve obsels of a big trace in a paginated fashion,
+Even with unordered serializations, however,
+this still allows to retrieve obsels of a big trace in a paginated fashion,
 using ``limit`` to specify the size of the page,
 and ``after`` to browse from one page to another
 (setting its value to the latest obsel of the previous page),
@@ -76,6 +79,27 @@ or ``before`` when paginating in the ``reverse`` order\ [#offset]_.
 To make it easier,
 kTBS provides a ``next`` Link HTTP header (per :rfc:`5988`)
 pointing to the next page.
+
+Representation completeness
+```````````````````````````
+
+Obsels with a complex structure (see below)
+may not be entirely described in the representations of ``@obsels``.
+More precisely, all attributes (*i.e.* outgoing properties) of obsels,
+and all inter-obsel relations will *always* be represented.
+However, if an attribute has a complex value,
+represented as a blank node with its own properties,
+then the representations of ``@obsels``
+will usually\ [#usually]_ truncate such property paths to a length of 3.
+
+This limitation has been introduced to ensure good performances,
+and is deemed acceptable as obsels typically have a flat structure
+(depth of 1), and occasionnally a depth of 2.
+In order to get the full description of an obsel,
+you can of course still get it from the obsel URI.
+
+Also, note that transformation methods sill have access to the whole structure of obsels
+
 
 .. [#boolean] The value is case insensitive,
    and any value different from ``false``, ``no`` or ``0`` will be considered true.
@@ -89,3 +113,6 @@ pointing to the next page.
    forbids it beyond a certain amount of obsels),
    so using ``after``/``before`` is more robust
    (and potentially more efficient).
+
+.. [#usually] You *may* retrieve longer paths in some situations,
+   but this should not be relied upon.
