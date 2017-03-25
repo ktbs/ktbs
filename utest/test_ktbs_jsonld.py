@@ -238,7 +238,7 @@ class TestJsonBase(KtbsTestCase):
         json_content = "".join(
             serialize_json_base(self.base.get_state(params()), self.base))
         json = loads(json_content)
-        obselCount = 1 # should be 0, this is a bug with rdflib 4.2.1
+        obselCount = 0
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',

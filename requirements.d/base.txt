@@ -1,4 +1,4 @@
-rdflib==4.1.2
+rdflib==4.2.2
 httplib2==0.9
 WebOb==1.4
 PyLD==0.6.7
