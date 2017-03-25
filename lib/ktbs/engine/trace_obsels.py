@@ -210,35 +210,49 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             limit = parameters.get("limit")
             offset = parameters.get("offset")
 
-            query_str = (
-                """
-                PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> 
-                SELECT ?obs ?pred ?other ?rev ?trc ?e
-                {
-                  {%s}
-                  { ?obs ?pred ?other. } UNION { ?other ?pred ?obs. BIND(1 as ?rev) }
-                  OPTIONAL { ?other ktbs:hasTrace ?trc }
+            query_str = """PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> 
+                SELECT ?s ?p ?o ?strc ?otrc ?obs {
+                 {%s}
+                 { 
+                    ?obs ?p ?o. 
+                    BIND(?obs as ?s)
+                    OPTIONAL { ?o ktbs:hasTrace ?otrc }
+                  } UNION {
+                    ?s ?p ?obs. 
+                    BIND(?obs as ?o)
+                    OPTIONAL { ?s ktbs:hasTrace ?strc }
+                  } UNION {
+                    ?obs ?p1 ?s.
+                    FILTER isBlank(?s)
+                    ?s ?p ?o.
+                  } UNION {
+                    ?obs ?p1 ?b1.
+                    FILTER isBlank(?b1)
+                    ?b1 ?p2 ?s.
+                    FILTER isBlank(?s)
+                    ?s ?p ?o.
+                  }
                 }
-                """
-                % self.build_select(minb, maxe, after, before, reverse, query_filter,
+                """% self.build_select(minb, maxe, after, before, reverse, query_filter,
                                     limit, offset, "?obs ?e")
-            )
-
+            
             # add description of all matching obsels
-            maxe = None
-            end = None
+            old_graph_len = len(graph)
             graph_add = graph.add
-            for obs, pred, other, rev, trc, end in self.state.query(query_str):
-                if reverse and maxe is None:
-                    maxe = end.toPython()
-                if rev is None:
-                    graph_add((obs, pred, other))
-                else:
-                    graph_add((other, pred, obs))
-                if trc is not None:
-                    graph_add((other, KTBS.hasTrace, trc))
-            if maxe is None and end is not None:
-                maxe = end.toPython()
+            for s, p, o, strc, otrc, obs in self.state.query(query_str):
+                graph_add((s, p, o))
+                if strc is not None:
+                    graph_add((s, KTBS.hasTrace, strc))
+                if otrc is not None:
+                    graph_add((o, KTBS.hasTrace, otrc))
+
+            if len(graph) > old_graph_len:
+                maxe_triple = max(( t for t in graph.triples((None, KTBS.hasEnd, None)) ),
+                                  key=lambda t: t[2].toPython() )
+                maxobs = maxe_triple[0]
+                maxe = maxe_triple[2].toPython()
+            else:
+                maxobs = maxe = None
 
             # canonical link
             graph.links = links = [{
@@ -248,8 +262,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 'mstable-etag': self.get_str_mon_tag(),
             }]
             # link to next page
-            if limit and obs:
-                obs_id = obs.rsplit("/", 1)[1]
+            if limit and maxobs:
+                obs_id = maxobs.rsplit("/", 1)[1]
                 if reverse:
                     qstr = "?reverse&limit=%s&before=%s" % (limit, obs_id)
                 else:
