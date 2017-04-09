@@ -101,13 +101,16 @@ with the following specificities:
   (either absolute or relative to the source trace's model URI),
   and an obsel matches the transition if it has the corresponding obsel type.
 
-* An additional matcher is also provided: ``sparql-ask``.
+* An additional matcher is also provided: ``sparql-ask``,
+  which allows for more expressive condition as the previous one.
   It interprets conditions as the WHERE clause of a SPARQL ASK query,
-  where prefix ``:`` and ``m:`` are bound to the kTBS namespace and the source trace model,
-  respectively,
-  variable ``?obs`` is bound to the considered obsel,
-  and a variable ``?pred`` is bound to the previous matching obsel (if any).
-  This matcher allows for more expressive conditions.
+  where
+
+  - prefix ``:`` is bound to the kTBS namespace,
+  - prefix ``m:`` is bound to the source trace model,
+  - variable ``?obs`` is bound to the considered obsel,
+  - variable ``?pred`` is bound to the previous matching obsel (if any),
+  - variable ``?first`` is bound to the first matching obsel of the current match (if any).
 
 * The ``max_duration`` constraints (as specified in the documentation)
   apply to the *end* timestamps of the obsels.

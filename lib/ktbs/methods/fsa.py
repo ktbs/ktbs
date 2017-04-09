@@ -56,6 +56,8 @@ def match_sparql_ask(transition, event, token, fsa):
     transition conditions are interpreted as the WHERE clause of a SPARQL Ask query,
     where variable ?obs is bound to the considered obsel,
     and prefix m: is bound to the source trace URI.
+    
+    
     """
     m_ns = fsa.source.model_uri
     if m_ns[-1] != '/' and m_ns[-1] != '#':
@@ -63,12 +65,14 @@ def match_sparql_ask(transition, event, token, fsa):
     history = token and token.get('history_events')
     if history:
         pred = URIRef(history[-1])
+        first = URIRef(history[0])
     else:
         pred = None
+        first = None
     return fsa.source_obsels_graph.query(
         "ASK { %s }" % transition['condition'],
         initNs={"": KTBS, "m": m_ns},
-        initBindings={"obs": URIRef(event), "pred": pred},
+        initBindings={"obs": URIRef(event), "pred": pred, "first": first},
     ).askAnswer
 
 matcher_directory['sparql-ask'] = match_sparql_ask

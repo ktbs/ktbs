@@ -192,6 +192,7 @@ class TestFSAAsk(KtbsTestCase):
         self.otypeB = self.model_src.create_obsel_type("#otB")
         self.atypeW = self.model_src.create_attribute_type("#atW")
         self.otypeC = self.model_src.create_obsel_type("#otC")
+        self.otypeD = self.model_src.create_obsel_type("#otD")
         self.model_dst = self.base.create_model("md")
         self.otypeX = self.model_dst.create_obsel_type("#otX")
         self.otypeY = self.model_dst.create_obsel_type("#otY")
@@ -211,6 +212,10 @@ class TestFSAAsk(KtbsTestCase):
                         {
                             "condition": self.otypeC.uri,
                             "target": "s3"
+                        },
+                        {
+                            "condition": self.otypeD.uri,
+                            "target": "s4"
                         },
                     ]
                 },
@@ -243,6 +248,21 @@ class TestFSAAsk(KtbsTestCase):
                         {
                             "condition": "?obs m:atV ?val. ?pred m:atV ?val",
                             "matcher": "sparql-ask",
+                            "target": self.otypeX.uri,
+                        },
+                    ]
+                },
+                "s4": {
+                    "transitions": [
+                        {
+                            "condition": "?obs a m:otD; m:atV ?val."
+                                         "?first m:atV ?valf."
+                                         "FILTER(?valf < ?val)",
+                            "matcher": "sparql-ask",
+                            "target": "s4",
+                        },
+                        {
+                            "condition": self.otypeA.uri,
                             "target": self.otypeX.uri,
                         },
                     ]
@@ -319,6 +339,24 @@ class TestFSAAsk(KtbsTestCase):
         assert len(ctr.obsels) == 1
         assert_obsel_type(ctr.obsels[0], self.otypeX)
         assert_source_obsels(ctr.obsels[0], [oC2, oC3])
+
+    def test_first(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oD1 = self.src.create_obsel("oD1", self.otypeD, 0, attributes={self.atypeV: Literal(2)})
+        assert len(ctr.obsels) == 0
+        oD2 = self.src.create_obsel("oD2", self.otypeD, 1, attributes={self.atypeV: Literal(1)})
+        assert len(ctr.obsels) == 0
+        oD3 = self.src.create_obsel("oD3", self.otypeD, 2, attributes={self.atypeV: Literal(4)})
+        assert len(ctr.obsels) == 0
+        oD4 = self.src.create_obsel("oD4", self.otypeD, 3, attributes={self.atypeV: Literal(3)})
+        assert len(ctr.obsels) == 0
+        oA1 = self.src.create_obsel("oA1", self.otypeA, 4)
+        assert len(ctr.obsels) == 1
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oD2, oD3, oD4, oA1])
 
 class TestFSAMaxDuration(KtbsTestCase):
 
