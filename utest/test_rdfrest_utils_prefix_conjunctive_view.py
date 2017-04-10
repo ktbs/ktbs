@@ -22,7 +22,6 @@ from pytest import mark, raises as assert_raises
 from rdfrest.util.prefix_conjunctive_view import PrefixConjunctiveView
 
 import os
-import pyodbc
 from rdflib import BNode, Graph, Namespace
 from unittest import skip
 
@@ -445,17 +444,23 @@ class TestDefaultStore(object):
 virtuoso_store = os.environ.get('RDFREST_VIRTUOSO_STORED')
 if virtuoso_store:
     try:
+        import pyodbc
         from virtuoso.vstore import Virtuoso
-        _ = Virtuoso(virtuoso_store)
+        try:
+            _ = Virtuoso(virtuoso_store)
 
-        class TestVirtuoso(TestDefaultStore):
+            class TestVirtuoso(TestDefaultStore):
 
-            def get_store(self):
-                return Virtuoso(virtuoso_store)
+                def get_store(self):
+                    return Virtuoso(virtuoso_store)
 
-    except (ImportError, pyodbc.Error) as ex:
+        except pyodbc.Error:
 
-        @skip('Virtuoso store not available')
+            @skip('Virtuoso store not available')
+            def TestVirtuoso():
+                pass
+    except ImportError:
+        @skip('Virtuoso store not completely installed')
         def TestVirtuoso():
             pass
 else:
