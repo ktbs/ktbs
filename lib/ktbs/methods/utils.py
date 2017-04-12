@@ -86,7 +86,7 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=N
         ret = None
     return ret
 
-def copy_obsel(obsel, computed_trace, source_trace, new_obs_uri=None, check_new_obs=None):
+def copy_obsel(obsel_uri, computed_trace, source_trace, new_obs_uri=None, check_new_obs=None):
     """
     I prepare a graph for an transformed obsel being a copy of ``obsel``.
     """
@@ -101,12 +101,12 @@ def copy_obsel(obsel, computed_trace, source_trace, new_obs_uri=None, check_new_
     source_uri = source_trace.uri
     source_triples = source_trace.obsel_collection.state.triples
     if new_obs_uri is None:
-        new_obs_uri = translate_node(obsel.uri, computed_trace, source_uri, False)
+        new_obs_uri = translate_node(obsel_uri, computed_trace, source_uri, False)
 
     new_obs_add((new_obs_uri, KTBS.hasTrace, computed_trace.uri))
-    new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obsel.uri))
+    new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obsel_uri))
 
-    for _, pred, obj in source_triples((obsel.uri, None, None)):
+    for _, pred, obj in source_triples((obsel_uri, None, None)):
         if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
             continue
         new_obj = translate_node(obj, computed_trace, source_uri,
@@ -115,7 +115,7 @@ def copy_obsel(obsel, computed_trace, source_trace, new_obs_uri=None, check_new_
             continue # skip relations to nodes that are filtered out or not created yet
         new_obs_add((new_obs_uri, pred, new_obj))
 
-    for subj, pred, _ in source_triples((None, None, obsel.uri)):
+    for subj, pred, _ in source_triples((None, None, obsel_uri)):
         if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
             continue
         new_subj = translate_node(subj, computed_trace, source_uri,

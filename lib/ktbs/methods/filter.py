@@ -167,7 +167,7 @@ class _FilterMethod(AbstractMonosourceMethod):
                     continue # already added
 
                 LOG.debug("--- keeping %s", obs)
-                new_obs_graph = copy_obsel(obs, computed_trace, source,
+                new_obs_graph = copy_obsel(obs.uri, computed_trace, source,
                                            new_obs_uri=new_obs_uri,
                                            check_new_obs=check_new_obs,
                 )
