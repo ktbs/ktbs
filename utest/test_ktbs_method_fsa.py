@@ -19,6 +19,7 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 from unittest import skip
 
+import pytest
 from fsa4streams.fsa import FSA
 from json import dumps, loads
 from rdflib import Literal, XSD
@@ -26,6 +27,7 @@ from rdflib import Literal, XSD
 from ktbs.engine.resource import METADATA
 from ktbs.methods.fsa import LOG as FSA_LOG
 from ktbs.namespace import KTBS, KTBS_NS_URI
+from rdfrest.exceptions import CanNotProceedError
 
 from .test_ktbs_engine import KtbsTestCase
 
@@ -43,8 +45,6 @@ def assert_obsel_type(obsel, obsel_type):
 
 def assert_source_obsels(obsel, source_obsels):
     assert set(obsel.iter_source_obsels()) == set(source_obsels)
-
-
 
 
 class TestFSA(KtbsTestCase):
@@ -128,6 +128,14 @@ class TestFSA(KtbsTestCase):
             }
         }
         self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
+
+    def test_missing_parameter(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"model": self.model_dst.uri,},
+                                         [self.src],)
+        with pytest.raises(CanNotProceedError):
+            ctr.obsel_collection.force_state_refresh()
+        assert ctr.diagnosis is not None
 
     def test_base_structure(self):
         ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,

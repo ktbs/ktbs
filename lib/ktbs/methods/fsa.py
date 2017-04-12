@@ -90,7 +90,7 @@ class _FSAMethod(AbstractMonosourceMethod):
         "fsa": FSA.from_str,
         "expose_tokens": boolean_parameter,
     }
-    required_types = ["fsa"]
+    required_parameters = ["fsa"]
 
     def init_state(self, computed_trace, params, cstate, diag):
         """I implement :meth:`.abstract.AbstractMonosourceMethod.init_state
