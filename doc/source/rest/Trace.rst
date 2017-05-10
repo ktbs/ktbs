@@ -36,6 +36,8 @@ Description Constraints
 The description of a trace must be `star shaped <star-shaped>`:ref:.
 
 
+.. _obsel_collection:
+
 @obsels
 +++++++
 
@@ -99,6 +101,25 @@ In order to get the full description of an obsel,
 you can of course still get it from the obsel URI.
 
 Also, note that transformation methods sill have access to the whole structure of obsels
+
+
+PUT
+---
+
+This method can be used to modify the obsels of a trace.
+Be aware that kTBS performs *absolutely no control* on the put graph,
+so this is at your own risks.
+
+DELETE
+------
+
+This method deletes the obsel collection,
+and with it all the obsels of the trace.
+
+Note that a trace must always have an obsel collection,
+so a new (empty) one will immediately be created.
+Hence, this method can be thought of as simply deleting all obsels,
+and leaving the obsel collection resource intact.
 
 
 .. [#boolean] The value is case insensitive,

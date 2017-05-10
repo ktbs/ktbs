@@ -17,4 +17,11 @@ GET
 
 Return the description of this obsel.
 
-NB: any modification to an obsel is made through an amendment (PUT) of the trace.
+DELETE
+------
+
+Deletes this obsel from the trace.
+Note that this is a `non-monotonic <monotonicity>`:doc: change.
+
+NB: any other modification to an obsel is made through an amendment (PUT)
+of the whole `obsel collection <obsel_collection>`:ref:.
