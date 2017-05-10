@@ -47,20 +47,23 @@ class _HRulesMethod(AbstractMonosourceMethod):
         """
         rules = params['rules']
         bgps = []
-        for rule in rules:
+        for rulepos, rule in enumerate(rules):
             if not rule.get('visible', True):
                 continue
             new_type = rule["id"]
             for subrule in rule['rules']:
+                rank = 0
                 bgp = []
                 old_type = subrule.get("type", "")
                 if old_type:
+                    rank += 1000000
                     bgp.append("?obs a <%s>." % old_type)
                 for attno, att in enumerate(subrule.get("attributes", ())):
                     # TODO inspect model to decide on datatype of value
                     # if a single datatype is linked to the attribute: use that one
                     # else, try to convert value to a number
                     # else, consider it as a plain string
+                    rank += 1000
                     if att['operator'] == '==':
                         bgp.append('?obs <%(uri)s> %(value)s.' % att)
                     else:
@@ -69,11 +72,9 @@ class _HRulesMethod(AbstractMonosourceMethod):
                                    'FILTER(%(var)s %(operator)s %(value)s).'
                                    % att)
                 bgp = "".join(bgp)
-                bgps.append([new_type, bgp])
-                # TODO sort rules according to precedence:
-                # do I have a type ? -> +1000000
-                # per attribute constraints-> +1000
-                # rank -> +1
+                rank -= rulepos
+                bgps.append([rank, new_type, bgp])
+        bgps.sort(reverse=True)
 
         cstate.update([
             ("bgps", bgps),
@@ -120,7 +121,7 @@ class _HRulesMethod(AbstractMonosourceMethod):
 
         inserted = set()
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
-            for new_type, bgp in bgps:
+            for _rank, new_type, bgp in bgps:
                 new_type = URIRef(new_type)
                 select = source_obsels.build_select(after=after, bgp=bgp)
                 query_str = "PREFIX ktbs: <%s#> %s" % (KTBS_NS_URI, select)
@@ -132,10 +133,10 @@ class _HRulesMethod(AbstractMonosourceMethod):
                     if monotonicity is PSEUDO_MON\
                     and target_contains((new_obs_uri, KTBS.hasTrace, target_uri))\
                     or new_obs_uri in inserted:
+                        # could be either because of pseudo-monotony,
+                        # or because a BGP with higher priority already matched
                         LOG.debug("--- already seen %s", new_obs_uri)
                         continue # already added
-
-                    print "===", "->", obs_uri, new_type
 
                     new_obs_graph = copy_obsel(obs_uri, computed_trace, source,
                                                new_obs_uri=new_obs_uri,

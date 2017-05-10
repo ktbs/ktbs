@@ -53,13 +53,31 @@ class TestHRules(KtbsTestCase):
         self.otypeC = self.model_src.create_obsel_type("#otC")
         self.otypeD = self.model_src.create_obsel_type("#otD")
         self.otypeE = self.model_src.create_obsel_type("#otE")
-        self.atypeV = self.model_src.create_obsel_type("#atV")
-        self.atypeW = self.model_src.create_obsel_type("#atW")
+        all_types = [self.otypeA, self.otypeB, self.otypeC, self.otypeD,
+                     self.otypeE]
+        self.atypeT = self.model_src.create_attribute_type("#atT")
+        self.atypeU = self.model_src.create_attribute_type("#atU", all_types,
+                                                           [XSD.integer])
+        self.atypeV = self.model_src.create_attribute_type("#atV", all_types,
+                                                           [XSD.decimal])
+        self.atypeW = self.model_src.create_attribute_type("#atW", all_types,
+                                                           [XSD.string])
         self.model_dst = self.base.create_model("md")
         self.otypeX = self.model_dst.create_obsel_type("#otX")
         self.otypeY = self.model_dst.create_obsel_type("#otY")
         self.otypeZ = self.model_dst.create_obsel_type("#otZ")
-        self.base_rules = [
+        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
+
+    def test_missing_parameter(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
+                                         {"model": self.model_dst.uri,},
+                                         [self.src],)
+        with pytest.raises(CanNotProceedError):
+            ctr.obsel_collection.force_state_refresh()
+        assert ctr.diagnosis is not None
+
+    def test_base_rules(self):
+        base_rules = [
             {
                 'id': self.otypeX.uri,
                 'visible': True,
@@ -112,19 +130,8 @@ class TestHRules(KtbsTestCase):
                 ]
             },
         ]
-        self.src = self.base.create_stored_trace("s/", self.model_src, default_subject="alice")
-
-    def test_missing_parameter(self):
         ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
-                                         {"model": self.model_dst.uri,},
-                                         [self.src],)
-        with pytest.raises(CanNotProceedError):
-            ctr.obsel_collection.force_state_refresh()
-        assert ctr.diagnosis is not None
-
-    def test_base_rules(self):
-        ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
-                                         {"rules": dumps(self.base_rules),
+                                         {"rules": dumps(base_rules),
                                           "model": self.model_dst.uri,},
                                          [self.src],)
         oE = self.src.create_obsel("oE", self.otypeE, 0)
@@ -148,8 +155,114 @@ class TestHRules(KtbsTestCase):
         assert_obsel_type(ctr.obsels[-1], self.otypeZ)
         assert_source_obsels(ctr.obsels[-1], [oD,])
 
-        # TODO more tests
+    def test_precedence(self):
+        base_rules = [
+            {
+                'id': self.otypeX.uri,
+                'rules': [
+                    {
+                        'type': self.otypeE.uri,
+                    },
+                ]
+            },
+            {
+                'id': self.otypeY.uri,
+                'rules': [
+                    {
+                        'type': self.otypeA.uri,
+                    },
+                    {
+                        'type': self.otypeE.uri,
+                        'attributes': [
+                            {
+                                'uri': self.atypeU.uri,
+                                'operator': '<',
+                                'value': '0',
+                            },
+                        ],
+                    },
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '>',
+                                'value': '0',
+                            },
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '<',
+                                'value': '10',
+                            },
+                        ],
+                    },
+                ]
+            },
+            {
+                'id': self.otypeZ.uri,
+                'rules': [
+                    {
+                        'type': self.otypeB.uri,
+                    },
+                    {
+                        'type': self.otypeE.uri,
+                        'attributes': [
+                            {
+                                'uri': self.atypeU.uri,
+                                'operator': '>=',
+                                'value': '0',
+                            },
+                        ],
+                    },
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '>=',
+                                'value': '6',
+                            },
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '>=',
+                                'value': '8',
+                            },
+                        ],
+                    },
+                ]
+            },
+        ]
+        ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
+                                              {"rules": dumps(base_rules),
+                                               "model": self.model_dst.uri, },
+                                              [self.src], )
 
-        # TODO test precedence of rules (once implemented)
+        nobs = 0
+        for old_type, attr_u, attr_v, new_type in [
+            (self.otypeA, None, None, self.otypeY),
+            (self.otypeB, None, None, self.otypeZ),
+            (self.otypeE, None, None, self.otypeX),
+            (self.otypeE, -1,   None, self.otypeY),
+            (self.otypeE, 1,    None, self.otypeZ),
+            (self.otypeE, None, 7,    self.otypeX),
+            (self.otypeE, -1  , 7,    self.otypeY),
+            (self.otypeE, 1   , 7,    self.otypeZ),
+            (self.otypeA, None, 7,    self.otypeY),
+            (self.otypeB, None, 7,    self.otypeZ),
+            (self.otypeA, None, 11,   self.otypeY),
+            (self.otypeB, None, 11,   self.otypeZ),
+            (self.otypeC, None, 7,    self.otypeY),
+        ]:
+            nobs += 1
+            attr = {}
+            if attr_u is not None:
+                attr[self.atypeU] = Literal(attr_u)
+            if attr_v is not None:
+                attr[self.atypeV] = Literal(attr_v)
+            obs = self.src.create_obsel(None, old_type, nobs, attributes=attr)
+            assert len(ctr.obsels) == nobs
+            assert_obsel_type(ctr.obsels[-1], new_type)
+            assert_source_obsels(ctr.obsels[-1], [obs,])
 
-        # TODO test misc datatypes of values (once implemented)
+        obs = self.src.create_obsel(None, self.otypeC, nobs+1)
+        assert len(ctr.obsels) == nobs # no new obsel created
+
+    # TODO test misc datatypes of values (once implemented)
