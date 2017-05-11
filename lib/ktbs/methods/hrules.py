@@ -45,13 +45,12 @@ class _HRulesMethod(AbstractMonosourceMethod):
     def init_state(self, computed_trace, params, cstate, diag):
         """I implement :meth:`.abstract.AbstractMonosourceMethod.init_state
         """
-        numeric_types = [XSD.integer, XSD.decimal, XSD.float, XSD.double]
-        numeric_attributes = set()
+        domains = {}
         src_model = computed_trace.source_traces[0].model
         for atype in src_model.iter_attribute_types():
             dtypes = atype.data_types
-            if len(dtypes) == 1 and dtypes[0] in numeric_types:
-                numeric_attributes.add(unicode(atype.uri))
+            if len(dtypes) == 1:
+                domains[unicode(atype.uri)] = dtypes[0]
 
         rules = params['rules']
         bgps = []
@@ -67,20 +66,22 @@ class _HRulesMethod(AbstractMonosourceMethod):
                     rank += 1000000
                     bgp.append("?obs a <%s>." % old_type)
                 for attno, att in enumerate(subrule.get("attributes", ())):
-                    # TODO inspect model to decide on datatype of value
-                    # if a single datatype is linked to the attribute: use that one
-                    # else, try to convert value to a number
-                    # else, consider it as a plain string
                     rank += 1000
-                    if att['uri'] not in numeric_attributes:
-                        att['value'] = Literal(att['value']).n3()
-                    if att['operator'] == '==':
-                        bgp.append('?obs <%(uri)s> %(value)s.' % att)
+                    if isinstance(att['value'], unicode):
+                        dtype = domains.get(att['uri'], XSD.string)
+                        value = Literal(att['value'], datatype=dtype)
                     else:
-                        att['var'] = '?att%s' % attno
-                        bgp.append('?obs <%(uri)s> %(var)s. '
-                                   'FILTER(%(var)s %(operator)s %(value)s).'
-                                   % att)
+                        dtype = att['value'].get('@datatype', XSD.string)
+                        value = Literal(att['value']['@value'], datatype=dtype)
+                    att['sparql_value'] = value.n3()
+                    if att['operator'] == '==':
+                        att['sparql_op'] = '='
+                    else:
+                        att['sparql_op'] = att['operator']
+                    att['var'] = '?att%s' % attno
+                    bgp.append('?obs <%(uri)s> %(var)s. '
+                               'FILTER(%(var)s %(sparql_op)s %(sparql_value)s).'
+                               % att)
                 bgp = "".join(bgp)
                 rank -= rulepos
                 bgps.append([rank, new_type, bgp])

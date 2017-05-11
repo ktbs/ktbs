@@ -313,6 +313,24 @@ class TestHRules(KtbsTestCase):
                     },
                 ]
             },
+            {
+                'id': self.otypeZ.uri,
+                'rules': [
+                    {
+                        'type': self.otypeE.uri,
+                        'attributes': [
+                            {
+                                'uri': self.atypeT.uri,
+                                'operator': '>',
+                                'value': {
+                                    '@value': "999",
+                                    '@datatype': XSD.int,
+                                },
+                            },
+                        ],
+                    },
+                ]
+            },
         ]
         ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
                                               {"rules": dumps(base_rules),
@@ -343,15 +361,23 @@ class TestHRules(KtbsTestCase):
         assert_obsel_type(ctr.obsels[-1], self.otypeY)
         assert_source_obsels(ctr.obsels[-1], [obs, ])
 
-        obs = self.src.create_obsel(None, self.otypeA, 5,
-                                    attributes={self.atypeT: Literal("6")})
-        assert len(ctr.obsels) == 4 # no new obsel created
+
+        obs = self.src.create_obsel(None, self.otypeE, 5,
+                                    attributes={self.atypeT: Literal(1000)})
+        assert len(ctr.obsels) == 5
+        assert_obsel_type(ctr.obsels[-1], self.otypeZ)
+        assert_source_obsels(ctr.obsels[-1], [obs, ])
+
+
         obs = self.src.create_obsel(None, self.otypeA, 6,
-                                    attributes={self.atypeW: Literal("6")})
-        assert len(ctr.obsels) == 4 # no new obsel created
+                                    attributes={self.atypeT: Literal("6")})
+        assert len(ctr.obsels) == 5 # no new obsel created
         obs = self.src.create_obsel(None, self.otypeA, 7,
-                                    attributes={self.atypeU: Literal(400)})
-        assert len(ctr.obsels) == 4 # no new obsel created
+                                    attributes={self.atypeW: Literal("6")})
+        assert len(ctr.obsels) == 5 # no new obsel created
         obs = self.src.create_obsel(None, self.otypeA, 8,
                                     attributes={self.atypeU: Literal(400)})
-        assert len(ctr.obsels) == 4 # no new obsel created
+        assert len(ctr.obsels) == 5 # no new obsel created
+        obs = self.src.create_obsel(None, self.otypeA, 9,
+                                    attributes={self.atypeU: Literal(400)})
+        assert len(ctr.obsels) == 5 # no new obsel created
