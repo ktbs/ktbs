@@ -389,9 +389,9 @@ def serialize_json_base(graph, base, bindings=None):
     add_other_arcs(base_dict, graph, base.uri, valconv)
 
     if (None, KTBS.hasBase, base.uri) in graph:
-        base_dict['inRoot'] = ".."
+        base_dict['inRoot'] = '../'
     else:
-        base_dict['inBase'] = '..'
+        base_dict['inBase'] = '../'
 
     yield dumps(base_dict, ensure_ascii=False, indent=4)
 

@@ -184,7 +184,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
         })
         assert_roundtrip(json_content, self.base)
 
@@ -203,7 +203,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'label': 'My customized base',
             'http://example.org/ns/strprop': 'Hello world',
         })
@@ -221,7 +221,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'contains': [
                 { '@id': 'method', '@type': 'Method' },
                 { '@id': 'model', '@type': 'TraceModel' },
@@ -246,7 +246,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'contains': [
                 { '@id': 'method', '@type': 'Method', 'label':"the method" },
                 { '@id': 'model', '@type': 'TraceModel', 'label':"the model" },
