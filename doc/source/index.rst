@@ -18,6 +18,7 @@ Contents:
    concepts
    tutorials
    rest
+   methods
    devel
 
 .. todo::
