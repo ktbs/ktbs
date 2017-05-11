@@ -265,4 +265,93 @@ class TestHRules(KtbsTestCase):
         obs = self.src.create_obsel(None, self.otypeC, nobs+1)
         assert len(ctr.obsels) == nobs # no new obsel created
 
-    # TODO test misc datatypes of values (once implemented)
+    def test_datatypes(self):
+        base_rules = [
+            {
+                'id': self.otypeX.uri,
+                'rules': [
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeU.uri,
+                                'operator': '<',
+                                'value': '50',
+                            },
+                        ],
+                    },
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '<',
+                                'value': '50',
+                            },
+                        ],
+                    },
+                ]
+            },
+            {
+                'id': self.otypeY.uri,
+                'rules': [
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeT.uri,
+                                'operator': '<',
+                                'value': '50',
+                            },
+                        ],
+                    },
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeW.uri,
+                                'operator': '<',
+                                'value': '50',
+                            },
+                        ],
+                    },
+                ]
+            },
+        ]
+        ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
+                                              {"rules": dumps(base_rules),
+                                               "model": self.model_dst.uri, },
+                                              [self.src], )
+
+        obs = self.src.create_obsel(None, self.otypeA, 1,
+                                    attributes={self.atypeU: Literal(6)})
+        assert len(ctr.obsels) == 1
+        assert_obsel_type(ctr.obsels[-1], self.otypeX)
+        assert_source_obsels(ctr.obsels[-1], [obs,])
+
+        obs = self.src.create_obsel(None, self.otypeA, 2,
+                                    attributes={self.atypeV: Literal(6.5)})
+        assert len(ctr.obsels) == 2
+        assert_obsel_type(ctr.obsels[-1], self.otypeX)
+        assert_source_obsels(ctr.obsels[-1], [obs,])
+
+        obs = self.src.create_obsel(None, self.otypeA, 3,
+                                    attributes={self.atypeT: Literal("400")})
+        assert len(ctr.obsels) == 3
+        assert_obsel_type(ctr.obsels[-1], self.otypeY)
+        assert_source_obsels(ctr.obsels[-1], [obs, ])
+
+        obs = self.src.create_obsel(None, self.otypeA, 4,
+                                    attributes={self.atypeW: Literal("400")})
+        assert len(ctr.obsels) == 4
+        assert_obsel_type(ctr.obsels[-1], self.otypeY)
+        assert_source_obsels(ctr.obsels[-1], [obs, ])
+
+        obs = self.src.create_obsel(None, self.otypeA, 5,
+                                    attributes={self.atypeT: Literal("6")})
+        assert len(ctr.obsels) == 4 # no new obsel created
+        obs = self.src.create_obsel(None, self.otypeA, 6,
+                                    attributes={self.atypeW: Literal("6")})
+        assert len(ctr.obsels) == 4 # no new obsel created
+        obs = self.src.create_obsel(None, self.otypeA, 7,
+                                    attributes={self.atypeU: Literal(400)})
+        assert len(ctr.obsels) == 4 # no new obsel created
+        obs = self.src.create_obsel(None, self.otypeA, 8,
+                                    attributes={self.atypeU: Literal(400)})
+        assert len(ctr.obsels) == 4 # no new obsel created

@@ -21,7 +21,7 @@ Implementation of the filter builtin methods.
 import logging
 
 import json
-from rdflib import Literal, RDF, URIRef
+from rdflib import Literal, RDF, URIRef, XSD
 from rdfrest.util import check_new
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
 from .utils import copy_obsel, translate_node
@@ -45,6 +45,14 @@ class _HRulesMethod(AbstractMonosourceMethod):
     def init_state(self, computed_trace, params, cstate, diag):
         """I implement :meth:`.abstract.AbstractMonosourceMethod.init_state
         """
+        numeric_types = [XSD.integer, XSD.decimal, XSD.float, XSD.double]
+        numeric_attributes = set()
+        src_model = computed_trace.source_traces[0].model
+        for atype in src_model.iter_attribute_types():
+            dtypes = atype.data_types
+            if len(dtypes) == 1 and dtypes[0] in numeric_types:
+                numeric_attributes.add(unicode(atype.uri))
+
         rules = params['rules']
         bgps = []
         for rulepos, rule in enumerate(rules):
@@ -64,6 +72,8 @@ class _HRulesMethod(AbstractMonosourceMethod):
                     # else, try to convert value to a number
                     # else, consider it as a plain string
                     rank += 1000
+                    if att['uri'] not in numeric_attributes:
+                        att['value'] = Literal(att['value']).n3()
                     if att['operator'] == '==':
                         bgp.append('?obs <%(uri)s> %(value)s.' % att)
                     else:
