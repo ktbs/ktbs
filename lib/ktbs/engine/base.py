@@ -157,7 +157,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         """
         super(Base, self).ack_delete(parameters)
         parent = self.get_parent()
-        with parent.edit(_trust=True) as editable:
+        with parent.lock(self), parent.edit(_trust=True) as editable:
             editable.remove((parent.uri, KTBS.hasBase, self.uri))
             editable.remove((parent.uri, KTBS.contains, self.uri))
             editable.remove((self.uri, RDF.type, self.RDF_MAIN_TYPE))
