@@ -88,4 +88,5 @@ import ktbs.methods.fsa      # reimport(?) #pylint: disable=W0404
 import ktbs.methods.fusion   # reimport(?) #pylint: disable=W0404
 import ktbs.methods.isparql  # reimport(?) #pylint: disable=W0404
 import ktbs.methods.sparql   # reimport(?) #pylint: disable=W0404
+import ktbs.methods.hrules   # reimport(?) #pylint: disable=W0404
 

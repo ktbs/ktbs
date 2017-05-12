@@ -495,10 +495,12 @@ KTBS_NS_TTL = """
                                         "fusion"@fr .
 :sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,
                                         "SPARQL"@fr .
-:isparql   a :BuiltinMethod ; rdfs:label "Incremental SPARQL"@en,
+:isparql  a :BuiltinMethod ; rdfs:label "Incremental SPARQL"@en,
                                         "SPARQL incrémental"@fr .
 :fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
                                         "Automate à états fini"@fr .
+:hrules   a :BuiltinMethod ; rdfs:label "Hubble-type rules"@en,
+                                        "Règles au format Hubble"@fr .
 
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .

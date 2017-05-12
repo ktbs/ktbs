@@ -127,7 +127,7 @@ class AbstractTraceObselsMixin(ICore):
             filters.append("?e <= %s" % end)
         if after is not None:
             if isinstance(after, URIRef):
-                bgp += "<{}> ktbs:hasBegin ?_ab;ktbs:hasEnd ?_ae. {}" \
+                bgp = "<{}> ktbs:hasBegin ?_ab;ktbs:hasEnd ?_ae. {}" \
                        .format(after, bgp)
                 after_values = (after, "?_ab", "?_ae")
             elif isinstance(after, ObselMixin):
