@@ -136,7 +136,12 @@ class HttpFrontend(object):
         self._options = {}
 
         if self.reset_connection:
-            self._service.store.close()
+            try:
+                self._service.store.close()
+            except:
+                LOG.warning("Ignoring exception when closing store", exc_info=1)
+                # seems to happen for no good reason with Virtuoso
+
 
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
