@@ -198,7 +198,6 @@ class HttpFrontend(object):
                                     allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
         
-        resource.force_state_refresh()
         pre_process_request(self._service, request, resource)
         response = method(request, resource)
         return response(environ, start_response)
