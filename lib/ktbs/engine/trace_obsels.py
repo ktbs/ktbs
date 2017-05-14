@@ -210,10 +210,25 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
             limit = parameters.get("limit")
             offset = parameters.get("offset")
 
+            matching_obsels = [
+                row[0].n3() for row in self.state.query(
+                    self.build_select(minb, maxe, after, before, reverse,
+                                      query_filter, limit, offset),
+                    initNs={
+                        "ktbs": "http://liris.cnrs.fr/silex/2009/ktbs#"
+                    },
+                )
+            ]
+
+            LOG.debug("%s matching obsels", len(matching_obsels))
+            if len(matching_obsels) == 0:
+                matching_obsels.append(Literal(42))
+                # this is a hack because rdflib 4.2.2 does not support an empty VALUES list
+                # but it should not match anything
+
             query_str = """PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> 
                 SELECT ?s ?p ?o ?strc ?otrc ?obs {
-                 {%s}
-                 { 
+                  {
                     ?obs ?p ?o. 
                     BIND(?obs as ?s)
                     OPTIONAL { ?o ktbs:hasTrace ?otrc }
@@ -232,9 +247,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                     FILTER isBlank(?s)
                     ?s ?p ?o.
                   }
-                }
-                """% self.build_select(minb, maxe, after, before, reverse, query_filter,
-                                    limit, offset, "?obs ?e")
+                  VALUES ?obs { %s }
+                } 
+                """% (' '.join(matching_obsels))
             
             # add description of all matching obsels
             old_graph_len = len(graph)
