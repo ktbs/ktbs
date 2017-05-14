@@ -126,7 +126,7 @@ class WithLockMixin(ILocalCore):
 
                 try:  # catch exceptions occurring after the lock has been acquired
                     # Make sure the resource still exists (it could have been deleted by a concurrent process).
-                    if len(resource.state) == 0:
+                    if len(resource._graph) == 0:
                         _mark_as_deleted(resource)
                         raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
                     yield

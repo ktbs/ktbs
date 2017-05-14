@@ -30,15 +30,15 @@ from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.cores.local import NS as RDFREST
 from rdfrest.util import Diagnosis, coerce_to_uri
+from .lock import WithLockMixin
 from .resource import KtbsResource, METADATA
-from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 
 
 LOG = getLogger(__name__)
 
-class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
+class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
     """
     ######## Public methods ########
@@ -561,41 +561,42 @@ class ComputedTraceObsels(AbstractTraceObsels):
                          if parameters else 1)
         if refresh_param == 0 or self.__forcing_state_refresh:
             return
-        self.__forcing_state_refresh = True
-        try:
-            LOG.debug("forcing state refresh <%s>", self.uri)
-            super(ComputedTraceObsels, self).force_state_refresh(parameters)
-            trace = self.trace
-            if refresh_param == 2:
-                parameters['refresh'] = 'default' # do not transmit 'force' to sources
-            for src in trace.iter_source_traces():
-                src.obsel_collection.force_state_refresh(parameters)
-            if (refresh_param >= 2 or
-                self.metadata.value(self.uri, METADATA.dirty, None) is not None):
+        with self.lock(self):
+            self.__forcing_state_refresh = True
+            try:
+                LOG.debug("forcing state refresh <%s>", self.uri)
+                super(ComputedTraceObsels, self).force_state_refresh(parameters)
+                trace = self.trace
+                if refresh_param == 2:
+                    parameters['refresh'] = 'default' # do not transmit 'force' to sources
+                for src in trace.iter_source_traces():
+                    src.obsel_collection.force_state_refresh(parameters)
+                if (refresh_param >= 2 or
+                    self.metadata.value(self.uri, METADATA.dirty, None) is not None):
 
-                with self.service: # start transaction if not already started
-                    LOG.info("recomputing <%s>", self.uri)
-                    # we *first* unset the dirty bit, so that recursive calls to
-                    # get_state do not result in an infinite recursion
-                    self.metadata.remove((self.uri, METADATA.dirty, None))
-                    trace.force_state_refresh()
-                    impl = trace._method_impl # friend #pylint: disable=W0212
-                    try:
-                        diag = impl.compute_obsels(trace, refresh_param >= 2)
-                    except BaseException, ex:
-                        LOG.warn(traceback.format_exc())
-                        diag = Diagnosis(
-                            "exception raised while computing obsels",
-                            [ex.message],
-                            sys.exc_traceback,
-                        )
-                    if not diag:
-                        self.metadata.set((self.uri, METADATA.dirty,
-                                              Literal("yes")))
-                        
-                        raise CanNotProceedError, unicode(diag), diag.traceback
-        finally:
-            del self.__forcing_state_refresh
+                    with self.service: # start transaction if not already started
+                        LOG.info("recomputing <%s>", self.uri)
+                        # we *first* unset the dirty bit, so that recursive calls to
+                        # get_state do not result in an infinite recursion
+                        self.metadata.remove((self.uri, METADATA.dirty, None))
+                        trace.force_state_refresh()
+                        impl = trace._method_impl # friend #pylint: disable=W0212
+                        try:
+                            diag = impl.compute_obsels(trace, refresh_param >= 2)
+                        except BaseException, ex:
+                            LOG.warn(traceback.format_exc())
+                            diag = Diagnosis(
+                                "exception raised while computing obsels",
+                                [ex.message],
+                                sys.exc_traceback,
+                            )
+                        if not diag:
+                            self.metadata.set((self.uri, METADATA.dirty,
+                                                  Literal("yes")))
+
+                            raise CanNotProceedError, unicode(diag), diag.traceback
+            finally:
+                del self.__forcing_state_refresh
 
 
     def edit(self, parameters=None, clear=False, _trust=False):

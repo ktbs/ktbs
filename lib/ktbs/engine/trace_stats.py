@@ -18,19 +18,14 @@
 """
 I provide the implementation of kTBS obsel collections.
 """
-from itertools import chain
 from logging import getLogger
 
-from rdflib import Graph, Literal, RDF, BNode
+from rdflib import Literal, RDF, BNode
 from rdflib.namespace import Namespace
-from rdflib.plugins.sparql.processor import prepareQuery
 
-from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
-    MethodNotAllowedError
-from rdfrest.cores.local import NS as RDFREST
-from rdfrest.util import Diagnosis
+from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
+from .lock import WithLockMixin
 from .resource import KtbsResource, METADATA
-from .obsel import get_obsel_bounded_description
 from .trace_obsels import _REFRESH_VALUES
 from ..api.trace_stats import TraceStatisticsMixin
 from ..namespace import KTBS
@@ -40,7 +35,7 @@ LOG = getLogger(__name__)
 
 NS = Namespace('http://tbs-platform.org/2016/trace-stats#')
 
-class TraceStatistics(TraceStatisticsMixin, KtbsResource):
+class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
     """
     ######## Public methods ########
@@ -76,24 +71,25 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
         if refresh_param == 0 or self.__forcing_state_refresh:
             return
 
-        if (self.metadata.value(self.uri, METADATA.dirty) is None
-            and refresh_param < 2):
-            return
+        with self.lock(self):
+            if (self.metadata.value(self.uri, METADATA.dirty) is None
+                and refresh_param < 2):
+                return
 
-        self.__forcing_state_refresh = True
-        try:
-            LOG.debug('refreshing <{}>'.format(self.uri))
-            trace = self.trace
-            trace.obsel_collection.force_state_refresh(parameters)
+            self.__forcing_state_refresh = True
+            try:
+                LOG.debug('refreshing <{}>'.format(self.uri))
+                trace = self.trace
+                trace.obsel_collection.force_state_refresh(parameters)
 
-            # Avoid passing refresh parameter to edit()
-            with self.edit(None, _trust=True) as editable:
-                editable.remove((None, None, None))
-                self.init_graph(editable, self.uri, trace.uri)
-                self._populate(editable, trace)
-                self.metadata.remove((self.uri, METADATA.dirty, None))
-        finally:
-            del self.__forcing_state_refresh
+                # Avoid passing refresh parameter to edit()
+                with self.edit(None, _trust=True) as editable:
+                    editable.remove((None, None, None))
+                    self.init_graph(editable, self.uri, trace.uri)
+                    self._populate(editable, trace)
+                    self.metadata.remove((self.uri, METADATA.dirty, None))
+            finally:
+                del self.__forcing_state_refresh
 
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`.KtbsResource.edit`.

@@ -300,6 +300,10 @@ class ILocalCore(ICore):
 
         The :class:`Service` this resource depends on.
 
+    .. py:attribute:: _graph
+
+        A :class:`~rdflib.graph.Graph` reflecting the data of this resource.
+
     """
 
     def check_parameters(self, to_check, parameters, method):
@@ -952,7 +956,7 @@ class _DeletedCore(ICore):
         """
         msg = "This resource has been deleted"
         if self._stack:
-            msg += " at:\n" + traceback.format_list(self._stack[-1:])
+            msg += " at:\n" + traceback.format_list(self._stack)[-1]
         return msg
     
     @property

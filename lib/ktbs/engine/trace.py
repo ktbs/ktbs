@@ -327,7 +327,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                                                  initBindings=binding) ]
         bnode_candidates = { i for i in candidates
                                if isinstance(i, BNode) }
-        with base.lock(self), self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
+        with self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
             for candidate in candidates:
                 if isinstance(candidate, BNode):
                     bnode_candidates.remove(candidate)
