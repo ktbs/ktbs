@@ -221,7 +221,10 @@ def parse_options():
 
     options, args = opt.parse_args()
     if args:
-        opt.error("spurious arguments")
+        if len(args) > 1 or options.configfile is not None:
+            opt.error("spurious arguments")
+        else:
+            options.configfile = args[0]
     return options
     
 
