@@ -448,7 +448,7 @@ class TestSparql(KtbsTestCase):
                                                   "sparql": sparql,
                                                   "foo": "bar"
                                               }, [self.src1],)
-
+        assert not ctr.diagnosis
         assert ctr.model == self.model
         assert ctr.origin == self.origin
         assert len(ctr.obsels) == 0
@@ -498,6 +498,7 @@ class TestSparql(KtbsTestCase):
                                                   "inherit": "yes"
                                               }, [self.src1],)
 
+        assert not ctr.diagnosis
         assert ctr.model == self.model
         assert ctr.origin == self.origin
         assert len(ctr.obsels) == 0
@@ -539,6 +540,7 @@ class TestSparql(KtbsTestCase):
                                                   "inherit": "yes"
                                               }, [self.src1],)
 
+        assert not ctr.diagnosis
         assert ctr.model == self.model
         assert ctr.origin == self.origin
         assert len(ctr.obsels) == 0
@@ -577,6 +579,33 @@ class TestSparql(KtbsTestCase):
         ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
             "sparql": sparql,
             "scope": "foo",
+        }, [self.src1], )
+
+        assert ctr.diagnosis is not None
+
+    def test_sparql_scope_store(self):
+        sparql = """
+        PREFIX : <http://example.org/model#>
+        PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
+
+        CONSTRUCT {
+            [ k:hasTrace <%(__destination__)s> ;
+              a ?ot ;
+              k:hasBegin ?begin ;
+              k:hasEnd   ?begin ;
+              k:hasSubject "anonymous" ;
+              k:hasSourceObsel ?sobs ;
+              :at "foo"
+            ]
+        }
+        WHERE {
+            ?sobs a ?ot ; k:hasBegin ?begin .
+        }
+        """
+
+        ctr = self.base.create_computed_trace("ctr/", KTBS.sparql, {
+            "sparql": sparql,
+            "scope": "store",
         }, [self.src1], )
 
         assert ctr.diagnosis is not None

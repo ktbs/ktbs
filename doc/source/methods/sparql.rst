@@ -27,20 +27,19 @@ This method applies a SPARQL CONSTRUCT query to the source trace.
 If parameter ``model`` (resp. ``origin``) is not provided,
 the model (resp. origin) of the source trace will be used instead.
 
-The ``scope`` parameter accepts two values:
-``trace`` (the default) and ``base``.
-When scoped to the trace,
-the SPARQL query only has access to the obsels of the source trace.
-When scoped to the base,
-the SPARQL query has access to the information of the whole base.
-This can be useful to use external information that the obsels of the source trace link to,
-such as model information
-(if the model is stored in the same base as the source trace),
-source obsels
-(if the source trace is itself a computed trace),
-etc.
-Also, when scoped to the base,
-the SPARQL query can use the ``GRAPH`` keyword to constrain or retrieve the provenance of triples.
+The ``scope`` parameter accepts three values:
+
+* ``trace`` (the default): the SPARQL query only has access to the obsels of the source trace.*
+
+* ``base``: the default graph is the union of all the information contained in the base
+  (including subbases). The GRAPH keyword can be used to filter information per graph.
+  Note that this is concetually clean, but very inefficient with the current implementation.
+
+* ``store``: the default graph is the entire content of the underlying triple-sore.
+  The GRAPH keyword can be used to filter information per graph.
+  Note that this is only safe if all users are allowed to access any stored information.
+  For this reason, this option is disable by default.
+  To enable it, the configuration ``sparql.allow-scope-store`` must be set to ``true``.
 
 If ``inherit`` is set (with any value),
 then the produced obsels will inherit from their source obsel

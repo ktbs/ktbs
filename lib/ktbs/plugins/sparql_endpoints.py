@@ -147,8 +147,6 @@ class SparqlEndpointMiddleware(object):
 
 def start_plugin(config):
     register_middleware(BOTTOM, SparqlEndpointMiddleware)
-    if config.has_section('sparql') and config.has_option('sparql', 'full_dataset'):
-        warn("sparql.full_dataset option is deprecared. Use scope parameter instead.")
 
 def stop_plugin():
     unregister_middleware(SparqlEndpointMiddleware)
