@@ -38,7 +38,7 @@ from .test_ktbs_engine import KtbsTestCase
 
 _BUILTIN_METHODS = [
     'external', 'filter', 'fsa', 'fusion', 'sparql', 'isparql', 'hrules',
-    'sparql',
+    'parallel', 'pipe', 'sparql',
 ]
 
 

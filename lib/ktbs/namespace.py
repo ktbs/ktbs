@@ -501,6 +501,10 @@ KTBS_NS_TTL = """
                                         "Automate à états fini"@fr .
 :hrules   a :BuiltinMethod ; rdfs:label "Hubble-type rules"@en,
                                         "Règles au format Hubble"@fr .
+:pipe     a :BuiltinMethod ; rdfs:label "pipe"@en,
+                                        "chaîne"@fr .
+:parallel a :BuiltinMethod ; rdfs:label "parallel"@en,
+                                        "parallèle"@fr .
 
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .

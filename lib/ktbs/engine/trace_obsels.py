@@ -23,7 +23,7 @@ from itertools import chain
 from logging import getLogger
 import sys
 
-from rdflib import Graph, Literal, RDF, URIRef
+from rdflib import Graph, Literal, RDF
 from rdflib.plugins.sparql.processor import prepareQuery
 
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
@@ -584,7 +584,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
                 trace = self.trace
                 if refresh_param == 2:
                     parameters['refresh'] = 'default' # do not transmit 'force' to sources
-                for src in trace.iter_source_traces():
+                for src in trace._iter_effective_source_traces():
                     src.obsel_collection.force_state_refresh(parameters)
                 if (refresh_param >= 2 or
                     self.metadata.value(self.uri, METADATA.dirty, None) is not None):

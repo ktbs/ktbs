@@ -24,7 +24,6 @@ import logging
 
 from rdflib import Literal, URIRef
 
-from rdfrest.util.iso8601 import ParseError
 from rdfrest.util import Diagnosis
 from .interface import IMethod
 from .utils import translate_node
@@ -40,60 +39,34 @@ class _FusionMethod(IMethod):
     """
     uri = KTBS.fusion
 
-    def compute_trace_description(self, computed_trace):
+    def compute_trace_description(self, computed_trace, _sources=None):
         """I implement :meth:`.interface.IMethod.compute_trace_description`.
         """
         diag = Diagnosis("fusion.compute_trace_description")
-        cstate = { "method": "fusion",
-                   "last_seens": {},
-                   "old_log_mon_tags": {},
-        }
+        sources = _sources or computed_trace.source_traces
+        params = computed_trace.parameters_as_dict
+        critical = False
 
-        srcs, params =  self._prepare_source_and_params(computed_trace, diag)
-
-        if srcs is not None:
-            assert params is not None
-            model = params.get("model")
-            if model is not None:
-                model = URIRef(model)
-            else:
-                models = set( src.model_uri for src in srcs )
-                if len(models) > 1:
-                    diag.append("Sources have different models and no target "
-                                "model is explicitly specified")
-                else:
-                    model = models.pop()
-                
-            origin = params.get("origin")
-            if origin is None:
-                origins = set( src.origin for src in srcs )
-                if len(origins) > 1:
-                    diag.append("Sources have different origins and no target "
-                                "origin is explicitly specified")
-                else:
-                    origin = origins.pop()
-            origin = Literal(origin)
-
-            with computed_trace.edit(_trust=True) as editable:
-                if model:
-                    editable.add((computed_trace.uri, KTBS.hasModel, model))
-                if origin:
-                    editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
-
-        if not diag:
-            cstate["errors"] = list(diag)
-
-        computed_trace.metadata.set((computed_trace.uri,
-                                     METADATA.computation_state,
-                                     Literal(json_dumps(cstate))
-                                     ))
+        if len(sources) < 1:
+            diag.append("Method ktbs:fusion expects at least one source")
+            critical = True
+        critical, fusion_params = \
+            self._get_fusion_parameters(params, diag, critical)
+        for key in params:
+            diag.append("WARN: Parameter %s is not used by ktbs:fusion"
+                        % key)
+        if not critical:
+            self._do_compute_trace_description(computed_trace, sources,
+                                               fusion_params, diag)
+        self._init_cstate(computed_trace, diag)
 
         return diag
 
-    def compute_obsels(self, computed_trace, from_scratch=False):
+    def compute_obsels(self, computed_trace, from_scratch=False,
+                       _sources=None, _diag=None):
         """I implement :meth:`.interface.IMethod.compute_obsels`.
         """
-        diag = Diagnosis("fusion.compute_obsels")
+        diag = _diag if _diag is not None else Diagnosis("fusion.compute_obsels")
         cstate = json_loads(
             computed_trace.metadata.value(computed_trace.uri,
                                           METADATA.computation_state))
@@ -105,12 +78,13 @@ class _FusionMethod(IMethod):
             for i in errors:
                 diag.append(i)
                 return diag
+        effective_sources = _sources or computed_trace.source_traces
 
         # start anew if sources have changed or have been modified in a
         # non-monotonic way
         old_log_mon_tags = cstate["old_log_mon_tags"]
         target_obsels = computed_trace.obsel_collection
-        for src in computed_trace.source_traces:
+        for src in effective_sources:
             old_tag = old_log_mon_tags.get(src.uri)
             if old_tag != src.obsel_collection.log_mon_tag:
                 target_obsels._empty() # friend #pylint: disable=W0212
@@ -121,7 +95,7 @@ class _FusionMethod(IMethod):
         if not old_log_mon_tags:
             cstate["old_log_mon_tags"] = old_log_mon_tags = dict(
                 (src.uri, src.obsel_collection.log_mon_tag)
-                for src in computed_trace.source_traces
+                for src in effective_sources
                 )
         
         last_seens = cstate["last_seens"]
@@ -129,7 +103,7 @@ class _FusionMethod(IMethod):
         with target_obsels.edit(_trust=True) as editable:
             target_contains = editable.__contains__
             target_add = editable.add
-            for src in computed_trace.source_traces:
+            for src in effective_sources:
                 src_uri = src.uri
                 src_triples = src.obsel_collection.get_state({"refresh":"no"}).triples
                 for obs in src.iter_obsels(begin=last_seens.get(src_uri), refresh="no"):
@@ -170,46 +144,75 @@ class _FusionMethod(IMethod):
         return diag
 
     @staticmethod
-    def _prepare_source_and_params(computed_trace, diag):
-        """I check and prepare the data required by the method.
-
-        I return the list of sources of the computed trace, and a dict of
-        useful parameters converted to the expected datatype. If this can not
-        be done, I return ``(None, None)``.
+    def _get_fusion_parameters(params, diag, critical):
+        """I check and consume fusion-related parameters from params.
 
         I also populate `diag` with error/warning messages.
+        
+        I return a pair (critical, fusion_params)
         """
-        sources = computed_trace.source_traces
-        params = computed_trace.parameters_as_dict
-        critical = False
 
-        if len(sources) < 1:
-            diag.append("Method ktbs:fusion expects at least one source")
-            critical = True
+        fusion_params = {}
+        for key, datatype in _PARAMETERS_TYPE.items():
+            val = params.pop(key, None)
+            if val is None:
+                continue
+            try:
+                fusion_params[key] = datatype(val)
+            except:
+                LOG.info(traceback.format_exc())
+                diag.append("Parameter %s has illegal value: %s"
+                            % (key, val))
+                critical = True
 
-        for key, val in params.items():
-            datatype = _PARAMETERS_TYPE.get(key)
-            if datatype is None:
-                diag.append("WARN: Parameter %s is not used by ktbs:fusion"
-                            % key)
-            else:
-                try:
-                    params[key] = datatype(val)
-                except ValueError:
-                    LOG.info(traceback.format_exc())
-                    diag.append("Parameter %s has illegal value: %s"
-                                % (key, val))
-                    critical = True
-                except ParseError:
-                    LOG.info(traceback.format_exc())
-                    diag.append("Parameter %s has illegal value: %s"
-                                % (key, val))
-                    critical = True
+        return critical, fusion_params
 
-        if critical:
-            return None, None
+    @staticmethod
+    def _do_compute_trace_description(computed_trace, sources, fusion_params, diag):
+        model = fusion_params.get("model")
+        if model is not None:
+            model = URIRef(model)
         else:
-            return sources, params
+            models = set(src.model_uri for src in sources)
+            if len(models) > 1:
+                diag.append("Sources have different models and no target "
+                            "model is explicitly specified")
+            else:
+                model = models.pop()
+
+        origin = fusion_params.get("origin")
+        if origin is None:
+            origins = set(src.origin for src in sources)
+            if len(origins) > 1:
+                diag.append("Sources have different origins and no target "
+                            "origin is explicitly specified")
+            else:
+                origin = origins.pop()
+        origin = Literal(origin)
+
+        with computed_trace.edit(_trust=True) as editable:
+            if model:
+                editable.add((computed_trace.uri, KTBS.hasModel, model))
+            if origin:
+                editable.add((computed_trace.uri, KTBS.hasOrigin, origin))
+
+    @staticmethod
+    def _init_cstate(computed_trace, diag):
+        """I initialize the computation state of a given computed_trace
+        """
+        cstate = { "method": "fusion",
+                   "last_seens": {},
+                   "old_log_mon_tags": {},
+        }
+
+        if not diag:
+            cstate["errors"] = list(diag)
+
+        computed_trace.metadata.set((computed_trace.uri,
+                                     METADATA.computation_state,
+                                     Literal(json_dumps(cstate))
+                                     ))
+
 
 
 _PARAMETERS_TYPE = {

@@ -11,6 +11,7 @@ Built-in methods
     methods/hrules
     methods/isparql
     methods/sparql
+    methods/composite
 
 .. toctree::
     :maxdepth: 1

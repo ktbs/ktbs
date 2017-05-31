@@ -491,6 +491,23 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                                      Literal(unicode(diag))))
 
 
+    ######## Protected method  ########
+
+    def _iter_effective_source_traces(self):
+        """I iter over the effective sources of this computed trace.
+        
+        The effective sources are usually the declared sources,
+        except for composite methods (pipe, parallel),
+        that store alternative effective sources in the metadata.
+        """
+        eff_src_uris = list(
+            self.metadata.objects(self.uri, METADATA.effective_source)
+        )
+        if eff_src_uris:
+            return (self.factory(uri) for uri in eff_src_uris)
+        else:
+            return self.iter_source_traces()
+
     ######## Private method  ########
 
     def _ack_source_change(self, old_source_uris, new_source_uris):
