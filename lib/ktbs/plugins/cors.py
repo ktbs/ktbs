@@ -43,25 +43,30 @@ class CorsMiddleware(object):
         request = Request(environ)
         response = request.get_response(self.app)
 
-        if ALLOW_ORIGIN:
-            origin = request.headers.get("origin")
-            if origin and (origin in ALLOW_ORIGIN
-                           or "*" in ALLOW_ORIGIN):
-                response.headerlist.extend([
-                    ("access-control-allow-origin", origin),
-                    ("access-control-allow-credentials", "true"),
-                    ("access-control-expose-headers", self.expose_headers),
-                ])
-                if request.method.lower() == "options":
+        vary = response.headers.get("vary")
+        if vary is None:
+            response.headerlist.append(("vary", "origin"))
+        else:
+            response.headers["vary"] += ", origin"
+
+        origin = request.headers.get("origin")
+        if origin and (origin in ALLOW_ORIGIN
+                       or "*" in ALLOW_ORIGIN):
+            response.headerlist.extend([
+                ("access-control-allow-origin", origin),
+                ("access-control-allow-credentials", "true"),
+                ("access-control-expose-headers", self.expose_headers),
+            ])
+            if request.method.lower() == "options":
+                response.headerlist.append(
+                    ("access-control-allow-methods",
+                     "GET, HEAD, PUT, POST, DELETE")
+                )
+                acrh = request.headers.get("access-control-request-headers")
+                if acrh:
                     response.headerlist.append(
-                        ("access-control-allow-methods",
-                         "GET, HEAD, PUT, POST, DELETE")
+                        ("access-control-allow-headers", acrh)
                     )
-                    acrh = request.headers.get("access-control-request-headers")
-                    if acrh:
-                        response.headerlist.append(
-                            ("access-control-allow-headers", acrh)
-                        )
             
         return response(environ, start_response)
 
@@ -79,7 +84,6 @@ def start_plugin(config):
     allow_origin = config.get('cors', 'allow-origin')
     if allow_origin:
         ALLOW_ORIGIN = allow_origin.split(" ")
-
     register_middleware(TOP, CorsMiddleware)
 
 
