@@ -29,20 +29,15 @@ Here are the steps necessary to do so:
     Address     = localhost:1111
     Locale      = en.UTF-8
 
-* You need a customized version of the ``pyodbc`` module,
-  available at https://github.com/maparent/pyodbc,
-  in the branch ``v3-virtuoso``.
+* The list of additional dependencies for kTBS is available in
+  `requirements.d/virtuoso.txt`__.
+  The easiest way to install them is to run
 
-  One way to achieve that is the following::
+    pip install -r virtuoso.txt
 
-    pip install git+https://github.com/maparent/pyodbc@v3-virtuoso
+  from the appropriate directory.
 
-* Finally, you need the ``virtuoso-python`` module,
-  available at https://github.com/maparent/virtuoso-python.
-
-  One way to achieve that is the following::
-
-    pip install git+https://github.com/maparent/virtuoso-python
+  __ https://github.com/ktbs/ktbs/blob/develop/requirements.d/virtuoso.txt
 
 * Finally,
   all you need to do is to configure the RDF store used by kTBS to::
