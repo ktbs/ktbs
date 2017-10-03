@@ -58,7 +58,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                     for s, o in whole.query('''
                         SELECT ?s ?o {
                             GRAPH ?base { ?base :contains ?s }
-                            GRAPH ?t    { ?s rdfs:comment ?o }
+                            GRAPH ?s    { ?s rdfs:comment ?o }
                         }
                     ''', initNs=initNs, initBindings=initBindings)
                 )
