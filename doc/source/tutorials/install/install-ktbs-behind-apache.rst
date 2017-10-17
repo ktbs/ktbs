@@ -5,19 +5,13 @@ kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 
 * kTBS does not have to listen on a separate port,
 * Apache takes care or running/restarting kTBS when needed,
-* kTBS can benefit from the functionalities provided by Apache modules, for example **HTTPS support** or **user authentication**.
+* kTBS can benefit from the functionalities provided by Apache modules,
+  for example **HTTPS support** or **user authentication**.
 
-To communicate with Apache, kTBS uses the WSGI_ interface, so you need to install the corresponding Apache module: `mod_wsgi <https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide>`_.
+To communicate with Apache, kTBS uses the WSGI_ interface,
+so you need to install the corresponding Apache module:
+`mod_wsgi <https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide>`_.
 
-Python Web Server Gateway Interface (WSGI)
-++++++++++++++++++++++++++++++++++++++++++
-
-The Python Web Server Gateway Interface (WSGI_) is a **Python standard** [1]_ which proposes a simple and universal interface between web servers and web applications or frameworks.
-
-.. image:: server-app.png
-    :width: 25em
-
-*Image from Ian Bicking "WSGI a series of tubes" presentation*
 
 Installing and configuring Apache mod_wsgi
 ++++++++++++++++++++++++++++++++++++++++++
@@ -31,72 +25,87 @@ The simplest way is to use the system package manager, the module is automatical
 
     $ sudo apt-get install libapache2-mod-wsgi
 
-.. Note::
+.. note::
 
-    When using the module packaged in the system, it is linked to a given Python version but it does not matter for the current version of kTBS. This limitation can be solved using the new `mod_wsgi-express <http://blog.dscpl.com.au/2015/04/introducing-modwsgi-express.html>`_ project.
+    When using the module packaged in the system,
+    it is linked to a given Python version but it does not matter for the current version of kTBS.
+    This limitation can be solved using the new
+    `mod_wsgi-express <http://blog.dscpl.com.au/2015/04/introducing-modwsgi-express.html>`_ project.
  
-Setting up a kTBS WSGI application interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Preparing kTBS WSGI application
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Apache needs to be able to **call kTBS** through a `WSGI application interface`_ - that is just a **Python script** declaring a function called ``application`` which must be compliant to this specified interface.
+You will need to follow the tutorials for
+`installing the released version <install-local-ktbs>`:doc:
+or `the developper version <install-ktbs-dev-version>`:doc: of kTBS.
+Note however that, for a server configuration,
+you should use the ``/opt`` folder instead of ``/home/user``.
+Otherwise, any misconfiguration of Apache could end up exposing your whole account for downloading [3]_.
 
-That script is provided in the kTBS source tree [2]_ at ``examples/wsgi/application.wsgi``. 
+You must then add two files in the ``/opt/ktbs-env`` folder,
+to allow Apache to run kTBS through the `WSGI application interface`_,
+a WSGI script and a configuration file.
 
-.. literalinclude:: ../../../../examples/wsgi/application.wsgi
-    :language: python
-    :emphasize-lines: 22,28
 
-As indicated in the header, this script is supposed to be used **as is** and should not be modified: customization is performed through a :ref:`ktbs-configuration-file`.
+The WSGI script is provided in the kTBS source tree [2]_
+at ``examples/wsgi/application.wsgi``, and must be used *as is*,
+without any modification.
 
-A configuration file example is provided in the kTBS source tree [2]_ at ``examples/wsgi/application.wsgi.conf``. Don't forget to adapt it to your own configuration.
+An example :ref:`ktbs-configuration-file` is also provided in the source tree,
+at ``examples/wsgi/application.wsgi.conf``.
+You need to adapt it to your configuration,
+at least the highlighted lines below.
 
 .. literalinclude:: ../../../../examples/wsgi/application.wsgi.conf
     :language: ini
-
-.. warning::
-
-    The WSGI application will be run **as the user that Apache runs as**. As such, the user that Apache runs as **must have read access** to the WSGI application script file, to all the parent directories that contain it and to the rdf database [3]_.
-
-Configuring Apache 
-~~~~~~~~~~~~~~~~~~
-
-Once the `WSGI application interface`_ script is done, you need to add some mod_wsgi directives [4]_ to Apache configuration files.
-
-On Debian-Ubuntu, this would typically be in ``/etc/apache2/sites-available/default`` (or ``/etc/apache2/sites-available/default-ssl`` for https configuration).
-
-For a server configuration, we strongly advise you to use the ``/opt`` folder instead of the ``/home/user`` when installing kTBS using :doc:`Installing a local kTBS <install-local-ktbs>` procedure.
+    :emphasize-lines: 5,6,11,12
 
 .. hint::
 
-    It is advised to avoid using home directory because any misconfiguration of Apache could end up exposing your whole account for downloading [3]_.
+    If you chose to rename the WSGI script,
+    you must rename the configuration file accordingly,
+    as the script locates the configuration file based on its own name.
 
-**Inside** the ``<VirtualHost xxx>`` Apache directive, add the following lines :
+.. warning::
+
+    The WSGI application will be run **as the user that Apache runs as**
+    (typically ``www-data`` on a Debian/Ubuntu system).
+    As such, that user **must have read access** to the WSGI application script file,
+    to all the parent directories that contain it and to the rdf database [3]_.
+
+
+Configuring Apache
+~~~~~~~~~~~~~~~~~~
+
+Once the `WSGI application interface`_ script is done,
+you need to add some mod_wsgi directives [4]_ to Apache configuration files.
+
+On Debian-Ubuntu,
+this would typically be in a new a file created in ``/etc/apache2/conf.d/``
+(for example, ``/etc/apache2/conf.d/ktbs.conf``)
 
 .. code-block:: apache
 
     <IfModule mod_wsgi.c>
         WSGIScriptAlias /ktbs /opt/ktbs-env/application.wsgi
-        WSGIDaemonProcess myktbs processes=1 threads=2 display-name=myktbs python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages
-        WSGIProcessGroup myktbs
-    </IfModule>
-
-and at the end of the file, **outside the** ``<VirtualHost xxx>`` **Apache directive**, add the following lines:
-
-.. code-block:: apache
-
-    <IfModule mod_wsgi.c>
-        WSGIPythonHome /opt/ktbs-env
+        WSGIDaemonProcess myktbs processes=1 threads=4 python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages display-name=myktbs maximum-requests=256
+        <Location /ktbs>
+            WSGIProcessGroup myktbs
+        </Location>
     </IfModule>
 
 The configuration above may require some adaptation :
 
-- WSGIScriptAlias_ will map ``/ktbs`` URL to the ``/opt/ktbs-env/application.wsgi`` WSGI script ; 
-  
-  - if you want to publish it at a different URL path [5]_, change the first argument of WSGIScriptAlias_ accordingly; 
-  - if you named your WSGI script otherwise and/or stored it elsewhere, change the second argument of WSGIScriptAlias_ accordingly;
+- WSGIScriptAlias_ will map ``/ktbs`` URL to the ``/opt/ktbs-env/application.wsgi`` WSGI script ;
 
-- WSGIDaemonProcess_ and WSGIProcessGroup_ define a Process_group_ that mod_wsgi uses to manages this group of WSGI applications ; 
-  
+  - if you want to publish it at a different URL path [5]_,
+    change the first argument of WSGIScriptAlias_ accordingly,
+    as well as the argument of the inner Location directive;
+  - if you named your WSGI script otherwise and/or stored it elsewhere,
+    change the second argument of WSGIScriptAlias_ accordingly;
+
+- WSGIDaemonProcess_ and WSGIProcessGroup_ define a Process_group_ that mod_wsgi uses to manages this group of WSGI applications ;
+
   - you can adjust the number of threads to your needs in WSGIDaemonProcess_ directive ;
 
 - It assumes that your Python virtual environment is in ``/opt/ktbs-env``; if it has a different name, change all occurences of that path accordingly
