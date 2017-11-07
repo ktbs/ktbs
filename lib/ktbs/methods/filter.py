@@ -18,9 +18,10 @@
 """
 Implementation of the filter builtin methods.
 """
+from itertools import chain
 import logging
 
-from rdflib import Literal, RDF, URIRef, Graph
+from rdflib import Literal, URIRef
 from rdfrest.util.iso8601 import parse_date
 from rdfrest.util import check_new
 from .abstract import AbstractMonosourceMethod, NOT_MON, PSEUDO_MON, STRICT_MON
@@ -93,7 +94,12 @@ class _FilterMethod(AbstractMonosourceMethod):
         if mintime is None  and  "afterDT" in params:
             mintime = converter(params.get("afterDT") - origin_dt)
         cstate["mintime"] = mintime
-        cstate["otypes"] = params.get("otypes")
+        cstate["otypes"] = otypes = params.get("otypes")
+        if otypes:
+            m = source.get_model()
+            all_subtypes = chain(*(
+                m.get(i).iter_subtypes(True) for i in otypes ))
+            cstate["otypes"] = [ i.uri for i in set(all_subtypes) ]
         cstate["bgp"] = params.get("bgp")
 
 

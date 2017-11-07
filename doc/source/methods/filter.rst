@@ -11,8 +11,8 @@ This method copies the obsels of the source trace if they pass the filter.
   :before: the integer timestamp above which obsels are filtered out
   :afterDT: the datetime timestamp below which obsels are filtered out
   :beforeDT: the datetime timestamp above which obsels are filtered out
-  :otypes: space-separated list of URIs indicating which obsel types must be
-           kept in the computed trace
+  :otypes: space-separated list of obsel type URIs;
+           only obsels of these types (or their subtypes) will be kept
   :bgp: a SPARQL Basic Graph Pattern used to express additional criteria
         (see below)
 :extensible: no
