@@ -58,7 +58,7 @@ at least the highlighted lines below.
 
 .. literalinclude:: ../../../../examples/wsgi/application.wsgi.conf
     :language: ini
-    :emphasize-lines: 5,6,11,12
+    :emphasize-lines: 5,6,9,10
 
 .. hint::
 
