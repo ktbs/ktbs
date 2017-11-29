@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from getpass import getpass
 from sys import stderr
 from timeit import timeit
+from uuid import uuid4
 
 from os import fork
 
@@ -34,10 +35,12 @@ def parse_args():
                         help="the number of post to perform at each iteration")
     parser.add_argument("-o", "--nbobs", type=int, default=1,
                         help="the number of obsels to send per post")
-    parser.add_argument("--no-clean", action="store_true",
-                        help="if set, do not clean kTBS after stressing")
+    parser.add_argument("-U", "--uuid", action="store_true",
+                        help="generate UUID for obsels")
     parser.add_argument("-c", "--cold-start", type=int, default=0,
                         help="the number of iterations to ignore in the average")
+    parser.add_argument("--no-clean", action="store_true",
+                        help="if set, do not clean kTBS after stressing")
     ARGS = parser.parse_args()
 
 def setUp():
@@ -70,12 +73,19 @@ def task():
         def create_P_obsels():
             for j in xrange(ARGS.nbpost):
                 if ARGS.nbobs == 1:
-                    trace.create_obsel(None, "#obsel", subject="Alice",
+                    if ARGS.uuid:
+                        obs_id = str(uuid4())
+                    else:
+                        obs_id = None
+                    trace.create_obsel(obs_id, "#obsel", subject="Alice",
                                        no_return=True)
                 else:
                     g = Graph()
                     for k in range(ARGS.nbobs):
-                        obs = BNode()
+                        if ARGS.uuid:
+                            obs = URIRef(str(uuid4()), trace.uri)
+                        else:
+                            obs = BNode()
                         g.add((obs, KTBS.hasTrace, trace.uri))
                         g.add((obs, KTBS.hasBegin, Literal(i*ARGS.nbpost + j*ARGS.nbobs + k)))
                         g.add((obs, KTBS.hasSubject, Literal("Alice")))
