@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os
 from os.path import join
 from setuptools import setup, find_packages
 
@@ -22,6 +23,9 @@ install_req = []
 with open(join('requirements.d', 'base.txt'), 'r') as f:
     # Get requirements depencies as written in the file
     install_req = [ i[:-1] for i in f if i[0] != "#" ]
+    if os.name != "posix":
+        install_req = [ req for req in install_req
+                        if not req.startswith("posix_ipc") ]
 
 setup(name = 'kTBS',
       version = get_version(),
