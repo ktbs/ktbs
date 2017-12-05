@@ -19,7 +19,14 @@
 I provide a locking mechanism for resource that needs protection in the context of concurrency.
 
 """
-import posix_ipc
+try:
+    import posix_ipc
+    POSIX_IPC_IS_REAL = True
+except ImportError:
+    import warnings
+    warnings.warn("No posix_ipc implementation; kTBS is not thread-safe")
+    import ktbs.engine.fake_posix_ipc as posix_ipc
+    POSIX_IPC_IS_REAL = False
 import sys
 from md5 import md5
 
@@ -31,7 +38,6 @@ from os import getpid, pathconf
 
 from rdfrest.cores.local import _mark_as_deleted
 from rdfrest.cores.local import ILocalCore
-
 
 LOG = getLogger(__name__)
 PID = getpid()

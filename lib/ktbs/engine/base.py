@@ -20,11 +20,10 @@ I provide the implementation of ktbs:Base .
 """
 from rdflib import ConjunctiveGraph, Graph, RDF, RDFS
 from contextlib import contextmanager
-from posix_ipc import SEMAPHORE_VALUE_SUPPORTED
 from rdfrest.exceptions import InvalidParametersError
 
 from .resource import KtbsPostableMixin, KtbsResource
-from .lock import WithLockMixin
+from .lock import posix_ipc, WithLockMixin
 from ..api.base import BaseMixin, InBaseMixin
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS
@@ -221,7 +220,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
         it won't block a new instance.
         """
         semaphore = super(Base, cls).create_lock(uri)
-        if SEMAPHORE_VALUE_SUPPORTED:
+        if posix_ipc.SEMAPHORE_VALUE_SUPPORTED:
             if semaphore.value == 0:
                 semaphore.release()
             else:

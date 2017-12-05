@@ -3,20 +3,17 @@ from unittest import skipUnless
 from pytest import raises as assert_raises
 
 from ktbs.engine.lock import WithLockMixin
-from ktbs.engine.lock import get_semaphore_name
+from ktbs.engine.lock import get_semaphore_name, posix_ipc, POSIX_IPC_IS_REAL
 from ktbs.namespace import KTBS
-
-import posix_ipc
-
 
 # Set the lock timeout to 1 s in order to speed up the tests
 WithLockMixin.LOCK_DEFAULT_TIMEOUT = 0
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
+SKIP_MSG_POSIX_IPC = "Platform doesn't support posix_ipc"
 
 
 # Tests for BASE
-#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsBaseTestCase(KtbsTestCase):
 
     tmp_base = None
@@ -31,12 +28,12 @@ class KtbsBaseTestCase(KtbsTestCase):
         self.tmp_base.delete()
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
     """Test lock creation with long names"""
 
     tmp_base_name = ('x'*512)+'/'
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
     def test_lock_created(self):
         """Test if Base._get_semaphore() works even with a very long name."""
 
@@ -45,10 +42,11 @@ class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
         except ValueError, ex:
             assert 0, ex.message
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):
     """Test locking in the kTBS context."""
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_lock_has_semaphore(self):
         """Test if Base.lock() really acquires the semaphore."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
@@ -62,6 +60,8 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
             with assert_raises(posix_ipc.BusyError):
                 semaphore.acquire(WithLockMixin.LOCK_DEFAULT_TIMEOUT)
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_lock_cant_get_semaphore(self):
         """Make sure Base.lock() get stuck if the semaphore is already in use."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
@@ -77,6 +77,8 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_locked_base(self):
         """Tries to delete a base that is currently being locked."""
         # Make a semaphore to lock the previously created base
@@ -95,6 +97,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
             # Finally closing the semaphore we created for testing purpose.
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
     def test_delete_successful(self):
         """Test that a semaphore related to base no longer exists after the base has been deleted."""
         new_base = self.my_ktbs.create_base('new_base/')
@@ -108,6 +111,8 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         finally:
             semaphore.unlink()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_locked_base(self):
         """Test that a base.edit() fails if the base is already locked."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.tmp_base.uri),
@@ -122,6 +127,8 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_successful(self):
         """Test that after a successful edit, the base semaphore exists and its value is 1."""
         self.tmp_base.label += '_test_edit_label'
@@ -135,6 +142,7 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 
         assert self.tmp_base._get_semaphore().value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
     def test_post_locked_base(self):
         """Test that a base post fails if the base is already locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -145,6 +153,8 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_post_successful(self):
         """Test that after a successful post, the base semaphore exists and its value is 1."""
         model = self.tmp_base.create_model()
@@ -172,10 +182,11 @@ class KtbsModelTestCase(KtbsBaseTestCase):
         super(KtbsModelTestCase, self).teardown()
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsModelLocking(KtbsModelTestCase):
     # NOTE we can't use the flag O_CREX anymore when instantiating a semaphore.
     # A semaphore already exists, because we use create_model() during setup.
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_locked_base(self):
         """Test that a Model can't be edited if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -188,6 +199,8 @@ class TestKtbsModelLocking(KtbsModelTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_successful(self):
         """Test that after an Model edit(), the semaphore has been released, i.e. its value is 1."""
         semaphore = self.tmp_base._get_semaphore()
@@ -200,6 +213,8 @@ class TestKtbsModelLocking(KtbsModelTestCase):
 
         assert semaphore.value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_locked_base(self):
         """Test that a Model can't be deleted if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -212,6 +227,8 @@ class TestKtbsModelLocking(KtbsModelTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_successful(self):
         """Test that the semaphore has been released after a Model delete()."""
         semaphore = self.tmp_base._get_semaphore()
@@ -238,8 +255,9 @@ class KtbsMethodTestCase(KtbsBaseTestCase):
         super(KtbsMethodTestCase, self).teardown()
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsMethodLocking(KtbsMethodTestCase):
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_locked_base(self):
         """Test that we can't edit a method is the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -252,6 +270,8 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful edit."""
         semaphore = self.tmp_base._get_semaphore()
@@ -261,6 +281,8 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
 
         assert semaphore.value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_locked_base(self):
         """Test that a method can't be deleted if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -273,6 +295,8 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_successful(self):
         """Test that the semaphore has been released after a successful Method delete."""
         semaphore = self.tmp_base._get_semaphore()
@@ -299,8 +323,9 @@ class KtbsTraceTestCase(KtbsModelTestCase):
         super(KtbsTraceTestCase, self).teardown()
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsTraceLocking(KtbsTraceTestCase):
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_locked_base(self):
         """Test that we can't edit a Trace if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -313,6 +338,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful Trace edit."""
         semaphore = self.tmp_base._get_semaphore()
@@ -322,6 +349,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
         assert semaphore.value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_post_locked_base(self):
         """Test that we can't post on a Trace if the base is locked."""
         # Create a temporary obsel type so we can use create_obsel()
@@ -336,6 +365,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_post_locked_obsels(self):
         """Test that we can't post on a Trace if the base is locked."""
         # Create a temporary obsel type so we can use create_obsel()
@@ -351,6 +382,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_post_successful(self):
         """Test that the semaphore is released after a successful Trace post."""
         semaphore = self.trace.obsel_collection._get_semaphore()
@@ -362,6 +395,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
         assert semaphore.value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_locked_base(self):
         """Test that we can't delete a Trace if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
@@ -374,6 +409,8 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         finally:
             semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_delete_successful(self):
         """Test that the semaphore is released after a successful Trace delete."""
         semaphore = self.tmp_base._get_semaphore()

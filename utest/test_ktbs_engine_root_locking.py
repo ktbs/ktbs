@@ -3,18 +3,16 @@ from unittest import skipUnless
 from pytest import raises as assert_raises
 
 from ktbs.engine.lock import WithLockMixin
-from ktbs.engine.lock import get_semaphore_name
+from ktbs.engine.lock import get_semaphore_name, posix_ipc, POSIX_IPC_IS_REAL
 from ktbs.engine.service import make_ktbs
-
-import posix_ipc
 
 # Set the lock timeout to 1 s in order to speed up the tests
 WithLockMixin.LOCK_DEFAULT_TIMEOUT = 0
 
 SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value"
+SKIP_MSG_POSIX_IPC = "Platform doesn't support posix_ipc"
 
 
-#@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsRootTestCase(KtbsTestCase):
 
     def setup(self):
@@ -32,10 +30,11 @@ class KtbsRootTestCase(KtbsTestCase):
         semaphore.unlink()
 
 
-@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsRootLocking(KtbsRootTestCase):
     """Test locking for the kTBS root."""
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_lock_has_semaphore(self):
         """Test if KtbsRoot.lock() really acquires the semaphore."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
@@ -49,6 +48,8 @@ class TestKtbsRootLocking(KtbsRootTestCase):
             with assert_raises(posix_ipc.BusyError):
                 semaphore.acquire(WithLockMixin.LOCK_DEFAULT_TIMEOUT)
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_lock_cant_get_semaphore(self):
         """Make sure KtbsRoot.lock() get stuck if the semaphore is already in use."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
@@ -63,6 +64,8 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
         semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_locked_root(self):
         """Test that a KtbsRoot.edit() fails if the root is already locked."""
         semaphore = posix_ipc.Semaphore(name=get_semaphore_name(self.my_ktbs.uri),
@@ -76,6 +79,8 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
         semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_edit_successful(self):
         """Test that after a successful edit, the KtbsRoot semaphore exists and its value is 1."""
         self.my_ktbs.label += '_test_edit_label'
@@ -87,6 +92,7 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
         assert self.my_ktbs._get_semaphore().value == 1
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
     def test_post_locked_base(self):
         """Test that a KtbsRoot post fails if the KtbsRoot is already locked."""
         semaphore = self.my_ktbs._get_semaphore()
@@ -97,6 +103,8 @@ class TestKtbsRootLocking(KtbsRootTestCase):
 
         semaphore.release()
 
+    @skipUnless(POSIX_IPC_IS_REAL, SKIP_MSG_POSIX_IPC)
+    @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
     def test_post_successful(self):
         """Test that after a successful post, the KtbsRoot semaphore exists and its value is 1."""
         base = self.my_ktbs.create_base()
