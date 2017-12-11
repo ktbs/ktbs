@@ -1,5 +1,5 @@
 #!/bin/sh
-mkdir -p buid
+mkdir -p build
 mkdir -p dist
 echo "*" >build/.gitignore
 echo "*" >dist/.gitignore
