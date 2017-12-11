@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 from argparse import ArgumentParser
 from getpass import getpass
+import os
 from sys import stderr
 from timeit import timeit
-
-from os import fork
 
 from rdflib import Graph, BNode
 from rdflib import Literal
@@ -27,7 +26,7 @@ def parse_args():
     parser.add_argument("-u", "--username",
                         help="the username to use (will also prompt for a password)")
     parser.add_argument("-f", "--forks", type=int, default=1,
-                        help="the number of processes to fork")
+                        help="the number of processes to fork (posix OS only)")
     parser.add_argument("-i", "--iterations", type=int, default=10,
                         help="the number of iterations to run")
     parser.add_argument("-p", "--nbpost", type=int, default=100,
@@ -107,7 +106,7 @@ def main(argv):
     forks = ARGS.forks
     while forks > 1:
         forks -= 1
-        rf = fork()
+        rf = os.fork()
         if rf == 0:
             break # children must not spawn children of their own
         elif rf < 0:

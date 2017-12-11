@@ -34,7 +34,7 @@ from logging import getLogger
 from threading import current_thread
 from contextlib import contextmanager
 
-from os import getpid, pathconf
+from os import getpid
 
 from rdfrest.cores.local import _mark_as_deleted
 from rdfrest.cores.local import ILocalCore
@@ -42,7 +42,19 @@ from rdfrest.cores.local import ILocalCore
 LOG = getLogger(__name__)
 PID = getpid()
 
-if sys.platform.lower().find('darwin') != -1:
+if not POSIX_IPC_IS_REAL:
+    # in this case, semaphores are fake ones anyway
+    def get_semaphore_name(resource_uri):
+        """Return a safe semaphore name for a resource.
+
+        :param basestring resource_uri: the URI of the resource.
+        :return: safe semaphore name.
+        :rtype: str
+        """
+        return resource_uri
+
+elif sys.platform.lower().find('darwin') != -1:
+    # darwin does not support long semaphore names
     def get_semaphore_name(resource_uri):
         """Return a safe semaphore name for a resource.
 
@@ -54,6 +66,8 @@ if sys.platform.lower().find('darwin') != -1:
         sem_name = md5(resource_uri).hexdigest()[:29]
         return sem_name
 else:
+    # try to keep semaphore name readable, unless they are too long
+    from os import pathconf
     NAME_MAX_SEM = pathconf("/", 'PC_NAME_MAX') - 4 # according to man 7 sem_overview
     def get_semaphore_name(resource_uri):
         """Return a safe semaphore name for a resource.
