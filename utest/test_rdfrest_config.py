@@ -117,7 +117,7 @@ class TestServiceConfigDefaults(object):
         cfg.set('logging', 'loggers', 'root ktbs rdfrest')
         cfg.set('logging', 'console-level', 'DEBUG')
         log_cfg = make_log_config_dict(cfg)
-        assert log_cfg['handlers']['console']['level'] == "DEBUG"
+        assert log_cfg['handlers']['console']['level'] == logging.DEBUG
         # also check that the added loggers "inherit" that level
         assert log_cfg['root']['level'] == logging.DEBUG
         assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
@@ -147,7 +147,7 @@ class TestServiceConfigDefaults(object):
         cfg.set('logging', 'filename', '/tmp/test.log')
         cfg.set('logging', 'file-level', 'DEBUG')
         log_cfg = make_log_config_dict(cfg)
-        assert log_cfg['handlers']['filelog']['level'] == "DEBUG"
+        assert log_cfg['handlers']['filelog']['level'] == logging.DEBUG
         # also check that the added loggers "inherit" that level
         assert log_cfg['root']['level'] == logging.DEBUG
         assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
@@ -169,7 +169,7 @@ class TestServiceConfigDefaults(object):
         cfg.set('logging', 'ktbs-logurl', 'http://localhost:8001/logs/log/')
         cfg.set('logging', 'ktbs-level', 'DEBUG')
         log_cfg = make_log_config_dict(cfg)
-        assert log_cfg['handlers']['ktbslog']['level'] == "DEBUG"
+        assert log_cfg['handlers']['ktbslog']['level'] == logging.DEBUG
         # also check that the added loggers "inherit" that level
         assert log_cfg['root']['level'] == logging.DEBUG
         assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG

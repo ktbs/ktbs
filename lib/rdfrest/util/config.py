@@ -170,13 +170,13 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
                     'level': logger_level,
                     'handlers': logger_handlers,
                 }
-                if logger == 'root' and 'roor' not in loggingConfig:
+                if logger == 'root' and 'root' not in loggingConfig:
                     loggingConfig['root'] = logger_dict
                 elif logger not in loggingConfig['loggers']:
                     loggingConfig['loggers'][logger] = logger_dict
 
     if service_config.has_option('logging', 'console-level'):
-        loggingConfig['handlers']['console']['level'] = service_config.get('logging', 'console-level', 1)
+        loggingConfig['handlers']['console']['level'] = get_log_level(service_config, 'console-level')
 
     if service_config.has_option('logging', 'console-format'):
         loggingConfig['handlers']['console']['formatter'] = 'console'
@@ -197,7 +197,7 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
             'formatter': 'simple',
         }
         if service_config.has_option('logging', 'file-level'):
-            loggingConfig['handlers']['filelog']['level'] = service_config.get('logging', 'file-level', 1)
+            loggingConfig['handlers']['filelog']['level'] = get_log_level(service_config, 'file-level')
 
     if service_config.has_option('logging', 'ktbs-logurl') and \
        len(service_config.get('logging', 'ktbs-logurl', 1)) > 0:
@@ -208,7 +208,7 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
             'url': service_config.get('logging', 'ktbs-logurl', 1),
         }
         if service_config.has_option('logging', 'ktbs-level'):
-            loggingConfig['handlers']['ktbslog']['level'] = service_config.get('logging', 'ktbs-level', 1)
+            loggingConfig['handlers']['ktbslog']['level'] = get_log_level(service_config, 'ktbs-level')
 
     return loggingConfig
 
