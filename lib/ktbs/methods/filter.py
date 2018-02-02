@@ -98,8 +98,8 @@ class _FilterMethod(AbstractMonosourceMethod):
         if otypes:
             m = source.get_model()
             all_subtypes = chain(*(
-                robust_iter_subtypes(m, i) for i in otypes ))
-            cstate["otypes"] = list(set(all_subtypes))
+                m.get(i).iter_subtypes(True) for i in otypes ))
+            cstate["otypes"] = [ i.uri for i in set(all_subtypes) ]
         cstate["bgp"] = params.get("bgp")
 
 
@@ -190,19 +190,5 @@ class _FilterMethod(AbstractMonosourceMethod):
             last_seen_u = unicode(last_seen_u)
         cstate["last_seen_u"] = last_seen_u
         cstate["last_seen_b"] = last_seen_b
-
-def robust_iter_subtypes(model, otype_uri):
-    """
-    Iter over subtype URIs of the given obsel type in the given model.
-
-    If otype_uri is not declared in model,
-    simply yield this URI.
-    """
-    otype = model.get(otype_uri)
-    if otype is None:
-        yield otype_uri
-    else:
-        for i in otype.iter_subtypes(True):
-            yield i.uri
 
 register_builtin_method_impl(_FilterMethod())
