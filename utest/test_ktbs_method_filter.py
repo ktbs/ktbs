@@ -388,3 +388,22 @@ class TestFilter(KtbsTestCase):
         assert len(ctr.obsels) == 7
         assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
+
+    def test_filter_otype_not_in_model(self):
+        base = self.my_ktbs.create_base("b/")
+        model = base.create_model("m")
+        otype1 = model.uri + "#ot1";
+        otype2 = model.uri + "#ot2";
+        src = base.create_stored_trace("s/", model, default_subject="alice")
+        ctr = base.create_computed_trace("ctr/", KTBS.filter,
+                                         {"otypes": "%s" % (otype1,)},
+                                         [src],)
+
+        o00 = src.create_obsel("o00", otype1, 0)
+        assert len(ctr.obsels) == 1
+        assert get_custom_state(ctr, 'last_seen_u') == unicode(o00.uri)
+        assert get_custom_state(ctr, 'last_seen_b') == 0
+        o01 = src.create_obsel("o01", otype2, 1)
+        assert len(ctr.obsels) == 1
+        assert get_custom_state(ctr, 'last_seen_u') == unicode(o01.uri)
+        assert get_custom_state(ctr, 'last_seen_b') == 1
