@@ -20,7 +20,6 @@ from ktbs.engine.trace_stats import add_plugin, remove_plugin, NS
 from ktbs.namespace import KTBS
 
 def populate_stats(graph, trace):
-    print "===", "per_type"
     # Obsel type statistics
     obsels_graph = trace.obsel_collection.state
     initNs = { '': unicode(KTBS.uri) }
@@ -41,7 +40,7 @@ def populate_stats(graph, trace):
 
             graph.add((trace.uri, NS.obselCountPerType, ot_infos))
 
-COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \
+COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb){ ?o :hasTrace ?trace ; a ?t . } ' \
                    'GROUP BY ?t ORDER BY ?t'
 
 def start_plugin(_config):
