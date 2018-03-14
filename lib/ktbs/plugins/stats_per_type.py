@@ -36,7 +36,6 @@ def populate_stats(graph, trace):
         for res in  count_per_type_result.bindings:
             ot_infos = BNode()
 
-            print "===", res['t']
             graph.add((ot_infos, NS.nb, res['nb']))
             graph.add((ot_infos, NS.hasObselType, res['t']))
 

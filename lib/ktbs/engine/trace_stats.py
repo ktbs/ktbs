@@ -197,7 +197,8 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
 
 COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
 DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
-SELECT (min(?b) as ?minb) (max(?e) as ?maxe)  where {
+# NB: selecting ?trace in the inner SELECT is required by Virtuoso
+SELECT ?trace (min(?b) as ?minb) (max(?e) as ?maxe)  where {
         ?o :hasTrace ?trace ;
            :hasBegin ?b ;
            :hasEnd ?e .
