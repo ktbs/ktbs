@@ -30,6 +30,8 @@ from ktbs.api.obsel import ObselMixin
 from ktbs.api.trace import ComputedTraceMixin, StoredTraceMixin
 from ktbs.api.trace_model import TraceModelMixin
 from ktbs.engine.service import make_ktbs
+from ktbs.engine import trace_stats
+from ktbs.plugins import stats_per_type
 from ktbs.serpar.jsonld_parser import *
 from ktbs.serpar.jsonld_serializers import *
 from ktbs import __version__ as ktbs_version
@@ -1278,8 +1280,22 @@ class TestJsonObsels(KtbsTestCase):
 
 class TestJsonStats(KtbsTestCase):
 
+
+    def setup(self):
+        super(TestJsonRoot, self).setup()
+        # load stats plugins which are enabled by default in the global config
+        trace_stats.add_plugin(stats_per_type.populate_stats)
+
+    def teardown(self):
+        super(TestJsonRoot, self).teardown()
+        trace_stats.remove_plugin(stats_per_type.populate_stats)
+
     def setup(self):
         super(TestJsonStats, self).setup()
+
+        # load stats plugins which are enabled by default in the global config
+        trace_stats.add_plugin(stats_per_type.populate_stats)
+
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
@@ -1292,6 +1308,7 @@ class TestJsonStats(KtbsTestCase):
         self.base = None
         self.model = self.ot1 = self.ot2 = None
         self.t1 = None
+        trace_stats.remove_plugin(stats_per_type.populate_stats)
 
     def populate(self):
         # create obsel in wrong order, as TestJsonObsels

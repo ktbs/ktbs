@@ -39,6 +39,9 @@ def get_ktbs_configuration(configfile_handler=None):
     _set_default(ktbs_config, 'ns_prefix', '_', str(KTBS)),
     _set_default(ktbs_config, 'ns_prefix', 'skos', str(SKOS))
 
+    # plugins enabled by default for backward compatibility
+    _set_default(ktbs_config, 'plugins', 'stats_per_type', 'true')
+
 
     return ktbs_config
 

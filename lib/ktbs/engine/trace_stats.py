@@ -34,6 +34,13 @@ from ..namespace import KTBS
 LOG = getLogger(__name__)
 
 NS = Namespace('http://tbs-platform.org/2016/trace-stats#')
+_PLUGINS = []
+
+def add_plugin(f):
+    _PLUGINS.append(f)
+
+def remove_plugin(f):
+    _PLUGINS.remove(f)
 
 class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
@@ -169,22 +176,6 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
         count = count_result.bindings[0]['c']
         graph.add((trace.uri, NS.obselCount, count))
 
-        # Obsel type statistics
-        if count.value > 0:
-            count_type_result = obsels_graph.query(COUNT_OBSEL_TYPES, initNs=initNs,
-                                                   initBindings=initBindings)
-
-            if (count_type_result is not None and
-               len(count_type_result.bindings) > 0 and
-               len(count_type_result.bindings[0]) > 0):
-                for res in  count_type_result.bindings:
-                    ot_infos = BNode()
-
-                    graph.add((ot_infos, NS.nb, res['nb']))
-                    graph.add((ot_infos, NS.hasObselType, res['t']))
-
-                    graph.add((trace.uri, NS.obselCountPerType, ot_infos))
-
         # Duration statistics
         duration_result = obsels_graph.query(DURATION_TIME, initNs=initNs,
                                              initBindings=initBindings)
@@ -196,12 +187,17 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
             graph.add((trace.uri, NS.maxTime, duration_result.bindings[0]['maxe']))
             graph.add((trace.uri, NS.duration, duration_result.bindings[0]['duration']))
 
+        for plugin in _PLUGINS:
+            try:
+                plugin(graph, trace)
+            except BaseException as ex:
+                LOG.error("Error while populating <%s>", self.uri)
+                LOG.exception(ex)
+
 
 COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
-COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \
-                   'GROUP BY ?t ORDER BY ?t'
 DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
-SELECT ?trace (min(?b) as ?minb) (max(?e) as ?maxe)  where {
+SELECT (min(?b) as ?minb) (max(?e) as ?maxe)  where {
         ?o :hasTrace ?trace ;
            :hasBegin ?b ;
            :hasEnd ?e .
