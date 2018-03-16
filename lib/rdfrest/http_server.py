@@ -63,13 +63,13 @@ class HttpFrontend(object):
     For parsing and serializing payloads to and from RDF graphs, HttpFrontend
     relies on the functions registered in `.cores.local.parsers`:mod: and
     `.cores.local.serializers`:mod:.
-    
+
     In the future, WsgiFrontent may also include on-the-fly translation of
     contents, for changing internal URIs into URIs served by the
     HttpFrontend.
 
     .. warning::
-    
+
         RDF-REST is meant to differenciate an empty query-string from no
         query-string at all. However, WSGI does not allow such a
         distinction. This implementation therefore assumes that an empty
@@ -197,11 +197,11 @@ class HttpFrontend(object):
             resp = self.issue_error(405, request, resource,
                                     allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
-        
+
         pre_process_request(self._service, request, resource)
         response = method(request, resource)
         return response(environ, start_response)
-            
+
     def http_delete(self, request, resource):
         """Process a DELETE request on the given resource.
         """
@@ -227,7 +227,7 @@ class HttpFrontend(object):
         else:
             headerlist.append(("vary", "accept"))
             serializer = None
-            ctype = request.accept.best_match( 
+            ctype = request.accept.best_match(
                 ser[1] for ser in iter_serializers(rdf_type) )
             if ctype is None:
                 # 406 Not Acceptable
@@ -323,7 +323,7 @@ class HttpFrontend(object):
     def http_options(self, request, resource):
         """Process an OPTIONS request on the given resource.
         """
-        # 
+        #
         headerlist = [
             ("allow", "GET, HEAD, PUT, POST, DELETE"),
             ]
@@ -403,9 +403,13 @@ class HttpFrontend(object):
                     if taint_etag(i, ctype) in request.if_match:
                         break
                 else: # no matching etag found in 'for' loop
-                    return self.issue_error(412, request, resource)
+                    for i in etag_variants(iter_etags(params or None)):
+                        if taint_etag(i, ctype) in request.if_match:
+                            break
+                    else:
+                        return self.issue_error(412, request, resource)
             parser, _ = get_parser_by_content_type(ctype)
-    
+
         # parse and check bytes/triples limitations
         if parser is None:
             return self.issue_error(415, request, resource)
@@ -429,7 +433,7 @@ class HttpFrontend(object):
             return self.issue_error(413, request, resource,
                                     "max_triples (%s) was exceeded"
                                     % self.max_triples)
-            
+
         return self.http_get(request, resource)
 
     def issue_error(self, status, request, resource, message=None, **kw):
@@ -449,14 +453,14 @@ class HttpFrontend(object):
         """
         # this method is intended to be overridden, so the following pylint
         # errors are not relevant:
-        # * method could be a function #pylint: disable=R0201 
+        # * method could be a function #pylint: disable=R0201
         # * unsued argument            #pylint: disable=W0613
 
         status = "%s %s" % (status, status_reasons[status])
         body = status
         if message is not None:
             body = "%s\n%s" % (body, message)
-        
+
         LOG.debug("HttpFrontend.issue_error - %s\n%s\n%s\n", status, body, "\n".join(traceback.format_stack()))
 
         body = """%s
@@ -481,6 +485,14 @@ def taint_etag(etag, ctype):
     """
     return "%s/%s" % (ctype, etag)
     # TODO LATER make a more opaque (unreversible?) tainting operation?
+
+def etag_variants(etags):
+    """Some Web server modify etags when they alter the entity.
+    This tries function iterates over variants of the given etags,
+    to try and match them against a given query.
+    """
+    for etag in etags:
+        yield "%s-gzip" % etag # Apache with gzip encoding
 
 class _TooManyTriples(Exception):
     """This exception class is used to abort edit context during PUT.
@@ -567,7 +579,7 @@ class ErrorHandlerMiddleware(object):
     def __call__(self, environ, start_response):
         try:
             return self.app(environ, start_response)
-        
+
         except HttpException, ex:
             response = ex.get_response(MyRequest(environ))
         except CanNotProceedError, ex:
