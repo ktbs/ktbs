@@ -56,8 +56,8 @@ def match_sparql_ask(transition, event, token, fsa):
     transition conditions are interpreted as the WHERE clause of a SPARQL Ask query,
     where variable ?obs is bound to the considered obsel,
     and prefix m: is bound to the source trace URI.
-    
-    
+
+
     """
     m_ns = fsa.source.model_uri
     if m_ns[-1] != '/' and m_ns[-1] != '#':
@@ -173,12 +173,13 @@ class _FSAMethod(AbstractMonosourceMethod):
                             qwhere.append('OPTIONAL {{?obs <{}> {} .}}'
                                           .format(triple[1], var))
                         query = ('SELECT {} {{'
-                                 '\n{}\nVALUES (?obs) {{\n(<{}>)\n}}'
+                                 '\nVALUES (?obs) {{\n(<{}>)\n}}'
+                                 '\n{}\n'
                                  '}} ORDER BY ?end')\
                             .format(
                             ' '.join(qvars),
-                            '\n'.join(qwhere),
                             '>)\n(<'.join(source_obsels),
+                            '\n'.join(qwhere),
                             )
                         results = source_state.query(query)
                         for i, triple in enumerate(attributes):

@@ -97,9 +97,9 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                     (s, p, o, enriched_state)
                     for s, p, o in whole.query('''
                         SELECT ?s ?p ?o {
+                            VALUES ?p { rdfs:label skos:prefLabel }
                             GRAPH ?base { ?base :contains ?s }
                             GRAPH ?s    { ?s ?p ?o }
-                            VALUES ?p { rdfs:label skos:prefLabel }
                         }
                     ''', initNs=initNs, initBindings=initBindings)
                 )
@@ -108,9 +108,9 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                     (s, KTBS.hasObselCount, o, enriched_state)
                     for s, o in whole.query('''
                             SELECT ?t (COUNT(?obs) as ?c) {
+                                VALUES ?tt { :StoredTrace :ComputedTrace }
                                 GRAPH ?base { ?base :contains ?t. ?t a ?tt }
                                 OPTIONAL { ?obs :hasTrace ?t }
-                                VALUES ?tt { :StoredTrace :ComputedTrace }
                             } GROUP BY ?t
                         ''', initNs=initNs, initBindings=initBindings)
                 )

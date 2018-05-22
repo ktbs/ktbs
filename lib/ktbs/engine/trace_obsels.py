@@ -170,7 +170,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
         # is provided, and http_server does not require dynamic graphs, so...
 
         if (not parameters # empty dict is equivalent to no dict
-            or "refresh" in parameters and len(parameters) == 1): 
+            or "refresh" in parameters and len(parameters) == 1):
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, parameters, "get_state")
@@ -226,14 +226,15 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                 # this is a hack because rdflib 4.2.2 does not support an empty VALUES list
                 # but it should not match anything
 
-            query_str = """PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#> 
+            query_str = """PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#>
                 SELECT ?s ?p ?o ?strc ?otrc ?obs {
+                  VALUES ?obs { %s }
                   {
-                    ?obs ?p ?o. 
+                    ?obs ?p ?o.
                     BIND(?obs as ?s)
                     OPTIONAL { ?o ktbs:hasTrace ?otrc }
                   } UNION {
-                    ?s ?p ?obs. 
+                    ?s ?p ?obs.
                     BIND(?obs as ?o)
                     OPTIONAL { ?s ktbs:hasTrace ?strc }
                   } UNION {
@@ -247,14 +248,16 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                     FILTER isBlank(?s)
                     ?s ?p ?o.
                   }
-                  VALUES ?obs { %s }
-                } 
+                }
                 """% (' '.join(matching_obsels))
-            
+
+            results = self.state.query(query_str)
+            LOG.debug("described by %s triples", len(results))
+
             # add description of all matching obsels
             old_graph_len = len(graph)
             graph_add = graph.add
-            for s, p, o, strc, otrc, obs in self.state.query(query_str):
+            for s, p, o, strc, otrc, obs in results:
                 graph_add((s, p, o))
                 if strc is not None:
                     graph_add((s, KTBS.hasTrace, strc))
@@ -356,7 +359,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                 super(AbstractTraceObsels, self).check_parameters(to_check_again,
                                                                   parameters,
                                                                   method)
-    
+
     def prepare_edit(self, parameters):
         """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
 
@@ -477,10 +480,10 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
             graph.set((uri, METADATA.pse_mon_tag, Literal(token+"p")))
         if prepared is None  or  not prepared.log_mon:
             graph.set((uri, METADATA.log_mon_tag, Literal(token+"l")))
-    
+
     def _detect_mon_change(self, graph, prepared):
         """Detect monotonicity changed induced by 'graph', and update `prepared` accordingly.
-        
+
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
