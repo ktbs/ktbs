@@ -408,8 +408,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
         # force transformed traces to refresh
         trace = self.trace
         for ttr in trace.iter_transformed_traces():
-            obsels = ttr.obsel_collection
-            obsels.metadata.set((obsels.uri, METADATA.dirty, Literal("yes")))
+            ttr._mark_dirty(False, True)
 
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.

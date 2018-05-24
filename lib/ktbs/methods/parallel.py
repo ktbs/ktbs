@@ -131,7 +131,7 @@ class _ParallelMethod(IMethod):
                 int_trace = base.create_computed_trace(
                     int_trace_id, method, method_params[i], [source])
             else:
-                with int_trace.edit() as editable:
+                with int_trace.edit(_trust=True) as editable:
                     int_trace_uri = int_trace.uri
                     # we do not use the high-level API here,
                     # because it would force the state to refresh

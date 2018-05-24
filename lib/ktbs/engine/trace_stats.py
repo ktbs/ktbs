@@ -43,7 +43,7 @@ def remove_plugin(f):
     _PLUGINS.remove(f)
 
 class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
-    """I provide the implementation of ktbs:AbstractTraceObsels
+    """I provide the implementation of TraceStatistics
     """
     ######## Public methods ########
     # (only available in the local implementation)
@@ -79,22 +79,30 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
             return
 
         with self.lock(self):
-            if (self.metadata.value(self.uri, METADATA.dirty) is None
-                and refresh_param < 2):
-                return
-
             self.__forcing_state_refresh = True
             try:
                 LOG.debug('refreshing <{}>'.format(self.uri))
                 trace = self.trace
+                trace.force_state_refresh()
                 trace.obsel_collection.force_state_refresh(parameters)
+
+                metadata = self.metadata
+                seen_trc_etag = metadata.value(self.uri, METADATA.traceEtag, None)
+                seen_obs_etag = metadata.value(self.uri, METADATA.obselsEtag, None)
+                last_trc_etag = self.trace.iter_etags().next()
+                last_obs_etag = self.trace.obsel_collection.get_etag()
+                dirty =  seen_trc_etag != last_trc_etag  or  seen_obs_etag != last_obs_etag
+
+                if not dirty and refresh_param < 2:
+                    return
 
                 # Avoid passing refresh parameter to edit()
                 with self.edit(None, _trust=True) as editable:
                     editable.remove((None, None, None))
                     self.init_graph(editable, self.uri, trace.uri)
                     self._populate(editable, trace)
-                    self.metadata.remove((self.uri, METADATA.dirty, None))
+                    self.metadata.set((self.uri, METADATA.traceEtag, Literal(last_trc_etag)))
+                    self.metadata.set((self.uri, METADATA.obselsEtag, Literal(last_obs_etag)))
             finally:
                 del self.__forcing_state_refresh
 
@@ -125,16 +133,6 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.TraceStatistics
-
-    @classmethod
-    def create(cls, service, uri, new_graph):
-        """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
-
-        I mark this resource as dirty.
-        """
-        super(TraceStatistics, cls).create(service, uri, new_graph)
-        metadata = service.get_metadata_graph(uri)
-        metadata.add((uri, METADATA.dirty, Literal('yes')))
 
     def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
