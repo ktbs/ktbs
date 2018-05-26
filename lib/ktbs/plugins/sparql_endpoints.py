@@ -65,13 +65,11 @@ class SparqlEndpointMiddleware(object):
 
     def __call__(self, environ, start_response):
         req = Request(environ)
-        print("coucou")
         if (req.method == "GET" and req.GET.getall("query")
         or req.method == "POST" and req.content_type in self.POST_CTYPES):
             resp = self.handle_sparql(req)
         else:
             # pass through request to the wrapped application
-            print("rate")
             resp = req.get_response(self.app)
         return resp(environ, start_response)
 
