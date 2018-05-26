@@ -138,6 +138,11 @@ class HttpClientCore(ICore):
             else:
                 py_class = HttpClientCore
             resource = py_class(uri, graph)
+            try:
+                iter(resource.get_state()).next()
+            except ResourceAccessError:
+                return None
+
             _RESOURCE_CACHE[uri] = resource
         return resource
 
