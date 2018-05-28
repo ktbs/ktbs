@@ -636,7 +636,7 @@ class ErrorHandlerMiddleware(object):
 
         return response(environ, start_response)
 
-register_middleware(TOP, ErrorHandlerMiddleware)
+register_middleware(ERROR_HANDLING, ErrorHandlerMiddleware)
 
 class HttpException(Exception):
     def __init__(self, message, status, **headers):
