@@ -173,8 +173,6 @@ class Service(object):
         :return: the resource, or None
         :rtype:  :class:`ILocalCore` or :class:`~.cores.hosted.HostedCore`
 
-        TODO NOW: if no resource is found, try to get it from parent resource
-
         NB: if uri contains a fragment-id, the returned resource will be a
         `~rdfrest.cores.hosted.HostedCore`:class: hosted by a resource from this
         service.
@@ -190,6 +188,7 @@ class Service(object):
 
         querystr, fragid = urisplit(uri)[3:]
         if querystr is not None  or  fragid is not None:
+            # querystr is managed by the 'parameter' arg of ICore methods
             # fragid is managed by the decorator HostedCore.handle_fragment
             return None
         resource = self._resource_cache.get(uri)

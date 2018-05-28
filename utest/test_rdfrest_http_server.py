@@ -148,11 +148,6 @@ class TestHttpFront(object):
         assert resp.status_int == 303
         assert resp.location == URL+"foo"
 
-    def test_get_proxy(self, app):
-        resp, content = request(app, URL+"@proxy")
-        assert resp.status_int == 303
-        assert resp.location == URL
-
 
 
     def test_put_not_found(self, app):

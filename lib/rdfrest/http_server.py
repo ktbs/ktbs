@@ -188,10 +188,6 @@ class HttpFrontend(object):
         if resource is None:
             resp = self.issue_error(404, request, None)
             return resp(environ, start_response)
-        if resource.uri != resource_uri:
-            resp = self.issue_error(303, request, None,
-                                    location=str(resource.uri))
-            return resp(environ, start_response)
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
             resp = self.issue_error(405, request, resource,
@@ -247,7 +243,7 @@ class HttpFrontend(object):
         # get graph and redirect if needed
         cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
         graph = resource.get_state(params or None)
-        redirect = getattr(graph, "redirect_to", None)
+        redirect = getattr(graph, "redirected_to", None)
         if redirect is not None:
             return self.issue_error(303, request, None,
                                     location=redirect)
