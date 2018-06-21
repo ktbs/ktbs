@@ -22,7 +22,7 @@ import atexit
 import logging
 from optparse import OptionParser, OptionGroup
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
-from wsgiref.simple_server import WSGIServer, make_server
+from waitress import serve
 
 from rdfrest.util.config import apply_global_config
 from rdfrest.util.wsgi import SimpleRouter
@@ -54,6 +54,14 @@ def main():
 
     application = HttpFrontend(ktbs_service, ktbs_config)
 
+    kwargs = {
+        'host': ktbs_config.get('server', 'host-name', 1),
+        'port': ktbs_config.getint('server', 'port'),
+    }
+
+    if ktbs_config.getboolean('server', 'force-ipv4'):
+        kwargs['ipv6'] = False
+
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
 
@@ -61,14 +69,13 @@ def main():
         base_path = ktbs_config.get('server', 'base-path')
         application = SimpleRouter([(base_path, application)])
 
-    httpd = make_server(ktbs_config.get('server', 'host-name', 1),
-                        ktbs_config.getint('server', 'port'),
-                        application,
-                        make_server_class(ktbs_config))
-
     LOG.info("KTBS server at %s" % ktbs_service.root_uri)
 
-    httpd.serve_forever()
+    serve(
+        application,
+        host = ktbs_config.get('server', 'host-name', 1),
+        port = ktbs_config.getint('server', 'port'),
+    )
 
 def parse_configuration_options(options=None):
     """I get kTBS default configuration options and override them with
@@ -231,28 +238,6 @@ def number_callback(_option, opt, _value, parser):
     val = int(opt[1:])
     parser.values.requests = val
 
-
-def make_server_class(ktbs_config):
-    """We define this closure so that MyWSGIServer class
-       can access the configuration options.
-    """
-
-    class MyWSGIServer(WSGIServer):
-        """
-        I override WSGIServer to make it possibly IPV6-able.
-        """
-        def __init__(self, (host, port), handler_class):
-            ipv = self.address_family = AF_INET
-            if ktbs_config.get('server', 'force-ipv4', 1):
-                info = getaddrinfo(host, port, AF_INET, SOCK_STREAM)
-            else:
-                info = getaddrinfo(host, port, 0, SOCK_STREAM)
-                # when IPV6 is available, prefer it to IPV4
-                if [ i for i in info if i[0] == AF_INET6 ]:
-                    ipv = self.address_family =  AF_INET6
-            LOG.info("Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv])
-            WSGIServer.__init__(self, (host, port), handler_class)
-    return MyWSGIServer
 
 class NoCache(object):
     """
