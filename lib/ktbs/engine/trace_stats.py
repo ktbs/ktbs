@@ -111,7 +111,7 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
         """
         if not _trust:
             raise MethodNotAllowedError(
-                "Can not directly edit obsels of computed trace.")
+                "@stats is read-only")
         else:
             return super(TraceStatistics, self).edit(parameters, clear,
                                                          _trust)
