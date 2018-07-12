@@ -3,9 +3,10 @@ Trace
 
 This class is the base class of `StoredTrace`:doc: and `ComputedTrace`:doc:. It has no direct instances (only the two subclasses above can be instantiated), but everything described here is valid for any indirect instance.
 
-Traces have one :ref:`aspect resource <rest-aspect-resource>`:
+Traces have two :ref:`aspect resource <rest-aspect-resource>`:
 
 * `@obsels`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#hasObselCollection
+* `@stats`_, linked through http://liris.cnrs.fr/silex/2009/ktbs#hasTraceStatistics
 
 Original resource
 +++++++++++++++++
@@ -137,3 +138,20 @@ and leaving the obsel collection resource intact.
 
 .. [#usually] You *may* retrieve longer paths in some situations,
    but this should not be relied upon.
+
+
+@stats
++++++++
+
+This aspect resource provides general statistics about the trace.
+
+GET
+---
+
+Provide the statistics; by default, those statistics include:
+
+- the total number of obsels,
+- the time-span of the obsels of the traces
+  (min and max timestamp, and duration).
+
+Plugins can add more information to the statistics.
