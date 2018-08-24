@@ -20,7 +20,7 @@ I provide the implementation of kTBS obsel collections.
 """
 from logging import getLogger
 
-from rdflib import Literal, RDF, BNode
+from rdflib import Literal, RDF, BNode, Variable
 from rdflib.namespace import Namespace
 
 from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
@@ -166,24 +166,27 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
         """
         obsels_graph = trace.obsel_collection.state
         initNs = { '': unicode(KTBS.uri) }
-        initBindings = { 'trace': trace.uri }
 
         # Obsel count
-        count_result = obsels_graph.query(COUNT_OBSELS, initNs=initNs,
-                                          initBindings=initBindings)
+        ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()
+        count_obsels = COUNT_OBSELS.replace('$trace', trace.uri.n3())
+        count_result = obsels_graph.query(count_obsels, initNs=initNs)
         count = count_result.bindings[0]['c']
         graph.add((trace.uri, NS.obselCount, count))
 
         # Duration statistics
-        duration_result = obsels_graph.query(DURATION_TIME, initNs=initNs,
-                                             initBindings=initBindings)
+        ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()
+        duration_time = DURATION_TIME.replace('$trace', trace.uri.n3())
+        duration_result = obsels_graph.query(duration_time, initNs=initNs)
 
-        if (duration_result is not None and
-            len(duration_result.bindings) > 0 and
-            len(duration_result.bindings[0]) > 0):
-            graph.add((trace.uri, NS.minTime, duration_result.bindings[0]['minb']))
-            graph.add((trace.uri, NS.maxTime, duration_result.bindings[0]['maxe']))
-            graph.add((trace.uri, NS.duration, duration_result.bindings[0]['duration']))
+        if (duration_result is not None
+            and len(duration_result.bindings) > 0
+            and len(duration_result.bindings[0]) > 0):
+
+            b = duration_result.bindings[0]
+            graph.add((trace.uri, NS.minTime, b['minb']))
+            graph.add((trace.uri, NS.maxTime, b['maxe']))
+            graph.add((trace.uri, NS.duration, b['duration']))
 
         for plugin in _PLUGINS:
             try:
@@ -193,12 +196,15 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
                 LOG.exception(ex)
 
 
-COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
-DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
-# NB: selecting ?trace in the inner SELECT is required by Virtuoso
-SELECT ?trace (min(?b) as ?minb) (max(?e) as ?maxe)  where {
-        ?o :hasTrace ?trace ;
+COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace $trace }'
+DURATION_TIME="""
+SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration)
+where {
+SELECT (min(?b) as ?minb) (max(?e) as ?maxe)
+where {
+        ?o :hasTrace $trace ;
            :hasBegin ?b ;
            :hasEnd ?e .
-    }}
+    }
+}
 """

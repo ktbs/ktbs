@@ -147,15 +147,21 @@ class PrefixConjunctiveView(ConjunctiveGraph):
 
         If triple is specified, iterate over all contexts the triple is in.
         """
-        initBindings = {}
+        #initBindings = {}
         if triple:
-            initBindings['s'], initBindings['p'], initBindings['o'] = triple
-
+            ## the right thing to do would be
+            # initBindings['s'], initBindings['p'], initBindings['o'] = triple
+            ## but this would not work with Virtuoso,
+            ## so we have to hangle both case differently
+            inner_where = "%s %s %s" % tuple(i.n3() for i in triple)
+        else:
+            inner_where = "?s ?p ?o"
         store = self.store
         for gid, in self._whole.query(u'SELECT DISTINCT ?g'
-                                      u'{GRAPH ?g { ?s ?p ?o } %s}'
-                                      % self._filter,
-                                      initBindings=initBindings):
+                                      u'{GRAPH ?g { %s } %s}'
+                                      % (inner_where, self._filter),
+                                      #initBindings=initBindings,
+                                      ):
             yield Graph(store, gid, self)
 
     def get_context(self, identifier, quoted=False):
@@ -204,10 +210,15 @@ class PrefixConjunctiveView(ConjunctiveGraph):
                 filter_clause = ""
             else:
                 filter_clause = self._filter
-            return self._whole.query(u'SELECT ?s ?p ?o'
-                                     u'{ GRAPH ?g { ?s ?p ?o } %s}'
-                                     % filter_clause,
-                                     initBindings=initBindings)
+            query = u'''
+                SELECT ?s ?p ?o
+                    ?g # selected only to please Virtuoso
+                { GRAPH ?g { ?s ?p ?o } %s}''' % filter_clause
+            return (
+                (s, p, o)
+                for s, p, o, _
+                in self._whole.query(query, initBindings=initBindings)
+            )
 
     def quads(self, triple_or_quad=None):
         """Iterate over all the quads in the entire conjunctive graph"""

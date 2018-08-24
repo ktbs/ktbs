@@ -40,8 +40,14 @@ def populate_stats(graph, trace):
 
             graph.add((trace.uri, NS.obselCountPerType, ot_infos))
 
-COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb){ ?o :hasTrace ?trace ; a ?t . } ' \
-                   'GROUP BY ?t ORDER BY ?t'
+COUNT_OBSEL_TYPES= '''
+    SELECT ?t (count(?o) as ?nb)
+        $trace # selected solely to please Virtuoso
+    {
+        ?o :hasTrace $trace ; a ?t .
+    }
+    GROUP BY ?t $trace ORDER BY ?t
+'''
 
 def start_plugin(_config):
     """I get the configuration values from the main kTBS configuration.

@@ -407,12 +407,14 @@ class BaseMixin(KtbsResourceMixin):
         """
         Yield the URI and type of every element of this base.
         """
-        return iter(self.state.query(_ITER_CONTAINED_QUERY,
-                    initBindings={"base": self.uri}))
+        for s, t, _ in iter(self.state.query(_ITER_CONTAINED_QUERY,
+                            initBindings={"base": self.uri})):
+            yield s, t
 
 _ITER_CONTAINED_QUERY = prepareQuery("""
     PREFIX k: <http://liris.cnrs.fr/silex/2009/ktbs#>
     SELECT DISTINCT ?s ?t
+      $base # selected solely to please Virtuoso
     WHERE { $base k:contains ?s . ?s a ?t . }
 """)
             

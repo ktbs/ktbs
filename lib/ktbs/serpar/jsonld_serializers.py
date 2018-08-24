@@ -836,8 +836,9 @@ def trace_stats_to_json(graph, tstats, bindings=None):
     # Is it because of the filter clause ?
     stats_infos = graph.query("""
         SELECT ?pred ?obj
+            $trace # selected solely to please Virtuoso
         {{
-            ?trace ?pred ?obj
+            $trace ?pred ?obj
 
             filter (strstarts(xsd:string(?pred), "{0:s}"))
         }}
@@ -845,15 +846,16 @@ def trace_stats_to_json(graph, tstats, bindings=None):
                               initNs=initNs,
                               initBindings=initBindings)
 
-    for pred, obj in stats_infos:
+    for pred, obj, _ in stats_infos:
         if pred != KTBS_NS_STATS.obselCountPerType:
             tstats_dict[pred] = val2jsonobj(obj)
 
     # Recover data inside blank nodes : another request needed
     stats_infos = graph.query("""
         SELECT ?bn ?pred ?obj
+            $trace # selected solely to please Virtuoso
         {
-            ?trace stats:obselCountPerType ?bn .
+            $trace stats:obselCountPerType ?bn .
 
             ?bn ?pred ?obj .
         }
@@ -866,7 +868,7 @@ def trace_stats_to_json(graph, tstats, bindings=None):
         tstats_dict[KTBS_NS_STATS.obselCountPerType] = ocpt =  []
         for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
             ot_infos = {}
-            for _, pred, obj in tuples:
+            for _, pred, obj, _ in tuples:
                 pred = unicode(pred) # cast URIRef to plain unicode
                 ot_infos[pred] = val2jsonobj(obj)
 

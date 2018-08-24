@@ -320,18 +320,19 @@ def get_obsel_bounded_description(node, graph, fill=None):
     ret = bounded_description(node, graph, fill)
     trace_uri = ret.value(node, KTBS.hasTrace)
     add = ret.add
-    for other, in graph.query(_RELATED_OBSELS, initBindings = { "obs": node }):
+    for other, _, in graph.query(_RELATED_OBSELS, initBindings = { "obs": node }):
         add((other, KTBS.hasTrace, trace_uri))
     return ret
 
 
 _RELATED_OBSELS = prepareQuery("""
     SELECT DISTINCT ?other
+        $obs # selected solely to please Virtuoso
     {
-        { ?obs ?pred ?other . }
+        { $obs ?pred ?other . }
         UNION
-        { ?other ?pred ?obs . }
-        ?obs <%s> ?trace .
+        { ?other ?pred $obs . }
+        $obs <%s> ?trace .
         ?other <%s> ?trace .
     }
     """ % (KTBS.hasTrace, KTBS.hasTrace))

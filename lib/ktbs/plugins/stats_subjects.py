@@ -35,8 +35,14 @@ def populate_stats(graph, trace):
             graph.add((trace.uri, NS.distinctSubjects, nbs))
 
 # NB: do NOT remove ?trace from the SELECT; it is required by Virtuoso
-COUNT_DISTINCT_SUBJECTS = 'SELECT (COUNT(DISTINCT ?s) as ?nbs) ?trace' \
-                         '{ ?o :hasTrace ?trace; :hasSubject ?s . } '
+COUNT_DISTINCT_SUBJECTS = '''
+    SELECT (COUNT(DISTINCT ?s) as ?nbs)
+        $trace # selected solely to please Virtuoso
+    {
+        ?o :hasTrace $trace; :hasSubject ?s .
+    }
+    GROUP BY $trace
+'''
 
 def start_plugin(_config):
     """I get the configuration values from the main kTBS configuration.

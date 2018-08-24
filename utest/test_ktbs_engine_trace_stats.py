@@ -107,7 +107,6 @@ class TestKtbsTraceObsels(KtbsTestCase):
 
         self.trace.origin = "2000-01-01T00:00:00Z"
 
-        print "===", "-------------------"
         self.filtered.force_state_refresh()
         assert str(self.filtered.origin) == "2000-01-01T00:00:00Z"
 

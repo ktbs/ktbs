@@ -652,7 +652,9 @@ class ComputedTraceObsels(AbstractTraceObsels):
 
 FIND_LAST_OBSEL = prepareQuery("""
     PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-    SELECT ?o {
+    SELECT ?o
+        ?last__end # selected solely to please Virtuoso
+    {
         ?o :hasEnd ?e .
         FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
     }

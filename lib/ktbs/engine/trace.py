@@ -374,6 +374,7 @@ _SELECT_CANDIDATE_OBSELS = prepareQuery("""
     SELECT ?obs
            (IF(bound(?b), ?b, "INF"^^xsd:float) as ?begin)
            (IF(bound(?e), ?e, ?begin) as ?end)
+           $trace # selected solely to please Virtuoso
     WHERE {
         ?obs :hasTrace ?trace
         OPTIONAL { ?obs :hasBegin ?b }
