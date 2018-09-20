@@ -61,16 +61,18 @@ REST_CONSOLE = r"""<!DOCTYPE html>
     width: 12em;
 }
 
-#payload, #payload + .toolbar {
-    transition: all .5s;
-    width: 100%;
+.subtoolbar {
+    display: inline-block;
+    margin-left: 2em;
 }
 
 #payload {
-  height: 20em;
+    transition: all .5s;
+    width: 100%;
+    height: 20em;
 }
 
-#payload:disabled, #payload:disabled + .toolbar {
+#payload:disabled {
     height: 0;
     opacity: 0;
 }
@@ -130,7 +132,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
   <body>
 
     <input id="addressbar" />
-    <div>
+    <div class="toolbar">
 
       <span id="method" class="combo"
         ><input placeholder="GET" disabled="" /
@@ -159,14 +161,14 @@ REST_CONSOLE = r"""<!DOCTYPE html>
 
       <button id="send">Send</button>
 
+      <div class="subtoolbar" id="hjson-toolbar" style="display: none">
+        <button id="tohjson">Json → Hjson</button>
+        <button id="fromhjson">Hjson → Json</button>
+        <a href="https://hjson.org/"><abbr title="HJson ?">⍰</abbr></a>
+      </div>
     </div>
 
     <textarea id="payload" disabled=""></textarea>
-    <div class="toolbar hjson-toolbar">
-      <button id="tohjson">Json → Hjson</button>
-      <button id="fromhjson">Hjson → Json</button>
-      <a href="https://hjson.org/">Hjson?</a>
-    </div>
 
     <pre id="response">
       <span id="loading">loading...</span>
@@ -220,6 +222,7 @@ REST_CONSOLE = r"""<!DOCTYPE html>
             response = document.getElementById("response"),
             loading = document.getElementById("loading"),
             responseHeaders = document.getElementById("response-headers"),
+            hjsonToolbar = document.getElementById("hjson-toolbar"),
             tohjson = document.getElementById("tohjson"),
             fromhjson = document.getElementById("fromhjson"),
             etag = null,
@@ -528,6 +531,22 @@ REST_CONSOLE = r"""<!DOCTYPE html>
         send.addEventListener("click", sendRequest);
         response.addEventListener("click", interceptLinks);
         responseHeaders.addEventListener("click", interceptLinks);
+
+        // H-Json
+
+        function checkHjson() {
+            console.debug("checkHjson");
+            if (ctypeInput.value.search(/json/) != -1 && !payload.disabled) {
+                hjsonToolbar.style.display = "inline-block";
+            } else {
+                hjsonToolbar.style.display = "none";
+            }
+        }
+
+        ctypeInput.addEventListener('input', checkHjson);
+        ctypeSelect.addEventListener('change', checkHjson);
+        methodInput.addEventListener('input', checkHjson);
+        methodSelect.addEventListener('change', checkHjson);
 
         tohjson.addEventListener("click", function(evt) {
             var data = Hjson.parse(payload.value);
