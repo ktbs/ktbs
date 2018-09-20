@@ -29,7 +29,7 @@ from contextlib import contextmanager
 
 from os import getpid, pathconf
 
-from rdfrest.cores.local import _mark_as_deleted
+from rdfrest.cores.local import _DeletedCore
 from rdfrest.cores.local import ILocalCore
 
 
@@ -121,13 +121,12 @@ class WithLockMixin(ILocalCore):
                 semaphore.acquire(timeout)
                 if posix_ipc.SEMAPHORE_VALUE_SUPPORTED:
                     assert semaphore.value == 0, "This lock is corrupted"
-                self.__locking_thread_id = thread_id = current_thread().ident
-                LOG.debug("%s locked   by %s--%s", self, PID, thread_id)
 
                 try:  # catch exceptions occurring after the lock has been acquired
-                    # Make sure the resource still exists (it could have been deleted by a concurrent process).
-                    if len(resource._graph) == 0:
-                        _mark_as_deleted(resource)
+                    self.__locking_thread_id = thread_id = current_thread().ident
+                    LOG.debug("%s locked   by %s--%s", self, PID, thread_id)
+                    # make sure the resource still exists (it could have been deleted by a concurrent process).
+                    if resource.__class__ is _DeletedCore:
                         raise TypeError('The resource <{uri}> no longer exists.'.format(uri=resource.get_uri()))
                     yield
                 except:
