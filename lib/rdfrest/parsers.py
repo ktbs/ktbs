@@ -178,6 +178,14 @@ def parse_ntriples(content, base_uri=None, encoding="utf-8", graph=None):
     """
     return _parse_with_rdflib(content, base_uri, encoding, "nt", graph)
 
+@register_parser("application/ld+json")
+@register_parser("application/json", 20)
+def parse_json_ld(content, base_uri=None, encoding="utf-8", graph=None):
+    """I parse RDF content from JSON-LD.
+
+    See `parse_rdf_xml` for prototype documentation.
+    """
+    return _parse_with_rdflib(content, base_uri, encoding, "json-ld", graph)
 
 @wrap_exceptions(ParseError)
 def _parse_with_rdflib(content, base_uri, encoding, rdflib_format, graph):

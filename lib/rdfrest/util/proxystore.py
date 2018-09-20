@@ -42,7 +42,7 @@ from rdflib.graph import Graph
 #  * all formats manages by rdflib allow roundtrip,
 #    while rdfrest may have serializers without a parser, on conversly
 # advantages of rdfrest:
-#  * could use formats not supported by rdflib (JSON-LD?)
+#  * could use formats not supported by rdflib
 
 # TODO LATER We should scan rdflib registered parsers : rdflib/plugin.py
 #      rdflib has a turtle serializer but no turtle parser
@@ -58,6 +58,7 @@ FORMAT_XML  = "xml"
 FORMAT_RDFA = "rdfa"
 FORMAT_NT   = "nt"
 FORMAT_TRIX = "trix"
+FORMAT_JSON = "json-ld"
 
 PS_CONFIG_URI = "uri"
 PS_CONFIG_HTTP_CX = "httpcx"
@@ -69,6 +70,7 @@ PS_CONFIG_DEBUG_HTTP = "debughttp"
 ACCEPT = ",".join( ";q=".join(pair) for pair in [
         ("text/nt",             "1"),
         ("text/turtle",         "0.8"),
+        ("application/ld+json", "0.8"),
         ("application/rdf+xml", "0.6"),
 ])
 
@@ -90,6 +92,7 @@ def _get_rdflib_parsers():
     # Acceptés par KTBS
     _CONTENT_TYPE_PARSERS["text/x-turtle"] = FORMAT_N3
     _CONTENT_TYPE_PARSERS["application/turtle"] = FORMAT_N3
+    _CONTENT_TYPE_PARSERS["application/ld+json"] = FORMAT_JSON
 
     _CONTENT_TYPE_PARSERS["application/rdf+xml"] = "xml"#"application/rdf+xml"
     _CONTENT_TYPE_PARSERS["text/nt"] = FORMAT_NT # seems to be more efficient
@@ -102,6 +105,7 @@ def _get_rdflib_serializers():
     _CONTENT_TYPE_SERIALIZERS[FORMAT_N3] = "text/turtle"
     _CONTENT_TYPE_SERIALIZERS[FORMAT_NT] = "text/nt"
     _CONTENT_TYPE_SERIALIZERS[FORMAT_XML] = "application/rdf+xml"
+    _CONTENT_TYPE_SERIALIZERS[FORMAT_JSON] = "application/ld+json"
 
 # Build rdflib parsers list from content-type
 _get_rdflib_parsers()
