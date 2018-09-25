@@ -36,7 +36,7 @@ from .util import coerce_to_uri, wrap_exceptions
 # Parser registration
 #
 
-def register_parser(content_type, extension=None, preference=80):
+def register_parser(content_type, extension=None, preference=None):
     """I return a decorator for registering a parser.
     
     The decorated function must have the same prototype as
@@ -50,6 +50,11 @@ def register_parser(content_type, extension=None, preference=80):
     :func:`parse_rdf_xml`, and should raise `~.exceptions.ParseError`
     when it fails to parse the given content.
     """
+    if preference is None and type(extension) is int:
+        preference = extension
+        extension = None
+    preference = preference  if preference is not None else  80
+
     def decorator(func):
         """The decorator to register a parser."""
         _PREGISTRY.register(func, content_type, extension, preference)
@@ -142,7 +147,8 @@ _PREGISTRY = _FormatRegistry()
 # Default parser implementations
 #
 
-@register_parser("application/rdf+xml")
+@register_parser("application/rdf+xml", "rdf")
+@register_parser("application/xml",     "xml", 20)
 def parse_rdf_xml(content, base_uri=None, encoding="utf-8", graph=None):
     """I parse RDF content from RDF/XML.
 
@@ -157,8 +163,8 @@ def parse_rdf_xml(content, base_uri=None, encoding="utf-8", graph=None):
     """
     return _parse_with_rdflib(content, base_uri, encoding, "xml", graph)
 
-@register_parser("text/turtle")
-@register_parser("text/n3",              20)
+@register_parser("text/turtle",   "ttl")
+@register_parser("text/n3",       "n3",  20)
 @register_parser("text/x-turtle",        20)
 @register_parser("application/turtle",   20)
 @register_parser("application/x-turtle", 20)
@@ -169,8 +175,8 @@ def parse_turtle(content, base_uri=None, encoding="utf-8", graph=None):
     """
     return _parse_with_rdflib(content, base_uri, encoding, "n3", graph)
 
-@register_parser("text/nt",    40)
-@register_parser("text/plain", 20)
+@register_parser("text/nt",    "nt",  40)
+@register_parser("text/plain", "txt", 20)
 def parse_ntriples(content, base_uri=None, encoding="utf-8", graph=None):
     """I parse RDF content from N-Triples.
 
@@ -178,8 +184,8 @@ def parse_ntriples(content, base_uri=None, encoding="utf-8", graph=None):
     """
     return _parse_with_rdflib(content, base_uri, encoding, "nt", graph)
 
-@register_parser("application/ld+json")
-@register_parser("application/json", 20)
+@register_parser("application/ld+json", "jsonld")
+@register_parser("application/json",    "json", 20)
 def parse_json_ld(content, base_uri=None, encoding="utf-8", graph=None):
     """I parse RDF content from JSON-LD.
 
