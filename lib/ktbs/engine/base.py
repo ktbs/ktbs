@@ -118,7 +118,7 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                     (s, KTBS.hasObselCount, o, enriched_state)
                     for s, o, _ in whole.query('''
                         SELECT ?t (COUNT(?obs) as ?c)
-                            $base # selected solely to please Virtuoso
+                            (SAMPLE($base) as ?sample_base) # selected solely to please Virtuoso
                         {
                             VALUES ?tt { :StoredTrace :ComputedTrace }
                             GRAPH $base { $base :contains ?t. ?t a ?tt }
