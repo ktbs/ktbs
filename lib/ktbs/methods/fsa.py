@@ -75,14 +75,15 @@ def match_sparql_ask(transition, event, token, fsa):
     ## unfortunately, Virtuoso does not support VALUES clauses after the ASK clause,
     ## which is how SPARQLUpdateStore handles initBindings
     ## so we generate that clause in the condition instead
-    condition += """
-      VALUES ?obs { %s }
-      VALUES ?pred { %s }
-      VALUES ?first { %s }""" % (
+    condition = """
+      BIND (%s as ?obs)
+      BIND (%s as ?pred)
+      BIND (%s as ?first)
+    """ % (
           URIRef(event).n3(),
           pred.n3() if pred else '""', # simulating NULL
           first.n3() if first else '""', # simulating NULL
-      )
+    ) + condition
     ## thank you for nothing Virtuoso :-(
 
     return fsa.source_obsels_graph.query(
