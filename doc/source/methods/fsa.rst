@@ -54,6 +54,7 @@ a new obsel is generated:
 * The type of the new obsel is the value of the ``ktbs_obsel_type`` of the terminal state,
   interpreted as a URI relative to the computed trace's model URI.
   If this attribute is omitted, the state identifier is used instead.
+  If this attribute is ``null``, no obsel will be generated for the corresponding match.
 
 * If the terminal state has a ``ktbs_attributes`` model,
   additional attributes will be generated for the new obsel.

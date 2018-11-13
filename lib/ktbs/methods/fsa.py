@@ -166,6 +166,8 @@ class _FSAMethod(AbstractMonosourceMethod):
                     source_obsels = [ URIRef(uri) for uri in token['history_events']]
                     otype_uri = state.get_obsel_type()
                     LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
+                    if otype_uri is None:
+                        continue
 
                     new_obs_uri = translate_node(source_obsels[-1], computed_trace,
                                                  source_uri, False)
@@ -229,7 +231,10 @@ class KtbsFsaState(State):
 
     def get_obsel_type(self):
         ktbs_obsel_type = self._data.get('ktbs_obsel_type', self.id)
-        return URIRef(ktbs_obsel_type, self.target_model_uri)
+        if ktbs_obsel_type is not None:
+            return URIRef(ktbs_obsel_type, self.target_model_uri)
+        else: # explictly set not None
+            return None
 
     def get_attributes(self):
         ktbs_attributes = self._data.get('ktbs_attributes', {})

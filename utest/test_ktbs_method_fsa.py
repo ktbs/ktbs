@@ -432,6 +432,8 @@ class TestFSAKtbsSpecificProperties(KtbsTestCase):
         self.otypeB = self.model_src.create_obsel_type("#otB")
         self.otypeC = self.model_src.create_obsel_type("#otC")
         self.otypeD = self.model_src.create_obsel_type("#otD")
+        self.otypeE = self.model_src.create_obsel_type("#otE")
+        self.otypeF = self.model_src.create_obsel_type("#otF")
         self.atypeV = self.model_src.create_attribute_type("#atV")
         self.atypeW = self.model_src.create_attribute_type("#atW")
         self.model_dst = self.base.create_model("md")
@@ -465,7 +467,11 @@ class TestFSAKtbsSpecificProperties(KtbsTestCase):
                         {
                             "condition": "#otC",
                             "target": "terminalC"
-                        }
+                        },
+                        {
+                            "condition": "#otE",
+                            "target": "s1"
+                        },
                     ]
                 },
                 "terminalA": {
@@ -512,6 +518,27 @@ class TestFSAKtbsSpecificProperties(KtbsTestCase):
                             "target": "terminalC"
                         }
                     ]
+                },
+                "s1": {
+                    "max_noise": 10,
+                    "transitions": [
+                        {
+                            "condition": "#otE",
+                            "target": "terminalE",
+                        },
+                        {
+                            "condition": "#otF",
+                            "target": "break",
+                        },
+                    ]
+                },
+                "terminalE": {
+                    "terminal": True,
+                    "ktbs_obsel_type": "#otX",
+                },
+                "break": {
+                    "terminal": True,
+                    "ktbs_obsel_type": None,
                 },
             }
         }
@@ -706,3 +733,26 @@ class TestFSAKtbsSpecificProperties(KtbsTestCase):
         assert ctr.obsels[-1].get_attribute_value(self.atypeMax) == "foo"
         assert ctr.obsels[-1].get_attribute_value(self.atypeSpan) == None
         assert ctr.obsels[-1].get_attribute_value(self.atypeConcat) == "42 foo"
+
+    def est_obsel_type(self):
+        ctr = self.base.create_computed_trace("ctr/", KTBS.fsa,
+                                         {"fsa": dumps(self.base_structure),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oE0 = self.src.create_obsel("oE0", self.otypeE, 0)
+        assert len(ctr.obsels) == 0
+        oD1 = self.src.create_obsel("oD1", self.otypeD, 1)
+        assert len(ctr.obsels) == 0
+        oE2 = self.src.create_obsel("oE2", self.otypeE, 2)
+        assert len(ctr.obsels) == 1
+        assert_obsel_type(ctr.obsels[0], self.otypeX)
+        assert_source_obsels(ctr.obsels[0], [oE0, oD1, oE2])
+
+        # but this sequences "breaks" with oF4,
+        # and generates no obsel (ktbs_obsel_type is null)
+        oE3 = self.src.create_obsel("oE3", self.otypeE, 3)
+        assert len(ctr.obsels) == 1
+        oF4 = self.src.create_obsel("oF4", self.otypeF, 4)
+        assert len(ctr.obsels) == 1
+        oE5 = self.src.create_obsel("oE5", self.otypeE, 5)
+        assert len(ctr.obsels) == 1
