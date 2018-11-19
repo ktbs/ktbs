@@ -50,6 +50,7 @@ def get_service_configuration(configfile_handler=None):
     config.add_section('server')
     config.set('server', 'host-name', 'localhost')
     config.set('server', 'port', '8001')
+    config.set('server', 'threads', '2')
     config.set('server', 'base-path', '')
     config.set('server', 'force-ipv4', 'false')
     config.set('server', 'max-bytes', '-1')

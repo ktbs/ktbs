@@ -57,6 +57,7 @@ def main():
     kwargs = {
         'host': ktbs_config.get('server', 'host-name', 1),
         'port': ktbs_config.getint('server', 'port'),
+        'threads': ktbs_config.getint('server', 'threads'),
     }
 
     if ktbs_config.getboolean('server', 'force-ipv4'):
@@ -73,8 +74,7 @@ def main():
 
     serve(
         application,
-        host = ktbs_config.get('server', 'host-name', 1),
-        port = ktbs_config.getint('server', 'port'),
+        **kwargs
     )
 
 def parse_configuration_options(options=None):
@@ -103,6 +103,9 @@ def parse_configuration_options(options=None):
 
         if options.port is not None:
             config.set('server', 'port', str(options.port))
+
+        if options.threads is not None:
+            config.set('server', 'threads', str(options.threads))
 
         if options.base_path is not None:
             config.set('server', 'base-path', options.base_path)
@@ -188,6 +191,8 @@ def build_cmdline_options():
                    help="disable Cache-Control header (equivalent to -C \"\")")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
+    ogr.add_option("-t", "--threads",
+                   help="sets the number of worker threads for the server")
     ogr.add_option("-T", "--max-triples",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
