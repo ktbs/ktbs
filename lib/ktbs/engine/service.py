@@ -126,6 +126,9 @@ class KtbsService(Service):
         # self.init_ktbs : always give the initialization method
         Service.__init__(self, classes, service_config, self.init_ktbs)
 
+        assert self.root_uri[-1] == '/', \
+            "kTBS root URI must end with a '/' <%s>" % self.root_uri
+
         root = self.get(URIRef(self.root_uri), [KTBS.KtbsRoot])
 
         LOG.debug("updating built-in methods")
