@@ -95,8 +95,7 @@ def build_service_root_uri(service_config):
         return None
 
     if service_config.has_option('server', 'fixed-root-uri'):
-        # In case a fixed URI is passed (unit tests, ...)
-        return service_config.get('server', 'fixed-root-uri', 1)
+        root_uri = service_config.get('server', 'fixed-root-uri', 1)
     else:
         root_uri = "http://{hostname}:{port}{basepath}/".format(
             hostname = service_config.get('server', 'host-name', 1),
@@ -104,6 +103,8 @@ def build_service_root_uri(service_config):
             basepath = service_config.get('server', 'base-path', 1))
 
     return root_uri
+
+
 
 
 def apply_logging_config(service_config):
