@@ -107,7 +107,7 @@ class Service(object):
         self.root_uri = coerce_to_uri(root_uri)
 
         init_repo = False
-        repository = service_config.get('rdf_database', 'repository', 1)
+        repository = service_config.get('rdf_database', 'repository', raw=1)
         if not repository:
             init_repo = True
             repository = ":IOMemory:"

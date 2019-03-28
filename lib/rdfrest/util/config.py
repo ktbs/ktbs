@@ -95,12 +95,12 @@ def build_service_root_uri(service_config):
         return None
 
     if service_config.has_option('server', 'fixed-root-uri'):
-        root_uri = service_config.get('server', 'fixed-root-uri', 1)
+        root_uri = service_config.get('server', 'fixed-root-uri', raw=1)
     else:
         root_uri = "http://{hostname}:{port}{basepath}/".format(
-            hostname = service_config.get('server', 'host-name', 1),
+            hostname = service_config.get('server', 'host-name', raw=1),
             port = service_config.getint('server', 'port'),
-            basepath = service_config.get('server', 'base-path', 1))
+            basepath = service_config.get('server', 'base-path', raw=1))
 
     return root_uri
 
@@ -130,7 +130,7 @@ def apply_logging_config(service_config):
 
 def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
     if service_config.has_option('logging', 'json-configuration-filename'):
-        filename = service_config.get('logging', 'json-configuration-filename', 1)
+        filename = service_config.get('logging', 'json-configuration-filename', raw=1)
         with open(filename) as f:
             loggingConfig = json.load(f)
     else:
@@ -165,7 +165,7 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
     logger_handlers = ['console',]
 
     if service_config.has_option('logging', 'loggers'):
-        loggers = service_config.get('logging', 'loggers', 1).split()
+        loggers = service_config.get('logging', 'loggers', raw=1).split()
         if len(loggers) > 0:
             for logger in loggers:
                 logger_dict = {
@@ -183,18 +183,18 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
     if service_config.has_option('logging', 'console-format'):
         loggingConfig['handlers']['console']['formatter'] = 'console'
         loggingConfig['formatters']['console'] = {
-            'format': service_config.get('logging', 'console-format', 1),
+            'format': service_config.get('logging', 'console-format', raw=1),
             'datefmt': date_fmt,
         }
 
 
     if service_config.has_option('logging', 'filename') and \
-       len(service_config.get('logging', 'filename', 1)) > 0:
+       len(service_config.get('logging', 'filename', raw=1)) > 0:
         # Add a 'filelog' handler
         logger_handlers.append('filelog')
         loggingConfig['handlers']['filelog'] = {
             'class': 'logging.FileHandler',
-            'filename': service_config.get('logging', 'filename', 1),
+            'filename': service_config.get('logging', 'filename', raw=1),
             'mode': 'w',
             'formatter': 'simple',
         }
@@ -202,12 +202,12 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
             loggingConfig['handlers']['filelog']['level'] = get_log_level(service_config, 'file-level')
 
     if service_config.has_option('logging', 'ktbs-logurl') and \
-       len(service_config.get('logging', 'ktbs-logurl', 1)) > 0:
+       len(service_config.get('logging', 'ktbs-logurl', raw=1)) > 0:
         # Add a 'kTBS log handler'
         logger_handlers.append('ktbslog')
         loggingConfig['handlers']['ktbslog'] = {
             'class': 'rdfrest.util.ktbsloghandler.kTBSHandler',
-            'url': service_config.get('logging', 'ktbs-logurl', 1),
+            'url': service_config.get('logging', 'ktbs-logurl', raw=1),
         }
         if service_config.has_option('logging', 'ktbs-level'):
             loggingConfig['handlers']['ktbslog']['level'] = get_log_level(service_config, 'ktbs-level')
@@ -217,7 +217,7 @@ def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):
 
 def get_log_level(service_config, option, default=logging.WARNING):
     try:
-        label = service_config.get('logging', option, 1)
+        label = service_config.get('logging', option, raw=1)
         try:
             value = int(label)
         except ValueError:

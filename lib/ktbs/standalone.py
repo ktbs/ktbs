@@ -55,7 +55,7 @@ def main():
     application = HttpFrontend(ktbs_service, ktbs_config)
 
     kwargs = {
-        'host': ktbs_config.get('server', 'host-name', 1),
+        'host': ktbs_config.get('server', 'host-name', raw=1),
         'port': ktbs_config.getint('server', 'port'),
         'threads': ktbs_config.getint('server', 'threads'),
     }

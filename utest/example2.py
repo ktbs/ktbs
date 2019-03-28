@@ -176,7 +176,7 @@ def main():
         print("Local tests passed")
 
     app = SimpleRouter([(BASE_PATH, HttpFrontend(serv, service_config))])
-    _httpd = make_server(service_config.get('server', 'host-name', 1),
+    _httpd = make_server(service_config.get('server', 'host-name', raw=1),
                          service_config.getint('server', 'port'),
                          app)
     print("Now listening on", root_uri)

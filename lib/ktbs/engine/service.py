@@ -84,7 +84,7 @@ def make_ktbs(root_uri=None, repository=None, create=None):
             ktbs_config.set('server', 'fixed-root-uri', 'ktbs://{!s}/'.format(getpid()))
         else:
             ktbs_config.set('server', 'fixed-root-uri', 
-                            'ktbs://{:s}/'.format(ktbs_config.get('rdf_database', 'repository',1)))
+                            'ktbs://{:s}/'.format(ktbs_config.get('rdf_database', 'repository', raw=1)))
     else:
         ktbs_config.set('server', 'fixed-root-uri', root_uri)
 

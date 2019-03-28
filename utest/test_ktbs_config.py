@@ -60,7 +60,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--host-name=toto'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('server', 'host-name', 1) == 'toto'
+        assert ktbs_config.get('server', 'host-name', raw=1) == 'toto'
 
     def test_server_hostport(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -74,7 +74,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--base-path=myktbsroot/'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('server', 'base-path', 1) == 'myktbsroot/'
+        assert ktbs_config.get('server', 'base-path', raw=1) == 'myktbsroot/'
 
     def test_server_ipv4(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -144,7 +144,7 @@ class TestkTBSCmdlineConfig(object):
 
         ktbs_config = parse_configuration_options(options)
         assert ktbs_config.options('ns_prefix'), ['_', 'skos' == 'foaf']
-        assert ktbs_config.get('ns_prefix', 'foaf', 1) == 'http://xmlns.com/foaf/0.1/'
+        assert ktbs_config.get('ns_prefix', 'foaf', raw=1) == 'http://xmlns.com/foaf/0.1/'
 
     def test_plugins_one_item(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -159,7 +159,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--repository=/var/myktbs/'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('rdf_database', 'repository', 1) == '/var/myktbs/'
+        assert ktbs_config.get('rdf_database', 'repository', raw=1) == '/var/myktbs/'
 
     def test_rdf_database_forceinit(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -174,7 +174,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--loggers=ktbs'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs'
 
     def test_logging_multiple_loggers(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -182,28 +182,28 @@ class TestkTBSCmdlineConfig(object):
                                              '--loggers=rdfrest'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs rdfrest'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs rdfrest'
 
     def test_logging_consolelevel(self):
         options, args = self.opt.parse_args(['ktbs',
                                              '--console-level=DEBUG'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'console-level', 1) == 'DEBUG'
+        assert ktbs_config.get('logging', 'console-level', raw=1) == 'DEBUG'
 
     def test_logging_filename(self):
         options, args = self.opt.parse_args(['ktbs',
                                              '--logging-filename=/var/log/myktbslogs.log'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'filename', 1) == '/var/log/myktbslogs.log'
+        assert ktbs_config.get('logging', 'filename', raw=1) == '/var/log/myktbslogs.log'
 
     def test_logging_filelevel(self):
         options, args = self.opt.parse_args(['ktbs',
                                              '--file-level=WARNING'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'file-level', 1) == 'WARNING'
+        assert ktbs_config.get('logging', 'file-level', raw=1) == 'WARNING'
 
 class TestkTBSFileConfig(object):
     """
@@ -243,7 +243,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('server', 'host-name', 1) == 'testhost'
+        assert ktbs_config.get('server', 'host-name', raw=1) == 'testhost'
 
     def test_server_hostport(self):
         fhandler = StringIO()
@@ -261,7 +261,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('server', 'base-path', 1) == 'myktbsroot/'
+        assert ktbs_config.get('server', 'base-path', raw=1) == 'myktbsroot/'
 
     def test_server_ipv4(self):
         fhandler = StringIO()
@@ -337,7 +337,7 @@ class TestkTBSFileConfig(object):
         # In this case, foaf is the first prefix added before the 2
         # default ones added by get_ktbs_configuration()
         assert ktbs_config.options('ns_prefix'), ['foaf', '_' == 'skos']
-        assert ktbs_config.get('ns_prefix', 'foaf', 1) == 'http://xmlns.com/foaf/0.1/'
+        assert ktbs_config.get('ns_prefix', 'foaf', raw=1) == 'http://xmlns.com/foaf/0.1/'
 
     def test_plugins_one_item(self):
         fhandler = StringIO()
@@ -356,7 +356,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('rdf_database', 'repository', 1) == '/var/myktbs/'
+        assert ktbs_config.get('rdf_database', 'repository', raw=1) == '/var/myktbs/'
 
     def test_rdf_database_forceinit(self):
         fhandler = StringIO()
@@ -374,7 +374,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs'
 
     def test_logging_multiple_loggers(self):
         fhandler = StringIO()
@@ -383,7 +383,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs rdfrest'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs rdfrest'
 
     def test_logging_consolelevel(self):
         fhandler = StringIO()
@@ -392,7 +392,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('logging', 'console-level', 1) == 'DEBUG'
+        assert ktbs_config.get('logging', 'console-level', raw=1) == 'DEBUG'
 
     def test_logging_filename(self):
         fhandler = StringIO()
@@ -401,7 +401,7 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('logging', 'filename', 1) == '/var/log/myktbslogs.log'
+        assert ktbs_config.get('logging', 'filename', raw=1) == '/var/log/myktbslogs.log'
 
     def test_logging_filelevel(self):
         fhandler = StringIO()
@@ -410,4 +410,4 @@ class TestkTBSFileConfig(object):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.get('logging', 'file-level', 1) == 'WARNING'
+        assert ktbs_config.get('logging', 'file-level', raw=1) == 'WARNING'

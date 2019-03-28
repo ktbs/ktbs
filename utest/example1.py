@@ -591,7 +591,7 @@ def make_example1_httpd(service=None, service_config=None):
 
     # cache_control="max-age=60")
     app = SimpleRouter([(BASE_PATH, HttpFrontend(service, service_config))])
-    _httpd = make_server(service_config.get('server', 'host-name', 1),
+    _httpd = make_server(service_config.get('server', 'host-name', raw=1),
                          service_config.getint('server', 'port'),
                          app)
     thread = Thread(target=_httpd.serve_forever)
