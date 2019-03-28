@@ -105,8 +105,11 @@ class _FormatRegistry(object):
         :param preference:   an int between 0 (low) and 100 (high)
         """
         assert 0 <= preference <= 100
+        tie_breaker = len(self._by_pref)
+        # the tie_breaker is required to prevent comparion beyond the 2nd item,
+        # because the third item (formatfunc) does not support comparison
         insort(self._by_pref,
-               (100-preference, formatfunc, content_type, extension))
+               (100-preference, tie_breaker, formatfunc, content_type, extension))
         _set_if_higher_pref(self._by_ctype, content_type,
                             (formatfunc, extension, preference))
         _set_if_higher_pref(self._by_ext, extension,
@@ -117,7 +120,7 @@ class _FormatRegistry(object):
 
         :return: an iterator of tuples (function, content_type, extension)
         """
-        return ( i[1:] for i in self._by_pref )
+        return ( i[2:] for i in self._by_pref )
 
     def get_by_content_type(self, content_type):
         """I return the format function associated with content_type, or None.
