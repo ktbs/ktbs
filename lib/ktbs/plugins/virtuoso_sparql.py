@@ -34,7 +34,7 @@ from rdflib.plugins.stores.sparqlstore import SPARQLUpdateStore, _node_to_sparql
 from SPARQLWrapper.SmartWrapper import SPARQLWrapper2
 
 def _virtuoso_compatible_generator():
-    return unicode(uuid4().int % 2**61)
+    return str(uuid4().int % 2**61)
 
 def _virtuoso_node_to_sparql(node):
     if isinstance(node, BNode):
@@ -89,8 +89,8 @@ class VSPARQLStore(SPARQLUpdateStore):
             parts.append(query[:match_base.end()])
             query = query[match_base.end():]
 
-        prefixes = list(self.nsBindings.items())
-        parts.extend('PREFIX %s: <%s>' % (k, v) for k, v in prefixes)
+        parts.extend('PREFIX %s: <%s>' % (k, v)
+            for k, v in self.nsBindings.items())
         parts.extend([
             '', # separate prefixes from query with an empty line
             query,
@@ -164,7 +164,7 @@ def start_plugin(config):
 
     # monkey patch BNode to make it virtuoso compatible
     monkeypatch_prepare_query()
-    BNode.__new__.func_defaults = (None, _virtuoso_compatible_generator, 'b')
+    BNode.__new__.__defaults__ = (None, _virtuoso_compatible_generator, 'b')
 
     rdflib.plugin.register("VirtuosoS", rdflib.store.Store,
         "ktbs.plugins.virtuoso_sparql", "VSPARQLStore")
@@ -192,10 +192,10 @@ if __name__ == "__main__":
 
     lh = BNode()
     g.add((EX.s, EX.p3, lh))
-    lst = Collection(g, lh, map(Literal, [1,2,3]))
+    lst = Collection(g, lh, list(map(Literal, [1,2,3])))
     assert len(g) == 9
 
-    print(g.serialize(format="turtle"))
+    print((g.serialize(format="turtle")))
     
     g.remove((None, None, None))
 

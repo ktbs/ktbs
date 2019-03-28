@@ -19,7 +19,7 @@
 Serializers and parsers for kTBS
 """
 
-import jsonld_parser
-import jsonld_serializers
-import csv_serializers
-import geojson_serializers
+from . import jsonld_parser
+from . import jsonld_serializers
+from . import csv_serializers
+from . import geojson_serializers

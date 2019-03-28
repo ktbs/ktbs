@@ -29,7 +29,7 @@ This module can be run as a program to generate the description:
   format, but the result might not be as reader-friendly.
 """
 
-from StringIO import StringIO
+from io import StringIO
 
 from rdflib import Graph, RDF, URIRef
 from rdflib.namespace import ClosedNamespace
@@ -534,6 +534,6 @@ KTBS_NS_SERVICE = make_helper_service(KTBS_NS_URI, KTBS_NS_GRAPH)
 if __name__ == "__main__":
     import sys
     if len(sys.argv) == 1:
-        print KTBS_NS_TTL
+        print(KTBS_NS_TTL)
     else:
         KTBS_NS_GRAPH.serialize(sys.stdout, sys.argv[1])

@@ -22,16 +22,8 @@ from functools import wraps
 from random import choice
 from rdflib import BNode, URIRef
 from rdflib.graph import Graph, ModificationException
-from urllib import quote_plus
-import urlparse
-
-# To parse custom uris with python urlparse
-# http://stackoverflow.com/a/6264214/481719
-def register_scheme(scheme):
-    for method in filter(lambda s: s.startswith('uses_'), dir(urlparse)):
-        getattr(urlparse, method).append(scheme)
-
-register_scheme('ktbs')
+from urllib.parse import quote_plus
+import urllib.parse
 
 def add_uri_params(uri, parameters):
     """Add query-string parameters to a given URI.
@@ -254,7 +246,7 @@ def urisplit(url):
       urisplit('http://a.b/c/d?#') -> ('http', 'a.b', '/c/d', '', '')
 
     """
-    ret = list(urlparse.urlsplit(url))
+    ret = list(urllib.parse.urlsplit(url))
 
     if ret[4] == '' and url[-1] != '#':
         ret[4] = None
@@ -267,7 +259,7 @@ def urisplit(url):
     if ret[3] == '' and url[before_fragment] != '?':
         ret[3] = None
 
-    return urlparse.SplitResult(*ret)
+    return urllib.parse.SplitResult(*ret)
     
 def uriunsplit(split_uri):
     """A better urlunsplit.
@@ -281,7 +273,7 @@ def uriunsplit(split_uri):
       uriunsplit('http', 'a.b', '/c/d', '', '') -> 'http://a.b/c/d?#'
 
     """
-    ret = urlparse.urlunsplit(split_uri)
+    ret = urllib.parse.urlunsplit(split_uri)
     if split_uri[4] == "":
         ret += "#"
     if split_uri[3] == "":
@@ -304,7 +296,7 @@ def wrap_exceptions(extype):
             """The decorated function"""
             try:
                 return func(*args, **kw)
-            except BaseException, ex:
+            except BaseException as ex:
                 raise extype(ex)
         return wrapped
     return wrap_exceptions_decorator
@@ -322,7 +314,7 @@ def wrap_generator_exceptions(extype):
             try:
                 for i in func(*args, **kw):
                     yield i
-            except BaseException, ex:
+            except BaseException as ex:
                 raise extype(ex)
         return wrapped
     return wrap_generator_exceptions_decorator
@@ -342,7 +334,7 @@ class Diagnosis(object):
         self.errors = errors
         self.traceback = traceback
 
-    def __nonzero__(self):
+    def __bool__(self):
         return len(self.errors) == 0
 
     def __iter__(self):
@@ -424,9 +416,10 @@ class ReadOnlyGraph(Graph):
         else:
             Graph.open(self, configuration, create)
 
-    def add(self, (s, p, o)):
+    def add(self, spo):
         """Raise a ModificationException as this graph is read-only.
         """
+        (s, p, o) = spo
         raise ModificationException() #ReadOnlyGraph does not support this
 
     def addN(self, quads):
@@ -434,9 +427,10 @@ class ReadOnlyGraph(Graph):
         """
         raise ModificationException() #ReadOnlyGraph does not support this
 
-    def remove(self, (s, p, o)):
+    def remove(self, spo):
         """Raise a ModificationException as this graph is read-only.
         """
+        (s, p, o) = spo
         raise ModificationException() #ReadOnlyGraph does not support this
 
     def __iadd__(self, other):
@@ -449,9 +443,10 @@ class ReadOnlyGraph(Graph):
         """
         raise ModificationException() #ReadOnlyGraph does not support this
 
-    def set(self, (subject, predicate, object)):
+    def set(self, spo):
         """Raise a ModificationException as this graph is read-only.
         """
+        (subject, predicate, object) = spo
         raise ModificationException() #ReadOnlyGraph does not support this
 
     def bind(self, prefix, namespace, override=True):

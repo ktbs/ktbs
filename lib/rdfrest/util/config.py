@@ -24,7 +24,7 @@ I provide configuration functions for the rdfrest Service.
 import json
 import logging
 import logging.config
-from ConfigParser import NoOptionError, SafeConfigParser
+from configparser import NoOptionError, SafeConfigParser
 
 from ..serializers import bind_prefix
 
@@ -125,7 +125,7 @@ def apply_logging_config(service_config):
         # Load config
         logging.config.dictConfig(loggingConfig)
     except ValueError as e:
-        print "Error in kTBS logging configuration, please read the following error message carefully.\n{0}".format(e.message)
+        print("Error in kTBS logging configuration, please read the following error message carefully.\n{0}".format(e.message))
 
 
 def make_log_config_dict(service_config, date_fmt='%Y-%m-%d %H:%M:%S %Z'):

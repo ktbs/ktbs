@@ -71,11 +71,11 @@ def test_extend_api():
 
     foo = Foo()
 
-    assert list(foo.iter_foos()) == range(5)
-    assert list(foo.iter_foos(True)) == range(0,5,-1)
-    assert foo.list_foos() == range(5)
-    assert foo.list_foos(True) == range(0,5,-1)
-    assert foo.foos == range(5)
+    assert list(foo.iter_foos()) == list(range(5))
+    assert list(foo.iter_foos(True)) == list(range(0,5,-1))
+    assert foo.list_foos() == list(range(5))
+    assert foo.list_foos(True) == list(range(0,5,-1))
+    assert foo.foos == list(range(5))
 
     assert foo.get_bar() == "BAR 0"
     foo.set_bar(1)

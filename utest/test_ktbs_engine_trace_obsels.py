@@ -1,4 +1,4 @@
-from test_ktbs_engine import KtbsTestCase
+from .test_ktbs_engine import KtbsTestCase
 from unittest import skipUnless
 from pytest import raises as assert_raises
 

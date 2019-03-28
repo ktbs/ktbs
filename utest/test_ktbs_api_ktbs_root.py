@@ -50,7 +50,7 @@ class TestKtbsRoot(KtbsTestCase):
 
     def test_list_builtin_methods(self):
         for m in self.my_ktbs.list_builtin_methods():
-            print m.uri
+            print(m.uri)
 
     ######## add base ########
 

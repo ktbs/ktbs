@@ -96,7 +96,7 @@ class AbstractTraceMixin(InBaseMixin):
             except ParseError:
                 pass
         elif origin is not None:
-            origin = unicode(origin)
+            origin = str(origin)
         return origin
 
     def iter_obsels(self, begin=None, end=None, after=None, before=None, reverse=False, bgp=None, limit=None, offset=None, refresh=None):
@@ -160,9 +160,9 @@ class AbstractTraceMixin(InBaseMixin):
             if end is not None:
                 parameters["maxe"] = end
             if after is not None:
-                parameters["after"] = unicode(coerce_to_uri(after))
+                parameters["after"] = str(coerce_to_uri(after))
             if before is not None:
-                parameters["before"] = unicode(coerce_to_uri(before))
+                parameters["before"] = str(coerce_to_uri(before))
             if limit is not None:
                 parameters['limit'] = limit
             if offset is not None:
@@ -467,7 +467,7 @@ class StoredTraceMixin(AbstractTraceMixin):
             graph.add((obs, KTBS.hasBegin, Literal(int(begin))))
         else: # will use KTBS.hasBeginDT
             begin_dt = begin
-            if isinstance(begin, basestring):
+            if isinstance(begin, str):
                 begin_dt = parse_date(begin_dt)
             elif isinstance(begin, datetime):
                 if begin.tzinfo is None:
@@ -480,7 +480,7 @@ class StoredTraceMixin(AbstractTraceMixin):
             graph.add((obs, KTBS.hasEnd, Literal(int(end))))
         else: # will use KTBS.hasEndDT
             end_dt = end
-            if isinstance(end_dt, basestring):
+            if isinstance(end_dt, str):
                 end_dt = parse_date(end_dt)
             elif isinstance(end, datetime):
                 if end.tzinfo is None:
@@ -606,7 +606,7 @@ class ComputedTraceMixin(WithParametersMixin, AbstractTraceMixin):
         """
         ret = self.state.value(self.uri, KTBS.hasDiagnosis)
         if ret is not None:
-            ret = unicode(ret)
+            ret = str(ret)
         return ret
 
     def get_method_uri(self):

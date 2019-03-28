@@ -19,7 +19,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 import pytest
 
-from StringIO import StringIO
+from io import StringIO
 
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 
@@ -27,7 +27,7 @@ from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from sys import stderr
 from webob import Request
 
-from example2 import Group2Implementation, Item2Implementation, \
+from .example2 import Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import SerializeError
 from rdfrest.cores.factory import unregister_service
@@ -475,7 +475,7 @@ class TestConfigNoCache:
         resp, _ = request(app, URL)
         assert 'cache-control' not in resp.headers
 
-@register_serializer("text/errer", None, 01)
+@register_serializer("text/errer", None, 0o1)
 def serialize_error(graph, uri, _bindings=None):
     """I always raise an exception.
 

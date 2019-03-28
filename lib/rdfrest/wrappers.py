@@ -92,7 +92,7 @@ def register_wrapper(rdf_type):
 
     :see also: :funcet_subclass`
     """
-    assert isinstance(rdf_type, basestring), \
+    assert isinstance(rdf_type, str), \
         "syntax: @register_wrapper(rdf_type) -- you forgot the rdf_type"
     assert rdf_type not in _WRAPPER_REGISTRY, \
         "<%s> already registered" % rdf_type

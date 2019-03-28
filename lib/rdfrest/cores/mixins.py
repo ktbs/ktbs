@@ -195,7 +195,7 @@ class GraphPostableMixin(ILocalCore):
         if not _trust:
             diag = self.check_posted_graph(parameters, created, graph)
             if not diag:
-                raise InvalidDataError(unicode(diag))
+                raise InvalidDataError(str(diag))
         else: # graph is trusted so it SHOULD verify the assert below
             assert self.check_posted_graph(parameters, created, graph), \
                    self.check_posted_graph(parameters, created, graph)
@@ -224,7 +224,7 @@ class GraphPostableMixin(ILocalCore):
             cls.complete_new_graph(self.service, created, None, graph)
             diag = cls.check_new_graph(self.service, created, None, graph)
             if not diag:
-                raise InvalidDataError(unicode(diag))
+                raise InvalidDataError(str(diag))
         else: # graph is trusted so it SHOULD verify the assert below
             assert cls.check_new_graph(self.service, created, None, graph), \
                    cls.check_new_graph(self.service, created, None, graph)

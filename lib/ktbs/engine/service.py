@@ -21,7 +21,7 @@
 import logging
 from os import getpid
 from rdflib import Graph, RDF, URIRef, Literal
-import urlparse
+import urllib.parse
 
 from rdfrest.cores.local import Service
 from rdfrest.util import parent_uri
@@ -45,9 +45,9 @@ LOG = logging.getLogger(__name__)
 
 
 # make ktbs:/ URIs use relative, query, fragments
-urlparse.uses_fragment.append("ktbs")
-urlparse.uses_query.append("ktbs")
-urlparse.uses_relative.append("ktbs")
+urllib.parse.uses_fragment.append("ktbs")
+urllib.parse.uses_query.append("ktbs")
+urllib.parse.uses_relative.append("ktbs")
     
 def make_ktbs(root_uri=None, repository=None, create=None):
     """I create a kTBS engine conforming with the `abstract-ktbs-api`:ref:.

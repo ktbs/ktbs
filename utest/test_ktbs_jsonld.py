@@ -53,7 +53,7 @@ def unordered_json(json):
     """
     if isinstance(json, dict):
         return frozenset((
-                (key, unordered_json(val)) for key, val in json.iteritems()
+                (key, unordered_json(val)) for key, val in json.items()
             ))
     elif isinstance(json, list):
         return frozenset(( unordered_json(i) for i in json ))

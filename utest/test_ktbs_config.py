@@ -35,9 +35,9 @@ from ktbs.standalone import build_cmdline_options, parse_configuration_options
 from ktbs.config import get_ktbs_configuration
 
 try:
-    from cStringIO import StringIO
+    from io import StringIO
 except:
-    from StringIO import StringIO
+    from io import StringIO
 
 class TestkTBSCmdlineConfig(object):
     """

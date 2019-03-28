@@ -139,7 +139,7 @@ class HttpClientCore(ICore):
                 py_class = HttpClientCore
             resource = py_class(uri, graph)
             try:
-                iter(resource.get_state()).next()
+                next(iter(resource.get_state()))
             except ResourceAccessError:
                 return None
 
@@ -252,7 +252,7 @@ class HttpClientCore(ICore):
         uri = add_uri_params(self.uri, parameters)
         try:
             subresource = self.factory(uri)
-        except ResourceAccessError, ex:
+        except ResourceAccessError as ex:
             raise InvalidParametersError(ex)
         if subresource is None:
             raise InvalidParametersError("factory returned None")

@@ -759,7 +759,7 @@ class EditableCore(LocalCore):
         self.check_parameters(parameters, parameters, "delete")
         diag = self.check_deletable(parameters)
         if not diag:
-            raise CanNotProceedError(unicode(diag))
+            raise CanNotProceedError(str(diag))
         self.ack_delete(parameters)
         self._graph.remove((None, None, None))
         self.metadata.remove((None, None, None))
@@ -884,7 +884,7 @@ class EditableCore(LocalCore):
                 diag = self.check_new_graph(self.service, self.uri, parameters,
                                             editable, self)
                 if not diag:
-                    raise InvalidDataError(unicode(diag))
+                    raise InvalidDataError(str(diag))
 
                 if not editable is self._graph:
                     # we replace self._graph by editable

@@ -49,8 +49,8 @@ def extend_api(cls):
             continue
         if isinstance(raw_function, classmethod):
             continue
-        nrequired = (raw_function.func_code.co_argcount
-                     - len(raw_function.func_defaults or ()))
+        nrequired = (raw_function.__code__.co_argcount
+                     - len(raw_function.__defaults__ or ()))
         if methodname.startswith("get_"):
             if nrequired > 1: # self is always required
                 continue
@@ -69,10 +69,10 @@ def extend_api(cls):
             stripped_name = methodname[5:]
             new_name = "list_%s" % stripped_name
             repo = {}
-            exec ("""def %(new_name)s(self, *args, **kw):
+            exec(("""def %(new_name)s(self, *args, **kw):
                          "Make a list from %(methodname)s"
                          return list(self.%(methodname)s(*args, **kw))
-                  """ % locals()) in globals(), repo
+                  """ % locals()), globals(), repo)
             func = repo[new_name]
             setattr(cls, new_name, func)
 

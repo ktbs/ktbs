@@ -20,8 +20,8 @@
 
 from pytest import raises as assert_raises
 
-import example1 # can not import do_tests directly, nose tries to run it...
-from example1 import EXAMPLE, GroupMixin, make_example1_service
+from . import example1 # can not import do_tests directly, nose tries to run it...
+from .example1 import EXAMPLE, GroupMixin, make_example1_service
 from rdfrest.exceptions import RdfRestException
 from rdfrest.cores.factory import unregister_service
 from rdfrest.util.config import get_service_configuration

@@ -285,7 +285,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # start origin with a letter because if it starts with 4 digits,
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
-            elif unicode(origin) == "now":
+            elif str(origin) == "now":
                 origin = Literal("%sZ" % datetime.utcnow().isoformat())
                 new_graph.set((uri, KTBS.hasOrigin, origin))
 
@@ -491,7 +491,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                     editable.remove((self.uri, KTBS.hasOrigin, None))
                     try:
                         diag = self._method_impl.compute_trace_description(self)
-                    except BaseException, ex:
+                    except BaseException as ex:
                         LOG.warn(traceback.format_exc())
                         diag = Diagnosis(
                             "exception raised while computing trace description",
@@ -499,7 +499,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                         )
                     if not diag:
                         editable.add((self.uri, KTBS.hasDiagnosis,
-                                         Literal(unicode(diag))))
+                                         Literal(str(diag))))
                 for ttr in self.iter_transformed_traces():
                     ttr._mark_dirty()
         finally:

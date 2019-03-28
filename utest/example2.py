@@ -43,7 +43,7 @@ from rdfrest.cores.mixins import BookkeepingMixin, WithCardinalityMixin, \
 from rdfrest.util import ReadOnlyGraph
 from rdfrest.util.config import get_service_configuration
 from rdfrest.util.wsgi import SimpleRouter
-from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
+from .example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
 
 
@@ -173,13 +173,13 @@ def main():
 
     if test:
         do_tests(serv.get(root_uri))
-        print "Local tests passed"
+        print("Local tests passed")
 
     app = SimpleRouter([(BASE_PATH, HttpFrontend(serv, service_config))])
     _httpd = make_server(service_config.get('server', 'host-name', 1),
                          service_config.getint('server', 'port'),
                          app)
-    print "Now listening on", root_uri
+    print("Now listening on", root_uri)
     _httpd.serve_forever()
 
 def make_example2_service(service_config=None, additional=()):

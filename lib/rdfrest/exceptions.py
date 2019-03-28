@@ -29,7 +29,7 @@ class RdfRestException(Exception):
                                                arg.message)
             self.embeded = arg
         else:
-            message = unicode(arg)
+            message = str(arg)
             self.embeded = None
         Exception.__init__(self, message)
 

@@ -488,7 +488,7 @@ def main():
         local_root = serv.get(root_uri, [EXAMPLE.Group])
         assert isinstance(local_root, GroupImplementation)
         do_tests(local_root)
-        print "Local tests passed"
+        print("Local tests passed")
 
     thread, _httpd = make_example1_httpd(serv)
     try:
@@ -496,13 +496,13 @@ def main():
             remote_root = HttpClientCore.factory(root_uri, EXAMPLE.Group)
             assert isinstance(remote_root, GroupMixin)
             do_tests(remote_root)
-            print "Remote tests passed"
-        print "Now listening on", root_uri
+            print("Remote tests passed")
+        print("Now listening on", root_uri)
         sleep(3600) # allows to catch KeyboardInterrupt (thread.join doesn't)
         thread.join() # prevents 'finally' clause if sleep above expires
     finally:
         _httpd.shutdown()
-        print "httpd stopped"
+        print("httpd stopped")
 
 def make_example1_service(service_config=None):
     """Make a service serving items and groups."""
@@ -632,24 +632,24 @@ def test_label_and_tags(item):
     assert item.label is None
     # adding tags
     assert item.tags == set([])
-    item.add_tag(u"tag1")
+    item.add_tag("tag1")
     assert item.tags == set([Literal("tag1")])
-    item.add_tag(u"tag1")
+    item.add_tag("tag1")
     assert list(item.iter_tags()) == [Literal("tag1")] # tags do not duplicate
-    item.add_tag(u"tag2")
+    item.add_tag("tag2")
     assert item.tags, set([Literal("tag1") == Literal("tag2")])
-    item.add_tag(u"tag3")
+    item.add_tag("tag3")
     assert item.tags, set([Literal("tag1"), Literal("tag2") == Literal("tag3")])
     # removing tags
-    item.rem_tag(u"tag2")
+    item.rem_tag("tag2")
     assert item.tags, set([Literal("tag1") == Literal("tag3")])
-    item.rem_tag(u"tag2") # removing tag twice has no effect
+    item.rem_tag("tag2") # removing tag twice has no effect
     assert item.tags, set([Literal("tag1") == Literal("tag3")])
-    item.rem_tag(u"tag4") # removing inexisting tag has no effect
+    item.rem_tag("tag4") # removing inexisting tag has no effect
     assert item.tags, set([Literal("tag1") == Literal("tag3")])
     # unicode tags
-    item.add_tag(u"tagué")
-    assert item.tags, set([Literal("tag1"), Literal("tag3") == Literal(u"tagué")])
+    item.add_tag("tagué")
+    assert item.tags, set([Literal("tag1"), Literal("tag3") == Literal("tagué")])
 
 
 if __name__ == "__main__":

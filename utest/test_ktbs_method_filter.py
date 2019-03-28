@@ -66,21 +66,21 @@ class TestFilter(KtbsTestCase):
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype, 10)
         assert len(ctr.obsels) == 1
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o10.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o10.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 10
         assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype, 15)
         assert len(ctr.obsels) == 2
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o15.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o15.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 15
         assert get_custom_state(ctr, 'passed_maxtime') == False
 
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype, 20)
         assert len(ctr.obsels) == 3
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o20.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o20.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 20
         assert get_custom_state(ctr, 'passed_maxtime') == False
 
@@ -186,78 +186,78 @@ class TestFilter(KtbsTestCase):
         self.log.info(">strictly temporally monotonic change: add o00")
         o00 = src.create_obsel("o00", otype1, 0)
         assert len(ctr.obsels) == 1
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o00.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o00.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 0
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype2, 5)
         assert len(ctr.obsels) == 2
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o05.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o05.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 5
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype3, 10)
         assert len(ctr.obsels) == 2
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o10.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o10.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 10
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype1, 15)
         assert len(ctr.obsels) == 3
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o15.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o15.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 15
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype2, 20)
         assert len(ctr.obsels) == 4
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o20.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o20.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 20
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype3, 25)
         assert len(ctr.obsels) == 4
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o25.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o25.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 25
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype1, 30)
         assert len(ctr.obsels) == 5
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype2, 27)
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
         assert len(ctr.obsels) == 6
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype1, 17)
         assert len(ctr.obsels) == 7
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype2, 7)
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype1, 35)
         assert len(ctr.obsels) == 9
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
         self.log.info(">non-monotonic change: removing o35")
         with src.obsel_collection.edit() as editable:
             editable.remove((o35.uri, None, None))
         assert len(ctr.obsels) == 7
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
 
@@ -315,78 +315,78 @@ class TestFilter(KtbsTestCase):
         self.log.info(">strictly temporally monotonic change: add o00")
         o00 = src.create_obsel("o00", otype1, 0)
         assert len(ctr.obsels) == 1
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o00.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o00.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 0
         self.log.info(">strictly temporally monotonic change: add o05")
         o05 = src.create_obsel("o05", otype2, 5)
         assert len(ctr.obsels) == 2
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o05.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o05.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 5
         self.log.info(">strictly temporally monotonic change: add o10")
         o10 = src.create_obsel("o10", otype3, 10)
         assert len(ctr.obsels) == 2
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o10.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o10.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 10
         self.log.info(">strictly temporally monotonic change: add o15")
         o15 = src.create_obsel("o15", otype1, 15)
         assert len(ctr.obsels) == 3
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o15.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o15.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 15
         self.log.info(">strictly temporally monotonic change: add o20")
         o20 = src.create_obsel("o20", otype2, 20)
         assert len(ctr.obsels) == 4
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o20.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o20.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 20
         self.log.info(">strictly temporally monotonic change: add o25")
         o25 = src.create_obsel("o25", otype3, 25)
         assert len(ctr.obsels) == 4
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o25.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o25.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 25
         self.log.info(">strictly temporally monotonic change: add o30")
         o30 = src.create_obsel("o30", otype1, 30)
         assert len(ctr.obsels) == 5
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
         self.log.info(">non-temporally monotonic change: add o27")
         o27 = src.create_obsel("o27", otype2, 27)
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
         assert len(ctr.obsels) == 6
         self.log.info(">non-temporally monotonic change: add o17")
         o17 = src.create_obsel("o17", otype1, 17)
         assert len(ctr.obsels) == 7
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
         self.log.info(">non-temporally monotonic change: add o07")
         o07 = src.create_obsel("o07", otype2, 7)
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
         self.log.info(">strictly temporally monotonic change: add o35")
         o35 = src.create_obsel("o35", otype1, 35)
         assert len(ctr.obsels) == 9
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
 
         self.log.info(">non-monotonic change: removing o15")
         with src.obsel_collection.edit() as editable:
             editable.remove((o15.uri, None, None))
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
         self.log.info(">non-monotonic change: removing o25")
         with src.obsel_collection.edit() as editable:
             editable.remove((o25.uri, None, None))
         assert len(ctr.obsels) == 8
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o35.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o35.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 35
         self.log.info(">non-monotonic change: removing o35")
         with src.obsel_collection.edit() as editable:
             editable.remove((o35.uri, None, None))
         assert len(ctr.obsels) == 7
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o30.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o30.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 30
 
     def test_filter_otype_not_in_model(self):
@@ -401,9 +401,9 @@ class TestFilter(KtbsTestCase):
 
         o00 = src.create_obsel("o00", otype1, 0)
         assert len(ctr.obsels) == 1
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o00.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o00.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 0
         o01 = src.create_obsel("o01", otype2, 1)
         assert len(ctr.obsels) == 1
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(o01.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(o01.uri)
         assert get_custom_state(ctr, 'last_seen_b') == 1

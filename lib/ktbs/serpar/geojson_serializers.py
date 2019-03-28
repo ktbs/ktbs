@@ -30,7 +30,7 @@ from rdflib import BNode, Literal, RDF, RDFS, URIRef, XSD
 from rdfrest.serializers import register_serializer, SerializeError
 from rdfrest.util import coerce_to_uri, wrap_exceptions
 
-from jsonld_serializers import ValueConverter
+from .jsonld_serializers import ValueConverter
 
 from ..namespace import KTBS, KTBS_NS_URI
 from ..utils import SKOS

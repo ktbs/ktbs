@@ -148,7 +148,7 @@ class SparqlEndpointMiddleware(object):
                               status="200 Ok",
                               content_type=ctype,
                               request=request)
-        except Exception, ex:
+        except Exception as ex:
             if ex.message.startswith(
                     "You performed a query operation requiring a dataset"):
                 status = "403 Forbidden"
@@ -169,7 +169,7 @@ class SparqlEndpointMiddleware(object):
             with resource.edit() as editable_graph:
                 query = "BASE <%s> %s" % (resource.uri, query)
                 editable_graph.update(query)
-        except Exception, ex:
+        except Exception as ex:
                 status = "400 Bad update query"
                 return MyResponse("%s\n%s"
                                   % (status, ex.message),

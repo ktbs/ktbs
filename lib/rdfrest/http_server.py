@@ -576,39 +576,39 @@ class ErrorHandlerMiddleware(object):
         try:
             return self.app(environ, start_response)
 
-        except HttpException, ex:
+        except HttpException as ex:
             response = ex.get_response(MyRequest(environ))
-        except CanNotProceedError, ex:
+        except CanNotProceedError as ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
                                   % (status, ex.message),
                                   status=status,
                                   request=MyRequest(environ))
-        except InvalidDataError, ex:
+        except InvalidDataError as ex:
             status = "403 Forbidden"
             response = MyResponse("%s - Invalid data\n%s"
                                   % (status, ex.message),
                                   status=status,
                                   request=MyRequest(environ))
-        except InvalidParametersError, ex:
+        except InvalidParametersError as ex:
             status = "404 Not Found"
             response = MyResponse("%s - Invalid parameters\n%s"
                                   % (status, ex.message),
                                   status=status,
                                   request=MyRequest(environ))
-        except MethodNotAllowedError, ex:
+        except MethodNotAllowedError as ex:
             status = "405 Method Not Allowed"
             response = MyResponse("%s\n%s" % (status, ex.message),
                                   status=status,
                                   request=MyRequest(environ))
             # TODO LATER find a nice way to populate response.allow ?
-        except ParseError, ex:
+        except ParseError as ex:
             status = "400 Bad Request"
             response = MyResponse("%s - Parse error\n%s"
                                   % (status, ex.message),
                                   status=status,
                                   request=MyRequest(environ))
-        except ParseException, ex:
+        except ParseException as ex:
             status = "400 Bad Request"
             message = "%s at line %s col %s\n\n%s" % \
                       (ex.message, ex.lineno, ex.column, ex.markInputline())
@@ -616,7 +616,7 @@ class ErrorHandlerMiddleware(object):
                                   % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except SerializeError, ex:
+        except SerializeError as ex:
             status = "550 Serialize Error"
             message = ex.message
             if environ.get('rdfrest.send-traceback'):
@@ -624,7 +624,7 @@ class ErrorHandlerMiddleware(object):
             response = MyResponse("%s\n%s" % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except Exception, ex:
+        except Exception as ex:
             status = "500 Internal Error"
             message = ex.message
             if environ.get('rdfrest.send-traceback'):
@@ -649,7 +649,7 @@ class HttpException(Exception):
 
     def get_headerlist(self):
         hlist = []
-        for key, val in self.headers.iteritems():
+        for key, val in self.headers.items():
             if type(val) is not list:
                 val = [val]
             for i in val:

@@ -89,7 +89,7 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
                 metadata = self.metadata
                 seen_trc_etag = metadata.value(self.uri, METADATA.traceEtag, None)
                 seen_obs_etag = metadata.value(self.uri, METADATA.obselsEtag, None)
-                last_trc_etag = self.trace.iter_etags().next()
+                last_trc_etag = next(self.trace.iter_etags())
                 last_obs_etag = self.trace.obsel_collection.get_etag()
                 dirty =  seen_trc_etag != last_trc_etag  or  seen_obs_etag != last_obs_etag
 
@@ -165,7 +165,7 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
 
         """
         obsels_graph = trace.obsel_collection.state
-        initNs = { '': unicode(KTBS.uri) }
+        initNs = { '': str(KTBS.uri) }
 
         # Obsel count
         ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()

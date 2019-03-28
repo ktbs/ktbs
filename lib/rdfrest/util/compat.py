@@ -24,44 +24,10 @@ I am automatically loaded when importing `rdfrest`:mod:.
 #    redefining built-in #pylint: disable=W0622
 
 import sys
-assert sys.version_info[0] == 2 and sys.version_info[1] >= 5
+assert sys.version_info[0] == 3
 
 import logging
 LOG = logging.getLogger(__name__)
-
-if sys.version_info[1] < 6:
-
-    # next builtin
-
-    def next(iterable, default=None):
-        "Emulating python2.6 buitin next"
-        try:
-            return iterable.next()
-        except StopIteration:
-            return default
-
-    __builtins__["next"] = next
-
-
-    # Popen.terminate method
-    if sys.platform == "w32":
-        from win32process import TerminateProcess #pylint: disable=F0401
-
-        def terminate(self):
-            "Emulating python2.6 terminate method"
-            #pylint: disable=W0212
-            #    access to a protected member
-            TerminateProcess(self._handle, 1)
-    else:
-        from os import kill
-        from signal import SIGTERM
-
-        def terminate(self):
-            "Emulating python2.6 terminate method"
-            kill(self.pid, SIGTERM)
-
-    from subprocess import Popen
-    Popen.terminate = terminate.__get__(None, Popen) #pylint: disable=E1101
 
 
 def monkeypatch_prepare_query():
