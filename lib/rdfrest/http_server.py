@@ -280,7 +280,7 @@ class HttpFrontend(object):
         for link in links:
             uri = link.pop('uri')
             link_props = ';'.join( '%s="%s"' % item for item in link.items() )
-            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf8')
+            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf-8')
             headerlist.append(("link", link_val))
 
         # check triples & bytes limitations and serialize
@@ -291,7 +291,7 @@ class HttpFrontend(object):
         app_iter = serializer(graph, resource)
         if self.max_bytes is not None:
             # TODO LATER find a better way to guess the number of bytes?
-            payload = "".join(app_iter)
+            payload = b"".join(app_iter)
             if len(payload) >  self.max_bytes:
                 return self.issue_error(403, request, resource,
                                         "max_bytes (%s) was exceeded"
@@ -469,7 +469,7 @@ Service info
             self._service.__class__.__name__,
             self._service.root_uri,
         )
-        res = MyResponse(body, status, kw.items())
+        res = MyResponse(body, status, list(kw.items()))
         return res
 
 

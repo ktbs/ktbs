@@ -61,7 +61,7 @@ def test_identifier_no_open():
     """
     store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
-    gs = graph.serialize()
+    gs = graph.serialize(encoding='utf-8').decode('utf-8')
     #print gs
     graph.close()
 
@@ -73,7 +73,7 @@ def test_identifier_no_configuration():
     store = ProxyStore(identifier="http://localhost:1234/foo/")
     graph = Graph(store=store)
     graph.open({})
-    gs = graph.serialize()
+    gs = graph.serialize(encoding='utf-8').decode('utf-8')
     #print gs
     graph.close()
 
@@ -85,7 +85,7 @@ def test_no_identifier_uri_in_open():
     store = ProxyStore()
     graph = Graph(store=store)
     graph.open({PS_CONFIG_URI: "http://localhost:1234/foo/"})
-    gs = graph.serialize()
+    gs = graph.serialize(encoding='utf-8').decode('utf-8')
     #print gs
     graph.close()
 
@@ -154,7 +154,7 @@ def test_no_uri_no_open():
 
         store = ProxyStore()
         graph = Graph(store=store)
-        gs = graph.serialize()
+        gs = graph.serialize(encoding='utf-8').decode('utf-8')
         graph.close()
 
 if __name__ == '__main__':

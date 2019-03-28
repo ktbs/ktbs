@@ -144,7 +144,7 @@ class SparqlEndpointMiddleware(object):
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
         try:
-            return MyResponse(result.serialize(format=serfmt),
+            return MyResponse(result.serialize(format=serfmt, encoding='utf-8').decode('utf-8'),
                               status="200 Ok",
                               content_type=ctype,
                               request=request)

@@ -25,13 +25,12 @@ class RdfRestException(Exception):
     """
     def __init__(self, arg=None):
         if isinstance(arg, BaseException):
-            message = "embeded %s: %s" % (arg.__class__.__name__,
-                                               arg.message)
+            args = ["embeded %s" % (arg.__class__.__name__)] + list(arg.args)
             self.embeded = arg
         else:
-            message = str(arg)
+            args = [str(arg)]
             self.embeded = None
-        Exception.__init__(self, message)
+        Exception.__init__(self, *args)
 
 class CorruptedStore(RdfRestException):
     """An error raised when the RDF store is in an unexpected state.

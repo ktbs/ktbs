@@ -73,16 +73,16 @@ def assert_roundtrip(json_content, resource, parameters=None):
 def graph_diff_msg(spurious, missing):
     ret = "Json does not encode the right graph"
     if spurious:
-        ret += "\nSPURIOUS:\n" + spurious.serialize(format="turtle")
+        ret += "\nSPURIOUS:\n" + spurious.serialize(format="turtle", encoding='utf-8').decode('utf-8')
     if missing:
-        ret += "\nMISSING:\n" + missing.serialize(format="turtle")
+        ret += "\nMISSING:\n" + missing.serialize(format="turtle", encoding='utf-8').decode('utf-8')
     return ret
 
 
 class TestJsonRoot(KtbsTestCase):
 
     def test_bare_root(self):
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_root(self.my_ktbs.state, self.my_ktbs))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -123,7 +123,7 @@ class TestJsonRoot(KtbsTestCase):
                    URIRef("http://example.org/ns/other-type"),
                    ))
 
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_root(self.my_ktbs.state, self.my_ktbs))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -152,7 +152,7 @@ class TestJsonRoot(KtbsTestCase):
         self.my_ktbs.create_base("b1/")
         self.my_ktbs.create_base("b2/")
         self.my_ktbs.create_base("b3/")
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_root(self.my_ktbs.state, self.my_ktbs))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -178,7 +178,7 @@ class TestJsonBase(KtbsTestCase):
         self.base = None
 
     def test_bare_base(self):
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_base(self.base.state, self.base))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -197,7 +197,7 @@ class TestJsonBase(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
                    ))
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_base(self.base.state, self.base))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -215,7 +215,7 @@ class TestJsonBase(KtbsTestCase):
         self.base.create_method("method", KTBS.sparql)
         self.base.create_model("model")
         self.base.create_stored_trace("t1/", "model", "alonglongtimeago")
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_base(self.base.state, self.base))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -239,7 +239,7 @@ class TestJsonBase(KtbsTestCase):
         self.base.create_computed_trace("t2/", KTBS.filter, sources=['t1/'])
 
         params = lambda: {'prop':'comment,hasModel,hasMethod,hasSource,label,obselCount',}
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_base(self.base.get_state(params()), self.base))
         json = loads(json_content)
         obselCount = 0
@@ -292,7 +292,7 @@ class TestJsonMethod(KtbsTestCase):
         self.method = None
 
     def test_bare_method(self):
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_method(self.method.state, self.method))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -314,7 +314,7 @@ class TestJsonMethod(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
                    ))
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_method(self.method.state, self.method))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -334,7 +334,7 @@ class TestJsonMethod(KtbsTestCase):
         t1 = self.base.create_stored_trace("t1/", "http://example.org/model1")
         self.base.create_computed_trace("tt1/", self.method, sources=[t1])
         self.base.create_computed_trace("tt2/", self.method, sources=[t1])
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_method(self.method.state, self.method))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -352,7 +352,7 @@ class TestJsonMethod(KtbsTestCase):
     def test_inherited_method(self):
         self.base.create_method("meth2/", self.method,
                                      { "before": 101 })
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_method(self.method.state, self.method))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -370,7 +370,7 @@ class TestJsonMethod(KtbsTestCase):
     def test_inheriting_method(self):
         m2 = self.base.create_method("meth2/", self.method,
                                      { "before": 101 })
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_method(m2.state, m2))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -416,7 +416,7 @@ class TestJsonHashModel(KtbsTestCase):
 
 
     def test_bare_model(self):
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -441,7 +441,7 @@ class TestJsonHashModel(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
             ))
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -470,7 +470,7 @@ class TestJsonHashModel(KtbsTestCase):
         rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
         rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -562,7 +562,7 @@ class TestJsonSlashModel(KtbsTestCase):
 
 
     def test_bare_model(self):
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -587,7 +587,7 @@ class TestJsonSlashModel(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
             ))
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -616,7 +616,7 @@ class TestJsonSlashModel(KtbsTestCase):
         rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
         rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
 
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -680,7 +680,7 @@ class TestJsonSlashModel(KtbsTestCase):
         rt1 = self.model.create_relation_type("rt1", [ot1], [ot1])
         rt2 = self.model.create_relation_type("rt2", [ot1], [ot2], [rt1])
 
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -760,7 +760,7 @@ class TestJsonTwoModels(KtbsTestCase):
         at1 = self.model.create_attribute_type("#at1", [otf], [XSD.string])
         rt1 = self.model.create_relation_type("#rt1", [ot1], [otf], [rtf])
 
-        json_content = "".join(
+        json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
@@ -816,7 +816,7 @@ class TestJsonStoredTrace(KtbsTestCase):
         self.t1 = None
 
     def test_bare_stored_trace(self):
-        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json_content = b"".join(serialize_json_trace(self.t1.state, self.t1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -842,7 +842,7 @@ class TestJsonStoredTrace(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
                    ))
-        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json_content = b"".join(serialize_json_trace(self.t1.state, self.t1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -865,7 +865,7 @@ class TestJsonStoredTrace(KtbsTestCase):
         self.t1.label = "My customized stored trace #2"
         self.t1.trace_begin_dt = '2015-12-09T12:00:00Z'
         self.t1.trace_end_dt = '2015-12-09T13:00:00Z'
-        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json_content = b"".join(serialize_json_trace(self.t1.state, self.t1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -888,7 +888,7 @@ class TestJsonStoredTrace(KtbsTestCase):
     def test_transformed_stored_trace(self):
         self.base.create_computed_trace("t2/", KTBS.filter, { "before": 42 },
                                         [self.t1])
-        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json_content = b"".join(serialize_json_trace(self.t1.state, self.t1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -924,7 +924,7 @@ class TestJsonStoredTrace(KtbsTestCase):
 
     def test_uri_default_subject(self):
         self.t1.default_subject = URIRef("http://ex.co/bob")
-        json_content = "".join(serialize_json_trace(self.t1.state, self.t1))
+        json_content = b"".join(serialize_json_trace(self.t1.state, self.t1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -962,7 +962,7 @@ class TestJsonComputedTrace(KtbsTestCase):
         self.t2 = None
 
     def test_bare_computed_trace(self):
-        json_content = "".join(serialize_json_trace(self.t2.state, self.t2))
+        json_content = b"".join(serialize_json_trace(self.t2.state, self.t2))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -992,7 +992,7 @@ class TestJsonComputedTrace(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
                    ))
-        json_content = "".join(serialize_json_trace(self.t2.state, self.t2))
+        json_content = b"".join(serialize_json_trace(self.t2.state, self.t2))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -1021,7 +1021,7 @@ class TestJsonComputedTrace(KtbsTestCase):
                                                   KTBS.fusion,
                                                   {},
                                                   [self.t1, self.t2])
-        json_content = "".join(serialize_json_trace(self.t2.state, self.t2))
+        json_content = b"".join(serialize_json_trace(self.t2.state, self.t2))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context':
@@ -1101,7 +1101,7 @@ class TestJsonObsels(KtbsTestCase):
         )
 
     def test_empty_obsels(self):
-        json_content = "".join(serialize_json_trace_obsels(
+        json_content = b"".join(serialize_json_trace_obsels(
             self.t1.obsel_collection.state,
             self.t1.obsel_collection))
         json = loads(json_content)
@@ -1121,7 +1121,7 @@ class TestJsonObsels(KtbsTestCase):
 
     def test_populated_obsels(self):
         self.populate()
-        json_content = "".join(serialize_json_trace_obsels(
+        json_content = b"".join(serialize_json_trace_obsels(
             self.t1.obsel_collection.state,
             self.t1.obsel_collection))
         json = loads(json_content)
@@ -1175,7 +1175,7 @@ class TestJsonObsels(KtbsTestCase):
 
     def test_o1(self):
         self.populate()
-        json_content = "".join(serialize_json_obsel(self.o1.state, self.o1))
+        json_content = b"".join(serialize_json_obsel(self.o1.state, self.o1))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context': [
@@ -1199,7 +1199,7 @@ class TestJsonObsels(KtbsTestCase):
 
     def test_o2(self):
         self.populate()
-        json_content = "".join(serialize_json_obsel(self.o2.state, self.o2))
+        json_content = b"".join(serialize_json_obsel(self.o2.state, self.o2))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context': [
@@ -1219,7 +1219,7 @@ class TestJsonObsels(KtbsTestCase):
 
     def test_o3(self):
         self.populate()
-        json_content = "".join(serialize_json_obsel(self.o3.state, self.o3))
+        json_content = b"".join(serialize_json_obsel(self.o3.state, self.o3))
         json = loads(json_content)
         assert_jsonld_equiv(json, {
             '@context': [
@@ -1320,7 +1320,7 @@ class TestJsonStats(KtbsTestCase):
         self.o5 = self.t1.create_obsel("o5", self.ot2, 4000, 5000, "bob")
 
     def test_stats_empty_obsels(self):
-        json_content = "".join(serialize_json_trace_stats(
+        json_content = b"".join(serialize_json_trace_stats(
             self.t1.trace_statistics.state,
             self.t1.trace_statistics))
         json = loads(json_content)
@@ -1346,7 +1346,7 @@ class TestJsonStats(KtbsTestCase):
 
     def test_stats_populated_obsels(self):
         self.populate()
-        json_content = "".join(serialize_json_trace_stats(
+        json_content = b"".join(serialize_json_trace_stats(
             self.t1.trace_statistics.state,
             self.t1.trace_statistics))
         json = loads(json_content)

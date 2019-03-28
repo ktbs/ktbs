@@ -195,7 +195,7 @@ if __name__ == "__main__":
     lst = Collection(g, lh, list(map(Literal, [1,2,3])))
     assert len(g) == 9
 
-    print((g.serialize(format="turtle")))
+    print((g.serialize(format="turtle", encoding='utf-8').decode('utf-8')))
     
     g.remove((None, None, None))
 

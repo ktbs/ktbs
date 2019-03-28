@@ -290,7 +290,7 @@ class ProxyStore(Store):
         ctype, *params = ctype_header.split(";")
         self._format = _CONTENT_TYPE_PARSERS[ctype]
 
-        self._encoding = 'utf8'
+        self._encoding = 'utf-8'
         for param in params:
             param = param.strip()
             if param.startswith('charset='):

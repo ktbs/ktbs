@@ -81,7 +81,7 @@ def parse_jsonld(content, base_uri=None, encoding="utf-8", graph=None):
         graph.parse(data=normalized_json, format="n3")
     except Exception as ex:
         raise ParseError(ex.args[0] or str(ex))
-    #print graph.serialize(format="turtle")
+    #print(graph.serialize(format="turtle", encoding='utf-8').decode('utf-8'))
     return graph
 
 @register_parser("application/json", "json", 60)
