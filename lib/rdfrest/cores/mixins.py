@@ -102,7 +102,7 @@ class BookkeepingMixin(ILocalCore):
         # NB: using time() only does not always work: time() can return the
         # same value twice; so we salt it with the previous etag (if any),
         # which should do the trick
-        new_etag = md5(token).hexdigest()
+        new_etag = md5(token.encode('utf-8')).hexdigest()
         graph.set((uri, RDFREST.etag, Literal(new_etag)))
         graph.set((uri, RDFREST.lastModified, Literal(now)))
         # TODO LATER evaluate how slow it is to generate the etag that way,

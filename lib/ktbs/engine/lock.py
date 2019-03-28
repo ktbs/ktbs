@@ -21,7 +21,7 @@ I provide a locking mechanism for resource that needs protection in the context 
 """
 import posix_ipc
 import sys
-from md5 import md5
+from hashlib import md5
 
 from logging import getLogger
 from threading import current_thread
@@ -45,7 +45,7 @@ if sys.platform.lower().find('darwin') != -1:
         :rtype: str
         """
 
-        sem_name = md5(resource_uri).hexdigest()[:29]
+        sem_name = md5(resource_uri.encode('utf-8')).hexdigest()[:29]
         return sem_name
 else:
     NAME_MAX_SEM = pathconf("/", 'PC_NAME_MAX') - 4 # according to man 7 sem_overview
@@ -62,7 +62,7 @@ else:
 
         sem_name = str('/' + resource_uri.replace('/', '-'))
         if len(sem_name) > NAME_MAX_SEM:
-            sem_name = '/' + md5(resource_uri).hexdigest()
+            sem_name = '/' + md5(resource_uri.encode('utf-8')).hexdigest()
         return sem_name
 
 
