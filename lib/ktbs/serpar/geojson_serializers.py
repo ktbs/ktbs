@@ -21,7 +21,6 @@ I provide kTBS geojson serializer, this is a serialization with information loss
 http://geojson.org/geojson-spec.html
 https://en.wikipedia.org/wiki/GeoJSON
 """
-from string import maketrans
 import json
 
 from collections import OrderedDict, namedtuple
