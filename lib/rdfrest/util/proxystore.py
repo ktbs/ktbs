@@ -23,7 +23,6 @@ I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 
 import http.client
 import httplib2
-from io import StringIO
 import types
 
 #http://docs.python.org/howto/logging-cookbook.html
@@ -287,8 +286,15 @@ class ProxyStore(Store):
 
             :param header: Header of the HTTP request or response.
         """
-        ctype = header.get("content-type", "text/turtle").split(";", 1)[0]
+        ctype_header = header.get("content-type", "text/turtle")
+        ctype, *params = ctype_header.split(";")
         self._format = _CONTENT_TYPE_PARSERS[ctype]
+
+        self._encoding = 'utf8'
+        for param in params:
+            param = param.strip()
+            if param.startswith('charset='):
+                self._encoding = param[8:]
 
         LOG.debug("-- ProxyStore._parse_header(), "
                   "content-type=%s, self._format=%s --",
@@ -312,8 +318,9 @@ class ProxyStore(Store):
             parse_format = "n3" # seems to be more efficient!...
         self.remove((None, None, None), None) # efficiently empties graph
         # the above is much faster than remove((None, None, None))
-        self._graph.parse(StringIO(content), format=self._format,
-                          publicID=self._identifier)
+        self._graph.parse(format=self._format,
+                          publicID=self._identifier,
+                          data=content.decode(self._encoding))
 
     def _pull(self):
         """Update cache before an operation.
