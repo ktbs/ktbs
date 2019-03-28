@@ -45,7 +45,6 @@ and :func:`.cores.factory.factory`.
 .. autofunction:: get_wrapped
 
 """
-from types import ClassType
 from rdfrest.cores import ICore
 
 _WRAPPER_REGISTRY = {}
@@ -77,7 +76,7 @@ def get_wrapped(cls, rdf_types):
         if len(parents) == 1:
             ret = cls
         else:
-            ret = ClassType(cls_name, tuple(parents), {})
+            ret = type(cls_name, tuple(parents), {})
         _CLASS_CACHE[(cls, rdf_types)] = ret
     return ret
 
