@@ -80,7 +80,7 @@ def parse_jsonld(content, base_uri=None, encoding="utf-8", graph=None):
         # Do not use "nt" as format as it works only with latin-1
         graph.parse(data=normalized_json, format="n3")
     except Exception as ex:
-        raise ParseError(ex.message or str(ex))
+        raise ParseError(ex.args[0] or str(ex))
     #print graph.serialize(format="turtle")
     return graph
 
@@ -149,7 +149,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
         graph.parse(data=normalized_json, format="n3")
 
     except Exception as ex:
-        raise ParseError(ex.message or str(ex))
+        raise ParseError(ex.args[0] or str(ex))
     return graph
 
 

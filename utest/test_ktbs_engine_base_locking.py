@@ -43,7 +43,7 @@ class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
         try:
             assert self.tmp_base._get_semaphore()
         except ValueError as ex:
-            assert 0, ex.message
+            assert 0, ex.args[0]
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):

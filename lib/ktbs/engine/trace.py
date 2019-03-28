@@ -495,7 +495,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                         LOG.warn(traceback.format_exc())
                         diag = Diagnosis(
                             "exception raised while computing trace description",
-                            [ex.message]
+                            [ex.args[0]]
                         )
                     if not diag:
                         editable.add((self.uri, KTBS.hasDiagnosis,

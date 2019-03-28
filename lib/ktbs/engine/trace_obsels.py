@@ -604,7 +604,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
                             LOG.warn(traceback.format_exc())
                             diag = Diagnosis(
                                 "exception raised while computing obsels",
-                                [ex.message],
+                                [ex.args[0]],
                                 sys.exc_info()[2],
                             )
                         if not diag:

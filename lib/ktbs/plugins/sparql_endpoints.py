@@ -149,11 +149,11 @@ class SparqlEndpointMiddleware(object):
                               content_type=ctype,
                               request=request)
         except Exception as ex:
-            if ex.message.startswith(
+            if ex.args[0].startswith(
                     "You performed a query operation requiring a dataset"):
                 status = "403 Forbidden"
                 return MyResponse("%s\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=request)
             else:
@@ -172,7 +172,7 @@ class SparqlEndpointMiddleware(object):
         except Exception as ex:
                 status = "400 Bad update query"
                 return MyResponse("%s\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=request)
         return MyResponse("200 Ok\nUpdate query executed",
