@@ -1,0 +1,2 @@
+-r https://raw.githubusercontent.com/maparent/virtuoso-python/eba377e/requirements.txt
+git+https://github.com/maparent/virtuoso-python@eba377e

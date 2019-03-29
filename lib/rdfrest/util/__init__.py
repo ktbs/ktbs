@@ -333,13 +333,14 @@ class Diagnosis(object):
     """I contain a list of problems and eval to True if there is no problem.
     """
     # too few public methods #pylint: disable=R0903
-    def __init__(self, title="diagnosis", errors=None):
+    def __init__(self, title="diagnosis", errors=None, traceback=None):
         self.title = title
         if errors is None:
             errors = []
         else:
             errors = list(errors)
         self.errors = errors
+        self.traceback = traceback
 
     def __nonzero__(self):
         return len(self.errors) == 0
@@ -358,7 +359,10 @@ class Diagnosis(object):
 
     def __and__(self, rho):
         if isinstance(rho, Diagnosis):
-            return Diagnosis(self.title, self.errors + rho.errors)
+            return Diagnosis(self.title,
+                             self.errors + rho.errors,
+                             self.traceback or rho.traceback,
+            )
         elif self:
             return rho
         else:
@@ -366,7 +370,10 @@ class Diagnosis(object):
 
     def __rand__(self, lho):
         if isinstance(lho, Diagnosis):
-            return Diagnosis(lho.title, lho + self.errors)
+            return Diagnosis(lho.title,
+                             lho + self.errors,
+                             lho.traceback or self.traceback,
+            )
         elif not lho:
             return lho
         else:

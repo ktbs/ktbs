@@ -18,7 +18,7 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 
-from nose.tools import raises
+from pytest import raises as assert_raises
 
 import example1 # can not import do_tests directly, nose tries to run it...
 from example1 import EXAMPLE, GroupMixin, make_example1_service
@@ -33,7 +33,7 @@ class TestExample1:
     service = None
     root = None
 
-    def setUp(self):
+    def setup(self):
         service_config = get_service_configuration()
         service_config.set('server', 'port', '11235')
         service_config.set('server', 'base-path', '/foo')
@@ -42,7 +42,7 @@ class TestExample1:
         self.root = self.service.get(self.ROOT_URI, [EXAMPLE.Group])
         assert isinstance(self.root, GroupMixin)
 
-    def tearDown(self):
+    def teardown(self):
         if self.root is not None:
             del self.root
         if self.service is not None:
@@ -54,23 +54,26 @@ class TestExample1:
             with self.root.edit(_trust=True):
                 pass
 
-    @raises(RdfRestException)
     def test_embed_untrusted_edit(self):
-        with self.root.edit():
-            with self.root.edit():
-                pass
+        with assert_raises(RdfRestException):
 
-    @raises(RdfRestException)
+            with self.root.edit():
+                with self.root.edit():
+                    pass
+
     def test_embed_untrusted_trusted_edit(self):
-        with self.root.edit():
-            with self.root.edit(_trust=True):
-                pass
+        with assert_raises(RdfRestException):
 
-    @raises(RdfRestException)
-    def test_embed_trusted_untrusted_edit(self):
-        with self.root.edit(_trust=True):
             with self.root.edit():
-                pass
+                with self.root.edit(_trust=True):
+                    pass
+
+    def test_embed_trusted_untrusted_edit(self):
+        with assert_raises(RdfRestException):
+
+            with self.root.edit(_trust=True):
+                with self.root.edit():
+                    pass
 
     def test_example1(self):
         """I use the comprehensive test sequence defined in example1.py"""

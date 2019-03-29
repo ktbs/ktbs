@@ -32,7 +32,13 @@ class SparqlEndpointMiddleware(object):
     #pylint: disable=R0903
     #  too few public methods
 
-    POST_CTYPES = {"application/x-www-form-urlencoded", "application/sparql-query"}
+    UPDATE = False
+
+    POST_CTYPES = {
+        "application/x-www-form-urlencoded",
+        "application/sparql-query",
+        "application/sparql-update",
+    }
 
     ASK_CTYPES = {
         "application/sparql-results+xml": "xml",
@@ -66,23 +72,23 @@ class SparqlEndpointMiddleware(object):
             # pass through request to the wrapped application
             resp = req.get_response(self.app)
         return resp(environ, start_response)
-    
+
     def handle_sparql(self, request):
         """
         I handle a SPARQL request
         """
         resource = request.environ['rdfrest.resource']
         if request.method == "GET" \
-        or request.content_type == "application/sparql-query":
-            params = request.GET
+        or request.content_type.startswith("application/sparql-"):
+            param = request.GET
         else:
-            params = request.POST
-        scope = params.getall("scope") or ['graph']
-        default_graph_uri = params.getall("default-graph-uri")
-        named_graph_uri = params.getall("named-graph-uri")
+            param = request.POST
+        scope = param.getall("scope") or ['graph']
+        default_graph_uri = param.getall("default-graph-uri")
+        named_graph_uri = param.getall("named-graph-uri")
 
-        if request.content_type != "application/sparql-query":
-            lst = params.getall("query")
+        if not request.content_type.startswith("application/sparql-"):
+            lst = param.getall("query")
             if len(lst) == 0:
                 # NB: not rejecting several queries, because some services
                 # provide the same query several times (YASGUI)
@@ -98,12 +104,20 @@ class SparqlEndpointMiddleware(object):
                               status="400 Bad Request",
                               request=request)
         scope = scope[0]
+
+        # TODO LATER do something with default_graph_uri and named_graph_uri ?
+
+        if request.content_type == "application/sparql-update":
+            return self.do_update(request, resource, scope, query)
+        else:
+            return self.do_query(request, resource, scope, query)
+
+
+    def do_query(self, request, resource, scope, query):
         if scope not in { 'graph', 'subtree' }:
             return MyResponse("400 Bad Request\nUnsupported scope '%s'." % scope,
                               status="400 Bad Request",
                               request=request)
-
-        # TODO LATER do something with default_graph_uri and named_graph_uri ?
 
         resource.force_state_refresh()
         if scope == 'subtree':
@@ -113,7 +127,7 @@ class SparqlEndpointMiddleware(object):
             graph = resource.get_state()
 
         result = graph.query(query, base=resource.uri)
-        
+
         if result.graph is not None:
             ctype = serfmt = (
                 request.accept.best_match(self.CONSTRUCT_CTYPES)
@@ -145,10 +159,30 @@ class SparqlEndpointMiddleware(object):
             else:
                 raise
 
+    def do_update(self, request, resource, scope, query):
+        if scope != 'graph':
+            return MyResponse("400 Bad Request\nUnsupported scope '%s' for SPARQL update." % scope,
+                              status="400 Bad Request",
+                              request=request)
+
+        try:
+            with resource.edit() as editable_graph:
+                query = "BASE <%s> %s" % (resource.uri, query)
+                editable_graph.update(query)
+        except Exception, ex:
+                status = "400 Bad update query"
+                return MyResponse("%s\n%s"
+                                  % (status, ex.message),
+                                  status=status,
+                                  request=request)
+        return MyResponse("200 Ok\nUpdate query executed",
+                          status="200 Ok",
+                          request=request)
+
 def start_plugin(config):
+    if config.has_section('sparql') and config.has_option('sparql', 'update_endpoints'):
+        SparqlEndpointMiddleware.UPDATE = config.getboolean('sparql', 'update_endpoints')
     register_middleware(BOTTOM, SparqlEndpointMiddleware)
-    if config.has_section('sparql') and config.has_option('sparql', 'full_dataset'):
-        warn("sparql.full_dataset option is deprecared. Use scope parameter instead.")
 
 def stop_plugin():
     unregister_middleware(SparqlEndpointMiddleware)

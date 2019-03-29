@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+"""
+Quick and dirty daemon to compute incremental computed traces in the background.
+
+Usage: bgcompute [your-configuration-file]
+
+NB: it should be safe to have several concurrent processes running bgcompute.
+
+Currently, it continuously polls the RDF store, which is not ideal.
+In the future, this script may require that you activate a plugin,
+in order to be notified whenever some trace needs recalculation.
+"""
+from ktbs import config
+from ktbs.namespace import KTBS
+from ktbs.engine.lock import posix_ipc
+from ktbs.engine import service, trace
+import logging
+import sys
+import time
+logging.basicConfig(level=logging.INFO)
+
+def main():
+    with open(sys.argv[1]) as f:
+        cfg = config.get_ktbs_configuration(f)
+    srv = service.KtbsService(cfg)
+    k = srv.get(srv.root_uri)
+    for tto in jobs(cfg, k):
+        try:
+            with tto.lock(tto, 1):
+                tto.force_state_refresh()
+        except posix_ipc.BusyError:
+            # somebody else seems to be computing it, so leave it
+            pass
+
+def jobs(cfg, k):
+    """
+    Yield the obsel collections of all incremental transformed traces
+    requiring recomputation.
+    """
+    # I simulate a notification feed,
+    # by iterating infinitely on all
+    # Ideally, notifications should be generated whenever a trace is modified,
+    # using a message queue.
+    while True:
+        for b in k.iter_bases():
+            for tto in walk_b(b):
+                yield tto
+                time.sleep(1)
+        time.sleep(1)
+
+def walk_b(base):
+    """
+    Yield the obsel collections of all incremental transformed traces
+    in base.
+    """
+    for t in base.iter_traces():
+        if isinstance(t, trace.ComputedTrace):
+            continue
+        for tto in walk_t(t):
+            yield tto
+    for b in base.iter_bases():
+        for tto in walk_b(b):
+            yield tto
+
+def walk_t(trc):
+    """
+    Yield the obsel collections of all incremental transformed traces
+    having trc as their ancestor.
+    """
+    for tt in trc.iter_transformed_traces():
+        if not is_incremental(tt):
+            continue # prune at non-incremental transformations
+        if not trc == tt.source_traces[0]:
+            continue # visit only once traces with multiple sources
+        yield tt.obsel_collection
+        for tto in walk_t(tt):
+            yield tto
+
+def is_incremental(tt):
+    return get_builtin_method_uri(tt.method) in [
+        KTBS.filter,
+        KTBS.fsa,
+        KTBS.fusion,
+        KTBS.hrules,
+        KTBS.isparql,
+    ]
+
+def get_builtin_method_uri(meth):
+    while meth.parent is not None:
+        meth = meth.parent
+    return meth.uri
+
+if __name__ == '__main__':
+    main()

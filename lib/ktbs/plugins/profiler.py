@@ -20,6 +20,11 @@ This kTBS plugin allows to run the profiler on a per-request basis.
 
 To enable the profiler, simply add 'profiler' as a URL parameter.
 
+It will generate a temporary file named with the datetime and the URL,
+which you can view with bin/view-profiler-dat, or a tool like
+https://github.com/pwaller/pyprof2calltree.
+
+
 Note that the profiler does not run the exact same code as the normal code:
 it converts to a list the iterable returned by the WSGI application,
 to ensure that all the code is actually ran in the profiler
@@ -29,21 +34,25 @@ to ensure that all the code is actually ran in the profiler
 from cProfile import runctx as run_in_profiler
 from datetime import datetime
 from os.path import join
+from tempfile import gettempdir
 from webob import Request
+
+import logging
+LOG = logging.getLogger(__name__)
 
 from rdfrest.http_server import \
     register_middleware, unregister_middleware, MyResponse, TOP
 
 class ProfilerMiddleware(object):
 
-    DIRECTORY = "/tmp"
+    DIRECTORY = gettempdir()
 
     def __init__(self, app):
         self.app = app
 
     def __call__(self, environ, start_response):
         req = Request(environ)
-        params = req.GET # URL parameters, regardless of the actual method
+        params = environ['rdfrest.parameters']
         do_profiling = params.pop('profiler', None)
         if do_profiling is None:
             resp = req.get_response(self.app)
@@ -65,9 +74,9 @@ RET = list(resp(environ, start_response))
             return my_globals['RET']
 
 def start_plugin(config):
-    register_middleware(TOP, ProfilerMiddleware)
     if config.has_section('profiler') and config.has_option('profiler', 'directory'):
         ProfilerMiddleware.DIRECTORY = config.get('profiler', 'directory')
+    register_middleware(TOP, ProfilerMiddleware)
 
 def stop_plugin():
     unregister_middleware(ProfilerMiddleware)

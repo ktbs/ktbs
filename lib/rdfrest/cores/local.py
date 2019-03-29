@@ -106,8 +106,6 @@ class Service(object):
             "Invalid URI <%s>" % root_uri
         self.root_uri = coerce_to_uri(root_uri)
 
-        apply_logging_config(service_config)
-
         init_repo = False
         repository = service_config.get('rdf_database', 'repository', 1)
         if not repository:
@@ -124,6 +122,7 @@ class Service(object):
         _, store_type, config_str = repository.split(":", 2)
         store = rdflib_plugin.get(store_type, Store)(config_str)
 
+        self.store_config_str = config_str
         self.store = store
         self.class_map = class_map = {}
         for cls in classes:
@@ -154,6 +153,7 @@ class Service(object):
 
     def __del__(self):
         try:
+            self.store.close()
             unregister_service(self)
         except BaseException:
             pass
@@ -173,8 +173,6 @@ class Service(object):
         :return: the resource, or None
         :rtype:  :class:`ILocalCore` or :class:`~.cores.hosted.HostedCore`
 
-        TODO NOW: if no resource is found, try to get it from parent resource
-
         NB: if uri contains a fragment-id, the returned resource will be a
         `~rdfrest.cores.hosted.HostedCore`:class: hosted by a resource from this
         service.
@@ -190,6 +188,7 @@ class Service(object):
 
         querystr, fragid = urisplit(uri)[3:]
         if querystr is not None  or  fragid is not None:
+            # querystr is managed by the 'parameter' arg of ICore methods
             # fragid is managed by the decorator HostedCore.handle_fragment
             return None
         resource = self._resource_cache.get(uri)
@@ -299,6 +298,10 @@ class ILocalCore(ICore):
     .. py:attribute:: service
 
         The :class:`Service` this resource depends on.
+
+    .. py:attribute:: _graph
+
+        A :class:`~rdflib.graph.Graph` reflecting the data of this resource.
 
     """
 
@@ -952,7 +955,7 @@ class _DeletedCore(ICore):
         """
         msg = "This resource has been deleted"
         if self._stack:
-            msg += " at:\n" + traceback.format_list(self._stack[-1:])
+            msg += " at:\n" + traceback.format_list(self._stack)[-1]
         return msg
     
     @property

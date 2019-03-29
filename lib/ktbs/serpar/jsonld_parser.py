@@ -219,6 +219,10 @@ CONTEXT_JSON = """{"@context":{
     "fsa": "k:fsa",
     "fusion": "k:fusion",
     "sparql": "k:sparql",
+    "isparql": "k:isparql",
+    "hrules": "k:hrules",
+    "pipe": "k:pipe",
+    "parallel": "k:parallel",
 
     "sequence": "k:sequence",
     "second": "k:second",

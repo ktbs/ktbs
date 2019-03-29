@@ -28,9 +28,6 @@ Item2 supports the following parameters:
 * 'valid=x' for all verbs on all resources (does nothing)
 * 'notallowed=x' for all verbs on all resources (raises MethodNotAllowed)
 * 'redirect=x' for GET (redirects to relative URI x)
-
-Finally, the service provided by this module  supports a pseudo item '@goto' of
-the root, that redirects to the root.
 """
 
 from sys import argv
@@ -45,6 +42,7 @@ from rdfrest.cores.mixins import BookkeepingMixin, WithCardinalityMixin, \
     WithReservedNamespacesMixin, WithTypedPropertiesMixin
 from rdfrest.util import ReadOnlyGraph
 from rdfrest.util.config import get_service_configuration
+from rdfrest.util.wsgi import SimpleRouter
 from example1 import do_tests, EXAMPLE, GroupImplementation, GroupMixin, \
     ItemImplementation, ItemMixin
 
@@ -106,7 +104,7 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
             if to_check and "notallowed" in to_check:
                 raise MethodNotAllowedError("Parameter notallowed was used")
             parameters.pop("valid", None)
-            # we do not pop redirect_to, as it is handled by get_state
+            # we do not pop redirect, as it is handled by get_state
             # *before* check_parameters is even called
         if not parameters:
             parameters = None
@@ -126,9 +124,9 @@ class Item2Implementation(BookkeepingMixin, WithCardinalityMixin,
                 ret = Graph(identifier=target_uri)
             else:
                 ret = ReadOnlyGraph(target.get_state(parameters))
-            ret.redirect_to = str(target_uri)
+            ret.redirected_to = str(target_uri)
         return ret
-                
+
     def ack_edit(self, parameters, prepared):
         """I override :meth:`rdfrest.cores.local.EditableMixin.ack_edit`
 
@@ -152,15 +150,7 @@ class Group2Implementation(Group2Mixin,
 class Ex2Service(Service):
     """I override Service.get to support some parameters (see module doc)"""
     # too few public methods (1/2) #pylint: disable=R0903
-    def get(self, uri, rdf_types=None, _no_spawn=False):
-        """I override Service.get"""
-        ret = super(Ex2Service, self).get(uri, rdf_types, _no_spawn)
-        if ret is None:
-            if uri == URIRef("@proxy", self.root_uri):
-                ret = super(Ex2Service, self).get(self.root_uri, rdf_types,
-                                                  _no_spawn)
-        return ret
-        
+    pass
 
 def main():
     """Runs an HTTP server serving items and groups.
@@ -169,10 +159,11 @@ def main():
     :mod:`.example1` on the service.
     """
     test = len(argv) > 1 and argv[1] == "test"
+    BASE_PATH = '/foo'
 
     service_config = get_service_configuration()
     service_config.set('server', 'port', '1234')
-    service_config.set('server', 'base-path', '/foo')
+    service_config.set('server', 'base-path', BASE_PATH)
 
     # TODO Store management : special tests ?
 
@@ -184,7 +175,7 @@ def main():
         do_tests(serv.get(root_uri))
         print "Local tests passed"
 
-    app = HttpFrontend(serv, service_config)
+    app = SimpleRouter([(BASE_PATH, HttpFrontend(serv, service_config))])
     _httpd = make_server(service_config.get('server', 'host-name', 1),
                          service_config.getint('server', 'port'),
                          app)

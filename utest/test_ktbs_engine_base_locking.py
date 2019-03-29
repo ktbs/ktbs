@@ -1,6 +1,6 @@
 from test_ktbs_engine import KtbsTestCase
-from nose.tools import assert_raises
 from unittest import skipUnless
+from pytest import raises as assert_raises
 
 from ktbs.engine.lock import WithLockMixin
 from ktbs.engine.lock import get_semaphore_name
@@ -22,12 +22,12 @@ class KtbsBaseTestCase(KtbsTestCase):
     tmp_base = None
     tmp_base_name = 'tmp_base/'
 
-    def setUp(self):
-        super(KtbsBaseTestCase, self).setUp()
+    def setup(self):
+        super(KtbsBaseTestCase, self).setup()
         self.tmp_base = self.my_ktbs.create_base(self.tmp_base_name)
 
-    def tearDown(self):
-        super(KtbsBaseTestCase, self).tearDown()
+    def teardown(self):
+        super(KtbsBaseTestCase, self).teardown()
         self.tmp_base.delete()
 
 
@@ -70,11 +70,12 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         semaphore.acquire()
         assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            with self.tmp_base.lock(self.tmp_base):
-                pass
-
-        semaphore.release()
+        try:
+            with assert_raises(posix_ipc.BusyError):
+                with self.tmp_base.lock(self.tmp_base):
+                    pass
+        finally:
+            semaphore.release()
 
     def test_delete_locked_base(self):
         """Tries to delete a base that is currently being locked."""
@@ -85,25 +86,27 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         semaphore.acquire()
         assert semaphore.value == 0
 
-        # Tries to get a semaphore and delete a base,
-        # it should block on the acquire() and raise a BusyError because a timeout is set.
-        with assert_raises(posix_ipc.BusyError):
-            self.tmp_base.delete()
-
-        # Finally closing the semaphore we created for testing purpose.
-        semaphore.release()
+        try:
+            # Tries to get a semaphore and delete a base,
+            # it should block on the acquire() and raise a BusyError because a timeout is set.
+            with assert_raises(posix_ipc.BusyError):
+                self.tmp_base.delete()
+        finally:
+            # Finally closing the semaphore we created for testing purpose.
+            semaphore.release()
 
     def test_delete_successful(self):
         """Test that a semaphore related to base no longer exists after the base has been deleted."""
         new_base = self.my_ktbs.create_base('new_base/')
         semaphore = new_base._get_semaphore()
 
-        new_base.delete()  # should remove the semaphore related to this base
+        try:
+            new_base.delete()  # should remove the semaphore related to this base
 
-        # This will raise a posix_ipc.ExistancialError if the semaphore already exists.
-        posix_ipc.Semaphore(name=semaphore.name, flags=posix_ipc.O_CREX)
-
-        semaphore.unlink()
+            # This will raise a posix_ipc.ExistancialError if the semaphore already exists.
+            posix_ipc.Semaphore(name=semaphore.name, flags=posix_ipc.O_CREX)
+        finally:
+            semaphore.unlink()
 
     def test_edit_locked_base(self):
         """Test that a base.edit() fails if the base is already locked."""
@@ -111,12 +114,13 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
                                         flags=posix_ipc.O_CREAT,
                                         initial_value=1)
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.tmp_base.label += '_test_edit_label'
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.tmp_base.label += '_test_edit_label'
+        finally:
+            semaphore.release()
 
     def test_edit_successful(self):
         """Test that after a successful edit, the base semaphore exists and its value is 1."""
@@ -135,11 +139,11 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
         """Test that a base post fails if the base is already locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-
-        with assert_raises(posix_ipc.BusyError):
-            self.tmp_base.create_model()
-
-        semaphore.release()
+        try:
+            with assert_raises(posix_ipc.BusyError):
+                self.tmp_base.create_model()
+        finally:
+            semaphore.release()
 
     def test_post_successful(self):
         """Test that after a successful post, the base semaphore exists and its value is 1."""
@@ -159,13 +163,13 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
-    def setUp(self):
-        super(KtbsModelTestCase, self).setUp()
+    def setup(self):
+        super(KtbsModelTestCase, self).setup()
         self.model = self.tmp_base.create_model()
 
-    def tearDown(self):
+    def teardown(self):
         self.model.delete()
-        super(KtbsModelTestCase, self).tearDown()
+        super(KtbsModelTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -176,12 +180,13 @@ class TestKtbsModelLocking(KtbsModelTestCase):
         """Test that a Model can't be edited if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.model.label += '_test_edit_label'
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.model.label += '_test_edit_label'
+        finally:
+            semaphore.release()
 
     def test_edit_successful(self):
         """Test that after an Model edit(), the semaphore has been released, i.e. its value is 1."""
@@ -199,12 +204,13 @@ class TestKtbsModelLocking(KtbsModelTestCase):
         """Test that a Model can't be deleted if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.model.delete()
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.model.delete()
+        finally:
+            semaphore.release()
 
     def test_delete_successful(self):
         """Test that the semaphore has been released after a Model delete()."""
@@ -223,13 +229,13 @@ class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
 
-    def setUp(self):
-        super(KtbsMethodTestCase, self).setUp()
+    def setup(self):
+        super(KtbsMethodTestCase, self).setup()
         self.method = self.tmp_base.create_method(parent=KTBS.filter)
 
-    def tearDown(self):
+    def teardown(self):
         self.method.delete()
-        super(KtbsMethodTestCase, self).tearDown()
+        super(KtbsMethodTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -238,12 +244,13 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
         """Test that we can't edit a method is the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.method.label += '_test_edit_label'
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.method.label += '_test_edit_label'
+        finally:
+            semaphore.release()
 
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful edit."""
@@ -258,12 +265,13 @@ class TestKtbsMethodLocking(KtbsMethodTestCase):
         """Test that a method can't be deleted if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.method.delete()
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.method.delete()
+        finally:
+            semaphore.release()
 
     def test_delete_successful(self):
         """Test that the semaphore has been released after a successful Method delete."""
@@ -282,13 +290,13 @@ class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None
 
-    def setUp(self):
-        super(KtbsTraceTestCase, self).setUp()
+    def setup(self):
+        super(KtbsTraceTestCase, self).setup()
         self.trace = self.tmp_base.create_stored_trace(model=self.model)
 
-    def tearDown(self):
+    def teardown(self):
         self.trace.delete()
-        super(KtbsTraceTestCase, self).tearDown()
+        super(KtbsTraceTestCase, self).teardown()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -297,12 +305,13 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         """Test that we can't edit a Trace if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.trace.label += '_test_edit_label'
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.trace.label += '_test_edit_label'
+        finally:
+            semaphore.release()
 
     def test_edit_successful(self):
         """Test that the semaphore is released after a successful Trace edit."""
@@ -320,16 +329,31 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
 
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
             self.trace.create_obsel(type=otype, begin=0)
+        finally:
+            semaphore.release()
 
-        semaphore.release()
+    def test_post_locked_obsels(self):
+        """Test that we can't post on a Trace if the base is locked."""
+        # Create a temporary obsel type so we can use create_obsel()
+        otype = self.model.create_obsel_type('#tmp_otype')
+
+        semaphore = self.trace.obsel_collection._get_semaphore()
+        semaphore.acquire()
+        try:
+            assert semaphore.value == 0
+
+            with assert_raises(posix_ipc.BusyError):
+                self.trace.create_obsel(type=otype, begin=0)
+        finally:
+            semaphore.release()
 
     def test_post_successful(self):
         """Test that the semaphore is released after a successful Trace post."""
-        semaphore = self.tmp_base._get_semaphore()
+        semaphore = self.trace.obsel_collection._get_semaphore()
         assert semaphore.value == 1
 
         # Create a temporary obsel type so we can use create_obsel()
@@ -342,12 +366,13 @@ class TestKtbsTraceLocking(KtbsTraceTestCase):
         """Test that we can't delete a Trace if the base is locked."""
         semaphore = self.tmp_base._get_semaphore()
         semaphore.acquire()
-        assert semaphore.value == 0
+        try:
+            assert semaphore.value == 0
 
-        with assert_raises(posix_ipc.BusyError):
-            self.trace.delete()
-
-        semaphore.release()
+            with assert_raises(posix_ipc.BusyError):
+                self.trace.delete()
+        finally:
+            semaphore.release()
 
     def test_delete_successful(self):
         """Test that the semaphore is released after a successful Trace delete."""

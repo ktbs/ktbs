@@ -28,10 +28,8 @@ Nose unit-testing for the kTBS configuration part.
 TODO : write failing test
 """
 
-from unittest import TestCase
 from unittest import skip
-
-from nose.tools import assert_raises, eq_
+from pytest import raises as assert_raises
 
 from ktbs.standalone import build_cmdline_options, parse_configuration_options
 from ktbs.config import get_ktbs_configuration
@@ -41,13 +39,13 @@ try:
 except:
     from StringIO import StringIO
 
-class TestkTBSCmdlineConfig(TestCase):
+class TestkTBSCmdlineConfig(object):
     """
-    Test that kTBS command line configuration parameters are correctly 
+    Test that kTBS command line configuration parameters are correctly
     managed.
     """
 
-    def setUp(self):
+    def setup(self):
         self.opt = build_cmdline_options()
 
     def tearDown(self):
@@ -58,71 +56,81 @@ class TestkTBSCmdlineConfig(TestCase):
         Do we have to check lower/upper/mixed-case or make the test accept any
         of them ?
         """
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--host-name=toto'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('server', 'host-name', 1), 'toto')
+        assert ktbs_config.get('server', 'host-name', 1) == 'toto'
 
     def test_server_hostport(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--port=4567'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getint('server', 'port'), 4567)
+        assert ktbs_config.getint('server', 'port') == 4567
 
     def test_server_basepath(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--base-path=myktbsroot/'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('server', 'base-path', 1), 'myktbsroot/')
+        assert ktbs_config.get('server', 'base-path', 1) == 'myktbsroot/'
 
     def test_server_ipv4(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--force-ipv4'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getboolean('server', 'force-ipv4'), True)
+        assert ktbs_config.getboolean('server', 'force-ipv4') == True
 
     def test_server_maxbytes(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--max-bytes=1500'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getint('server', 'max-bytes'), 1500)
+        assert ktbs_config.getint('server', 'max-bytes') == 1500
+
+    def test_server_cachecontrol(self):
+        """Be careful in ConfigParser this parameter is treated as boolean.
+           In standalone, it is defined as an integer !!!
+        """
+        options, args = self.opt.parse_args(['ktbs',
+                                             '--cache-control=max-age=2'])
+
+        ktbs_config = parse_configuration_options(options)
+        assert ktbs_config.get('server', 'cache-control') == "max-age=2"
 
     def test_server_nocache(self):
         """Be careful in ConfigParser this parameter is treated as boolean.
            In standalone, it is defined as an integer !!!
         """
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--no-cache'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getboolean('server', 'no-cache'), True)
+        assert ktbs_config.get('server', 'cache-control') == ""
 
     def test_server_flashallow(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--flash-allow'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getboolean('server', 'flash-allow'), True)
+        assert ktbs_config.getboolean('server', 'flash-allow') == True
 
     def test_server_maxtriples(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--max-triples=1000'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getint('server', 'max-triples'), 1000)
+        assert ktbs_config.getint('server', 'max-triples') == 1000
 
     @skip("To write")
     def test_server_corsalloworigin(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--cors-allow-origin'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getboolean('server', 'cors-allow-origin'), True)
+        assert ktbs_config.getboolean('server', 'cors-allow-origin') == True
         pass
 
     @skip("To write")
@@ -131,75 +139,75 @@ class TestkTBSCmdlineConfig(TestCase):
         pass
 
     def test_ns_prefix_one_item(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--ns-prefix=foaf:http://xmlns.com/foaf/0.1/'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.options('ns_prefix'), ['_', 'skos', 'foaf'])
-        eq_(ktbs_config.get('ns_prefix', 'foaf', 1), 'http://xmlns.com/foaf/0.1/')
+        assert ktbs_config.options('ns_prefix'), ['_', 'skos' == 'foaf']
+        assert ktbs_config.get('ns_prefix', 'foaf', 1) == 'http://xmlns.com/foaf/0.1/'
 
     def test_plugins_one_item(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--plugin=test_preproc'])
 
         ktbs_config = parse_configuration_options(options)
         # There's a default plugin in the config post_via_get
-        eq_(ktbs_config.options('plugins'), ['post_via_get', 'test_preproc'])
+        assert ktbs_config.options('plugins'), ['post_via_get' == 'test_preproc']
 
     def test_rdf_database_repository(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--repository=/var/myktbs/'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('rdf_database', 'repository', 1), '/var/myktbs/')
+        assert ktbs_config.get('rdf_database', 'repository', 1) == '/var/myktbs/'
 
     def test_rdf_database_forceinit(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--force-init'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.getboolean('rdf_database', 'force-init'), True)
+        assert ktbs_config.getboolean('rdf_database', 'force-init') == True
         pass
 
     def test_logging_one_logger(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--loggers=ktbs'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs')
+        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs'
 
     def test_logging_multiple_loggers(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--loggers=ktbs',
                                              '--loggers=rdfrest'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs rdfrest')
+        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs rdfrest'
 
     def test_logging_consolelevel(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--console-level=DEBUG'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('logging', 'console-level', 1), 'DEBUG')
+        assert ktbs_config.get('logging', 'console-level', 1) == 'DEBUG'
 
     def test_logging_filename(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--logging-filename=/var/log/myktbslogs.log'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('logging', 'filename', 1), '/var/log/myktbslogs.log')
+        assert ktbs_config.get('logging', 'filename', 1) == '/var/log/myktbslogs.log'
 
     def test_logging_filelevel(self):
-        options, args = self.opt.parse_args(['ktbs', 
+        options, args = self.opt.parse_args(['ktbs',
                                              '--file-level=WARNING'])
 
         ktbs_config = parse_configuration_options(options)
-        eq_(ktbs_config.get('logging', 'file-level', 1), 'WARNING')
+        assert ktbs_config.get('logging', 'file-level', 1) == 'WARNING'
 
-class TestkTBSFileConfig(TestCase):
+class TestkTBSFileConfig(object):
     """
-    Test that kTBS configuration configuration file parameters are correctly 
+    Test that kTBS configuration configuration file parameters are correctly
     managed.
 
     If you want to use StringIO more dynamically with writelines(), you must
@@ -210,7 +218,7 @@ class TestkTBSFileConfig(TestCase):
         fhandler.seek(0)
     otherwise no line are recored by ConfigParser readline() calls.
 
-    Giving a string to the cStringIO.StringIO() constructor returns an object 
+    Giving a string to the cStringIO.StringIO() constructor returns an object
     with fewer methods (no write method for instance).
 
         configstring = '''
@@ -235,83 +243,83 @@ class TestkTBSFileConfig(TestCase):
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('server', 'host-name', 1), 'testhost')
+        assert ktbs_config.get('server', 'host-name', 1) == 'testhost'
 
     def test_server_hostport(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "port = 4444\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getint('server', 'port'), 4444)
+        assert ktbs_config.getint('server', 'port') == 4444
 
     def test_server_basepath(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "base-path = myktbsroot/\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('server', 'base-path', 1), 'myktbsroot/')
+        assert ktbs_config.get('server', 'base-path', 1) == 'myktbsroot/'
 
     def test_server_ipv4(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "force-ipv4 = true\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getboolean('server', 'force-ipv4'), True)
+        assert ktbs_config.getboolean('server', 'force-ipv4') == True
 
     def test_server_maxbytes(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "max-bytes = 1234\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getint('server', 'max-bytes'), 1234)
+        assert ktbs_config.getint('server', 'max-bytes') == 1234
 
     def test_server_nocache(self):
         """Be careful in ConfigParser this parameter is treated as boolean.
            In standalone, it is defined as an integer !!!
         """
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "no-cache = true\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getboolean('server', 'no-cache'), True)
+        assert ktbs_config.getboolean('server', 'no-cache') == True
 
     def test_server_flashallow(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "flash-allow = true\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getboolean('server', 'flash-allow'), True)
+        assert ktbs_config.getboolean('server', 'flash-allow') == True
 
     def test_server_maxtriples(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "max-triples = 1200\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getint('server', 'max-triples'), 1200)
+        assert ktbs_config.getint('server', 'max-triples') == 1200
 
     @skip("To write")
     def test_server_corsalloworigin(self):
         fhandler = StringIO()
-        fhandler.writelines(["[server]\n", 
+        fhandler.writelines(["[server]\n",
                              "cors-allow-origin = xxx\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getboolean('server', 'cors-allow-origin'), True)
+        assert ktbs_config.getboolean('server', 'cors-allow-origin') == True
         pass
 
     @skip("To write")
@@ -321,85 +329,85 @@ class TestkTBSFileConfig(TestCase):
 
     def test_ns_prefix_one_item(self):
         fhandler = StringIO()
-        fhandler.writelines(["[ns_prefix]\n", 
+        fhandler.writelines(["[ns_prefix]\n",
                              "foaf = http://xmlns.com/foaf/0.1/\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
         # In this case, foaf is the first prefix added before the 2
         # default ones added by get_ktbs_configuration()
-        eq_(ktbs_config.options('ns_prefix'), ['foaf', '_', 'skos'])
-        eq_(ktbs_config.get('ns_prefix', 'foaf', 1), 'http://xmlns.com/foaf/0.1/')
+        assert ktbs_config.options('ns_prefix'), ['foaf', '_' == 'skos']
+        assert ktbs_config.get('ns_prefix', 'foaf', 1) == 'http://xmlns.com/foaf/0.1/'
 
     def test_plugins_one_item(self):
         fhandler = StringIO()
-        fhandler.writelines(["[plugins]\n", 
+        fhandler.writelines(["[plugins]\n",
                              "test_preproc = true\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
         # There's a default plugin in the config post_via_get
-        eq_(ktbs_config.options('plugins'), ['post_via_get', 'test_preproc'])
+        assert ktbs_config.options('plugins'), ['post_via_get' == 'test_preproc']
 
     def test_rdf_database_repository(self):
         fhandler = StringIO()
-        fhandler.writelines(["[rdf_database]\n", 
+        fhandler.writelines(["[rdf_database]\n",
                              "repository = /var/myktbs/\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('rdf_database', 'repository', 1), '/var/myktbs/')
+        assert ktbs_config.get('rdf_database', 'repository', 1) == '/var/myktbs/'
 
     def test_rdf_database_forceinit(self):
         fhandler = StringIO()
-        fhandler.writelines(["[rdf_database]\n", 
+        fhandler.writelines(["[rdf_database]\n",
                              "force-init = true\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.getboolean('rdf_database', 'force-init'), True)
+        assert ktbs_config.getboolean('rdf_database', 'force-init') == True
 
     def test_logging_one_logger(self):
         fhandler = StringIO()
-        fhandler.writelines(["[logging]\n", 
+        fhandler.writelines(["[logging]\n",
                              "loggers = ktbs\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs')
+        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs'
 
     def test_logging_multiple_loggers(self):
         fhandler = StringIO()
-        fhandler.writelines(["[logging]\n", 
+        fhandler.writelines(["[logging]\n",
                              "loggers = ktbs rdfrest\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('logging', 'loggers', 1), 'ktbs rdfrest')
+        assert ktbs_config.get('logging', 'loggers', 1) == 'ktbs rdfrest'
 
     def test_logging_consolelevel(self):
         fhandler = StringIO()
-        fhandler.writelines(["[logging]\n", 
+        fhandler.writelines(["[logging]\n",
                              "console-level = DEBUG\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('logging', 'console-level', 1), 'DEBUG')
+        assert ktbs_config.get('logging', 'console-level', 1) == 'DEBUG'
 
     def test_logging_filename(self):
         fhandler = StringIO()
-        fhandler.writelines(["[logging]\n", 
+        fhandler.writelines(["[logging]\n",
                              "filename = /var/log/myktbslogs.log\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('logging', 'filename', 1), '/var/log/myktbslogs.log')
+        assert ktbs_config.get('logging', 'filename', 1) == '/var/log/myktbslogs.log'
 
     def test_logging_filelevel(self):
         fhandler = StringIO()
-        fhandler.writelines(["[logging]\n", 
+        fhandler.writelines(["[logging]\n",
                              "file-level = WARNING\n"])
         fhandler.seek(0)
 
         ktbs_config = get_ktbs_configuration(fhandler)
-        eq_(ktbs_config.get('logging', 'file-level', 1), 'WARNING')
+        assert ktbs_config.get('logging', 'file-level', 1) == 'WARNING'

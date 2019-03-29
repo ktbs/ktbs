@@ -22,9 +22,10 @@ import atexit
 import logging
 from optparse import OptionParser, OptionGroup
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
-from wsgiref.simple_server import WSGIServer, make_server
+from waitress import serve
 
 from rdfrest.util.config import apply_global_config
+from rdfrest.util.wsgi import SimpleRouter
 from rdfrest.http_server import HttpFrontend
 from .config import get_ktbs_configuration
 
@@ -44,10 +45,6 @@ def main():
     # or command line configuration OPTIONS
     ktbs_config = parse_configuration_options(cmdline_options)
 
-    # TODO : remove this option ?
-    if ktbs_config.getboolean('server', 'resource-cache'):
-        LOG.warning("option --resource-cache is deprecated; it has no effect")
-
     apply_global_config(ktbs_config)
 
     LOG.info("KTBS pid: %d" % getpid())
@@ -57,17 +54,28 @@ def main():
 
     application = HttpFrontend(ktbs_service, ktbs_config)
 
+    kwargs = {
+        'host': ktbs_config.get('server', 'host-name', 1),
+        'port': ktbs_config.getint('server', 'port'),
+        'threads': ktbs_config.getint('server', 'threads'),
+    }
+
+    if ktbs_config.getboolean('server', 'force-ipv4'):
+        kwargs['ipv6'] = False
+
     if ktbs_config.getboolean('server', 'flash-allow'):
         application = FlashAllower(application)
 
-    httpd = make_server(ktbs_config.get('server', 'host-name', 1),
-                        ktbs_config.getint('server', 'port'),
-                        application,
-                        make_server_class(ktbs_config))
+    if ktbs_config.has_option('server', 'base-path'):
+        base_path = ktbs_config.get('server', 'base-path')
+        application = SimpleRouter([(base_path, application)])
 
     LOG.info("KTBS server at %s" % ktbs_service.root_uri)
 
-    httpd.serve_forever()
+    serve(
+        application,
+        **kwargs
+    )
 
 def parse_configuration_options(options=None):
     """I get kTBS default configuration options and override them with
@@ -96,6 +104,9 @@ def parse_configuration_options(options=None):
         if options.port is not None:
             config.set('server', 'port', str(options.port))
 
+        if options.threads is not None:
+            config.set('server', 'threads', str(options.threads))
+
         if options.base_path is not None:
             config.set('server', 'base-path', options.base_path)
 
@@ -118,8 +129,11 @@ def parse_configuration_options(options=None):
             # TODO max_bytes us not defined as an int value in OptionParser ?
             config.set('server', 'max-bytes', options.max_bytes)
 
+        if options.cache_control is not None:
+            config.set('server', 'cache-control', options.cache_control)
+
         if options.no_cache is not None:
-            config.set('server', 'no-cache', 'true')
+            config.set('server', 'cache-control', "")
 
         if options.flash_allow is not None:
             config.set('server', 'flash-allow', 'true')
@@ -135,14 +149,8 @@ def parse_configuration_options(options=None):
         if options.force_init is not None:
             config.set('rdf_database', 'force-init', 'true')
 
-        if options.resource_cache is not None:
-            #config.set('server', 'resource-cache', options.resource_cache)
-            config.set('server', 'resource-cache', 'true')
-
         if options.loggers is not None:
             config.set('logging', 'loggers', ' '.join(options.loggers))
-        else:
-            config.set('logging', 'loggers', 'ktbs rdfrest')
 
         if options.console_level is not None:
             config.set('logging', 'console-level', str(options.console_level))
@@ -177,10 +185,14 @@ def build_cmdline_options():
     ogr.add_option("-B", "--max-bytes",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
+    ogr.add_option("-C", "--cache-control",
+                   help="customize Cache-Control header of HTTP server")
     ogr.add_option("-N", "--no-cache", action="store_true",
-                   help="prevent kTBS to send cache-control directives")
+                   help="disable Cache-Control header (equivalent to -C \"\")")
     ogr.add_option("-F", "--flash-allow", action="store_true",
                    help="serve a policy file allowing Flash applets to connect")
+    ogr.add_option("-t", "--threads",
+                   help="sets the number of worker threads for the server")
     ogr.add_option("-T", "--max-triples",
                    help="sets the maximum number of bytes of payloads"
                    "(no limit if unset)")
@@ -190,11 +202,6 @@ def build_cmdline_options():
                    help="Force initialization of repository (assumes -r)")
     opt.add_option_group(ogr)
 
-    ogr = OptionGroup(opt, "Deprecated options")
-    ogr.add_option("--resource-cache", action="store",
-                   help="not used anymore")
-    opt.add_option_group(ogr)
-    
     ogr = OptionGroup(opt, "Logging options")
     ogr.add_option("--loggers", action="append",
                    help="for which module(s), you want to activate logging (ktbs, rdfrest, rdflib, ...)")
@@ -224,7 +231,10 @@ def parse_options():
 
     options, args = opt.parse_args()
     if args:
-        opt.error("spurious arguments")
+        if len(args) > 1 or options.configfile is not None:
+            opt.error("spurious arguments")
+        else:
+            options.configfile = args[0]
     return options
     
 
@@ -233,28 +243,6 @@ def number_callback(_option, opt, _value, parser):
     val = int(opt[1:])
     parser.values.requests = val
 
-
-def make_server_class(ktbs_config):
-    """We define this closure so that MyWSGIServer class
-       can access the configuration options.
-    """
-
-    class MyWSGIServer(WSGIServer):
-        """
-        I override WSGIServer to make it possibly IPV6-able.
-        """
-        def __init__(self, (host, port), handler_class):
-            ipv = self.address_family = AF_INET
-            if ktbs_config.get('server', 'force-ipv4', 1):
-                info = getaddrinfo(host, port, AF_INET, SOCK_STREAM)
-            else:
-                info = getaddrinfo(host, port, 0, SOCK_STREAM)
-                # when IPV6 is available, prefer it to IPV4
-                if [ i for i in info if i[0] == AF_INET6 ]:
-                    ipv = self.address_family =  AF_INET6
-            LOG.info("Using IPV%s" % {AF_INET: 4, AF_INET6: 6}[ipv])
-            WSGIServer.__init__(self, (host, port), handler_class)
-    return MyWSGIServer
 
 class NoCache(object):
     """

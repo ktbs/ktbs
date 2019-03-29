@@ -306,4 +306,4 @@ class ObselProxy(ObselMixin, ICore):
         if proper is None:
             raise ValueError("Could not get proper obsel %s" % self)
         assert isinstance(proper, ObselMixin)  and  proper.uri == self.uri
-        return proper.delete(None, parameters, _trust)
+        return proper.delete(parameters, _trust)

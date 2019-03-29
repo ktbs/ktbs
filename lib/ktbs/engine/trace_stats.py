@@ -18,19 +18,14 @@
 """
 I provide the implementation of kTBS obsel collections.
 """
-from itertools import chain
 from logging import getLogger
 
-from rdflib import Graph, Literal, RDF, BNode
+from rdflib import Literal, RDF, BNode, Variable
 from rdflib.namespace import Namespace
-from rdflib.plugins.sparql.processor import prepareQuery
 
-from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
-    MethodNotAllowedError
-from rdfrest.cores.local import NS as RDFREST
-from rdfrest.util import Diagnosis
+from rdfrest.exceptions import InvalidParametersError, MethodNotAllowedError
+from .lock import WithLockMixin
 from .resource import KtbsResource, METADATA
-from .obsel import get_obsel_bounded_description
 from .trace_obsels import _REFRESH_VALUES
 from ..api.trace_stats import TraceStatisticsMixin
 from ..namespace import KTBS
@@ -39,9 +34,16 @@ from ..namespace import KTBS
 LOG = getLogger(__name__)
 
 NS = Namespace('http://tbs-platform.org/2016/trace-stats#')
+_PLUGINS = []
 
-class TraceStatistics(TraceStatisticsMixin, KtbsResource):
-    """I provide the implementation of ktbs:AbstractTraceObsels
+def add_plugin(f):
+    _PLUGINS.append(f)
+
+def remove_plugin(f):
+    _PLUGINS.remove(f)
+
+class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
+    """I provide the implementation of TraceStatistics
     """
     ######## Public methods ########
     # (only available in the local implementation)
@@ -76,31 +78,40 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
         if refresh_param == 0 or self.__forcing_state_refresh:
             return
 
-        if (self.metadata.value(self.uri, METADATA.dirty) is None
-            and refresh_param < 2):
-            return
+        with self.lock(self):
+            self.__forcing_state_refresh = True
+            try:
+                LOG.debug('refreshing <{}>'.format(self.uri))
+                trace = self.trace
+                trace.force_state_refresh()
+                trace.obsel_collection.force_state_refresh(parameters)
 
-        self.__forcing_state_refresh = True
-        try:
-            LOG.debug('refreshing <{}>'.format(self.uri))
-            trace = self.trace
-            trace.obsel_collection.force_state_refresh(parameters)
+                metadata = self.metadata
+                seen_trc_etag = metadata.value(self.uri, METADATA.traceEtag, None)
+                seen_obs_etag = metadata.value(self.uri, METADATA.obselsEtag, None)
+                last_trc_etag = self.trace.iter_etags().next()
+                last_obs_etag = self.trace.obsel_collection.get_etag()
+                dirty =  seen_trc_etag != last_trc_etag  or  seen_obs_etag != last_obs_etag
 
-            # Avoid passing refresh parameter to edit()
-            with self.edit(None, _trust=True) as editable:
-                editable.remove((None, None, None))
-                self.init_graph(editable, self.uri, trace.uri)
-                self._populate(editable, trace)
-                self.metadata.remove((self.uri, METADATA.dirty, None))
-        finally:
-            del self.__forcing_state_refresh
+                if not dirty and refresh_param < 2:
+                    return
+
+                # Avoid passing refresh parameter to edit()
+                with self.edit(None, _trust=True) as editable:
+                    editable.remove((None, None, None))
+                    self.init_graph(editable, self.uri, trace.uri)
+                    self._populate(editable, trace)
+                    self.metadata.set((self.uri, METADATA.traceEtag, Literal(last_trc_etag)))
+                    self.metadata.set((self.uri, METADATA.obselsEtag, Literal(last_obs_etag)))
+            finally:
+                del self.__forcing_state_refresh
 
     def edit(self, parameters=None, clear=False, _trust=False):
         """I override :meth:`.KtbsResource.edit`.
         """
         if not _trust:
             raise MethodNotAllowedError(
-                "Can not directly edit obsels of computed trace.")
+                "@stats is read-only")
         else:
             return super(TraceStatistics, self).edit(parameters, clear,
                                                          _trust)
@@ -122,16 +133,6 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.TraceStatistics
-
-    @classmethod
-    def create(cls, service, uri, new_graph):
-        """I implement :meth:`~rdfrest.cores.local.ILocalCore.create`
-
-        I mark this resource as dirty.
-        """
-        super(TraceStatistics, cls).create(service, uri, new_graph)
-        metadata = service.get_metadata_graph(uri)
-        metadata.add((uri, METADATA.dirty, Literal('yes')))
 
     def check_parameters(self, to_check, parameters, method):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
@@ -165,49 +166,45 @@ class TraceStatistics(TraceStatisticsMixin, KtbsResource):
         """
         obsels_graph = trace.obsel_collection.state
         initNs = { '': unicode(KTBS.uri) }
-        initBindings = { 'trace': trace.uri }
 
         # Obsel count
-        count_result = obsels_graph.query(COUNT_OBSELS, initNs=initNs,
-                                          initBindings=initBindings)
+        ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()
+        count_obsels = COUNT_OBSELS.replace('$trace', trace.uri.n3())
+        count_result = obsels_graph.query(count_obsels, initNs=initNs)
         count = count_result.bindings[0]['c']
         graph.add((trace.uri, NS.obselCount, count))
 
-        # Obsel type statistics
-        if count.value > 0:
-            count_type_result = obsels_graph.query(COUNT_OBSEL_TYPES, initNs=initNs,
-                                                   initBindings=initBindings)
-
-            if (count_type_result is not None and
-               len(count_type_result.bindings) > 0 and
-               len(count_type_result.bindings[0]) > 0):
-                for res in  count_type_result.bindings:
-                    ot_infos = BNode()
-
-                    graph.add((ot_infos, NS.nb, res['nb']))
-                    graph.add((ot_infos, NS.hasObselType, res['t']))
-
-                    graph.add((trace.uri, NS.obselCountPerType, ot_infos))
-
         # Duration statistics
-        duration_result = obsels_graph.query(DURATION_TIME, initNs=initNs,
-                                             initBindings=initBindings)
+        ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()
+        duration_time = DURATION_TIME.replace('$trace', trace.uri.n3())
+        duration_result = obsels_graph.query(duration_time, initNs=initNs)
 
-        if (duration_result is not None and
-            len(duration_result.bindings) > 0 and
-            len(duration_result.bindings[0]) > 0):
-            graph.add((trace.uri, NS.minTime, duration_result.bindings[0]['minb']))
-            graph.add((trace.uri, NS.maxTime, duration_result.bindings[0]['maxe']))
-            graph.add((trace.uri, NS.duration, duration_result.bindings[0]['duration']))
+        if (duration_result is not None
+            and len(duration_result.bindings) > 0
+            and len(duration_result.bindings[0]) > 0):
+
+            b = duration_result.bindings[0]
+            graph.add((trace.uri, NS.minTime, b['minb']))
+            graph.add((trace.uri, NS.maxTime, b['maxe']))
+            graph.add((trace.uri, NS.duration, b['duration']))
+
+        for plugin in _PLUGINS:
+            try:
+                plugin(graph, trace)
+            except BaseException as ex:
+                LOG.error("Error while populating <%s>", self.uri)
+                LOG.exception(ex)
 
 
-COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace ?trace }'
-COUNT_OBSEL_TYPES= 'SELECT ?t (count(?o) as ?nb) (min(?b) as ?begin) { ?o :hasTrace ?trace; :hasBegin ?b ; a ?t . } ' \
-                   'GROUP BY ?t ORDER BY ?t'
-DURATION_TIME="""SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration) where {
-SELECT (min(?b) as ?minb) (max(?e) as ?maxe)  where {
-        ?o :hasTrace ?trace ;
+COUNT_OBSELS='SELECT (COUNT(?o) as ?c) { ?o :hasTrace $trace }'
+DURATION_TIME="""
+SELECT ?minb ?maxe ((?maxe - ?minb) as ?duration)
+where {
+SELECT (min(?b) as ?minb) (max(?e) as ?maxe)
+where {
+        ?o :hasTrace $trace ;
            :hasBegin ?b ;
            :hasEnd ?e .
-    }}
+    }
+}
 """

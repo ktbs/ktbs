@@ -1,3 +1,37 @@
+0.6 2019-03-29
+
+   IMPORTANT: this is the LAST release for Python2.
+   kTBS is migrating to Python3 (at last) with to plan to maintain compatibility with
+   Python2 in future versions.
+
+   * for users
+      * transformation methods
+         + new iSPARQL (incremental SPARQL) builtin method
+         + new H-Rules builtin method
+         + new composite (pipe, parallel) builtin methods
+         + the filter method now takes subtypes into account
+         + improved FSA method
+      * REST API
+         + now a single obsel can be removed with a DELETE request on its URI
+      * Other features
+         + improved documentation
+         + various optimizations
+
+   * for admins
+      * improved Gereco console
+      * improved profiler plugin
+      * bin/ktbs now can serve parallel requests (using the package 'waitress')
+      * the sparql_endpoints plugin now also supports SPARUL
+      * added experimental background daemon to force computed traces to upadte
+      * 5xx errors can now contain a traceback (send-traceback config opt)
+
+   * for developers
+      * migrated tests from Node (deprecated) to PyTest and Tox
+      * made it easier to write builtin mehods
+      * improved example/stress tool
+
+
+
 0.5 2016-06-01
 
     * for users
@@ -10,11 +44,11 @@
          + method based on Finite State Automata
          + geojson serializer (experimental)
          + new class DataGraph, and trace property hasContext
-         + trace statistics available as ./@stats in every trace
+         + trace statistics available as ./@stats in every new trace
        * improved features
          + now support special origin "now" when creating StoredTrace
          + extensible HTML view through x-gereco/* mimetype, with a plugin for obsel tables
-         + empty StoreTrace by DELETEing is obsel collection
+         + empty StoredTrace by DELETEing its obsel collection
          + SPARQL can now query multiple graphs (experimental)
          + Bases can now provide additional information about their items
        * other changes

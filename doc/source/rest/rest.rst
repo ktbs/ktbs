@@ -49,26 +49,27 @@ Although the description of the parent resource may contain references to its ch
 Aspect resources
 ++++++++++++++++
 
-Some resources are too complex to be handled only through the four HTTP verbs. Those resources are therefore linked to several *aspect resources*, each of them reprenseting only one aspect of the original resource.
+Some resources are too complex to be handled only through the four HTTP verbs. Those resources are therefore linked to one or several *aspect resources*, each of them representing an additional aspect of the original resource.
 
 As a convention, a resource with aspect resources will have a URI ended with '/', and all its aspect resources will have a suffix starting with '@'. The number, types and names of aspect resources depends only on the type of the original resource. Aspect resources are automatically created and deleted with the original resource and can not be created or deleted independandly.
 
 .. admonition:: example
 
-  A `trace <Trace>`:doc: has exactly two aspect resources called `@about` and `@obsels`. If the URI of the trace is http://example.com/ws1/t01/, the URI of the aspect resources will be http://example.com/ws1/t01/@about and http://example.com/ws1/t01/@obsels, respectively. The first one holds the metadata about the trace (date of creation, compliance with its `model <Model>`:doc:, etc.), while the second one holds its `obsel <Obsel>`:doc: collection.
+  A `trace <Trace>`:doc: has exactly two aspect resources called `@obsels` and `@stats`. If the URI of the trace is http://example.com/ws1/t01/, the URI of the aspect resources will be http://example.com/ws1/t01/@obsels and http://example.com/ws1/t01/@stats, respectively. The first one holds its `obsel <Obsel>`:doc: collection, while the second one holds some general statistics about the trace.
 
-Although each type defines the name of its aspect resources, it is consider a better practice to *discover* their names through inspection of the resource descriptions, rather than relying on their naming convention. The semantics of the description vocabulary is indeed consider more stable across implementations than the naming conventions.
+Although each type defines the name of its aspect resources, it is consider a better practice to *discover* their names through inspection of the resource descriptions, rather than relying on their naming convention. The semantics of the description vocabulary is indeed considered more stable across implementations than the naming conventions.
 
 
 
 Representations
 ---------------
 
-Resource representations in kTBS are typically in RDF (except for some `aspect resources`_), either using the standard `RDF/XML`_ syntax, or the alternative Turtle_ syntax. Note also that the N3_ syntax is supported, as it is a superset of Turtle. Support for additional mimetypes can be added to kTBS by using the :mod:`plugin mechanism <ktbs.local.plugins>`.
+Resource representations in kTBS are typically in RDF (except for some `aspect resources`_), and represented by default in `JSON-LD`_. Through content-negotoation, other syntaxes can be used, such as `RDF/XML`_, Turtle_ or `N-Triples`_. Support for additional mimetypes can be added to kTBS by using the :mod:`plugin mechanism <ktbs.local.plugins>`.
 
-.. _`RDF/XML`: http://www.w3.org/TR/rdf-primer/
-.. _Turtle: http://www.w3.org/2007/02/turtle/primer/
-.. _N3: http://www.w3.org/TeamSubmission/n3/
+.. _`JSON-LD`: https://www.w3.org/TR/json-ld/
+.. _`RDF/XML`: https://www.w3.org/TR/rdf-syntax-grammar/
+.. _Turtle: https://www.w3.org/TR/turtle/
+.. _`N-Triples`: https://www.w3.org/TR/n-triples/
 
 The representations in GET and PUT requests are about existing resources with a known URI. It is therefore quite straightforward to represent those resources in RDF: they appear in the graph as a URI node, and the arcs in the graph represent their relations with other resources and literals. Depending on the type of the represented resources, some `representation constraints` (see below) may apply to the structure of the graph.
 
@@ -96,6 +97,11 @@ make a fresh URI for it. If it is a URI node, kTBS will check that the
 URI is not in use, or the creation will fail. In any case, the URI of the newly 
 created resource will be provided in the `Location` header field of the
 response, as specified by HTTP.
+
+.. admonition:: TODO
+
+  Document how it works with JSON,
+  as it is slightly different.
 
 Representation constraints
 ++++++++++++++++++++++++++

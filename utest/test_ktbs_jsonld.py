@@ -30,11 +30,18 @@ from ktbs.api.obsel import ObselMixin
 from ktbs.api.trace import ComputedTraceMixin, StoredTraceMixin
 from ktbs.api.trace_model import TraceModelMixin
 from ktbs.engine.service import make_ktbs
+from ktbs.engine import trace_stats
+from ktbs.plugins import stats_per_type
 from ktbs.serpar.jsonld_parser import *
 from ktbs.serpar.jsonld_serializers import *
 from ktbs import __version__ as ktbs_version
 from ktbs import __commitno__ as ktbs_commit
 from .test_ktbs_engine import KtbsTestCase
+
+_BUILTIN_METHODS = [
+    'external', 'filter', 'fsa', 'fusion', 'sparql', 'isparql', 'hrules',
+    'parallel', 'pipe', 'sparql',
+]
 
 
 def unordered_json(json):
@@ -83,9 +90,8 @@ class TestJsonRoot(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
-                'version': '%s%s' % (ktbs_version, ktbs_commit),
+            'hasBuiltinMethod': _BUILTIN_METHODS,
+            'version': '%s%s' % (ktbs_version, ktbs_commit),
         })
         assert_roundtrip(json_content, self.my_ktbs)
 
@@ -123,8 +129,7 @@ class TestJsonRoot(KtbsTestCase):
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
+            'hasBuiltinMethod': _BUILTIN_METHODS,
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
@@ -153,8 +158,7 @@ class TestJsonRoot(KtbsTestCase):
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
-            'hasBuiltinMethod':
-                ['filter', 'external', 'fusion', 'sparql', 'fsa',],
+            'hasBuiltinMethod': _BUILTIN_METHODS,
             '@id': 'http://localhost:12345/',
             '@type': 'KtbsRoot',
             'hasBase': [ 'b1/', 'b2/', 'b3/', ],
@@ -165,12 +169,12 @@ class TestJsonRoot(KtbsTestCase):
 
 class TestJsonBase(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonBase, self).setUp()
+    def setup(self):
+        super(TestJsonBase, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
 
-    def tearDown(self):
-        super(TestJsonBase, self).tearDown()
+    def teardown(self):
+        super(TestJsonBase, self).teardown()
         self.base = None
 
     def test_bare_base(self):
@@ -182,7 +186,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
         })
         assert_roundtrip(json_content, self.base)
 
@@ -201,7 +205,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'label': 'My customized base',
             'http://example.org/ns/strprop': 'Hello world',
         })
@@ -219,7 +223,7 @@ class TestJsonBase(KtbsTestCase):
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'contains': [
                 { '@id': 'method', '@type': 'Method' },
                 { '@id': 'model', '@type': 'TraceModel' },
@@ -234,23 +238,24 @@ class TestJsonBase(KtbsTestCase):
         self.base.create_stored_trace("t1/", "model", "alonglongtimeago", label="the trace")
         self.base.create_computed_trace("t2/", KTBS.filter, sources=['t1/'])
 
-        params = lambda: {'prop':'comment,hasModel,hasSource,label,obselCount',}
+        params = lambda: {'prop':'comment,hasModel,hasMethod,hasSource,label,obselCount',}
         json_content = "".join(
             serialize_json_base(self.base.get_state(params()), self.base))
         json = loads(json_content)
-        obselCount = 1 # should be 0, this is a bug with rdflib 4.2.1
+        obselCount = 0
         assert_jsonld_equiv(json, {
             '@context':
                 'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
             '@id': 'http://localhost:12345/b1/',
             '@type': 'Base',
-            'inRoot': '..',
+            'inRoot': '../',
             'contains': [
                 { '@id': 'method', '@type': 'Method', 'label':"the method" },
                 { '@id': 'model', '@type': 'TraceModel', 'label':"the model" },
                 { '@id': 't1/', '@type': 'StoredTrace', 'label':"the trace",
                   'hasModel':"model", 'obselCount':obselCount },
                 { '@id': 't2/', '@type': 'ComputedTrace', 'hasModel':"model",
+                  'hasMethod': 'filter',
                   'hasSource':["t1/"], 'obselCount':obselCount },
             ],
         })
@@ -275,14 +280,14 @@ class TestJsonBase(KtbsTestCase):
 
 class TestJsonMethod(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonMethod, self).setUp()
+    def setup(self):
+        super(TestJsonMethod, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.method = self.base.create_method("meth1", KTBS.filter,
                                               { "after": 42 })
 
-    def tearDown(self):
-        super(TestJsonMethod, self).tearDown()
+    def teardown(self):
+        super(TestJsonMethod, self).teardown()
         self.base = None
         self.method = None
 
@@ -399,13 +404,13 @@ class TestJsonMethod(KtbsTestCase):
 
 class TestJsonHashModel(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonHashModel, self).setUp()
+    def setup(self):
+        super(TestJsonHashModel, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1",)
 
-    def tearDown(self):
-        super(TestJsonHashModel, self).tearDown()
+    def teardown(self):
+        super(TestJsonHashModel, self).teardown()
         self.base = None
         self.model = None
 
@@ -545,13 +550,13 @@ class TestJsonHashModel(KtbsTestCase):
 
 class TestJsonSlashModel(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonSlashModel, self).setUp()
+    def setup(self):
+        super(TestJsonSlashModel, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1/",)
 
-    def tearDown(self):
-        super(TestJsonSlashModel, self).tearDown()
+    def teardown(self):
+        super(TestJsonSlashModel, self).teardown()
         self.base = None
         self.model = None
 
@@ -664,7 +669,7 @@ class TestJsonSlashModel(KtbsTestCase):
         assert_roundtrip(json_content, self.model)
 
     # unskip the following test once kTBS supports "slash-only" URIs in models
-    @skip
+    @skip("not supported yet")
     def test_mixed_populated_model(self):
         m2 = self.base.create_model("modl2")
         self.model.add_parent(m2)
@@ -730,16 +735,16 @@ class TestJsonSlashModel(KtbsTestCase):
 
 class TestJsonTwoModels(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonTwoModels, self).setUp()
+    def setup(self):
+        super(TestJsonTwoModels, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1",)
         self.other_ktbs = make_ktbs("http://example.org/")
         self.other_base = self.other_ktbs.create_base("another/")
         self.other_model = self.other_base.create_model("model",)
 
-    def tearDown(self):
-        super(TestJsonTwoModels, self).tearDown()
+    def teardown(self):
+        super(TestJsonTwoModels, self).teardown()
         if self.other_ktbs is not None:
             unregister_service(self.other_ktbs.service)
             self.other_ktbs = None
@@ -797,15 +802,15 @@ class TestJsonTwoModels(KtbsTestCase):
 
 class TestJsonStoredTrace(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonStoredTrace, self).setUp()
+    def setup(self):
+        super(TestJsonStoredTrace, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def tearDown(self):
-        super(TestJsonStoredTrace, self).tearDown()
+    def teardown(self):
+        super(TestJsonStoredTrace, self).teardown()
         self.base = None
         self.model = None
         self.t1 = None
@@ -938,8 +943,8 @@ class TestJsonStoredTrace(KtbsTestCase):
 
 class TestJsonComputedTrace(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonComputedTrace, self).setUp()
+    def setup(self):
+        super(TestJsonComputedTrace, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.t1 = self.base.create_stored_trace("t1/", self.model,
@@ -949,8 +954,8 @@ class TestJsonComputedTrace(KtbsTestCase):
                                                   { "after": 42 },
                                                   [self.t1])
 
-    def tearDown(self):
-        super(TestJsonComputedTrace, self).tearDown()
+    def teardown(self):
+        super(TestJsonComputedTrace, self).teardown()
         self.base = None
         self.model = None
         self.t1 = None
@@ -1056,8 +1061,8 @@ class TestJsonComputedTrace(KtbsTestCase):
 
 class TestJsonObsels(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonObsels, self).setUp()
+    def setup(self):
+        super(TestJsonObsels, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
@@ -1067,8 +1072,8 @@ class TestJsonObsels(KtbsTestCase):
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def tearDown(self):
-        super(TestJsonObsels, self).tearDown()
+    def teardown(self):
+        super(TestJsonObsels, self).teardown()
         self.base = None
         self.model = self.ot1 = self.at1 = self.at2 = self.rt1 = None
         self.t1 = None
@@ -1275,8 +1280,22 @@ class TestJsonObsels(KtbsTestCase):
 
 class TestJsonStats(KtbsTestCase):
 
-    def setUp(self):
-        super(TestJsonStats, self).setUp()
+
+    def setup(self):
+        super(TestJsonRoot, self).setup()
+        # load stats plugins which are enabled by default in the global config
+        trace_stats.add_plugin(stats_per_type.populate_stats)
+
+    def teardown(self):
+        super(TestJsonRoot, self).teardown()
+        trace_stats.remove_plugin(stats_per_type.populate_stats)
+
+    def setup(self):
+        super(TestJsonStats, self).setup()
+
+        # load stats plugins which are enabled by default in the global config
+        trace_stats.add_plugin(stats_per_type.populate_stats)
+
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
@@ -1284,11 +1303,12 @@ class TestJsonStats(KtbsTestCase):
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def tearDown(self):
-        super(TestJsonStats, self).tearDown()
+    def teardown(self):
+        super(TestJsonStats, self).teardown()
         self.base = None
         self.model = self.ot1 = self.ot2 = None
         self.t1 = None
+        trace_stats.remove_plugin(stats_per_type.populate_stats)
 
     def populate(self):
         # create obsel in wrong order, as TestJsonObsels

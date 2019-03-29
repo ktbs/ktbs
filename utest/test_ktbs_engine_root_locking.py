@@ -1,6 +1,6 @@
 from test_ktbs_engine import KtbsTestCase
-from nose.tools import assert_raises
 from unittest import skipUnless
+from pytest import raises as assert_raises
 
 from ktbs.engine.lock import WithLockMixin
 from ktbs.engine.lock import get_semaphore_name
@@ -17,18 +17,18 @@ SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value
 #@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsRootTestCase(KtbsTestCase):
 
-    def setUp(self):
+    def setup(self):
         # Run the kTBS on another from the other tests to prevent reusing existing semaphores
         self.my_ktbs = make_ktbs("http://localhost:54321/")
         self.service = self.my_ktbs.service
 
-    def tearDown(self):
-        """Override :meth:`KtbsTestCase.tearDown`
+    def teardown(self):
+        """Override :meth:`KtbsTestCase.teardown`
 
         Adds semaphore unlinking at the end of each test.
         """
         semaphore = self.my_ktbs._get_semaphore()
-        super(KtbsRootTestCase, self).tearDown()
+        super(KtbsRootTestCase, self).teardown()
         semaphore.unlink()
 
 

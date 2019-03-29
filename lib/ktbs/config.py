@@ -36,8 +36,17 @@ def get_ktbs_configuration(configfile_handler=None):
     """
     ktbs_config = get_service_configuration(configfile_handler)
 
-    if ktbs_config.has_section('ns_prefix'):
-        ktbs_config.set('ns_prefix', '_', str(KTBS))
-        ktbs_config.set('ns_prefix', 'skos', str(SKOS))
+    _set_default(ktbs_config, 'ns_prefix', '_', str(KTBS)),
+    _set_default(ktbs_config, 'ns_prefix', 'skos', str(SKOS))
+
+    # plugins enabled by default for backward compatibility
+    _set_default(ktbs_config, 'plugins', 'stats_per_type', 'true')
+
 
     return ktbs_config
+
+def _set_default(config, section, option, value):
+    if not config.has_section(section):
+        config.add_section(section)
+    if not config.has_option(section, option):
+        config.set(section, option, value)

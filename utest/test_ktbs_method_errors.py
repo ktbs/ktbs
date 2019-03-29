@@ -17,7 +17,8 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
-from nose.tools import assert_raises
+from pytest import raises as assert_raises
+
 from rdflib import RDF
 from rdflib.graph import Graph
 from rdflib.term import URIRef
@@ -74,7 +75,7 @@ class _ErrorMethodResource(LocalCore):
 
 class TestMethodErrorHandling(KtbsTestCase):
 
-    def setUp(self):
+    def setup(self):
         config = get_service_configuration()
         config.set('server', 'fixed-root-uri', _ErrorMethod.uri)
         self.error_method_service = Service(classes=[_ErrorMethodResource],
@@ -83,7 +84,7 @@ class TestMethodErrorHandling(KtbsTestCase):
         self.method_impl = _ErrorMethod()
         register_builtin_method_impl(self.method_impl)
 
-        KtbsTestCase.setUp(self)
+        KtbsTestCase.setup(self)
 
         base = self.base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -93,8 +94,8 @@ class TestMethodErrorHandling(KtbsTestCase):
         origin = "orig-abc"
         src1 = self.src1 = base.create_stored_trace("s1/", model, origin=origin)
 
-    def tearDown(self):
-        KtbsTestCase.tearDown(self)
+    def teardown(self):
+        KtbsTestCase.teardown(self)
         unregister_builtin_method_impl(self.method_impl)
         unregister_service(self.error_method_service)
 

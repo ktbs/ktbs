@@ -59,7 +59,7 @@ class AbstractTrace(AbstractTraceMixin, InBase):
     @property
     def unit(self):
         """I return this trace's time unit.
-        
+
         I get it from the model if available, and store it in the trace's
         metadata in case the model is not available.
         """
@@ -167,6 +167,8 @@ class AbstractTrace(AbstractTraceMixin, InBase):
         new_sources = set(self.state.objects(self.uri, KTBS.hasSource))
         if new_sources != prepared.old_sources:
             self._ack_source_change(prepared.old_sources, new_sources)
+        for ttr in self.iter_transformed_traces():
+            ttr._mark_dirty()
 
     def check_deletable(self, parameters):
         """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_deletable`
@@ -327,7 +329,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                                                  initBindings=binding) ]
         bnode_candidates = { i for i in candidates
                                if isinstance(i, BNode) }
-        with base.lock(self), self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
+        with self.obsel_collection.edit({"add_obsels_only":1}, _trust=True):
             for candidate in candidates:
                 if isinstance(candidate, BNode):
                     bnode_candidates.remove(candidate)
@@ -354,7 +356,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
             # Traces created before @stats was introduced have no trace_statistics
             stats.metadata.set((stats.uri, METADATA.dirty, YES))
         return ret
-                
+
     def get_created_class(self, rdf_type):
         """I override
         :class:`rdfrest.cores.mixins.GraphPostableMixin.get_created_class`
@@ -372,6 +374,7 @@ _SELECT_CANDIDATE_OBSELS = prepareQuery("""
     SELECT ?obs
            (IF(bound(?b), ?b, "INF"^^xsd:float) as ?begin)
            (IF(bound(?e), ?e, ?begin) as ?end)
+           $trace # selected solely to please Virtuoso
     WHERE {
         ?obs :hasTrace ?trace
         OPTIONAL { ?obs :hasBegin ?b }
@@ -452,8 +455,10 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         self._ack_method_change(method_uri, None)
         super(ComputedTrace, self).ack_delete(parameters)
 
-            
+
     ######## ICore implementation  ########
+
+    __forcing_state_refresh = False
 
     def get_state(self, parameters=None):
         """I override `~rdfrest.cores.ICore.get_state`:meth:
@@ -469,27 +474,54 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
 
         I recompute my data if needed.
         """
-        super(ComputedTrace, self).force_state_refresh(parameters)
-        if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
-            # we *first* unset the dirty bit, so that recursive calls to
-            # get_state do not result in an infinite recursion
-            self.metadata.remove((self.uri, METADATA.dirty, None))
-            with self.edit(_trust=True) as editable:
-                editable.remove((self.uri, KTBS.hasDiagnosis, None))
-                editable.remove((self.uri, KTBS.hasModel, None))
-                editable.remove((self.uri, KTBS.hasOrigin, None))
-                try:
-                    diag = self._method_impl.compute_trace_description(self)
-                except BaseException, ex:
-                    LOG.warn(traceback.format_exc())
-                    diag = Diagnosis(
-                        "exception raised while computing trace description",
-                        [ex.message]
-                    )
-                if not diag:
-                    editable.add((self.uri, KTBS.hasDiagnosis,
-                                     Literal(unicode(diag))))
+        if self.__forcing_state_refresh:
+            return
+        self.__forcing_state_refresh = True
+        try:
+            super(ComputedTrace, self).force_state_refresh(parameters)
+            for src in self._iter_effective_source_traces():
+                src.force_state_refresh(parameters)
+            if self.metadata.value(self.uri, METADATA.dirty, None) is not None:
+                # we *first* unset the dirty bit, so that recursive calls to
+                # get_state do not result in an infinite recursion
+                self.metadata.remove((self.uri, METADATA.dirty, None))
+                with self.edit(_trust=True) as editable:
+                    editable.remove((self.uri, KTBS.hasDiagnosis, None))
+                    editable.remove((self.uri, KTBS.hasModel, None))
+                    editable.remove((self.uri, KTBS.hasOrigin, None))
+                    try:
+                        diag = self._method_impl.compute_trace_description(self)
+                    except BaseException, ex:
+                        LOG.warn(traceback.format_exc())
+                        diag = Diagnosis(
+                            "exception raised while computing trace description",
+                            [ex.message]
+                        )
+                    if not diag:
+                        editable.add((self.uri, KTBS.hasDiagnosis,
+                                         Literal(unicode(diag))))
+                for ttr in self.iter_transformed_traces():
+                    ttr._mark_dirty()
+        finally:
+            del self.__forcing_state_refresh
 
+
+    ######## Protected method  ########
+
+    def _iter_effective_source_traces(self):
+        """I iter over the effective sources of this computed trace.
+
+        The effective sources are usually the declared sources,
+        except for composite methods (pipe, parallel),
+        that store alternative effective sources in the metadata.
+        """
+        eff_src_uris = list(
+            self.metadata.objects(self.uri, METADATA.effective_source)
+        )
+        if eff_src_uris:
+            return (self.factory(uri) for uri in eff_src_uris)
+        else:
+            return self.iter_source_traces()
 
     ######## Private method  ########
 
@@ -519,19 +551,17 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         self.__method_impl = None
         self._mark_dirty()
 
-    def _mark_dirty(self):
-        """I force my computed data and obsels to be recomputed.
+    def _mark_dirty(self, metadata=True, obsels=True):
+        """Notify me that my source(s) have changed.
 
-        Note that the recomputation will only occur when my state (or the state
-        of my obsel collection) is required.
+        Note that the resulting recomputation will only occur when my state
+        (or the state of my obsel collection) is required.
         """
-        self.metadata.add((self.uri, METADATA.dirty, YES))
-        obsels = self.obsel_collection
-        obsels.metadata.add((obsels.uri, METADATA.dirty, YES))
-        stats = self.trace_statistics
-        if stats:
-            # Traces created before @stats was introduced have no trace_statistics
-            stats.metadata.add((stats.uri, METADATA.dirty, YES))
+        if metadata:
+            self.metadata.add((self.uri, METADATA.dirty, YES))
+        if obsels:
+            obsels = self.obsel_collection
+            obsels.metadata.add((obsels.uri, METADATA.dirty, YES))
 
     __method_impl = None
     # do NOT use @cache_result here, as the result may change over time

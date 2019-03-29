@@ -17,7 +17,7 @@ The obsel type, the attributes and the relations are described by a :doc:`trace 
 Obsel total ordering
 ++++++++++++++++++++
 
-When orders of a trace need to be ordered,
+When obsels of a trace need to be ordered,
 kTBS uses a total ordering considering
 
 * their end timestamp, then

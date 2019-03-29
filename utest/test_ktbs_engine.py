@@ -18,11 +18,11 @@
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 
+from pytest import raises as assert_raises
+
 from threading import Thread
 from wsgiref.simple_server import make_server
-import unittest
 
-from nose.tools import assert_equal, assert_raises, eq_, assert_less
 from rdflib import BNode, Graph, Literal, RDF, RDFS, URIRef
 
 from datetime import datetime, timedelta
@@ -54,13 +54,13 @@ class KtbsTestCase(object):
     my_ktbs = None
     service = None
 
-    def setUp(self):
+    def setup(self):
         ktbs_config = get_ktbs_configuration()
         ktbs_config.set('server', 'port', '12345')
         self.service = KtbsService(ktbs_config)
         self.my_ktbs = self.service.get(self.service.root_uri, [KTBS.KtbsRoot])
 
-    def tearDown(self):
+    def teardown(self):
         if self.service is not None:
             unregister_service(self.service)
             self.service = None
@@ -75,8 +75,8 @@ class HttpKtbsTestCaseMixin(object):
 
     httpd = None
 
-    def setUp(self):
-        super(HttpKtbsTestCaseMixin, self).setUp()
+    def setup(self):
+        super(HttpKtbsTestCaseMixin, self).setup()
         ktbs_config = get_ktbs_configuration()
         app = HttpFrontend(self.service, ktbs_config)
         #app = HttpFrontend(self.service, cache_control="max-age=60")
@@ -91,14 +91,14 @@ class HttpKtbsTestCaseMixin(object):
                                                   [KTBS.KtbsRoot])
             assert isinstance(self.my_ktbs, KtbsRootMixin)
         except:
-            self.tearDown()
+            self.teardown()
             raise
 
-    def tearDown(self):
+    def teardown(self):
         if self.httpd:
             self.httpd.shutdown()
             self.httpd = None
-        super(HttpKtbsTestCaseMixin, self).tearDown()
+        super(HttpKtbsTestCaseMixin, self).teardown()
 
 
 class TestKtbs(KtbsTestCase):
@@ -178,7 +178,7 @@ class TestKtbs(KtbsTestCase):
             # content will be trusted, so we get a ValueError from api.ase
             trace2 = base.create_computed_trace(None, KTBS.filter, {},
                                                  [trace1.uri[:-1]])
-        
+
 
     def test_blank_obsels(self):
         base = self.my_ktbs.create_base()
@@ -201,65 +201,65 @@ class TestKtbs(KtbsTestCase):
 
         tags = [obsels.str_mon_tag, obsels.pse_mon_tag, obsels.log_mon_tag]
         o100 = trace.create_obsel("o100", myot, 100)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o100.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o100.uri
         o200 = trace.create_obsel("o200", myot, 200)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o200.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o200.uri
         o150 = trace.create_obsel("o150", myot, 150)
-        eq_(get_change_monotonicity(trace, tags), 2)
-        eq_(last_obsel(trace), o200.uri)
+        assert get_change_monotonicity(trace, tags) == 2
+        assert last_obsel(trace) == o200.uri
         o300 = trace.create_obsel("o300", myot, 300)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o300.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o300.uri
         o350 = trace.create_obsel("o350", myot, 350, relations=[(myrt, o200)])
-        eq_(get_change_monotonicity(trace, tags), 2)
-        eq_(last_obsel(trace), o350.uri)
+        assert get_change_monotonicity(trace, tags) == 2
+        assert last_obsel(trace) == o350.uri
         o375 = trace.create_obsel("o375", myot, 375, relations=[(myrt, o150)])
-        eq_(get_change_monotonicity(trace, tags), 1)
-        eq_(last_obsel(trace), o375.uri)
+        assert get_change_monotonicity(trace, tags) == 1
+        assert last_obsel(trace) == o375.uri
         o400 = trace.create_obsel("o400", myot, 400,
                                   inverse_relations=[(o375, myrt)])
-        eq_(get_change_monotonicity(trace, tags), 2)
-        eq_(last_obsel(trace), o400.uri)
+        assert get_change_monotonicity(trace, tags) == 2
+        assert last_obsel(trace) == o400.uri
         o450 = trace.create_obsel("o450", myot, 450,
                                   inverse_relations=[(o350, myrt)])
-        eq_(get_change_monotonicity(trace, tags), 2)
-        eq_(last_obsel(trace), o450.uri)
+        assert get_change_monotonicity(trace, tags) == 2
+        assert last_obsel(trace) == o450.uri
         o45b = trace.create_obsel("o45b", myot, 450)
-        eq_(get_change_monotonicity(trace, tags), 3)
+        assert get_change_monotonicity(trace, tags) == 3
         with obsels.edit() as editable:
             editable.remove((o45b.uri, None, None))
             editable.remove((None, None, o45b.uri))
-        eq_(get_change_monotonicity(trace, tags), 0)
+        assert get_change_monotonicity(trace, tags) == 0
 
-        eq_(set([obsels.etag]), set(obsels.iter_etags()))
-        eq_(set([obsels.etag]), set(obsels.iter_etags({"maxe": 500})))
-        eq_(set([obsels.etag]), set(obsels.iter_etags({"maxe": 450})))
-        eq_(set([obsels.etag, obsels.str_mon_tag]),
-            set(obsels.iter_etags({"maxe": 400})))
-        eq_(set([obsels.etag, obsels.str_mon_tag, obsels.pse_mon_tag]),
-            set(obsels.iter_etags({"maxe": 300})))
+        assert set([obsels.etag]) == set(obsels.iter_etags())
+        assert set([obsels.etag]) == set(obsels.iter_etags({"maxe": 500}))
+        assert set([obsels.etag]) == set(obsels.iter_etags({"maxe": 450}))
+        assert set([obsels.etag, obsels.str_mon_tag]) == \
+            set(obsels.iter_etags({"maxe": 400}))
+        assert set([obsels.etag, obsels.str_mon_tag, obsels.pse_mon_tag]) == \
+            set(obsels.iter_etags({"maxe": 300}))
 
         # testing monotonicity on durative obsels
         o1k26 = trace.create_obsel("o1k26", myot, 1200, 1600)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o1k26.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o1k26.uri
         o1k56 = trace.create_obsel("o1k56", myot, 1500, 1600)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o1k56.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o1k56.uri
         o1k46 = trace.create_obsel("o1k46", myot, 1400, 1600)
-        eq_(get_change_monotonicity(trace, tags), 2)
-        eq_(last_obsel(trace), o1k56.uri)
+        assert get_change_monotonicity(trace, tags) == 2
+        assert last_obsel(trace) == o1k56.uri
         o1k36 = trace.create_obsel("o1k36", myot, 1300, 1600)
-        eq_(get_change_monotonicity(trace, tags), 1)
-        eq_(last_obsel(trace), o1k56.uri)
+        assert get_change_monotonicity(trace, tags) == 1
+        assert last_obsel(trace) == o1k56.uri
         o1k17 = trace.create_obsel("o1k17", myot, 1100, 1700)
-        eq_(get_change_monotonicity(trace, tags), 3)
-        eq_(last_obsel(trace), o1k17.uri)
+        assert get_change_monotonicity(trace, tags) == 3
+        assert last_obsel(trace) == o1k17.uri
 
         trace.pseudomon_range = 200
-        eq_(get_change_monotonicity(trace, tags), 0)
+        assert get_change_monotonicity(trace, tags) == 0
 
     def test_post_multiple_obsels(self):
         base = self.my_ktbs.create_base()
@@ -302,40 +302,40 @@ class TestKtbs(KtbsTestCase):
         created = trace.post_graph(graph)
         new_tag = trace.obsel_collection.str_mon_tag
 
-        eq_(len(created), 5)
-        eq_(old_tag, new_tag)
+        assert len(created) == 5
+        assert old_tag == new_tag
 
         obs0 = trace.get_obsel(created[0])
-        eq_(obs0.begin, 0)
-        eq_(obs0.end, 0)
-        eq_(obs0.subject, Literal("alice"))
-        eq_(obs0.obsel_type, otype0)
-        
+        assert obs0.begin == 0
+        assert obs0.end == 0
+        assert obs0.subject == Literal("alice")
+        assert obs0.obsel_type == otype0
+
         obs1 = trace.get_obsel(created[1])
-        eq_(obs1.begin, 1)
-        eq_(obs1.end, 1)
-        eq_(obs1.subject, Literal("alice"))
-        eq_(obs1.obsel_type, otype1)
-        eq_(obs1.get_attribute_value(RDF.value), "obs1")
+        assert obs1.begin == 1
+        assert obs1.end == 1
+        assert obs1.subject == Literal("alice")
+        assert obs1.obsel_type == otype1
+        assert obs1.get_attribute_value(RDF.value) == "obs1"
 
         obs2 = trace.get_obsel(created[2])
-        eq_(obs2.begin, 2)
-        eq_(obs2.end, 3)
-        eq_(obs2.subject, Literal("alice"))
-        eq_(obs2.obsel_type, otype2)
-        eq_(obs2.get_attribute_value(RDF.value), "obs2")
+        assert obs2.begin == 2
+        assert obs2.end == 3
+        assert obs2.subject == Literal("alice")
+        assert obs2.obsel_type == otype2
+        assert obs2.get_attribute_value(RDF.value) == "obs2"
 
         obs3 = trace.get_obsel(created[3])
-        eq_(obs3.begin, 3)
-        eq_(obs3.end, 3)
-        eq_(obs3.subject, Literal("bob"))
-        eq_(obs3.obsel_type, otype3)
+        assert obs3.begin == 3
+        assert obs3.end == 3
+        assert obs3.subject == Literal("bob")
+        assert obs3.obsel_type == otype3
 
         obsN = trace.get_obsel(created[4])
         assert obsN.begin > 4 # set to current date, which is *much* higher
-        eq_(obsN.end, obsN.begin)
-        eq_(obsN.subject, Literal("alice"))
-        eq_(obsN.obsel_type, otypeN)
+        assert obsN.end == obsN.begin
+        assert obsN.subject == Literal("alice")
+        assert obsN.obsel_type == otypeN
 
     def test_post_multiple_bnode_obsels_w_relations(self):
         base = self.my_ktbs.create_base()
@@ -363,21 +363,21 @@ class TestKtbs(KtbsTestCase):
 
         created = trace.post_graph(graph)
 
-        eq_(len(created), 3)
+        assert len(created) == 3
 
         obs1 = trace.get_obsel(created[0])
         obs2 = trace.get_obsel(created[1])
         obs3 = trace.get_obsel(created[2])
 
-        eq_(obs1.begin, 1)
-        eq_(obs2.begin, 2)
-        eq_(obs3.begin, 3)
-        eq_(obs1.list_related_obsels(rtype0), [obs2])
-        eq_(obs2.list_related_obsels(rtype0), [obs3])
-        eq_(obs3.list_related_obsels(rtype0), [obs1])
-        eq_(obs1.list_relating_obsels(rtype0), [obs3])
-        eq_(obs2.list_relating_obsels(rtype0), [obs1])
-        eq_(obs3.list_relating_obsels(rtype0), [obs2])
+        assert obs1.begin == 1
+        assert obs2.begin == 2
+        assert obs3.begin == 3
+        assert obs1.list_related_obsels(rtype0) == [obs2]
+        assert obs2.list_related_obsels(rtype0) == [obs3]
+        assert obs3.list_related_obsels(rtype0) == [obs1]
+        assert obs1.list_relating_obsels(rtype0) == [obs3]
+        assert obs2.list_relating_obsels(rtype0) == [obs1]
+        assert obs3.list_relating_obsels(rtype0) == [obs2]
 
     def test_post_no_obsels(self):
         base = self.my_ktbs.create_base()
@@ -395,7 +395,7 @@ class TestKtbs(KtbsTestCase):
         with assert_raises(InvalidDataError):
             created = trace.post_graph(graph)
         new_tag = trace.obsel_collection.str_mon_tag
-        eq_(old_tag, new_tag)
+        assert old_tag == new_tag
 
     def test_post_homonymic_obsels(self):
         """Check that it is impossible to post an obsel with an URI
@@ -434,15 +434,17 @@ class TestKtbs(KtbsTestCase):
         t1.create_obsel("o15", myot, 15)
         t1.create_obsel("o20", myot, 20)
         t1.create_obsel("o25", myot, 25)
-        eq_(len(t1.obsels), 5)
+        assert len(t1.obsels) == 5
         FILTER_LOG.info("getting t3")
-        assert b.factory(b.uri + "t2/", _no_spawn=True) is None
-        assert b.factory(b.uri + "t3/", _no_spawn=True) is None
+        # the following asserts rely on the garbage collector,
+        # so they fail in some situations and depend on the interpreter
+        #assert b.factory(b.uri + "t2/", _no_spawn=True) is None
+        #assert b.factory(b.uri + "t3/", _no_spawn=True) is None
         t3 = b.get("t3/")
-        eq_(len(t3.obsels), 3)
+        assert len(t3.obsels) == 3
         FILTER_LOG.info("getting t2")
         t2 = b.get("t2/")
-        eq_(len(t2.obsels), 4)
+        assert len(t2.obsels) == 4
 
     def test_create_subbase(self):
         base1 = self.my_ktbs.create_base()
@@ -478,7 +480,7 @@ class TestKtbs(KtbsTestCase):
         t = b.create_stored_trace("t/", m, origin="now")
         now = datetime.now(UTC)
         delta = t.get_origin(as_datetime=True) - now
-        assert_less(abs(delta.total_seconds()), epsilon)
+        assert abs(delta.total_seconds()) < epsilon
 
     def test_uri_subject(self):
         bob = URIRef("http://example.org/bob")
@@ -488,9 +490,9 @@ class TestKtbs(KtbsTestCase):
         trace1 = base.create_stored_trace(None, model,
                                          "1970-01-01T00:00:00Z",
                                          bob)
-        eq_(trace1.default_subject, bob)
+        assert trace1.default_subject == bob
         o1 = trace1.create_obsel("o1", otype0, 1)
-        eq_(o1.subject, bob)
+        assert o1.subject == bob
 
         g = Graph()
         o2n = BNode()
@@ -498,8 +500,8 @@ class TestKtbs(KtbsTestCase):
         g.add((o2n, RDF.type, otype0.uri))
         g.add((o2n, KTBS.hasBegin, Literal(2)))
         created = trace1.post_graph(g)
-        eq_(len(created), 1)
-        eq_(trace1.get_obsel(created[0]).subject, bob)
+        assert len(created) == 1
+        assert trace1.get_obsel(created[0]).subject == bob
 
 
 
@@ -509,11 +511,12 @@ class TestObsels(KtbsTestCase):
     service = None
     epoch = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
 
-    def setUp(self):
-        super(TestObsels, self).setUp()
+    def setup(self):
+        super(TestObsels, self).setup()
         self.base = b = self.my_ktbs.create_base("b/")
         self.model = m = b.create_model("m")
         self.ot = m.create_obsel_type("#OT1")
+        self.at = m.create_obsel_type("#at1")
         self.trace = t = b.create_stored_trace("t/", m,
                                                origin="1970-01-01T00:00:00Z")
 
@@ -524,12 +527,12 @@ class TestObsels(KtbsTestCase):
         g.add((obs, KTBS.hasTrace, self.trace.uri))
         uris = self.trace.post_graph(g)
         now = datetime.now(UTC)
-        assert_equal(len(uris), 1)
+        assert len(uris) == 1
         obs = self.trace.get_obsel(uris[0])
         begin_dt = self.epoch + timedelta(milliseconds=obs.begin)
         delta = now - begin_dt
-        assert_less(abs(delta.total_seconds()), epsilon)
-        assert_equal(obs.end,obs.begin)
+        assert abs(delta.total_seconds()) < epsilon
+        assert obs.end == obs.begin
 
     def test_create_no_end(self, epsilon=0.5):
         g = Graph()
@@ -541,8 +544,8 @@ class TestObsels(KtbsTestCase):
         now = datetime.now(UTC)
         assert len(uris) == 1, uris
         obs = self.trace.get_obsel(uris[0])
-        assert_equal(obs.begin, 42)
-        assert_equal(obs.end,obs.begin)
+        assert obs.begin == 42
+        assert obs.end == obs.begin
 
     def test_create_dt_timestamps(self, epsilon=0.5):
         g = Graph()
@@ -555,18 +558,28 @@ class TestObsels(KtbsTestCase):
         now = datetime.now(UTC)
         assert len(uris) == 1, uris
         obs = self.trace.get_obsel(uris[0])
-        assert_equal(obs.begin, 1000)
-        assert_equal(obs.end, 2000)
+        assert obs.begin == 1000
+        assert obs.end == 2000
 
     def test_delete_obsel_collection(self):
         t = self.trace
         ot = self.ot
-        assert_equal(len(t.obsels), 0)
+        assert len(t.obsels) == 0
         t.create_obsel(type=ot)
         t.create_obsel(type=ot)
-        assert_equal(len(t.obsels), 2)
+        assert len(t.obsels) == 2
         t.obsel_collection.delete()
-        assert_equal(len(t.obsels), 0)
+        assert len(t.obsels) == 0
+
+    def test_delete_obsel_collection_is_non_monotonic(self):
+        t = self.trace
+        ot = self.ot
+        log_mon_tag = t.obsel_collection.log_mon_tag
+        t.create_obsel(type=ot)
+        t.create_obsel(type=ot)
+        assert log_mon_tag == t.obsel_collection.log_mon_tag
+        t.obsel_collection.delete()
+        assert log_mon_tag != t.obsel_collection.log_mon_tag
 
     def test_delete_obsel_collection_with_parameters(self):
         # NB: in the future, this might be allowed
@@ -582,6 +595,35 @@ class TestObsels(KtbsTestCase):
         with assert_raises(MethodNotAllowedError):
             t2.obsel_collection.delete()
 
+    def test_delete_obsel(self):
+        t = self.trace
+        ot = self.ot
+        assert len(t.obsels) == 0
+        o1 = t.create_obsel(id="o1", type=ot)
+        o2 = t.create_obsel(id="o2", type=ot)
+        o3 = t.create_obsel(id="o3", type=ot)
+        assert list(t.obsels) == [o1, o2, o3]
+        o2.delete()
+        assert list(t.obsels) == [o1, o3]
+
+    def test_delete_computed_obsel(self):
+        self.trace.create_obsel(id="o1", type=self.ot)
+        t2 = self.base.create_computed_trace(None, KTBS.filter, {}, [self.trace])
+        assert len(t2.obsels) == 1
+        with assert_raises(MethodNotAllowedError):
+            t2.obsels[0].delete()
+
+    def test_delete_obsel_is_non_monotonic(self):
+        ot = self.ot
+        t = self.trace
+        log_mon_tag = t.obsel_collection.log_mon_tag
+        o1 = t.create_obsel(type=ot)
+        o2 = t.create_obsel(type=ot)
+        o3 = t.create_obsel(type=ot)
+        assert log_mon_tag == t.obsel_collection.log_mon_tag
+        o2.delete()
+        assert log_mon_tag != t.obsel_collection.log_mon_tag
+
 
 class TestKtbsSynthetic(KtbsTestCase):
 
@@ -589,33 +631,33 @@ class TestKtbsSynthetic(KtbsTestCase):
         my_ktbs = self.my_ktbs
         with assert_raises(MethodNotAllowedError):
             my_ktbs.delete()
-        assert_equal(len(my_ktbs.builtin_methods), 5)
-        assert_equal(my_ktbs.bases, [])
+        assert len(my_ktbs.builtin_methods) == 9
+        assert my_ktbs.bases == []
         base = my_ktbs.create_base(label="My new base")
         print "--- base:", base
-        assert_equal(base.label, "My new base")
+        assert base.label == "My new base"
         base.label = "My base"
-        assert_equal(base.label, "My base")
-        assert_equal(my_ktbs.bases, [base])
+        assert base.label == "My base"
+        assert my_ktbs.bases == [base]
 
-        assert_equal(base.models, [])
+        assert base.models == []
         model1 = base.create_model(id=None, label="My first trace-model")
         print "--- model1:", model1
-        assert_equal(model1.label, "My first trace-model")
-        assert_equal(base.models, [model1])
-        assert_equal(model1.unit, KTBS.millisecond)
+        assert model1.label == "My first trace-model"
+        assert base.models == [model1]
+        assert model1.unit == KTBS.millisecond
         model1.unit = KTBS.second
-        assert_equal(model1.unit, KTBS.second)
+        assert model1.unit == KTBS.second
         model2 = base.create_model("model2")
-        assert_equal(model2.uri, URIRef(base.uri + "model2"))
-        assert_equal(len(base.models), 2)
+        assert model2.uri == URIRef(base.uri + "model2")
+        assert len(base.models) == 2
 
-        assert_equal(model1.obsel_types, [])
+        assert model1.obsel_types == []
         with assert_raises(InvalidDataError):
             model1.create_obsel_type("OpenChat") # leading '#' is missing
         open_chat = model1.create_obsel_type("#OpenChat")
         print "--- obsel type open_chat:", open_chat
-        assert_equal(model1.obsel_types, [open_chat])
+        assert model1.obsel_types == [open_chat]
         with assert_raises(InvalidDataError):
             model1.create_obsel_type("#OpenChat") # already in use
         with_on_channel = model1.create_obsel_type("#WithOnChannel")
@@ -623,16 +665,16 @@ class TestKtbsSynthetic(KtbsTestCase):
         send_msg = model1.create_obsel_type("#SendMsg", [abstract_msg.uri])
         recv_msg = model1.create_obsel_type("#RecvMsg", ["#AbstractMsg"])
         close_chat = model1.create_obsel_type("#CloseChat", [with_on_channel])
-        assert_equal(len(model1.obsel_types), 6)
+        assert len(model1.obsel_types) == 6
 
 
-        assert_equal(model1.attribute_types, [])
+        assert model1.attribute_types == []
         with assert_raises(InvalidDataError):
             model1.create_attribute_type("channel", [open_chat])
             # leading '#' is missing
         channel = model1.create_attribute_type("#channel", [open_chat])
         print "--- attribute type channel:", channel
-        assert_equal(model1.attribute_types, [channel])
+        assert model1.attribute_types == [channel]
         with assert_raises(InvalidDataError):
             model1.create_attribute_type("#channel", [open_chat]) # already in use
         msg = model1.create_attribute_type("#msg", ["#AbstractMsg"])
@@ -642,17 +684,17 @@ class TestKtbsSynthetic(KtbsTestCase):
         with assert_raises(InvalidDataError):
             send_msg.create_attribute_type("#from")
             # already in use in this *model1* (even if on another obsel type)
-        assert_equal(len(model1.attribute_types), 3)
+        assert len(model1.attribute_types) == 3
 
 
-        assert_equal(model1.relation_types, [])
+        assert model1.relation_types == []
         with assert_raises(InvalidDataError):
             model1.create_relation_type("onChannel", [with_on_channel], ["#OpenChat"])
             # leading '#' is missing
         on_channel = model1.create_relation_type("#onChannel", [with_on_channel],
                                                 ["#OpenChat"])
         print "--- relation type on_channel:", on_channel
-        assert_equal(model1.relation_types, [on_channel])
+        assert model1.relation_types == [on_channel]
         with assert_raises(InvalidDataError):
             model1.create_relation_type("#onChannel", [open_chat], [with_on_channel])
             # already in use in this *model1* (even if on another obsel type)
@@ -665,16 +707,16 @@ class TestKtbsSynthetic(KtbsTestCase):
             open_chat.create_relation_type("#closes", [with_on_channel],
                                            [on_channel])
             # already in use in this *model1* (even if on another obsel type)
-        assert_equal(len(model1.relation_types), 2)
+        assert len(model1.relation_types) == 2
 
 
-        assert_equal(base.methods, [])
+        assert base.methods == []
         method1 = base.create_method("method1", KTBS.external,
                                      {"command-line": cmdline,
                                       "model": "http://example.org/model",
                                       "origin": "1970-01-01T00:00:00Z"})
         print "--- method1:", method1
-        assert_equal(base.methods, [method1])
+        assert base.methods == [method1]
         with assert_raises(InvalidDataError):
             base.create_method("method2", model1) # parent is not a method
         with assert_raises(InvalidDataError):
@@ -690,25 +732,25 @@ class TestKtbsSynthetic(KtbsTestCase):
             ## effect of having the HTTP server in the same process as the
             ## client
             assert method2.parent is method1
-        assert_equal(method2.parent.uri, method1.uri)
-        assert_equal(method1.children, [method2])
-        assert_equal(method2.parameters_as_dict,
-                     {"command-line":cmdline,
-                      "model": "http://example.org/model",
-                      "origin": "1970-01-01T00:00:00Z",
-                      "foo":"FOO"})
-        assert_equal(method2.get_parameter("foo"), "FOO")
-        assert_equal(method2.get_parameter("command-line"), cmdline) # inherited
+        assert method2.parent.uri == method1.uri
+        assert method1.children == [method2]
+        assert method2.parameters_as_dict == \
+            {"command-line":cmdline,
+             "model": "http://example.org/model",
+             "origin": "1970-01-01T00:00:00Z",
+             "foo":"FOO"}
+        assert method2.get_parameter("foo") == "FOO"
+        assert method2.get_parameter("command-line") == cmdline # inherited
         method2.set_parameter("foo", "BAR")
-        assert_equal(method2.get_parameter("foo"), "BAR")
+        assert method2.get_parameter("foo") == "BAR"
         method2.set_parameter("command-line", "456789") # can override inherited
         method2.set_parameter("command-line", None) # can remove override
-        assert_equal(len(base.methods), 2)
-        assert_equal(method1.used_by, [])
-        assert_equal(method2.used_by, [])
+        assert len(base.methods) == 2
+        assert method1.used_by == []
+        assert method2.used_by == []
 
 
-        assert_equal(base.traces, [])
+        assert base.traces == []
         with assert_raises(InvalidDataError):
             trace1 = base.create_stored_trace("trace1", model2)
             # URI must end with '/'
@@ -720,49 +762,49 @@ class TestKtbsSynthetic(KtbsTestCase):
             trace1 = base.create_stored_trace(trace1.uri, model2)
             # trace already exists
         print "--- trace1:", trace1
-        assert_equal(base.traces, [trace1])
+        assert base.traces == [trace1]
         if not isinstance(trace1, HttpClientCore):
             ## see similar exception above
             assert trace1.model is model2
-        assert_equal(trace1.model_uri, model2.uri)
+        assert trace1.model_uri == model2.uri
         trace1.model = str(model1.uri)
         if not isinstance(trace1, HttpClientCore):
             ## see similar exception above
             assert trace1.model is model1
-        assert_equal(trace1.model_uri, model1.uri)
+        assert trace1.model_uri == model1.uri
         if isinstance(trace1, LocalCore):
             ## only the local implementation of AbstractTrace has a unit prop
-            assert_equal(trace1.unit, model1.unit)
-        assert_equal(lit2datetime(trace1.origin), None)
+            assert trace1.unit == model1.unit
+        assert lit2datetime(trace1.origin) == None
         trace1.origin = origin = datetime.now(UTC)
         assert (timedelta(microseconds=-1)
                 <= (lit2datetime(trace1.origin) - origin)
                 <= timedelta(microseconds=1))
         # above, we do not test for equality, because *sometimes* there is a
         # difference of 1µs (rounding error?)
-        assert_equal(trace1.default_subject, None)
+        assert trace1.default_subject == None
         trace1.default_subject = URIRef("http://example.org/alice")
-        assert_equal(trace1.default_subject, URIRef("http://example.org/alice"))
+        assert trace1.default_subject == URIRef("http://example.org/alice")
         trace1.default_subject = "alice"
-        assert_equal(trace1.default_subject, Literal("alice"))
+        assert trace1.default_subject == Literal("alice")
 
-        assert_equal(trace1.obsels, [])
+        assert trace1.obsels == []
         trace1.origin = datetime.now(UTC)
         with assert_raises(ValueError):
             obs1 = trace1.create_obsel(None)
             # obsel must have an obsel type
         obs1 = trace1.create_obsel(None, open_chat.uri)
         print "--- obs1:", obs1
-        assert_equal(trace1.obsels, [obs1])
-        assert_equal(obs1.obsel_type, open_chat)
+        assert trace1.obsels == [obs1]
+        assert obs1.obsel_type == open_chat
         assert obs1.begin <= 2, obs1.begin # approximating the delay to 2s max
-        assert_equal(obs1.begin, obs1.end)
-        assert_equal(obs1.subject, trace1.default_subject)
+        assert obs1.begin == obs1.end
+        assert obs1.subject == trace1.default_subject
         obs2 = trace1.create_obsel(None, open_chat, obs1.end+1, obs1.end+2,
                                    "alice", { msg.uri: "hello world" },
                                    [ (on_channel, obs1) ], [], [obs1], "obs #2")
 
-        assert_equal(len(base.traces), 1)
+        assert len(base.traces) == 1
         with assert_raises(InvalidDataError):
             ctr = base.create_computed_trace("ctr", method1)
             # URI must end with '/'
@@ -774,37 +816,38 @@ class TestKtbsSynthetic(KtbsTestCase):
             ctr = base.create_computed_trace(ctr.uri, method1)
             # trace already exists
         print "--- ctr:", ctr
-        assert_equal(len(base.traces), 2)
+        assert len(base.traces) == 2
         if not isinstance(ctr, HttpClientCore):
             ## see similar exception above
             assert ctr.method is method1
-        assert_equal(ctr.method.uri, method1.uri)
+        assert ctr.method.uri == method1.uri
         ctr.method = str(method2.uri)
-        assert_equal(method2.used_by, [ctr])
-        assert_equal({"command-line":cmdline,
-                      "model": "http://example.org/model",
-                      "origin": "1970-01-01T00:00:00Z",
-                      "foo":"BAR"},
-                     method2.parameters_as_dict) # inherited
+        assert method2.used_by == [ctr]
+        assert method2.parameters_as_dict == \
+            {"command-line":cmdline, 
+             "model": "http://example.org/model",
+             "origin": "1970-01-01T00:00:00Z",
+             "foo":"BAR"}
+            # inherited
         ctr.set_parameter("baz", "BAZ")
-        assert_equal({"command-line":cmdline,
-                      "model": "http://example.org/model",
-                      "origin": "1970-01-01T00:00:00Z",
-                      "foo":"BAR",
-                      "baz": "BAZ"},
-                     ctr.parameters_as_dict)
-        assert_equal(ctr.get_parameter("baz"), "BAZ")
-        assert_equal(ctr.get_parameter("foo"), "BAR") # inherited
-        assert_equal(ctr.get_parameter("command-line"), cmdline) # doubly inher.
-        assert_equal(ctr.source_traces, [])
+        assert ctr.parameters_as_dict == \
+            {"command-line":cmdline,
+             "model": "http://example.org/model",
+             "origin": "1970-01-01T00:00:00Z",
+             "foo":"BAR",
+             "baz": "BAZ"}
+        assert ctr.get_parameter("baz") == "BAZ"
+        assert ctr.get_parameter("foo") == "BAR" # inherited
+        assert ctr.get_parameter("command-line") == cmdline # doubly inher.
+        assert ctr.source_traces == []
         print "---", "adding source"
         ctr.add_source_trace(trace1.uri)
-        assert_equal(ctr.source_traces, [trace1])
-        assert_equal(trace1.transformed_traces, [ctr])
+        assert ctr.source_traces == [trace1]
+        assert trace1.transformed_traces == [ctr]
         print "---", "removing source"
         ctr.del_source_trace(trace1.uri)
-        assert_equal(ctr.source_traces, [])
-        assert_equal(trace1.transformed_traces, [])
+        assert ctr.source_traces == []
+        assert trace1.transformed_traces == []
         ctr.add_source_trace(trace1.uri)
         # TODO SOON tests with model and origin
 
@@ -821,16 +864,16 @@ class TestKtbsSynthetic(KtbsTestCase):
         #    method1.remove() # used by method2
         ctr.remove()
         trace1.remove()
-        assert_equal(base.traces, [])
+        assert base.traces == []
         model2.remove()
         model1.remove()
-        assert_equal(base.models, [])
+        assert base.models == []
         method2.remove()
         method1.remove()
-        assert_equal(base.methods, [])
+        assert base.methods == []
         base.remove()
         my_ktbs.force_state_refresh()
-        assert_equal(my_ktbs.bases, [])
+        assert my_ktbs.bases == []
 
         #print "--- OK"; assert 0 # force the prints to appear
 
@@ -862,7 +905,7 @@ def get_change_monotonicity(trace, prevtags):
         ret = 0
     prevtags[:] = [obsels.str_mon_tag, obsels.pse_mon_tag, obsels.log_mon_tag]
     return ret
-        
+
 def last_obsel(trace):
     obsels = trace.obsel_collection
     values = list(obsels.metadata.objects(obsels.uri, METADATA.last_obsel))
@@ -874,20 +917,17 @@ def last_obsel(trace):
     else:
         return None
 
-class TestMakeKtbs(unittest.TestCase):
+class TestMakeKtbs(object):
 
     my_ktbs = None
     service = None
 
-    def setUp(self):
+    def setup(self):
         self.my_ktbs = make_ktbs()
 
-    def tearDown(self):
+    def teardown(self):
         if self.my_ktbs is not None:
             unregister_service(self.my_ktbs.service)
 
     def test_ktbs_default_scheme(self):
         assert self.my_ktbs.uri.startswith('ktbs:')
-
-
-

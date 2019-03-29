@@ -20,6 +20,7 @@ I implement a WSGI-based HTTP server
 wrapping a given :class:`.cores.local.Service`.
 """
 from bisect import insort
+from contextlib import closing
 from time import time
 
 from pyparsing import ParseException
@@ -62,13 +63,13 @@ class HttpFrontend(object):
     For parsing and serializing payloads to and from RDF graphs, HttpFrontend
     relies on the functions registered in `.cores.local.parsers`:mod: and
     `.cores.local.serializers`:mod:.
-    
+
     In the future, WsgiFrontent may also include on-the-fly translation of
     contents, for changing internal URIs into URIs served by the
     HttpFrontend.
 
     .. warning::
-    
+
         RDF-REST is meant to differenciate an empty query-string from no
         query-string at all. However, WSGI does not allow such a
         distinction. This implementation therefore assumes that an empty
@@ -87,10 +88,7 @@ class HttpFrontend(object):
 
         Additionally, the following configuration options are recognized:
 
-        - cache_control: either a string to be used as the cache-control
-          header field, or a callable accepting a resource and returning
-          either None or the value of the cache-control header field.
-          Defaults to :func:`cache_half_last_modified`.
+        - cache_control: a string to be used as the cache-control header field,
         - cors_allow_origin: if provided, cross-domain requests will be
           allowed from the given domains, by implementing
           http://www.w3.org/TR/cors/ .
@@ -105,10 +103,16 @@ class HttpFrontend(object):
         self._middleware_stack_version = None
         self._middleware_stack = None
 
-        cache_control = cache_half_last_modified
-        if service_config.getboolean('server', 'no-cache'):
-            cache_control = (lambda x: None)
-        self.cache_control = cache_control
+        self.cache_control = 'max-age=1'
+        if service.config.has_option('server', 'cache-control'):
+            self.cache_control = service.config.get('server', 'cache-control')
+            if service.config.has_option('server', 'no-cache'):
+                LOG.error("Deprecated option no-cache is ignored, "
+                          "as it is overridden by cache-control")
+        elif service.config.has_option('server', 'no-cache'):
+            LOG.error("Option no-cache is deprecated, use cache-control instead")
+            if service.config.getboolean('server', 'no-cache'):
+                self.cache_control = ''
 
         if service_config.getint('server', 'max-bytes') >= 0:
             self.max_bytes = service_config.getint('server', 'max-bytes')
@@ -120,10 +124,24 @@ class HttpFrontend(object):
         else:
             self.max_triples = None
 
+        self.reset_connection = \
+            service_config.getboolean('server', 'reset-connection')
+
+        self.send_traceback = \
+            service_config.getboolean('server', 'send-traceback')
+
         # HttpFrondend does not receive a dictionary any more
         # Other options should be explicitely set
         #self._options = options or {}
         self._options = {}
+
+        if self.reset_connection:
+            try:
+                self._service.store.close()
+            except:
+                LOG.warning("Ignoring exception when closing store", exc_info=1)
+                # seems to happen for no good reason with Virtuoso
+
 
     def __call__(self, environ, start_response):
         """Honnor the WSGI protocol.
@@ -132,20 +150,28 @@ class HttpFrontend(object):
         maintained consistent with
         :meth:`.cores.http_client.HttpClientCore._http_to_exception`.
         """
-        request = Request(environ)
-        requested_uri, requested_extension = extsplit(request.path_url)
-        requested_uri = URIRef(requested_uri)
-        resource = self._service.get(requested_uri)
-        environ['rdfrest.requested.uri'] = requested_uri
-        environ['rdfrest.requested.extension'] = requested_extension
-        environ['rdfrest.resource'] = resource
-        environ['rdfrest.parameters'] = dict(request.GET.mixed())
+        if self.reset_connection:
+            self._service.store.open(self._service.store_config_str)
+        try:
+            request = Request(environ)
+            requested_path, requested_extension = extsplit(request.path_info)
+            requested_uri = URIRef("%s%s" % (
+                self._service.root_uri[:-1], requested_path))
+            resource = self._service.get(requested_uri)
+            environ['rdfrest.requested.uri'] = requested_uri
+            environ['rdfrest.requested.extension'] = requested_extension
+            environ['rdfrest.resource'] = resource
+            environ['rdfrest.parameters'] = dict(request.GET.mixed())
+            environ['rdfrest.send-traceback'] = self.send_traceback
 
-        if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
-            self._middleware_stack = build_middleware_stack(self._core_call)
-            self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
+            if self._middleware_stack_version != _MIDDLEWARE_STACK_VERSION:
+                self._middleware_stack = build_middleware_stack(self._core_call)
+                self._middleware_stack_version = _MIDDLEWARE_STACK_VERSION
 
-        return self._middleware_stack(environ, start_response)
+            return self._middleware_stack(environ, start_response)
+        finally:
+            if self.reset_connection:
+                self._service.store.close()
 
 
     def _core_call(self, environ, start_response):
@@ -162,31 +188,23 @@ class HttpFrontend(object):
         if resource is None:
             resp = self.issue_error(404, request, None)
             return resp(environ, start_response)
-        if resource.uri != resource_uri:
-            resp = self.issue_error(303, request, None,
-                                    location=str(resource.uri))
-            return resp(environ, start_response)
         method = getattr(self, "http_%s" % request.method.lower(), None)
         if method is None:
             resp = self.issue_error(405, request, resource,
                                     allow="HEAD, GET, PUT, POST, DELETE, OPTIONS")
             return resp(environ, start_response)
-        
-        with self._service:
-            resource.force_state_refresh()
-            pre_process_request(self._service, request, resource)
-            response = method(request, resource)
-            # NB: even for a GET, we embed method in a "transaction"
-            # because it may nonetheless make some changes (e.g. in
-            # the #metadata graphs)
+
+        pre_process_request(self._service, request, resource)
+        response = method(request, resource)
         return response(environ, start_response)
-            
+
     def http_delete(self, request, resource):
         """Process a DELETE request on the given resource.
         """
         # method could be a function #pylint: disable=R0201
         # TODO LATER how can we transmit context (authorization? anything else?)
-        resource.delete(request.environ['rdfrest.parameters'] or None)
+        with self._service:
+            resource.delete(request.environ['rdfrest.parameters'] or None)
         return MyResponse(status="204 Resource deleted", request=request)
 
     def http_get(self, request, resource):
@@ -205,7 +223,7 @@ class HttpFrontend(object):
         else:
             headerlist.append(("vary", "accept"))
             serializer = None
-            ctype = request.accept.best_match( 
+            ctype = request.accept.best_match(
                 ser[1] for ser in iter_serializers(rdf_type) )
             if ctype is None:
                 # 406 Not Acceptable
@@ -222,6 +240,14 @@ class HttpFrontend(object):
             # else we can be certain that the serializer exists, so:
             serializer, ext = get_serializer_by_content_type(ctype, rdf_type)
 
+        # get graph and redirect if needed
+        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
+        graph = resource.get_state(params or None)
+        redirect = getattr(graph, "redirected_to", None)
+        if redirect is not None:
+            return self.issue_error(303, request, None,
+                                    location=redirect)
+
         # populate response header according to serializer
         if ctype[:5] == "text/":
             headerlist.append(("content-type", ctype+";charset=utf-8"))
@@ -230,27 +256,32 @@ class HttpFrontend(object):
         if ext is not None:
             headerlist.append(("content-location",
                                str("%s.%s" % (resource.uri, ext))))
-        iter_etags = getattr(resource, "iter_etags", None)
-        if iter_etags is not None:
-            etags = " ".join( 'W/"%s"' % taint_etag(i, ctype)
-                              for i in iter_etags(params or None) )
-            headerlist.append(("etag", etags))
+
+        # also insert etags, if available
+        etag_list = getattr(graph, "etags", None)
+        if etag_list is None:
+            iter_etags = getattr(resource, "iter_etags", None)
+            if iter_etags is not None:
+                etag_list = list(iter_etags(params or None))
+        if etag_list:
+            etag_list = [ 'W/"%s"' % taint_etag(i, ctype)
+                          for i in etag_list ]
+            headerlist.append(("etag", etag_list[-1]))
+            headerlist.append(("x-etags", " ".join(etag_list)))
+
+        # also insert last-modified, if available
         last_modified = getattr(resource, "last_modified", None)
         if last_modified is not None:
             last_modified = datetime.fromtimestamp(last_modified, UTC)
             headerlist.append(("last-modified", last_modified.strftime('%a, %d %b %Y %H:%M:%S GMT')))
 
-        # get graph and redirect if needed
-        cache_bypass = params.pop("_", None) # dummy param used by JQuery to invalidate cache
-        graph = resource.get_state(params or None)
-        redirect = getattr(graph, "redirect_to", None)
-        if redirect is not None:
-            return self.issue_error(303, request, None,
-                                    location=redirect)
-        # also insert navigation links if available
-        next_link = getattr(graph, "next_link", None)
-        if next_link is not None:
-            headerlist.append(("link", '<%s>;rel="next"' % next_link.encode("utf8")))
+        # also insert links (navigation and other) if available
+        links = getattr(graph, "links", ())
+        for link in links:
+            uri = link.pop('uri')
+            link_props = ';'.join( '%s="%s"' % item for item in link.items() )
+            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf8')
+            headerlist.append(("link", link_val))
 
         # check triples & bytes limitations and serialize
         if self.max_triples is not None  and  len(graph) > self.max_triples:
@@ -272,12 +303,11 @@ class HttpFrontend(object):
         if cache_bypass:
             response.cache_control = "no-cache"
         else:
-            cache_control = self.cache_control(resource)
-            if cache_control:
-                response.cache_control = cache_control
+            if self.cache_control:
+                response.cache_control = self.cache_control
 
         return response
-            
+
 
     def http_head(self, request, resource):
         """Process a HEAD request on the given resource.
@@ -289,7 +319,7 @@ class HttpFrontend(object):
     def http_options(self, request, resource):
         """Process an OPTIONS request on the given resource.
         """
-        # 
+        #
         headerlist = [
             ("allow", "GET, HEAD, PUT, POST, DELETE"),
             ]
@@ -317,7 +347,8 @@ class HttpFrontend(object):
                                         "max_triples (%s) was exceeded"
                                         % self.max_triples)
         params = request.environ['rdfrest.parameters']
-        results = resource.post_graph(graph, params or None)
+        with self._service:
+            results = resource.post_graph(graph, params or None)
         if not results:
             return MyResponse(status=205, request=request) # Reset
         else:
@@ -368,9 +399,13 @@ class HttpFrontend(object):
                     if taint_etag(i, ctype) in request.if_match:
                         break
                 else: # no matching etag found in 'for' loop
-                    return self.issue_error(412, request, resource)
+                    for i in etag_variants(iter_etags(params or None)):
+                        if taint_etag(i, ctype) in request.if_match:
+                            break
+                    else:
+                        return self.issue_error(412, request, resource)
             parser, _ = get_parser_by_content_type(ctype)
-    
+
         # parse and check bytes/triples limitations
         if parser is None:
             return self.issue_error(415, request, resource)
@@ -394,7 +429,7 @@ class HttpFrontend(object):
             return self.issue_error(413, request, resource,
                                     "max_triples (%s) was exceeded"
                                     % self.max_triples)
-            
+
         return self.http_get(request, resource)
 
     def issue_error(self, status, request, resource, message=None, **kw):
@@ -414,14 +449,14 @@ class HttpFrontend(object):
         """
         # this method is intended to be overridden, so the following pylint
         # errors are not relevant:
-        # * method could be a function #pylint: disable=R0201 
+        # * method could be a function #pylint: disable=R0201
         # * unsued argument            #pylint: disable=W0613
 
         status = "%s %s" % (status, status_reasons[status])
         body = status
         if message is not None:
             body = "%s\n%s" % (body, message)
-        
+
         LOG.debug("HttpFrontend.issue_error - %s\n%s\n%s\n", status, body, "\n".join(traceback.format_stack()))
 
         body = """%s
@@ -447,30 +482,18 @@ def taint_etag(etag, ctype):
     return "%s/%s" % (ctype, etag)
     # TODO LATER make a more opaque (unreversible?) tainting operation?
 
+def etag_variants(etags):
+    """Some Web server modify etags when they alter the entity.
+    This tries function iterates over variants of the given etags,
+    to try and match them against a given query.
+    """
+    for etag in etags:
+        yield "%s-gzip" % etag # Apache with gzip encoding
+
 class _TooManyTriples(Exception):
     """This exception class is used to abort edit context during PUT.
     """
     pass
-
-################################################################
-#
-# Cache-control functions
-#
-
-def cache_half_last_modified(resource):
-    """I use last-modified to provide cache-control directive.
-
-    If resource has a last_modified property (assumed to return a number of
-    seconds since EPOCH), I allow to cache resource for half the time since
-    it was last modified.
-
-    Else, I return None.
-    """
-    last_mod = getattr(resource, "last_modified", None)
-    if last_mod is not None:
-        return "max-age=%s" % (int(time() - last_mod) / 2)
-    else:
-        return None
 
 ###############################################################
 #
@@ -552,7 +575,7 @@ class ErrorHandlerMiddleware(object):
     def __call__(self, environ, start_response):
         try:
             return self.app(environ, start_response)
-        
+
         except HttpException, ex:
             response = ex.get_response(MyRequest(environ))
         except CanNotProceedError, ex:
@@ -595,19 +618,25 @@ class ErrorHandlerMiddleware(object):
                                   request=MyRequest(environ))
         except SerializeError, ex:
             status = "550 Serialize Error"
-            response = MyResponse("%s\n%s" % (status, ex.message),
+            message = ex.message
+            if environ.get('rdfrest.send-traceback'):
+                message = "%s\n%s" % (message, traceback.format_exc())
+            response = MyResponse("%s\n%s" % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except RdfRestException, ex:
+        except Exception, ex:
             status = "500 Internal Error"
-            response = MyResponse("%s - Other RDF-REST exception\n%s"
-                                  % (status, ex.message),
+            message = ex.message
+            if environ.get('rdfrest.send-traceback'):
+                message = "%s\n%s" % (message, traceback.format_exc())
+            response = MyResponse("%s - Unexpected exception\n%s"
+                                  % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
 
         return response(environ, start_response)
 
-register_middleware(TOP, ErrorHandlerMiddleware)
+register_middleware(ERROR_HANDLING, ErrorHandlerMiddleware)
 
 class HttpException(Exception):
     def __init__(self, message, status, **headers):

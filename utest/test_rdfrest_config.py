@@ -21,97 +21,156 @@
 """
 Nose unit-testing for the RDF-REST configuration part.
 """
+import logging
 
-from unittest import TestCase
-
-from nose.tools import eq_
-
-from rdfrest.util.config import get_service_configuration
+from rdfrest.util.config import get_service_configuration, make_log_config_dict
 
 
-class TestServiceConfigDefaults(TestCase):
+class TestServiceConfigDefaults(object):
     """
     Test RDF-REST Service creation with default values.
     """
 
-    def setUp(self):
+    def setup(self):
         self.service_config = get_service_configuration()
 
-    def tearDown(self):
+    def teardown(self):
         del self.service_config
 
     def test_server_section(self):
-        eq_(self.service_config.has_section('server'), True)
+        assert self.service_config.has_section('server') == True
 
     def test_server_hostname(self):
         """
         Do we have to check lower/upper/mixed-case or make the test accept any
         of them ?
         """
-        eq_(self.service_config.get('server', 'host-name', 1), 'localhost')
+        assert self.service_config.get('server', 'host-name', 1) == 'localhost'
 
     def test_server_hostport(self):
-        eq_(self.service_config.getint('server', 'port'), 8001)
+        assert self.service_config.getint('server', 'port') == 8001
 
     def test_server_basepath(self):
-        eq_(self.service_config.get('server', 'base-path', 1), '')
+        assert self.service_config.get('server', 'base-path', 1) == ''
 
     def test_server_ipv4(self):
-        eq_(self.service_config.getboolean('server', 'force-ipv4'), False)
+        assert self.service_config.getboolean('server', 'force-ipv4') == False
 
     def test_server_maxbytes(self):
-        eq_(self.service_config.getint('server', 'max-bytes'), -1)
-
-    def test_server_nocache(self):
-        eq_(self.service_config.getboolean('server', 'no-cache'), False)
+        assert self.service_config.getint('server', 'max-bytes') == -1
 
     def test_server_flashallow(self):
-        eq_(self.service_config.getboolean('server', 'flash-allow'), False)
+        assert self.service_config.getboolean('server', 'flash-allow') == False
 
     def test_server_maxtriples(self):
-        eq_(self.service_config.getint('server', 'max-triples'), -1)
+        assert self.service_config.getint('server', 'max-triples') == -1
 
     def test_server_corsalloworigin(self):
-        eq_(self.service_config.get('server', 'cors-allow-origin', 1), '')
+        assert self.service_config.get('server', 'cors-allow-origin', 1) == ''
 
-    def test_server_resourcecache(self):
-        eq_(self.service_config.getboolean('server', 'resource-cache'), False)
+    def test_server_resetconnection(self):
+        assert self.service_config.getboolean('server', 'reset-connection') == False
+
+    def test_server_sendtraceback(self):
+        assert self.service_config.getboolean('server', 'send-traceback') == False
 
     def test_ns_prefix_section(self):
-        eq_(self.service_config.has_section('ns_prefix'), True)
+        assert self.service_config.has_section('ns_prefix') == True
 
     def test_plugins_section(self):
         """
         TODO This section should be empty
         """
-        eq_(self.service_config.has_section('plugins'), True)
+        assert self.service_config.has_section('plugins') == True
 
     def test_rdf_database_section(self):
-        eq_(self.service_config.has_section('rdf_database'), True)
+        assert self.service_config.has_section('rdf_database') == True
 
     def test_rdf_database_repository(self):
-        eq_(self.service_config.get('rdf_database', 'repository', 1), '')
+        assert self.service_config.get('rdf_database', 'repository', 1) == ''
 
     def test_rdf_database_forceinit(self):
-        eq_(self.service_config.getboolean('rdf_database', 'force-init'), False)
+        assert self.service_config.getboolean('rdf_database', 'force-init') == False
 
     def test_logging_section(self):
-        eq_(self.service_config.has_section('logging'), True)
+        assert self.service_config.has_section('logging')
+        log_cfg = make_log_config_dict(self.service_config)
+        assert log_cfg.get('version', 1)
+        assert 'loggers' in log_cfg
+        assert 'handlers' in log_cfg
+        assert 'console' in log_cfg['handlers']
+        assert 'filelog' not in log_cfg['handlers']
+        assert 'ktbslog' not in log_cfg['handlers']
+        assert 'formatters' in log_cfg
+        assert 'simple' in log_cfg['formatters']
 
     def test_logging_loggers(self):
-        eq_(self.service_config.get('logging', 'loggers', 1), '')
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'root' in log_cfg
+        assert 'ktbs' in log_cfg['loggers']
+        assert 'rdfrest' in log_cfg['loggers']
 
-    def test_logging_consolelevel(self):
-        eq_(self.service_config.get('logging', 'console-level', 1), 'INFO')
+    def test_logging_console_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['console']['level'] == logging.DEBUG
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG
 
-    def test_logging_filename(self):
-        eq_(self.service_config.get('logging', 'filename', 1), '')
+    def test_logging_console_format(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'console-format', 'foo')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'console' in log_cfg['formatters']
+        assert log_cfg['formatters']['console']['format'] == 'foo'
+        assert log_cfg['handlers']['console']['formatter'] == 'console'
 
-    def test_logging_filelevel(self):
-        eq_(self.service_config.get('logging', 'file-level', 1), 'INFO')
+    def test_logging_file(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'filename', '/tmp/test.log')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'filelog' in log_cfg['handlers']
+        assert log_cfg['handlers']['filelog']['class'] == 'logging.FileHandler'
+        assert log_cfg['handlers']['filelog']['filename'] == '/tmp/test.log'
 
-    def test_logging_jsonconfigurationfilename(self):
-        """
-        Future implementation.
-        """
-        eq_(self.service_config.get('logging', 'json-configuration-filename', 1), 'logging.json')
+    def test_logging_file_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'WARNING')
+        cfg.set('logging', 'filename', '/tmp/test.log')
+        cfg.set('logging', 'file-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['filelog']['level'] == logging.DEBUG
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG
+
+    def test_logging_ktbs(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'ktbs-logurl', 'http://localhost:8001/logs/log/')
+        log_cfg = make_log_config_dict(cfg)
+        assert 'ktbslog' in log_cfg['handlers']
+        assert log_cfg['handlers']['ktbslog']['class'] == 'rdfrest.util.ktbsloghandler.kTBSHandler'
+        assert log_cfg['handlers']['ktbslog']['url'] == 'http://localhost:8001/logs/log/'
+
+    def test_logging_ktbs_level(self):
+        cfg = get_service_configuration()
+        cfg.set('logging', 'loggers', 'root ktbs rdfrest')
+        cfg.set('logging', 'console-level', 'WARNING')
+        cfg.set('logging', 'ktbs-logurl', 'http://localhost:8001/logs/log/')
+        cfg.set('logging', 'ktbs-level', 'DEBUG')
+        log_cfg = make_log_config_dict(cfg)
+        assert log_cfg['handlers']['ktbslog']['level'] == logging.DEBUG
+        # also check that the added loggers "inherit" that level
+        assert log_cfg['root']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['ktbs']['level'] == logging.DEBUG
+        assert log_cfg['loggers']['rdfrest']['level'] == logging.DEBUG

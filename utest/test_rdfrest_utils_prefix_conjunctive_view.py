@@ -17,9 +17,11 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
+from pytest import mark, raises as assert_raises
+
 from rdfrest.util.prefix_conjunctive_view import PrefixConjunctiveView
 
-from nose.tools import assert_list_equal, assert_set_equal, assert_raises, eq_
+import os
 from rdflib import BNode, Graph, Namespace
 from unittest import skip
 
@@ -30,7 +32,7 @@ class TestDefaultStore(object):
     def get_store(self):
         return Graph().store
 
-    def setUp(self):
+    def setup(self):
         self.s = self.get_store()
         self.g1 = Graph(self.s, EX['g1/'])
         self.g2 = Graph(self.s, EX['g1/g2'])
@@ -46,7 +48,7 @@ class TestDefaultStore(object):
         self.p12 = PrefixConjunctiveView(EX['g1/'], self.s, BNode('p12'))
         self.pab = PrefixConjunctiveView(EX['pab/'], self.s, BNode('pab'))
 
-    def tearDown(self):
+    def teardown(self):
         self.g1.remove((None, None, None))
         self.g2.remove((None, None, None))
         self.ga.remove((None, None, None))
@@ -54,13 +56,7 @@ class TestDefaultStore(object):
 
 
 
-    def _do_test_contexts(self, datasetname, triple, expected):
-        dataset = getattr(self, datasetname)
-        assert_set_equal(set( g.identifier for g in dataset.contexts(triple) ),
-                         expected)
-
-    def test_contexts(self):
-        for dsn, tri, exp in [
+    @mark.parametrize("datasetname, triple, expected", [
                 ('p12', None, {EX['g1/'], EX['g1/g2']}),
                 ('pab', None, {EX['pab/ga'], EX['pab/gb']}),
 
@@ -73,28 +69,21 @@ class TestDefaultStore(object):
                 ('pab', (EX.x2, EX.p, EX.x3), set()),
                 ('pab', (EX.xa, EX.p, EX.xb), {EX['pab/ga']}),
                 ('pab', (EX.xb, EX.p, EX.xc), {EX['pab/gb']}),
-        ]:
-            yield self._do_test_contexts, dsn, tri, exp
-
-
-    def _do_test_len(self, datasetname, length):
+    ])
+    def test_contexts(self, datasetname, triple, expected):
         dataset = getattr(self, datasetname)
-        eq_(len(dataset), length)
+        assert set( g.identifier for g in dataset.contexts(triple) ) == \
+               expected
 
-    def test_len(self):
-        for dsn, length in [
+    @mark.parametrize("datasetname, length", [
                 ('p12', 3),
                 ('pab', 2),
-        ]:
-            yield self._do_test_len, dsn, length
-
-
-    def _do_test_contains(self, datasetname, triple_or_quad, expected):
+    ])
+    def test_len(self, datasetname, length):
         dataset = getattr(self, datasetname)
-        assert (triple_or_quad in dataset) == expected, triple_or_quad
+        assert len(dataset) == length
 
-    def test_contains(self):
-        for dsn, toq, exp in [
+    @mark.parametrize("datasetname, triple_or_quad, expected", [
                 ('p12', (EX.x1, EX.p, EX.x2), True),
                 ('p12', (EX.x2, EX.p, EX.x3), True),
                 ('p12', (EX.x3, EX.p, EX.x4), True),
@@ -132,16 +121,12 @@ class TestDefaultStore(object):
                 ('pab', (EX.xb, EX.p, EX.xc, EX['pab/ga']), False),
                 ('pab', (EX.xb, EX.p, EX.xc, EX['pab/gb']), True),
                 ('pab', (EX.xb, EX.p, EX.xc, EX['g1/']), False),
-        ]:
-            yield self._do_test_contains, dsn, toq, exp
-
-
-    def _do_test_triples(self, datasetname, triple_or_quad, expected):
+    ])
+    def test_contains(self, datasetname, triple_or_quad, expected):
         dataset = getattr(self, datasetname)
-        assert_set_equal(set(dataset.triples(triple_or_quad)), set(expected))
+        assert (triple_or_quad in dataset) == expected, triple_or_quad
 
-    def test_triples(self):
-        for dsn, toq, exp in [
+    @mark.parametrize("datasetname, triple_or_quad, expected", [
                 ('p12', (EX.x1, EX.p, EX.x2), {(EX.x1, EX.p, EX.x2)}),
                 ('p12', (EX.x2, EX.p, EX.x3), {(EX.x2, EX.p, EX.x3)}),
                 ('p12', (EX.x3, EX.p, EX.x4), {(EX.x3, EX.p, EX.x4)}),
@@ -238,37 +223,35 @@ class TestDefaultStore(object):
                     (EX.xb, EX.p, EX.xc),
                 }),
                 ('pab', (None, None, None, EX['g1/']), set()),
-        ]:
-            yield self._do_test_triples, dsn, toq, exp
-
-    def test_triples_with_path(self):
-        pp = EX.p/EX.p
-
-        for dsn, toq, exp in [
-                ('p12', (None, pp, None), {(EX.x1, pp, EX.x3),
-                                           (EX.x2, pp, EX.x4),
-                }),
-                ('pab', (None, pp, None), {(EX.xa, pp, EX.xc),
-                }),
-
-                ('p12', (None, pp, None, EX['g1/']), set()),
-                ('p12', (None, pp, None, EX['g1/g2']), {(EX.x2, pp, EX.x4)}),
-                ('p12', (None, pp, None, EX['pab/ga']), set()),
-
-                ('pab', (None, pp, None, EX['pab/ga']), set()),
-                ('pab', (None, pp, None, EX['pab/gb']), set()),
-                ('pab', (None, pp, None, EX['g1/g2']), set()),
-        ]:
-            yield self._do_test_triples, dsn, toq, exp
-
-    def _do_test_triples_choices(self, datasetname, triple, contextname, expected):
+    ])
+    def test_triples(self, datasetname, triple_or_quad, expected):
         dataset = getattr(self, datasetname)
-        context = contextname and getattr(self, contextname) or None
-        assert_set_equal(set(dataset.triples_choices(triple, context)), set(expected))
+        assert set(dataset.triples(triple_or_quad)) == set(expected)
 
-    @skip('not implemented yet')
-    def test_triples_choices(self):
-        for dsn, tri, ctn, exp in [
+    PP = EX.p/EX.p
+
+    @mark.parametrize("datasetname, triple_or_quad, expected", [
+                ('p12', (None, PP, None), {(EX.x1, PP, EX.x3),
+                                           (EX.x2, PP, EX.x4),
+                }),
+                ('pab', (None, PP, None), {(EX.xa, PP, EX.xc),
+                }),
+
+                ('p12', (None, PP, None, EX['g1/']), set()),
+                ('p12', (None, PP, None, EX['g1/g2']), {(EX.x2, PP, EX.x4)}),
+                ('p12', (None, PP, None, EX['pab/ga']), set()),
+
+                ('pab', (None, PP, None, EX['pab/ga']), set()),
+                ('pab', (None, PP, None, EX['pab/gb']), set()),
+                ('pab', (None, PP, None, EX['g1/g2']), set()),
+    ])
+    def test_triples_with_path(self, datasetname, triple_or_quad, expected):
+        dataset = getattr(self, datasetname)
+        assert set(dataset.triples(triple_or_quad)) == set(expected)
+
+
+    @mark.skip('not implemented yet')
+    @mark.parametrize("datasetname, triple, contextname, expected", [
                 ('p12', ([EX.x1,EX.x2], EX.p, None), None, {
                     (EX.x1, EX.p, EX.x2),
                     (EX.x2, EX.p, EX.x3),
@@ -279,19 +262,13 @@ class TestDefaultStore(object):
                 ('p12', ([EX.x1,EX.x2], EX.p, None), 'g2', {
                     (EX.x2, EX.p, EX.x3),
                 }),
-        ]:
-            yield self._do_test_triples_choices, dsn, tri, ctn, exp
-
-    def _do_test_quads(self, datasetname, triple_or_quad, expected):
+    ])
+    def test_triples_choices(self, datasetname, triple, contextname, expected):
         dataset = getattr(self, datasetname)
-        quads = set( (s, p, o, ctx.identifier)
-                     for s, p, o, ctx
-                     in dataset.quads(triple_or_quad)
-        )
-        assert_set_equal(quads, set(expected))
+        context = contextname and getattr(self, contextname) or None
+        assert set(dataset.triples_choices(triple, context)) == set(expected)
 
-    def test_quads(self):
-        for dsn, toq, exp in [
+    @mark.parametrize("datasetname, triple_or_quad, expected", [
                 ('p12', (EX.x1, EX.p, EX.x2), {(EX.x1, EX.p, EX.x2, EX['g1/'])}),
                 ('p12', (EX.x2, EX.p, EX.x3), {(EX.x2, EX.p, EX.x3, EX['g1/g2'])}),
                 ('p12', (EX.x3, EX.p, EX.x4), {(EX.x3, EX.p, EX.x4, EX['g1/g2'])}),
@@ -390,19 +367,16 @@ class TestDefaultStore(object):
                 }),
                 ('pab', (None, None, None, EX['g1/']), {
                 }),
-        ]:
-            yield self._do_test_quads, dsn, toq, exp
-
-    def _do_test_sparql(self, datasetname, sparql, expected):
+    ])
+    def test_quads(self, datasetname, triple_or_quad, expected):
         dataset = getattr(self, datasetname)
-        result = dataset.query(sparql)
-        if isinstance(expected, list):
-            assert_list_equal(list(result), expected)
-        else:
-            assert_set_equal(set(result), expected)
+        quads = set( (s, p, o, ctx.identifier)
+                     for s, p, o, ctx
+                     in dataset.quads(triple_or_quad)
+        )
+        assert quads == set(expected)
 
-    def test_sparql_select(self):
-        for dsn, spa, exp in [
+    @mark.parametrize("datasetname, sparql, expected", [
                 ('p12', 'select ?s { ?s ?p ?o } order by ?s', [(EX.x1,),
                                                                (EX.x2,),
                                                                (EX.x3,),
@@ -419,11 +393,16 @@ class TestDefaultStore(object):
                     (EX['pab/ga'], EX.xa,),
                     (EX['pab/gb'], EX.xb,),
                 ]),
-        ]:
-                yield self._do_test_sparql, dsn, spa, exp
+    ])
+    def test_sparql_select(self, datasetname, sparql, expected):
+        dataset = getattr(self, datasetname)
+        result = dataset.query(sparql)
+        if isinstance(expected, list):
+            assert list(result) == expected
+        else:
+            assert set(result) == expected
 
-    def test_sparql_construct(self):
-        for dsn, spa, exp in [
+    @mark.parametrize("datasetname, sparql, expected", [
                 ('p12', 'construct { ?s ?p ?s } where { ?s ?p ?o }', {
                     (EX.x1, EX.p, EX.x1),
                     (EX.x2, EX.p, EX.x2),
@@ -442,34 +421,49 @@ class TestDefaultStore(object):
                     (EX['pab/ga'], EX.p, EX.xa,),
                     (EX['pab/gb'], EX.p, EX.xb,),
                 }),
-        ]:
-                yield self._do_test_sparql, dsn, spa, exp
+    ])
+    def test_sparql_construct(self, datasetname, sparql, expected):
+        dataset = getattr(self, datasetname)
+        result = dataset.query(sparql)
+        if isinstance(expected, list):
+            assert list(result) == expected
+        else:
+            assert set(result) == expected
 
-
-    def _do_test_sparql_with_from(self, datasetname, sparql):
+    @mark.parametrize("datasetname", ['p12', 'pab'])
+    @mark.parametrize("sparql", [
+                    'select * from <> { ?s ?p ?o }',
+                    'select * from named <> { ?s ?p ?o }',
+                    'select * from <> from named <> { ?s ?p ?o }',
+    ])
+    def test_sparql_with_from(self, datasetname, sparql):
         dataset = getattr(self, datasetname)
         with assert_raises(ValueError):
             dataset.query(sparql)
 
-    def test_sparql_with_from(self):
-        for dsn in ['p12', 'pab']:
-            for spa in [
-                    'select * from <> { ?s ?p ?o }',
-                    'select * from named <> { ?s ?p ?o }',
-                    'select * from <> from named <> { ?s ?p ?o }',
-            ]:
-                yield self._do_test_sparql_with_from, dsn, spa
+virtuoso_store = os.environ.get('RDFREST_VIRTUOSO_STORED')
+if virtuoso_store:
+    try:
+        import pyodbc
+        from virtuoso.vstore import Virtuoso
+        try:
+            _ = Virtuoso(virtuoso_store)
 
-try:
-    from virtuoso.vstore import Virtuoso
+            class TestVirtuoso(TestDefaultStore):
 
-    class TestVirtuoso(TestDefaultStore):
+                def get_store(self):
+                    return Virtuoso(virtuoso_store)
 
-        def get_store(self):
-            return Virtuoso("DSN=VOS;UID=dba;PWD=dba;WideAsUTF16=Y")
+        except pyodbc.Error:
 
-except ImportError:
-
-    @skip('Virtuoso store not available')
+            @skip('Virtuoso store not available')
+            def TestVirtuoso():
+                pass
+    except ImportError:
+        @skip('Virtuoso store not completely installed')
+        def TestVirtuoso():
+            pass
+else:
+    @skip('No Virtuoso store configured for testing')
     def TestVirtuoso():
         pass

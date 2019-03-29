@@ -56,6 +56,8 @@ def match_sparql_ask(transition, event, token, fsa):
     transition conditions are interpreted as the WHERE clause of a SPARQL Ask query,
     where variable ?obs is bound to the considered obsel,
     and prefix m: is bound to the source trace URI.
+
+
     """
     m_ns = fsa.source.model_uri
     if m_ns[-1] != '/' and m_ns[-1] != '#':
@@ -63,12 +65,31 @@ def match_sparql_ask(transition, event, token, fsa):
     history = token and token.get('history_events')
     if history:
         pred = URIRef(history[-1])
+        first = URIRef(history[0])
     else:
         pred = None
+        first = None
+    condition = transition['condition']
+    ## this would be the correct way to do it
+    # initBindings = { "obs": URIRef(event), "pred": pred, "first": first }
+    ## unfortunately, Virtuoso does not support VALUES clauses after the ASK clause,
+    ## which is how SPARQLUpdateStore handles initBindings
+    ## so we generate that clause in the condition instead
+    condition = """
+      BIND (%s as ?obs)
+      BIND (%s as ?pred)
+      BIND (%s as ?first)
+    """ % (
+          URIRef(event).n3(),
+          pred.n3() if pred else '""', # simulating NULL
+          first.n3() if first else '""', # simulating NULL
+    ) + condition
+    ## thank you for nothing Virtuoso :-(
+
     return fsa.source_obsels_graph.query(
-        "ASK { %s }" % transition['condition'],
-        initNs={"m": m_ns},
-        initBindings={"obs": URIRef(event), "pred": pred},
+        "ASK { %s }" % condition,
+        initNs={"": KTBS, "m": m_ns},
+        # initBindings=initBindings, # not supported by Virtuoso :-(
     ).askAnswer
 
 matcher_directory['sparql-ask'] = match_sparql_ask
@@ -86,7 +107,7 @@ class _FSAMethod(AbstractMonosourceMethod):
         "fsa": FSA.from_str,
         "expose_tokens": boolean_parameter,
     }
-    required_types = ["fsa"]
+    required_parameters = ["fsa"]
 
     def init_state(self, computed_trace, params, cstate, diag):
         """I implement :meth:`.abstract.AbstractMonosourceMethod.init_state
@@ -106,8 +127,6 @@ class _FSAMethod(AbstractMonosourceMethod):
         source_obsels = source.obsel_collection
         target_obsels = computed_trace.obsel_collection
         last_seen = cstate["last_seen"]
-        if last_seen is not None:
-            last_seen = source.service.get(URIRef(last_seen))
 
         fsa = FSA(cstate['fsa'], False) # do not check structure again
         if fsa.default_matcher is None:
@@ -135,11 +154,11 @@ class _FSAMethod(AbstractMonosourceMethod):
         target_uri = computed_trace.uri
         target_model_uri = computed_trace.model_uri
         target_add_graph = target_obsels.add_obsel_graph
+        after = last_seen and URIRef(last_seen)
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
-            for obs in source.iter_obsels(after=last_seen, refresh="no"):
-                last_seen = obs
-                event = unicode(obs.uri)
+            for obs in source.iter_obsels(after=after, refresh="no"):
+                last_seen = event = unicode(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
                     state = KtbsFsaState(fsa, token['state'],
@@ -147,6 +166,8 @@ class _FSAMethod(AbstractMonosourceMethod):
                     source_obsels = [ URIRef(uri) for uri in token['history_events']]
                     otype_uri = state.get_obsel_type()
                     LOG.debug("matched {} -> {}".format(source_obsels[-1], otype_uri))
+                    if otype_uri is None:
+                        continue
 
                     new_obs_uri = translate_node(source_obsels[-1], computed_trace,
                                                  source_uri, False)
@@ -171,12 +192,13 @@ class _FSAMethod(AbstractMonosourceMethod):
                             qwhere.append('OPTIONAL {{?obs <{}> {} .}}'
                                           .format(triple[1], var))
                         query = ('SELECT {} {{'
-                                 '\n{}\nVALUES (?obs) {{\n(<{}>)\n}}'
+                                 '\nVALUES (?obs) {{\n(<{}>)\n}}'
+                                 '\n{}\n'
                                  '}} ORDER BY ?end')\
                             .format(
                             ' '.join(qvars),
-                            '\n'.join(qwhere),
                             '>)\n(<'.join(source_obsels),
+                            '\n'.join(qwhere),
                             )
                         results = source_state.query(query)
                         for i, triple in enumerate(attributes):
@@ -192,7 +214,7 @@ class _FSAMethod(AbstractMonosourceMethod):
 
                     target_add_graph(new_obs_graph)
 
-        cstate["last_seen"] = last_seen and unicode(last_seen.uri)
+        cstate["last_seen"] = last_seen
         cstate["tokens"] = fsa.export_tokens_as_dict()
 
         if cstate["expose_tokens"]:
@@ -209,7 +231,10 @@ class KtbsFsaState(State):
 
     def get_obsel_type(self):
         ktbs_obsel_type = self._data.get('ktbs_obsel_type', self.id)
-        return URIRef(ktbs_obsel_type, self.target_model_uri)
+        if ktbs_obsel_type is not None:
+            return URIRef(ktbs_obsel_type, self.target_model_uri)
+        else: # explictly set not None
+            return None
 
     def get_attributes(self):
         ktbs_attributes = self._data.get('ktbs_attributes', {})
@@ -254,35 +279,51 @@ def _count(data, index):
 def _sum(data, index):
     lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(sum(lst))
+        try:
+            return Literal(sum(lst))
+        except TypeError:
+            return Literal(sum( float(i) for i in lst ))
     else:
         return None
 
 def _avg(data, index):
     lst = [ tpl[index].toPython() for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(sum(lst)/float(len(lst)))
+        try:
+            sumval = sum(lst)
+        except TypeError:
+            sumval = sum( float(i) for i in lst )
+        try:
+            return Literal(sumval/float(len(lst)))
+        except TypeError:
+            return Literal(float(sumval)/float(len(lst)))
     else:
         return None
 
 def _min(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(min(lst))
+        return min(lst)
     else:
         return None
 
 def _max(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(max(lst))
+        return max(lst)
     else:
         return None
 
 def _span(data, index):
     lst = [ tpl[index] for tpl in data if tpl[index] is not None ]
     if lst:
-        return Literal(max(lst).toPython()-min(lst).toPython())
+        minval = min(lst).toPython()
+        maxval = max(lst).toPython()
+        try:
+            val = maxval - minval
+        except TypeError:
+            val = float(maxval) - float(minval)
+        return Literal(val)
     else:
         return None
 

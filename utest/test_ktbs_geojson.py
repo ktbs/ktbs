@@ -37,8 +37,8 @@ from .test_ktbs_engine import KtbsTestCase
 
 class TestGeojsonObselsSerialization(KtbsTestCase):
 
-    def setUp(self):
-        super(TestGeojsonObselsSerialization, self).setUp()
+    def setup(self):
+        super(TestGeojsonObselsSerialization, self).setup()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
@@ -47,8 +47,8 @@ class TestGeojsonObselsSerialization(KtbsTestCase):
         #self.long = self.model.create_attribute_type(URIRef("http://www.w3.org/2003/01/geo/wgs84_pos#long"), ot1)
         self.t1 = self.base.create_stored_trace("t1/", self.model, "Origine opaque")
 
-    def tearDown(self):
-        super(TestGeojsonObselsSerialization, self).tearDown()
+    def teardown(self):
+        super(TestGeojsonObselsSerialization, self).teardown()
         self.base = None
         self.model = self.ot1 = self.lat = self.long = None
         self.t1 = None

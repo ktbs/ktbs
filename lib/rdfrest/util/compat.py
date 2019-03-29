@@ -88,3 +88,25 @@ def monkeypatch_prepare_query():
         LOG.info("monkey-patched rdflib.plugins.sparql.processor.prepareQuery")
 monkeypatch_prepare_query()
 del monkeypatch_prepare_query
+
+def monkeypatch_union():
+    """
+    In rdflib 4.2.2, the SPARQL implementation prevents UNION from returning duplicates.
+    This is extremely costly, and not required by the spec.
+    This patch simplifies the handling of SPARQL UNION and makes it compliant *and* faster.
+    """
+    import rdflib
+    if rdflib.__version__ != "4.2.2":
+        return
+
+    from rdflib.plugins.sparql import evaluate
+
+    def patchedEvalUnion(ctx, union):
+        for x in evaluate.evalPart(ctx, union.p1):
+            yield x
+        for x in evaluate.evalPart(ctx, union.p2):
+            yield x
+    evaluate.evalUnion = patchedEvalUnion
+
+monkeypatch_union()
+del monkeypatch_union

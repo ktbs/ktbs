@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+#
+# A tool for importing N-Quads into a new RDFlib Sleepycat store.
+#
+# Useful for migrating Sleepycat stores across different version of Python.
+
+from __future__ import unicode_literals, print_function
+
+from os.path import exists, isdir
+import rdflib
+import sys
+
+def usage():
+    print("""usage: (<data.nq.gz gunzip | )  {} [sleepycat-directory]
+
+Imports the N-Quads format on stdin into a new RDFlib Sleeycat store.
+""".format(sys.argv[0]), file=sys.stderr)
+# Trix is more verbose than N-Quads, but it preserves empty graphs.
+
+def main():
+    if len(sys.argv) != 2:
+        usage()
+        exit(1)
+    elif sys.argv[1] in ["-h", "--help"]:
+        usage()
+        exit()
+    elif exists(sys.argv[1]):
+        print("ERROR: {} exists; I cannot overwrite existing directory\n".format(sys.argv[1]), file=sys.stderr)
+        usage()
+        exit(2)
+
+
+    if sys.version_info[0] == 2:
+        stdin = sys.stdin
+    else:
+        stdin = open(0, mode='br')
+
+    g = rdflib.Dataset('Sleepycat')
+    g.open(sys.argv[1], True)
+    g.parse(stdin, format='nquads')
+
+if __name__ == '__main__':
+    main()

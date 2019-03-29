@@ -26,7 +26,7 @@ from weakref import WeakValueDictionary
 from httplib2 import Http
 from os import listdir, rmdir, unlink
 from os.path import exists, isdir, join
-from rdflib import Graph, RDF
+from rdflib import Graph
 
 from ..exceptions import CanNotProceedError, InvalidDataError, \
     InvalidParametersError, MethodNotAllowedError, RdfRestException
@@ -87,7 +87,7 @@ def _http():
     for username, password in _HTTPLIB2_CREDENTIALS:
         ret.add_credentials(username, password)
     for key, cert, domain in _HTTPLIB2_CERTIFICATES:
-        ret.add_certificate(key, cert, credentials)
+        ret.add_certificate(key, cert, domain)
     return ret
 
 @register_implementation("http://")
@@ -138,6 +138,11 @@ class HttpClientCore(ICore):
             else:
                 py_class = HttpClientCore
             resource = py_class(uri, graph)
+            try:
+                iter(resource.get_state()).next()
+            except ResourceAccessError:
+                return None
+
             _RESOURCE_CACHE[uri] = resource
         return resource
 

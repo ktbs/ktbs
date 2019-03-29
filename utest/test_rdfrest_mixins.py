@@ -17,11 +17,10 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
+from pytest import raises as assert_raises
 
-from time import sleep
-
-from nose.tools import assert_raises
 from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, XSD
+from time import sleep
 
 import example2 # can not import do_tests directly, nose tries to run it...
 from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
@@ -42,18 +41,18 @@ class TestMixins:
     root = None
     item = None
 
-    def setUp(self):
+    def setup(self):
         service_config = get_service_configuration()
         service_config.set('server', 'port', '11235')
         service_config.set('server', 'base-path', '/foo')
         self.service = make_example2_service(service_config,
-                                             additional = [TestItem])
+                                             additional = [TstItem])
         self.ROOT_URI = self.service.root_uri
         self.root = self.service.get(self.ROOT_URI, [EXAMPLE.Group2])
         assert isinstance(self.root, Group2Implementation)
         self.items = []
 
-    def tearDown(self):
+    def teardown(self):
         if self.items is not None:
             for i in self.items:
                 try:
@@ -66,12 +65,12 @@ class TestMixins:
         if self.service is not None:
             unregister_service(self.service)
             del self.service
-    
+
     def prepare_test_item(self):
         new_graph = Graph()
         bnode = BNode()
         for triple in [(self.root.uri, EXAMPLE.contains, bnode),
-                       (bnode, RDF.type, RESERVED.TestItem),
+                       (bnode, RDF.type, RESERVED.TstItem),
                        (CARD.something1, CARD.card1_in, bnode),
                        (CARD.something1, CARD.card1n_in, bnode),
                        (CARD.something1, CARD.card23_in, bnode),
@@ -87,9 +86,9 @@ class TestMixins:
     def make_test_item(self):
         created, graph = self.prepare_test_item()
         uris = self.root.post_graph(graph, _created=created,
-                                    _rdf_type=RESERVED.TestItem)
-        ret = self.root.factory(uris[0], [RESERVED.TestItem])
-        assert isinstance(ret, TestItem)
+                                    _rdf_type=RESERVED.TstItem)
+        ret = self.root.factory(uris[0], [RESERVED.TstItem])
+        assert isinstance(ret, TstItem)
         self.items.append(ret)
         return ret
 
@@ -100,7 +99,7 @@ class TestMixins:
         of the :mod:`rdfrest.cores.mixins` module;
         but at least it shows that "normal" functionalities
         still work when the mix-in classes are used.
-        """        
+        """
         example2.do_tests(self.root)
 
     ################################################################
@@ -130,7 +129,7 @@ class TestMixins:
         for uri in [RESERVED.creatableOut, RESERVED.creatableType,
                     RESERVED.editableOut, RESERVED.editableType,
                     RESERVED.otherProp, EXAMPLE.otherProp, EXAMPLE.label]:
-            # check that we can not create it        
+            # check that we can not create it
             with assert_raises(InvalidDataError):
                 created, graph = self.prepare_test_item()
                 graph.add((RESERVED.somethingElse, uri, created))
@@ -142,8 +141,8 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((RESERVED.somethingElse, uri, bnode))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
                 with item.edit() as editable:
@@ -155,8 +154,8 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((RESERVED.somethingElse, uri, bnode))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can edit it
             with item.edit() as editable:
                 editable.remove((None, uri, item.uri))
@@ -166,7 +165,7 @@ class TestMixins:
         for uri in [RESERVED.creatableIn, RESERVED.creatableType,
                     RESERVED.editableIn, RESERVED.editableType,
                     RESERVED.otherProperty, EXAMPLE.otherProp]:
-            # check that we can not create it        
+            # check that we can not create it
             with assert_raises(InvalidDataError):
                 created, graph = self.prepare_test_item()
                 if uri in EXPECTING_LITERAL:
@@ -186,8 +185,8 @@ class TestMixins:
                 other = RESERVED.somethingElse
             graph.add((bnode, uri, other))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
                 with item.edit() as editable:
@@ -203,8 +202,8 @@ class TestMixins:
                 other = RESERVED.somethingElse
             graph.add((bnode, uri, other))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can edit it
             with item.edit() as editable:
                 editable.remove((item.uri, uri, None))
@@ -214,7 +213,7 @@ class TestMixins:
         for uri in [RESERVED.creatableIn, RESERVED.creatableOut,
                     RESERVED.editableIn, RESERVED.editableOut,
                     RESERVED.otherType, EXAMPLE.otherType ]:
-            # check that we can not create it        
+            # check that we can not create it
             with assert_raises(InvalidDataError):
                 created, graph = self.prepare_test_item()
                 graph.add((created, RDF.type, uri))
@@ -226,8 +225,8 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((bnode, RDF.type, uri))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can not edit it
             with assert_raises(InvalidDataError):
                 with item.edit() as editable:
@@ -239,8 +238,8 @@ class TestMixins:
             bnode, graph = self.prepare_test_item()
             graph.add((bnode, RDF.type, uri))
             uris = self.root.post_graph(graph)
-            item = self.root.factory(uris[0], [RESERVED.TestItem])
-            assert isinstance(item, TestItem)
+            item = self.root.factory(uris[0], [RESERVED.TstItem])
+            assert isinstance(item, TstItem)
             # check that we can edit it
             with item.edit() as editable:
                 editable.remove((item.uri, RDF.type, uri))
@@ -291,14 +290,14 @@ class TestMixins:
         bnode, new_graph = self.prepare_test_item()
         self.change_cardinality_prop(new_graph, bnode, prop, nb, direction)
         uris = self.root.post_graph(new_graph)
-        self.root.factory(uris[0], [RESERVED.TestItem]).delete()
+        self.root.factory(uris[0], [RESERVED.TstItem]).delete()
         self.root.force_state_refresh()
-                             
+
     def check_cardinality_edit(self, direction, prop, nb):
         bnode, new_graph = self.prepare_test_item()
         uris = self.root.post_graph(new_graph)
-        test = self.root.factory(uris[0],  [RESERVED.TestItem])
-        assert isinstance(item, TestItem)
+        test = self.root.factory(uris[0],  [RESERVED.TstItem])
+        assert isinstance(item, TstItem)
         with test.edit() as editable:
             self.change_cardinality_prop(editable, test.uri, prop, nb,direction)
         test.delete()
@@ -326,7 +325,7 @@ class TestMixins:
 
     def test_typed_properties(self):
         for typed_prop in (Item2Implementation.RDF_TYPED_PROP
-                           + TestItem.RDF_TYPED_PROP):
+                           + TstItem.RDF_TYPED_PROP):
             if len(typed_prop) == 2:
                 typed_prop += (None,)
             prop, ntype, vtype = typed_prop
@@ -364,14 +363,14 @@ class TestMixins:
                 testitem = self.make_test_item()
                 must_pass = (ntype == "uri"
                              and (vtype is None or vtype == typ))
-                
+
                 print prop, obj, typ, must_pass
                 if must_pass:
                     with testitem.edit() as editable:
                         editable.add((testitem.uri, prop, obj))
                         if typ:
                             editable.add((obj, RDF.type, typ))
-                            
+
                 else:
                     with assert_raises(InvalidDataError):
                         with testitem.edit() as editable:
@@ -384,10 +383,10 @@ RESERVED = Namespace("http://example.org/reserved#")
 CARD = Namespace("http://example.org/cardinality#")
 TYPED = Namespace("http://example.org/typed#")
 
-class TestItem(Item2Implementation):
+class TstItem(Item2Implementation):
     """A subclass of Item2 for systematical testing of the mixins module.
     """
-    RDF_MAIN_TYPE = RESERVED.TestItem
+    RDF_MAIN_TYPE = RESERVED.TstItem
 
     RDF_RESERVED_NS =     [RESERVED]
     RDF_CREATABLE_IN =    [RESERVED.creatableIn]

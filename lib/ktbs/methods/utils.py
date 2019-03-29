@@ -18,8 +18,8 @@
 """
 Utility functions for method implementations.
 """
-from rdflib import BNode, URIRef
-from rdfrest.util import make_fresh_uri
+from rdflib import BNode, Graph, URIRef
+from rdfrest.util import check_new, make_fresh_uri
 
 from ..namespace import KTBS
 
@@ -85,6 +85,47 @@ def translate_node(node, transformed_trace, src_uri, multiple_sources, prevent=N
     if prevent is not None and prevent(ret):
         ret = None
     return ret
+
+def copy_obsel(obsel_uri, computed_trace, source_trace, new_obs_uri=None, check_new_obs=None):
+    """
+    I prepare a graph for an transformed obsel being a copy of ``obsel``.
+    """
+    new_obs_graph = Graph()
+    new_obs_add = new_obs_graph.add
+
+    if check_new_obs:
+        _target_obsels = computed_trace.obsel_collection.state
+        def check_new_obs(uri):
+            return check_new(_target_obsels, uri)
+
+    source_uri = source_trace.uri
+    source_triples = source_trace.obsel_collection.state.triples
+    if new_obs_uri is None:
+        new_obs_uri = translate_node(obsel_uri, computed_trace, source_uri, False)
+
+    new_obs_add((new_obs_uri, KTBS.hasTrace, computed_trace.uri))
+    new_obs_add((new_obs_uri, KTBS.hasSourceObsel, obsel_uri))
+
+    for _, pred, obj in source_triples((obsel_uri, None, None)):
+        if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
+            continue
+        new_obj = translate_node(obj, computed_trace, source_uri,
+                                 False, check_new_obs)
+        if new_obj is None:
+            continue # skip relations to nodes that are filtered out or not created yet
+        new_obs_add((new_obs_uri, pred, new_obj))
+
+    for subj, pred, _ in source_triples((None, None, obsel_uri)):
+        if pred == KTBS.hasTrace  or  pred == KTBS.hasSourceObsel:
+            continue
+        new_subj = translate_node(subj, computed_trace, source_uri,
+                                  False, check_new_obs)
+        if new_subj is None:
+            continue # skip relations from nodes that are filtered out or not created yet
+        new_obs_add((new_subj, pred, new_obs_uri))
+
+    return new_obs_graph
+
 
 def boolean_parameter(value):
     return value.strip().lower() not in { "false", "no", "0" }

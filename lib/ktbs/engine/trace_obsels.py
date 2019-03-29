@@ -21,6 +21,7 @@ I provide the implementation of kTBS obsel collections.
 import traceback
 from itertools import chain
 from logging import getLogger
+import sys
 
 from rdflib import Graph, Literal, RDF
 from rdflib.plugins.sparql.processor import prepareQuery
@@ -28,16 +29,16 @@ from rdflib.plugins.sparql.processor import prepareQuery
 from rdfrest.exceptions import CanNotProceedError, InvalidParametersError, \
     MethodNotAllowedError
 from rdfrest.cores.local import NS as RDFREST
-from rdfrest.util import Diagnosis
+from rdfrest.util import Diagnosis, coerce_to_uri
+from .lock import WithLockMixin
 from .resource import KtbsResource, METADATA
-from .obsel import get_obsel_bounded_description
 from ..api.trace_obsels import AbstractTraceObselsMixin
 from ..namespace import KTBS
 
 
 LOG = getLogger(__name__)
 
-class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
+class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource):
     """I provide the implementation of ktbs:AbstractTraceObsels
     """
     ######## Public methods ########
@@ -120,7 +121,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         self.metadata.set((self.uri, METADATA.log_mon_tag, "%sl" % val))
     log_mon_tag = property(get_log_mon_tag, set_log_mon_tag)
 
-
     def add_obsel_graph(self, graph, _trust=True):
         """Add an obsel described in `graph`.
 
@@ -170,7 +170,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # is provided, and http_server does not require dynamic graphs, so...
 
         if (not parameters # empty dict is equivalent to no dict
-            or "refresh" in parameters and len(parameters) == 1): 
+            or "refresh" in parameters and len(parameters) == 1):
             return super(AbstractTraceObsels, self).get_state(None)
         else:
             self.check_parameters(parameters, parameters, "get_state")
@@ -187,8 +187,6 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             # NB: not sure if caching the parsed query would be beneficial here
             query_filter = []
             minb = parameters.get("minb")
-            if minb is not None:
-                query_filter.append("?b >= %s" % minb)
             maxb = parameters.get("maxb")
             if maxb is not None:
                 query_filter.append("?b <= %s" % maxb)
@@ -196,55 +194,94 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             if mine is not None:
                 query_filter.append("?e >= %s" % mine)
             maxe = parameters.get("maxe")
-            if maxe is not None:
-                query_filter.append("?e <= %s" % maxe)
             after = parameters.get("after")
             if after is not None:
-                query_filter.append(
-                    "?e > {2} || "
-                    "?e = {2} && ?b > {1} || "
-                    "?e = {2} && ?b = {1} && str(?obs) > \"{0}\"".format(
-                        after.uri, after.begin, after.end,
-                    ))
+                after = coerce_to_uri(after)
             before = parameters.get("before")
             if before is not None:
-                query_filter.append(
-                    "?e < {2} || "
-                    "?e = {2} && ?b < {1} || "
-                    "?e = {2} && ?b = {1} && str(?obs) < \"{0}\"".format(
-                        before.uri, before.begin, before.end
-                    ))
+                before = coerce_to_uri(before)
             if query_filter:
                 query_filter = "FILTER((%s))" % (") && (".join(query_filter))
             else:
                 query_filter = ""
 
-            query_epilogue = ""
             reverse = (parameters.get("reverse", "no").lower()
                        not in ("false", "no", "0"))
-            if reverse:
-                query_epilogue += "ORDER BY DESC(?e) DESC(?b) DESC(?obs)"
-            else:
-                query_epilogue += "ORDER BY ?e ?b ?obs"
             limit = parameters.get("limit")
-            if limit is not None:
-                query_epilogue += " LIMIT %s" % limit
             offset = parameters.get("offset")
-            if offset is not None:
-                query_epilogue += " OFFSET %s" % offset
 
-            query_str = """PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-            SELECT ?obs { ?obs :hasBegin ?b ; :hasEnd ?e . %s } %s
-            """ % (query_filter, query_epilogue)
+            matching_obsels = [
+                row[0].n3() for row in self.state.query(
+                    self.build_select(minb, maxe, after, before, reverse,
+                                      query_filter, limit, offset),
+                    initNs={
+                        "ktbs": "http://liris.cnrs.fr/silex/2009/ktbs#"
+                    },
+                )
+            ]
+
+            LOG.debug("%s matching obsels", len(matching_obsels))
+            if len(matching_obsels) == 0:
+                matching_obsels.append(Literal(42))
+                # this is a hack because rdflib 4.2.2 does not support an empty VALUES list
+                # but it should not match anything
+
+            query_str = """PREFIX ktbs: <http://liris.cnrs.fr/silex/2009/ktbs#>
+                SELECT ?s ?p ?o ?strc ?otrc ?obs {
+                  VALUES ?obs { %s }
+                  {
+                    ?obs ?p ?o.
+                    BIND(?obs as ?s)
+                    OPTIONAL { ?o ktbs:hasTrace ?otrc }
+                  } UNION {
+                    ?s ?p ?obs.
+                    BIND(?obs as ?o)
+                    OPTIONAL { ?s ktbs:hasTrace ?strc }
+                  } UNION {
+                    ?obs ?p1 ?s.
+                    FILTER isBlank(?s)
+                    ?s ?p ?o.
+                  } UNION {
+                    ?obs ?p1 ?b1.
+                    FILTER isBlank(?b1)
+                    ?b1 ?p2 ?s.
+                    FILTER isBlank(?s)
+                    ?s ?p ?o.
+                  }
+                }
+                """% (' '.join(matching_obsels))
+
+            results = self.state.query(query_str)
+            LOG.debug("described by %s triples", len(results))
 
             # add description of all matching obsels
-            self_state = self.state
-            obs = None
-            for obs, in self.state.query(query_str): #/!\ returns 1-uples
-                get_obsel_bounded_description(obs, self_state, graph)
+            old_graph_len = len(graph)
+            graph_add = graph.add
+            for s, p, o, strc, otrc, obs in results:
+                graph_add((s, p, o))
+                if strc is not None:
+                    graph_add((s, KTBS.hasTrace, strc))
+                if otrc is not None:
+                    graph_add((o, KTBS.hasTrace, otrc))
 
-            if limit and obs:
-                obs_id = obs.rsplit("/", 1)[1]
+            if len(graph) > old_graph_len:
+                maxe_triple = max(( t for t in graph.triples((None, KTBS.hasEnd, None)) ),
+                                  key=lambda t: t[2].toPython() )
+                maxobs = maxe_triple[0]
+                maxe = maxe_triple[2].toPython()
+            else:
+                maxobs = maxe = None
+
+            # canonical link
+            graph.links = links = [{
+                'uri': self.uri,
+                'rel': 'canonical',
+                'etag': iter(self.iter_etags()).next(),
+                'mstable-etag': self.get_str_mon_tag(),
+            }]
+            # link to next page
+            if limit and maxobs:
+                obs_id = maxobs.rsplit("/", 1)[1]
                 if reverse:
                     qstr = "?reverse&limit=%s&before=%s" % (limit, obs_id)
                 else:
@@ -257,7 +294,11 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                     qstr += "&mine=%s" % mine
                 if maxe:
                     qstr += "&maxe=%s" % maxe
-                graph.next_link = self.uri + qstr
+                graph.link = self.uri + qstr
+                links.append({'uri': self.uri + qstr, 'rel': 'next'})
+
+            # compute etags
+            graph.etags = list(self.iter_etags({'maxe': maxe, 'before': before}))
 
             return graph
 
@@ -318,7 +359,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
                 super(AbstractTraceObsels, self).check_parameters(to_check_again,
                                                                   parameters,
                                                                   method)
-    
+
     def prepare_edit(self, parameters):
         """I overrides :meth:`rdfrest.cores.local.ILocalCore.prepare_edit`
 
@@ -367,8 +408,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         # force transformed traces to refresh
         trace = self.trace
         for ttr in trace.iter_transformed_traces():
-            obsels = ttr.obsel_collection
-            obsels.metadata.set((obsels.uri, METADATA.dirty, Literal("yes")))
+            ttr._mark_dirty(False, True)
 
     def delete(self, parameters=None, _trust=False):
         """I override :meth:`.KtbsResource.delete`.
@@ -382,9 +422,8 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
         else:
             self.check_parameters(parameters, parameters, "delete")
             with self.edit(_trust=True) as editable:
-                trace_uri = self.trace.uri
                 editable.remove((None, None, None))
-                self.init_graph(editable, self.uri, trace_uri)
+                self.init_graph(editable, self.uri, self.trace_uri)
 
     # TODO SOON implement check_new_graph on ObselCollection?
     # we should check that the graph only contains well formed obsels
@@ -394,18 +433,32 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
 
         I return self.etag, plus the appropriate monotonicity tag depending
         on the given parameters.
+
+        IMPORTANT: the only parameter actually used to determine monotonicity
+        etags are 'maxe' and 'before',
+        as it would be too costly to determine it for other parameters.
+        Note however that get_state() does use this method with an accurate
+        'maxe' value (based on the actual obsels rather than on paremeters),
+        in order to precisely get etags.
         """
         yield self.etag
         if parameters is not None:
             last_obsel = self.metadata.value(self.uri, METADATA.last_obsel)
             if last_obsel is not None:
                 last_end = int(self.state.value(last_obsel, KTBS.hasEnd))
-                pse_mon_limit = last_end - self.trace.pseudomon_range
                 maxe = parameters.get("maxe")
-                if maxe is not None:
-                    maxe = int(maxe)
+                before = parameters.get("before")
+                if before == last_obsel:
+                    yield self.str_mon_tag
+                elif maxe is not None or before is not None:
+                    if maxe is not None:
+                        maxe = int(maxe)
+                    if before is not None:
+                        before_end = int(self.state.value(before, KTBS.hasEnd))
+                        maxe = max(maxe or before_end, before_end)
                     if maxe < last_end:
                         yield self.str_mon_tag
+                        pse_mon_limit = last_end - self.trace.pseudomon_range
                         if maxe < pse_mon_limit:
                             yield self.pse_mon_tag
 
@@ -426,14 +479,14 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, KtbsResource):
             graph.set((uri, METADATA.pse_mon_tag, Literal(token+"p")))
         if prepared is None  or  not prepared.log_mon:
             graph.set((uri, METADATA.log_mon_tag, Literal(token+"l")))
-    
+
     def _detect_mon_change(self, graph, prepared):
         """Detect monotonicity changed induced by 'graph', and update `prepared` accordingly.
-        
+
         Note that this is called after graph has been added to self.state,
         so all arcs from graph are also in state.
         """
-        trace_uri = self.trace.uri
+        trace_uri = self.trace_uri
         new_obs = graph.value(None, KTBS.hasTrace, trace_uri)
         if prepared.last_obsel is None:
             prepared.last_obsel = new_obs
@@ -525,36 +578,42 @@ class ComputedTraceObsels(AbstractTraceObsels):
                          if parameters else 1)
         if refresh_param == 0 or self.__forcing_state_refresh:
             return
-        self.__forcing_state_refresh = True
-        try:
-            LOG.debug("forcing state refresh <%s>", self.uri)
-            super(ComputedTraceObsels, self).force_state_refresh(parameters)
-            trace = self.trace
-            for src in trace.iter_source_traces():
-                src.obsel_collection.force_state_refresh(parameters)
-            if (self.metadata.value(self.uri, METADATA.dirty, None) is not None
-                or refresh_param >= 2):
+        with self.lock(self):
+            self.__forcing_state_refresh = True
+            try:
+                LOG.debug("forcing state refresh <%s>", self.uri)
+                super(ComputedTraceObsels, self).force_state_refresh(parameters)
+                trace = self.trace
+                if refresh_param == 2:
+                    parameters['refresh'] = 'default' # do not transmit 'force' to sources
+                for src in trace._iter_effective_source_traces():
+                    src.obsel_collection.force_state_refresh(parameters)
+                if (refresh_param >= 2 or
+                    self.metadata.value(self.uri, METADATA.dirty, None) is not None):
 
-                LOG.info("recomputing <%s>", self.uri)
-                # we *first* unset the dirty bit, so that recursive calls to
-                # get_state do not result in an infinite recursion
-                self.metadata.remove((self.uri, METADATA.dirty, None))
-                trace.force_state_refresh()
-                impl = trace._method_impl # friend #pylint: disable=W0212
-                try:
-                    diag = impl.compute_obsels(trace, refresh_param >= 2)
-                except BaseException, ex:
-                    LOG.warn(traceback.format_exc())
-                    diag = Diagnosis(
-                        "exception raised while computing obsels",
-                        [ex.message]
-                    )
-                if not diag:
-                    self.metadata.set((self.uri, METADATA.dirty,
-                                          Literal("yes")))
-                    raise CanNotProceedError(unicode(diag))
-        finally:
-            del self.__forcing_state_refresh
+                    with self.service: # start transaction if not already started
+                        LOG.info("recomputing <%s>", self.uri)
+                        # we *first* unset the dirty bit, so that recursive calls to
+                        # get_state do not result in an infinite recursion
+                        self.metadata.remove((self.uri, METADATA.dirty, None))
+                        trace.force_state_refresh()
+                        impl = trace._method_impl # friend #pylint: disable=W0212
+                        try:
+                            diag = impl.compute_obsels(trace, refresh_param >= 2)
+                        except BaseException, ex:
+                            LOG.warn(traceback.format_exc())
+                            diag = Diagnosis(
+                                "exception raised while computing obsels",
+                                [ex.message],
+                                sys.exc_traceback,
+                            )
+                        if not diag:
+                            self.metadata.set((self.uri, METADATA.dirty,
+                                                  Literal("yes")))
+
+                            raise CanNotProceedError, unicode(diag), diag.traceback
+            finally:
+                del self.__forcing_state_refresh
 
 
     def edit(self, parameters=None, clear=False, _trust=False):
@@ -593,7 +652,9 @@ class ComputedTraceObsels(AbstractTraceObsels):
 
 FIND_LAST_OBSEL = prepareQuery("""
     PREFIX : <http://liris.cnrs.fr/silex/2009/ktbs#>
-    SELECT ?o {
+    SELECT ?o
+        ?last__end # selected solely to please Virtuoso
+    {
         ?o :hasEnd ?e .
         FILTER ( !BOUND(?last_end) || (?e >= ?last_end) )
     }

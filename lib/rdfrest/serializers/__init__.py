@@ -218,6 +218,16 @@ def serialize_ntriples(graph, uri, bindings=None):
     for triple in graph:
         yield _nt_row(triple).encode("ascii", "replace")
 
+@register_serializer("application/ld+json",  "jsonld", 30)
+@register_serializer("application/json",     "json",   20)
+def serialize_json_ld(graph, uri, bindings=None):
+    """I serialize an RDF graph as JSON-LD.
+
+    See `serialize_rdf_xml` for prototype documentation.
+    """
+    bindings = bindings or dict(_NAMESPACES)
+    return _serialize_with_rdflib("json-ld", graph, bindings, uri)
+
 @register_serializer("text/html", "html", 60)
 @wrap_generator_exceptions(SerializeError)
 def serialize_html(graph, resource, bindings=None):

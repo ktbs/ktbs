@@ -49,6 +49,13 @@ class _SparqlMethod(IMethod):
 
         src, params =  self._prepare_source_and_params(computed_trace, diag)
         if src is not None:
+            if params.get('scope') == 'store':
+                config = computed_trace.service.config
+                if not config.has_section('sparql') \
+                or not config.has_option('sparql', 'allow-scope-ktbs') \
+                or not config.getboolean('sparql', 'allow-scope-ktbs'):
+                    diag.append("Scope 'ktbs' must be explicitly allowed in config, "
+                                "as it raises privacy issued.")
             assert params is not None
             model = params.get("model")
             if model is None:
@@ -74,7 +81,9 @@ class _SparqlMethod(IMethod):
 
         scope = parameters.get('scope', 'trace')
         try:
-            if scope == 'base':
+            if scope == 'store':
+                data = ConjunctiveGraph(source.service.store)
+            elif scope == 'base':
                 data = PrefixConjunctiveView(source.base.uri,
                                              source.service.store)
             else:
@@ -139,7 +148,7 @@ class _SparqlMethod(IMethod):
             return sources[0], params
 
 def _scope_datatype(value):
-    if value in {'trace', 'base'}:
+    if value in {'trace', 'base', 'store'}:
         return value
     raise ValueError(value)
 

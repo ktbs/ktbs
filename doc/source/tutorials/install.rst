@@ -1,7 +1,7 @@
 Installing and running kTBS
 ===========================
 
-These tutorials aim at helping you install kTBS and running it, either as a standalone service or behind an HTTP server such as Apache_ or nginx_.
+These tutorials aim at helping you install kTBS and running it, either as a standalone service or behind an HTTP server such as Apache_ or Nginx_.
 
 It has been written using Debian like systems : Debian wheezy (> 7.n) and `Ubuntu server`_ (from 12.10 to 14.10), but should be applicable with only minor changes (if any) to other flavours of Linux, and a few adaptation on MacOS or MS Windows [#]_.
 
@@ -12,6 +12,7 @@ It has been written using Debian like systems : Debian wheezy (> 7.n) and `Ubunt
     install/install-ktbs-dev-version
     install/install-ktbs-behind-apache
     install/install-ktbs-behind-nginx
+    install/install-ktbs-behind-uwsgi
     install/install-ktbs-with-virtuoso
 
 .. _common-prerequisites:
@@ -42,7 +43,7 @@ We also advise you to use virtualenv_, this tool creates an isolated Python envi
 
 
 .. _Apache: http://httpd.apache.org/
-.. _nginx: http://nginx.org/
+.. _Nginx: http://nginx.org/
 .. _Ubuntu server: http://www.ubuntu.com/download/server
 .. _Python: http://python.org/
 .. _virtualenv: http://www.virtualenv.org/

@@ -1,6 +1,8 @@
-rdflib==4.1.2
+rdflib==4.2.2
+rdflib-jsonld==0.4.0
 httplib2==0.9
 WebOb==1.4
 PyLD==0.6.7
 posix_ipc==0.9.8
 fsa4streams==0.7a
+waitress==1.1.0

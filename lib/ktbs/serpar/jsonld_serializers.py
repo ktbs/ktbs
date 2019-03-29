@@ -18,7 +18,7 @@
 """
 I provide kTBS JSON-LD serializers.
 """
-from collections import OrderedDict
+from collections import Counter, defaultdict, OrderedDict
 from copy import deepcopy
 from itertools import chain, groupby
 from json import dumps
@@ -70,7 +70,6 @@ class ValueConverter(object):
 
     def uri(self, uri, _len_ktbs=LEN_KTBS):
         """Convert URI"""
-        print "===", self._base, uri
         if uri.startswith(KTBS_NS_URI):
             return uri[_len_ktbs:]
         for ns, prefix, len_ns in self._prefixes:
@@ -78,16 +77,13 @@ class ValueConverter(object):
                 return "%s:%s" % (prefix, uri[len_ns:])
         if self._base is not None:
             if uri.startswith(self._base_hash):
-                print "===", 1, uri[self._len_base:]
                 return uri[self._len_base:]
             if uri.startswith(self._dir):
-                print "===", 2, uri[self._len_dir:] or "./"
                 ret = uri[self._len_dir:]
                 if not ret or ret[0] == '#':
                     ret = "./%s" % ret
                 return ret or "./"
             elif self._parent and uri.startswith(self._parent):
-                print "===", 3, "../%s" % uri[self._len_parent:]
                 return "../%s" % uri[self._len_parent:]
         return uri
 
@@ -107,7 +103,7 @@ class ValueConverter(object):
     def val2json(self, val, indent=""):
         return dumps(self.val2jsonobj(val), ensure_ascii=False, indent=4)
 
-    def val2jsonobj(self, val):
+    def val2jsonobj(self, val, bnode_factory=lambda x: OrderedDict()):
         """I convert a value into a JSON basic type.
         val2json is a serialization of a JSON type !
 
@@ -115,7 +111,7 @@ class ValueConverter(object):
         list of RDF nodes
         """
         if isinstance(val, BNode):
-            return OrderedDict()
+            return bnode_factory(val)
         elif isinstance(val, URIRef):
             return OrderedDict({'@id': '%s' % self.uri(val)})
         elif isinstance(val, Literal):
@@ -358,6 +354,10 @@ def serialize_json_base(graph, base, bindings=None):
             if len(rdfs_comments) > 1: rdfs_comments = rdfs_comments[0]
             item['rdf:comments'] = rdfs_comments
 
+        method = graph.value(i.uri, KTBS.hasMethod)
+        if method:
+            item['hasMethod'] = valconv_uri(method)
+
         model = graph.value(i.uri, KTBS.hasModel)
         if model:
             item['hasModel'] = valconv_uri(model)
@@ -380,7 +380,7 @@ def serialize_json_base(graph, base, bindings=None):
             item['rdf:label'] = rdfs_labels
 
         obselCount = graph.value(i.uri, KTBS.hasObselCount)
-        if obselCount:
+        if obselCount is not None:
             item['obselCount'] = valconv_lit(obselCount)
 
     if items:
@@ -389,9 +389,9 @@ def serialize_json_base(graph, base, bindings=None):
     add_other_arcs(base_dict, graph, base.uri, valconv)
 
     if (None, KTBS.hasBase, base.uri) in graph:
-        base_dict['inRoot'] = ".."
+        base_dict['inRoot'] = '../'
     else:
-        base_dict['inBase'] = '..'
+        base_dict['inBase'] = '../'
 
     yield dumps(base_dict, ensure_ascii=False, indent=4)
 
@@ -678,86 +678,89 @@ def trace_obsels_to_json(graph, tobsels, bindings=None):
     }
     tobsels_dict['obsels'] = obsel_list = []
 
-    obsels = graph.query("""
-        PREFIX : <%s#>
-        SELECT ?obs ?pred ?other ?rev ?trc
-        {
-            ?obs :hasBegin ?begin ;
-                 :hasEnd ?end .
-            {
-                ?obs ?pred ?other .
-                BIND (0 as ?rev)
-            }
-            UNION
-            {
-                ?other ?pred ?obs .
-                BIND (1 as ?rev)
-            }
-            OPTIONAL { ?other :hasTrace ?trc } .
-        } ORDER BY ?end ?begin ?obs ?rev ?pred ?other
-    """ % (KTBS_NS_URI))
+    trace_uri = valconv_uri(tobsels.trace.uri)
+    wbegin = set(graph.subjects(KTBS.hasBegin, None))
+    wtrace = set(graph.subjects(KTBS.hasTrace, None))
+    bnode_ref = Counter()
+    node_by_id = defaultdict(dict)
+    for i in wbegin:
+        node_by_id[i] = d = deepcopy(_OBSEL_TEMPLATE)
+        d['@id'] = valconv_uri(i)
 
+    for subj, pred, obj in graph:
+        node_dict = node_by_id[subj]
 
-    for obs, tuples in groupby(obsels, lambda tpl: tpl[0]):
-        obs_dict = deepcopy(_OBSEL_TEMPLATE)
-        obs_dict['@id'] = valconv_uri(obs)
-        rev_dict = OrderedDict()
-
-        for _, pred, other, rev, trc in tuples:
-
-            # handle special predicates
-            if pred == _RDF_TYPE and not rev:
-                at_type = obs_dict['@type']
-                if at_type is None:
-                    obs_dict['@type'] = valconv_uri(other)
-                else:
-                    if not type(at_type) is list:
-                        obs_dict['@type'] = at_type = [at_type]
-                    at_type.append(valconv_uri(other))
-                continue
-            if pred == _KTBS_HAS_TRACE:
-                # ignored here, implied by the 'obsels' key in the parent dict
-                continue
-            if pred == _KTBS_HAS_SOURCE_OBSEL:
-                # '@id' is implied by hasSourceObsel
-                obs_dict['hasSourceObsel'].append(valconv_uri(other))
-                continue
-
-
-            if rev:
-                the_dict = rev_dict
+        # handle special predicates
+        if pred == _RDF_TYPE:
+            at_type = node_dict.get('@type')
+            if at_type is None:
+                node_dict['@type'] = valconv_uri(obj)
             else:
-                the_dict = obs_dict
+                if not type(at_type) is list:
+                    node_dict['@type'] = at_type = [at_type]
+                at_type.append(valconv_uri(obj))
+            continue
+        if pred == _KTBS_HAS_TRACE:
+            # ignored here, implied by the 'obsels' key in the parent dict
+            continue
+        if pred == _KTBS_HAS_SOURCE_OBSEL:
+            # '@id' is implied by hasSourceObsel
+            node_dict['hasSourceObsel'].append(valconv_uri(obj))
+            continue
 
-            pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
-            new_val = val2jsonobj(other)
-            if pred_key == 'subject' and type(new_val) is OrderedDict:
-                # nicer representation of URI subject
-                pred_key = 'hasSubject'
-                new_val = new_val['@id']
-            elif trc:
-                # other is a related obsel URI, so new_val must be a dict
-                new_val['hasTrace'] = valconv_uri(trc)
+        def bnode_factory(n):
+            bnode_ref.update((n,))
+            if bnode_ref[n] == 1:
+                return node_by_id[n]
+            else:
+                bnode_id = '_:%s' % n
+                node_by_id[n]['@id'] = bnode_id
+                return {'@id': bnode_id}
+            
+        pred_key = KTBS_SPECIAL_KEYS.get(pred) or valconv_uri(pred)
+        new_val = val2jsonobj(obj, bnode_factory)
+        if obj in wtrace:
+            new_val['hasTrace'] = trace_uri
+        if pred_key == 'subject' and type(new_val) is OrderedDict:
+            # nicer representation of URI subject
+            pred_key = 'hasSubject'
+            new_val = new_val['@id']
 
-            old_val = the_dict.get(pred_key)
+        old_val = node_dict.get(pred_key)
+        if old_val is None:
+            node_dict[pred_key] = new_val
+        elif type(old_val) == list:
+            old_val.append(new_val)
+        else:
+            node_dict[pred_key] = [old_val, new_val]
+
+        if obj in wbegin:
+            obj_dict = node_by_id[obj]
+            rev_dict = obj_dict.get('@reverse')
+            if rev_dict is None:
+                rev_dict = obj_dict['@reverse'] = {}
+            old_val = rev_dict.get(pred_key)
+            new_val = { "@id": valconv_uri(subj) }
+            if subj in wtrace:
+                new_val["hasTrace"] = trace_uri
             if old_val is None:
-                the_dict[pred_key] = new_val
+                rev_dict[pred_key] = new_val
             elif type(old_val) == list:
                 old_val.append(new_val)
             else:
-                the_dict[pred_key] = [old_val, new_val]
+                rev_dict[pred_key] = [old_val, new_val]
 
-        if rev_dict:
-            obs_dict['@reverse'] = rev_dict
-
+    for obs_id in wbegin:
+        obs_dict = node_by_id[obs_id]
         todel = []
         for key, val in obs_dict.items():
             if val is None or val == []:
                 todel.append(key)
         for key in todel:
             del obs_dict[key]
-
         obsel_list.append(obs_dict)
+
+    obsel_list.sort(key=lambda x: (x['end'], x['begin'], x['@id']))
 
     return tobsels_dict
 
@@ -833,8 +836,9 @@ def trace_stats_to_json(graph, tstats, bindings=None):
     # Is it because of the filter clause ?
     stats_infos = graph.query("""
         SELECT ?pred ?obj
+            $trace # selected solely to please Virtuoso
         {{
-            ?trace ?pred ?obj
+            $trace ?pred ?obj
 
             filter (strstarts(xsd:string(?pred), "{0:s}"))
         }}
@@ -842,15 +846,16 @@ def trace_stats_to_json(graph, tstats, bindings=None):
                               initNs=initNs,
                               initBindings=initBindings)
 
-    for pred, obj in stats_infos:
+    for pred, obj, _ in stats_infos:
         if pred != KTBS_NS_STATS.obselCountPerType:
             tstats_dict[pred] = val2jsonobj(obj)
 
     # Recover data inside blank nodes : another request needed
     stats_infos = graph.query("""
         SELECT ?bn ?pred ?obj
+            $trace # selected solely to please Virtuoso
         {
-            ?trace stats:obselCountPerType ?bn .
+            $trace stats:obselCountPerType ?bn .
 
             ?bn ?pred ?obj .
         }
@@ -863,7 +868,7 @@ def trace_stats_to_json(graph, tstats, bindings=None):
         tstats_dict[KTBS_NS_STATS.obselCountPerType] = ocpt =  []
         for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
             ot_infos = {}
-            for _, pred, obj in tuples:
+            for _, pred, obj, _ in tuples:
                 pred = unicode(pred) # cast URIRef to plain unicode
                 ot_infos[pred] = val2jsonobj(obj)
 
