@@ -144,16 +144,16 @@ class SparqlEndpointMiddleware(object):
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
         try:
-            return MyResponse(result.serialize(format=serfmt),
+            return MyResponse(result.serialize(format=serfmt, encoding='utf-8').decode('utf-8'),
                               status="200 Ok",
                               content_type=ctype,
                               request=request)
-        except Exception, ex:
-            if ex.message.startswith(
+        except Exception as ex:
+            if ex.args[0].startswith(
                     "You performed a query operation requiring a dataset"):
                 status = "403 Forbidden"
                 return MyResponse("%s\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=request)
             else:
@@ -169,10 +169,10 @@ class SparqlEndpointMiddleware(object):
             with resource.edit() as editable_graph:
                 query = "BASE <%s> %s" % (resource.uri, query)
                 editable_graph.update(query)
-        except Exception, ex:
+        except Exception as ex:
                 status = "400 Bad update query"
                 return MyResponse("%s\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=request)
         return MyResponse("200 Ok\nUpdate query executed",

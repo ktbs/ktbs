@@ -280,7 +280,7 @@ class HttpFrontend(object):
         for link in links:
             uri = link.pop('uri')
             link_props = ';'.join( '%s="%s"' % item for item in link.items() )
-            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf8')
+            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf-8')
             headerlist.append(("link", link_val))
 
         # check triples & bytes limitations and serialize
@@ -291,7 +291,7 @@ class HttpFrontend(object):
         app_iter = serializer(graph, resource)
         if self.max_bytes is not None:
             # TODO LATER find a better way to guess the number of bytes?
-            payload = "".join(app_iter)
+            payload = b"".join(app_iter)
             if len(payload) >  self.max_bytes:
                 return self.issue_error(403, request, resource,
                                         "max_bytes (%s) was exceeded"
@@ -469,7 +469,7 @@ Service info
             self._service.__class__.__name__,
             self._service.root_uri,
         )
-        res = MyResponse(body, status, kw.items())
+        res = MyResponse(body, status, list(kw.items()))
         return res
 
 
@@ -576,57 +576,57 @@ class ErrorHandlerMiddleware(object):
         try:
             return self.app(environ, start_response)
 
-        except HttpException, ex:
+        except HttpException as ex:
             response = ex.get_response(MyRequest(environ))
-        except CanNotProceedError, ex:
+        except CanNotProceedError as ex:
             status = "409 Conflict"
             response = MyResponse("%s - Can not proceed\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=MyRequest(environ))
-        except InvalidDataError, ex:
+        except InvalidDataError as ex:
             status = "403 Forbidden"
             response = MyResponse("%s - Invalid data\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=MyRequest(environ))
-        except InvalidParametersError, ex:
+        except InvalidParametersError as ex:
             status = "404 Not Found"
             response = MyResponse("%s - Invalid parameters\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=MyRequest(environ))
-        except MethodNotAllowedError, ex:
+        except MethodNotAllowedError as ex:
             status = "405 Method Not Allowed"
-            response = MyResponse("%s\n%s" % (status, ex.message),
+            response = MyResponse("%s\n%s" % (status, ex.args[0]),
                                   status=status,
                                   request=MyRequest(environ))
             # TODO LATER find a nice way to populate response.allow ?
-        except ParseError, ex:
+        except ParseError as ex:
             status = "400 Bad Request"
             response = MyResponse("%s - Parse error\n%s"
-                                  % (status, ex.message),
+                                  % (status, ex.args[0]),
                                   status=status,
                                   request=MyRequest(environ))
-        except ParseException, ex:
+        except ParseException as ex:
             status = "400 Bad Request"
             message = "%s at line %s col %s\n\n%s" % \
-                      (ex.message, ex.lineno, ex.column, ex.markInputline())
+                      (ex.args[0], ex.lineno, ex.column, ex.markInputline())
             response = MyResponse("%s - Parse exception\n%s"
                                   % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except SerializeError, ex:
+        except SerializeError as ex:
             status = "550 Serialize Error"
-            message = ex.message
+            message = ex.args[0]
             if environ.get('rdfrest.send-traceback'):
                 message = "%s\n%s" % (message, traceback.format_exc())
             response = MyResponse("%s\n%s" % (status, message),
                                   status=status,
                                   request=MyRequest(environ))
-        except Exception, ex:
+        except Exception as ex:
             status = "500 Internal Error"
-            message = ex.message
+            message = ex.args[0]
             if environ.get('rdfrest.send-traceback'):
                 message = "%s\n%s" % (message, traceback.format_exc())
             response = MyResponse("%s - Unexpected exception\n%s"
@@ -649,7 +649,7 @@ class HttpException(Exception):
 
     def get_headerlist(self):
         hlist = []
-        for key, val in self.headers.iteritems():
+        for key, val in self.headers.items():
             if type(val) is not list:
                 val = [val]
             for i in val:

@@ -20,7 +20,7 @@
 """
 I provide a convenient way to build a helper service wrapping a single graph.
 """
-from ConfigParser import SafeConfigParser
+from configparser import SafeConfigParser
 from rdflib import Graph, RDF, URIRef
 
 from rdfrest.cores.local import LocalCore, Service
@@ -28,7 +28,7 @@ from rdfrest.cores.local import LocalCore, Service
 
 def make_helper_service(uri, graph, format=None):
 
-    if isinstance(graph, basestring):
+    if isinstance(graph, str):
         assert format != None
         data = graph
         graph = Graph()

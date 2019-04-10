@@ -53,7 +53,7 @@ def getTwitterFavorites(trace=None):
 
     nb_favorites_pages = 2
     for i in range(1, nb_favorites_pages):
-        print "Fetching page: %s" % i
+        print("Fetching page: %s" % i)
         favs = api.GetFavorites(page=i)
 
         if not favs:
@@ -71,9 +71,9 @@ def getTwitterFavorites(trace=None):
                                end=t_date,
                                subject=p.text)
 
-            print p.id, "[", p.created_at, "]\n\t", p.text \
+            print(p.id, "[", p.created_at, "]\n\t", p.text \
                   ,"\n\tby: ", user.screen_name, "-", user.name, "-", user.id \
-                  ,"\n\thastags: ", p.hashtags, "\n"
+                  ,"\n\thastags: ", p.hashtags, "\n")
 
 if __name__ == "__main__":
     root = get_ktbs(KTBS_ROOT)

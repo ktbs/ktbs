@@ -46,7 +46,7 @@ class _FilterMethod(AbstractMonosourceMethod):
         "after": int,
         "beforeDT": parse_date,
         "afterDT": parse_date,
-        "bgp": unicode,
+        "bgp": str,
         "otypes":
             lambda txt: txt and [ URIRef(i) for i in txt.split(" ") ] or None,
     }
@@ -187,7 +187,7 @@ class _FilterMethod(AbstractMonosourceMethod):
 
         cstate["passed_maxtime"] = passed_maxtime
         if last_seen_u is not None:
-            last_seen_u = unicode(last_seen_u)
+            last_seen_u = str(last_seen_u)
         cstate["last_seen_u"] = last_seen_u
         cstate["last_seen_b"] = last_seen_b
 

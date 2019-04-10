@@ -139,7 +139,7 @@ class HttpClientCore(ICore):
                 py_class = HttpClientCore
             resource = py_class(uri, graph)
             try:
-                iter(resource.get_state()).next()
+                next(iter(resource.get_state()))
             except ResourceAccessError:
                 return None
 
@@ -211,7 +211,7 @@ class HttpClientCore(ICore):
         """
         if parameters is None:
             content_type, rdflib_format = self._state.store.prefered_format
-            data = graph.serialize(format=rdflib_format)
+            data = graph.serialize(format=rdflib_format, encoding='utf-8')
             headers = {
                 'content-type': content_type,
                 }
@@ -252,7 +252,7 @@ class HttpClientCore(ICore):
         uri = add_uri_params(self.uri, parameters)
         try:
             subresource = self.factory(uri)
-        except ResourceAccessError, ex:
+        except ResourceAccessError as ex:
             raise InvalidParametersError(ex)
         if subresource is None:
             raise InvalidParametersError("factory returned None")
@@ -284,7 +284,7 @@ class HttpClientCore(ICore):
         :meth:`.http_server.HttpFrontend._core_call`.
         """
         status = headers.status
-        if status / 100 == 2:
+        if status // 100 == 2:
             return
         elif status == 403:
             raise InvalidDataError(content)

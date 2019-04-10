@@ -21,9 +21,8 @@
 I implement an rdflib store that acts as a proxy to a RESTful RDF graph.
 """
 
-import httplib
+import http.client
 import httplib2
-from StringIO import StringIO
 import types
 
 #http://docs.python.org/howto/logging-cookbook.html
@@ -262,10 +261,10 @@ class ProxyStore(Store):
         extracted_configuration = {}
         
         # TODO LATER ? if self.configuration is not None:
-        if isinstance(configuration, types.DictType):
+        if isinstance(configuration, dict):
             extracted_configuration = configuration
 
-        elif isinstance(configuration, types.StringTypes):
+        elif isinstance(configuration, (str,)):
 
             if len(configuration) > 0:
 
@@ -287,8 +286,15 @@ class ProxyStore(Store):
 
             :param header: Header of the HTTP request or response.
         """
-        ctype = header.get("content-type", "text/turtle").split(";", 1)[0]
+        ctype_header = header.get("content-type", "text/turtle")
+        ctype, *params = ctype_header.split(";")
         self._format = _CONTENT_TYPE_PARSERS[ctype]
+
+        self._encoding = 'utf-8'
+        for param in params:
+            param = param.strip()
+            if param.startswith('charset='):
+                self._encoding = param[8:]
 
         LOG.debug("-- ProxyStore._parse_header(), "
                   "content-type=%s, self._format=%s --",
@@ -312,8 +318,9 @@ class ProxyStore(Store):
             parse_format = "n3" # seems to be more efficient!...
         self.remove((None, None, None), None) # efficiently empties graph
         # the above is much faster than remove((None, None, None))
-        self._graph.parse(StringIO(content), format=self._format,
-                          publicID=self._identifier)
+        self._graph.parse(format=self._format,
+                          publicID=self._identifier,
+                          data=content.decode(self._encoding))
 
     def _pull(self):
         """Update cache before an operation.
@@ -341,7 +348,7 @@ class ProxyStore(Store):
         # httplib2 raises a httplib2.ServerNotFoundError exception when ...
         # Throw a ResourceAccessError exception in case of HTTP 404 as we have
         # no better mean at the moment
-        if header.status == httplib.NOT_FOUND:
+        if header.status == http.client.NOT_FOUND:
             raise ResourceAccessError(header.status, self._identifier,
                                       self.configuration)
 
@@ -416,9 +423,9 @@ class ProxyStore(Store):
         LOG.debug("[response header]\n%s", rheader)
         LOG.debug("[response content]\n%s", rcontent)
 
-        if rheader.status in (httplib.OK,):
+        if rheader.status in (http.client.OK,):
             self._parse_header(rheader)
-        elif rheader.status in (httplib.PRECONDITION_FAILED,):
+        elif rheader.status in (http.client.PRECONDITION_FAILED,):
             raise GraphChangedError(url=self._identifier, msg=rheader.status)
         elif str(rheader.status)[0] == "5":
             raise ServerError(url=self._identifier, msg=rheader.status)

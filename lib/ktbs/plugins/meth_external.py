@@ -115,9 +115,9 @@ class _ExternalMethod(IMethod):
         try:
             raw_graph.parse(data=rdfdata, publicID=computed_trace.uri,
                             format=rdfformat)
-        except Exception, exc:
+        except Exception as exc:
             LOG.warn(traceback.format_exp())
-            diag.append(unicode(exc))
+            diag.append(str(exc))
         replace_obsels(computed_trace, raw_graph)
 
         return diag

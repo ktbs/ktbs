@@ -62,7 +62,7 @@ class ValueConverter(object):
         prefixes.update({
             XSD: 'xsd',
             SKOS: 'skos',
-            unicode(RDFS): 'rdfs',
+            str(RDFS): 'rdfs',
         })
         self._prefixes = [
             (ns, prefix, len(ns)) for ns, prefix in prefixes.items()
@@ -90,15 +90,15 @@ class ValueConverter(object):
     @staticmethod
     def literal(val):
         if val.language:
-            return { '@value': unicode(val), '@language': val.language }
+            return { '@value': str(val), '@language': val.language }
         if val.datatype == XSD.integer:
             return int(val)
         elif val.datatype in (XSD.double, XSD.decimal):
             return float(val)
         elif val.datatype == XSD.boolean:
-            return unicode(val) in ('true', '1')
+            return str(val) in ('true', '1')
         else:
-            return unicode(val)
+            return str(val)
 
     def val2json(self, val, indent=""):
         return dumps(self.val2jsonobj(val), ensure_ascii=False, indent=4)
@@ -165,7 +165,7 @@ def add_other_arcs(jsonobj, graph, uri, valconv, obsel=False):
         if obsel:
             # include k:hasTrace property of related obsels
             obj = [ i[2]  if i[3] is None
-                    else { u"@id": valconv_uri(i[2]), u"hasTrace": u"./" }
+                    else { "@id": valconv_uri(i[2]), "hasTrace": "./" }
                     for i in tuples ]
         else:
             obj = [ i[2] for i in tuples ]
@@ -181,7 +181,7 @@ def add_other_arcs(jsonobj, graph, uri, valconv, obsel=False):
         if obsel:
             # include k:hasTrace property of related obsels
             subj = [ i[0]  if i[3] is None
-                     else { u"@id": valconv_uri(i[0]), u"hasTrace": u"./" }
+                     else { "@id": valconv_uri(i[0]), "hasTrace": "./" }
                      for i in tuples ]
         else:
             subj = [ i[0] for i in tuples ]
@@ -206,16 +206,16 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
                   if not i.startswith(KTBS_NS_URI) ]
         if types:
             types = [ valconv_uri(i) for i in types ]
-            yield u""",%s "additionalType": %s""" % (indent, dumps(types))
+            yield """,%s "additionalType": %s""" % (indent, dumps(types))
 
     labels = list(graph.objects(uri, SKOS.prefLabel))
     if labels:
-        yield u""",%s"label": %s""" % (indent,
+        yield """,%s"label": %s""" % (indent,
                                        val2json(labels[0], indent))
         if len(labels) > 1:
             # for the sake of regularity, we keep a single value for "label",
             # and set the other values to the full URI
-            yield u""",%s"%s": %s""" \
+            yield """,%s"%s": %s""" \
               % (indent, SKOS.prefLabel,
                  val2json(labels[1:], indent))
 
@@ -226,13 +226,13 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
         if obsel:
             # include k:hasTrace property of related obsels
             obj = [ i[2]  if i[3] is None
-                    else { u"@id": valconv_uri(i[2]), u"hasTrace": u"./" }
+                    else { "@id": valconv_uri(i[2]), "hasTrace": "./" }
                     for i in tuples ]
         else:
             obj = [ i[2] for i in tuples ]
         if len(obj) == 1:
             obj = obj[0]
-        yield u""",%s"%s": %s""" % (indent, pred_conv(pred),
+        yield """,%s"%s": %s""" % (indent, pred_conv(pred),
                                       val2json(obj, indent))
 
     comma = None
@@ -241,22 +241,22 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
             lambda tpl: tpl[1]
             ):
         if comma is None:
-            yield u""",%s"@reverse": {""" % indent
+            yield """,%s"@reverse": {""" % indent
             comma = ""
         if obsel:
             # include k:hasTrace property of related obsels
             subj = [ i[0]  if i[3] is None
-                     else { u"@id": valconv_uri(i[0]), u"hasTrace": u"./" }
+                     else { "@id": valconv_uri(i[0]), "hasTrace": "./" }
                      for i in tuples ]
         else:
             subj = [ i[0] for i in tuples ]
         if len(subj) == 1:
             subj = subj[0]
-        yield u"""%s%s    "%s": %s""" % (comma, indent, pred_conv(pred),
+        yield """%s%s    "%s": %s""" % (comma, indent, pred_conv(pred),
                                          val2json(subj, indent))
         comma = ","
     if comma is not None:
-        yield u"%s}" % indent
+        yield "%s}" % indent
 
 OTHER_ARCS = prepareQuery("""
     PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
@@ -287,11 +287,11 @@ def serialize_json_root(graph, root, bindings=None):
     valconv_uri = valconv.uri
 
     try:
-        ktbs_version = graph.objects(root.uri, KTBS.hasVersion).next()
+        ktbs_version = next(graph.objects(root.uri, KTBS.hasVersion))
     except StopIteration:
         ktbs_version = "Unknwown"
 
-    yield u"""{
+    yield """{
     "@context": "%s",
     "@id": "%s",
     "@type": "KtbsRoot",
@@ -314,7 +314,7 @@ def serialize_json_root(graph, root, bindings=None):
     for i in iter_other_arcs(graph, root.uri, valconv):
         yield i
 
-    yield u"""\n}\n"""
+    yield """\n}\n"""
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.Base)
 @register_serializer(JSON, "json", 60, KTBS.Base)
@@ -405,7 +405,7 @@ def serialize_json_method(graph, method, bindings=None):
     valconv = ValueConverter(method.uri)
     valconv_uri = valconv.uri
 
-    yield u"""{
+    yield """{
     "@context": "%s",
     "@id": "%s",
     "@type": "Method",
@@ -415,25 +415,25 @@ def serialize_json_method(graph, method, bindings=None):
     )
 
     own_params = method.iter_parameters_with_values(False)
-    yield u",".join(
-        u"\n        %s" % dumps("%s=%s" % item)
+    yield ",".join(
+        "\n        %s" % dumps("%s=%s" % item)
         for item in own_params
     ) + "]"
 
     used_by = list(method.state.subjects(KTBS.hasMethod, method.uri))
     if used_by:
-        yield  u""",\n        "isMethodOf": %s""" \
+        yield  """,\n        "isMethodOf": %s""" \
           % dumps([ valconv_uri(i) for i in used_by ])
 
     children = list(method.state.subjects(KTBS.hasParentMethod, method.uri))
     if children:
-        yield  u""",\n        "isParentMethodOf": %s""" \
+        yield  """,\n        "isParentMethodOf": %s""" \
           % dumps([ valconv_uri(i) for i in children])
 
     for i in iter_other_arcs(graph, method.uri, valconv):
         yield i
 
-    yield u""",\n    "inBase": "%s"\n}\n""" % valconv_uri(method.base.uri)
+    yield """,\n    "inBase": "%s"\n}\n""" % valconv_uri(method.base.uri)
 
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.TraceModel)
@@ -445,7 +445,7 @@ def serialize_json_model(graph, tmodel, bindings=None):
     valconv = ValueConverter(tmodel.uri)
     valconv_uri = valconv.uri
 
-    yield u"""{
+    yield """{
     "@context": "%s",
     "@graph": [
         {
@@ -455,19 +455,19 @@ def serialize_json_model(graph, tmodel, bindings=None):
     % (CONTEXT_URI, tmodel.uri, valconv_uri(tmodel.base.uri))
 
     if tmodel.unit is not None:
-        yield u""",\n            "hasUnit": "%s" """ \
+        yield """,\n            "hasUnit": "%s" """ \
           % valconv_uri(tmodel.unit)
 
     parents = list(tmodel.parents)
     if parents:
         parents = [ valconv_uri(coerce_to_uri(i)) for i in parents ]
-        yield u""",\n            "hasParentModel": %s""" % dumps(parents)
+        yield """,\n            "hasParentModel": %s""" % dumps(parents)
 
     for i in iter_other_arcs(graph, tmodel.uri, valconv, "\n            "):
         yield i
 
     for otype in tmodel.iter_obsel_types(False):
-        yield u"""
+        yield """
         },
         {
             "@id": "%s" ,
@@ -476,14 +476,14 @@ def serialize_json_model(graph, tmodel, bindings=None):
         stypes = [ valconv_uri(coerce_to_uri(i))
                    for i in otype.iter_supertypes(False) ]
         if stypes:
-            yield u""",\n            "hasSuperObselType": %s """ \
+            yield """,\n            "hasSuperObselType": %s """ \
               % dumps(stypes)
 
         for i in iter_other_arcs(graph, otype.uri, valconv, "\n            "):
             yield i
 
     for atype in tmodel.iter_attribute_types(False):
-        yield u"""
+        yield """
         },
         {
             "@id": "%s" ,
@@ -491,19 +491,19 @@ def serialize_json_model(graph, tmodel, bindings=None):
 
         obsel_types = atype.obsel_types
         if obsel_types:
-            yield u""",\n            "hasAttributeObselType": %s """ \
+            yield """,\n            "hasAttributeObselType": %s """ \
                 % dumps([ valconv_uri(coerce_to_uri(ot)) for ot in obsel_types ])
 
         data_types = atype.data_types
         if data_types:
-            yield u""",\n            "hasAttributeDatatype": %s """ \
+            yield """,\n            "hasAttributeDatatype": %s """ \
                 % dumps([ valconv_uri(dt) for dt in data_types ])
 
         for i in iter_other_arcs(graph, atype.uri, valconv, "\n            "):
             yield i
 
     for rtype in tmodel.iter_relation_types(False):
-        yield u"""
+        yield """
         },
         {
             "@id": "%s" ,
@@ -512,24 +512,24 @@ def serialize_json_model(graph, tmodel, bindings=None):
         stypes = [ valconv_uri(coerce_to_uri(i))
                    for i in rtype.iter_supertypes(False) ]
         if stypes:
-            yield u""",\n            "hasSuperRelationType": %s """ \
+            yield """,\n            "hasSuperRelationType": %s """ \
               % dumps(stypes)
 
         origins = rtype.origins
         if origins:
-            yield u""",\n            "hasRelationOrigin": %s """ \
+            yield """,\n            "hasRelationOrigin": %s """ \
                 % dumps([ valconv_uri(coerce_to_uri(o)) for o in origins ])
 
         destinations = rtype.destinations
         if destinations:
-            yield u""",\n            "hasRelationDestination": %s """ \
+            yield """,\n            "hasRelationDestination": %s """ \
                 % dumps([ valconv_uri(coerce_to_uri(d)) for d in destinations ],)
 
         for i in iter_other_arcs(graph, rtype.uri, valconv, "\n            "):
             yield i
 
 
-    yield u"""
+    yield """
         } ]\n}\n"""
 
 
@@ -545,7 +545,7 @@ def serialize_json_trace(graph, trace, bindings=None):
     val2json = valconv.val2json
     valconv_uri = valconv.uri
 
-    yield u"""\n{
+    yield """\n{
     "@context": "%s",
     "@id": "%s",
     "@type": "%s",
@@ -558,15 +558,15 @@ def serialize_json_trace(graph, trace, bindings=None):
 
     diagnosis = getattr(trace, 'diagnosis', None)
     if diagnosis is not None:  # can be None with faulty computed traces
-        yield u',\n    "diagnosis": %s' % dumps(diagnosis)
+        yield ',\n    "diagnosis": %s' % dumps(diagnosis)
 
     model_uri = trace.model_uri
     if model_uri is not None: # can be None with faulty computed traces
-        yield u',\n    "hasModel": "%s"' % valconv_uri(model_uri)
+        yield ',\n    "hasModel": "%s"' % valconv_uri(model_uri)
 
     origin = trace.origin
     if origin is not None: # can be None with faulty computed traces
-        yield u',\n    "origin": "%s"' % origin
+        yield ',\n    "origin": "%s"' % origin
 
     trace_begin = trace.get_trace_begin()
     if trace_begin is not None:
@@ -586,23 +586,23 @@ def serialize_json_trace(graph, trace, bindings=None):
     defsubject = trace.state.value(trace.uri, KTBS.hasDefaultSubject)
     if defsubject:
         if isinstance(defsubject, URIRef):
-            yield u""",\n    "hasDefaultSubject": "%s" """ % \
+            yield """,\n    "hasDefaultSubject": "%s" """ % \
                 valconv_uri(defsubject)
         else:
-            yield u""",\n    "defaultSubject": %s """ % \
+            yield """,\n    "defaultSubject": %s """ % \
                 val2json(defsubject)
     if trace.source_traces:
         sources = [ valconv_uri(coerce_to_uri(i))
                     for i in trace.source_traces ]
-        yield u""",\n    "hasSource": %s""" % dumps(sources)
+        yield """,\n    "hasSource": %s""" % dumps(sources)
     if hasattr(trace, "method"):
-        yield u""",\n    "hasMethod": "%s" """ \
+        yield """,\n    "hasMethod": "%s" """ \
           % valconv_uri(coerce_to_uri(trace.method))
         own_params = trace.list_parameters_with_values(False)
         if own_params:
-            yield u""",\n    "parameter": [%s\n    ]""" % (
+            yield """,\n    "parameter": [%s\n    ]""" % (
                 ",".join(
-                    u"\n        %s"
+                    "\n        %s"
                     % dumps("%s=%s" % item)
                     for item in own_params
                 )
@@ -610,17 +610,17 @@ def serialize_json_trace(graph, trace, bindings=None):
 
     if trace.context_uris:
         context_uris = [ valconv_uri(i) for i in trace.context_uris ]
-        yield u""",\n    "hasContext": %s""" % dumps(context_uris)
+        yield """,\n    "hasContext": %s""" % dumps(context_uris)
 
     transformed = [ valconv_uri(i)
                     for i in trace.state.subjects(KTBS.hasSource, trace.uri) ]
     if transformed:
-        yield u""",\n    "isSourceOf": %s""" % dumps(transformed)
+        yield """,\n    "isSourceOf": %s""" % dumps(transformed)
 
     for i in iter_other_arcs(graph, trace.uri, valconv):
         yield i
 
-    yield u""",\n    "inBase": "../"\n}\n"""
+    yield """,\n    "inBase": "../"\n}\n"""
 
 
 def iter_obsel_arcs(graph, obs, valconv, indent=""):
@@ -633,14 +633,14 @@ def iter_obsel_arcs(graph, obs, valconv, indent=""):
 
     source_obsels = [ valconv_uri(i) for i in graph.objects(obs, KTBS.hasSourceObsel) ]
     if source_obsels:
-            yield u""",\n%s"hasSourceObsel": %s""" \
+            yield """,\n%s"hasSourceObsel": %s""" \
               % (indent, dumps(source_obsels))
     beginDT = graph.value(obs, KTBS.hasBeginDT)
     if beginDT:
-            yield u""",\n%s"beginDT": %s """ % (indent, val2json(beginDT))
+            yield """,\n%s"beginDT": %s """ % (indent, val2json(beginDT))
     endDT = graph.value(obs, KTBS.hasEndDT)
     if endDT:
-        yield u""",\n%s"endDT": %s """ % (indent, val2json(endDT))
+        yield """,\n%s"endDT": %s """ % (indent, val2json(endDT))
 
 
 def trace_obsels_to_json(graph, tobsels, bindings=None):
@@ -826,8 +826,8 @@ def trace_stats_to_json(graph, tstats, bindings=None):
         '@type': 'TraceStatistics'
     }
 
-    initNs = {'': unicode(KTBS_NS_URI),
-              'stats': unicode(KTBS_NS_STATS)
+    initNs = {'': str(KTBS_NS_URI),
+              'stats': str(KTBS_NS_STATS)
               }
     initBindings = {'trace': trace_uri}
 
@@ -869,7 +869,7 @@ def trace_stats_to_json(graph, tstats, bindings=None):
         for bn, tuples in groupby(stats_infos, lambda tpl: tpl[0]):
             ot_infos = {}
             for _, pred, obj, _ in tuples:
-                pred = unicode(pred) # cast URIRef to plain unicode
+                pred = str(pred) # cast URIRef to plain unicode
                 ot_infos[pred] = val2jsonobj(obj)
 
             ocpt.append(ot_infos)
@@ -940,7 +940,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     if len(otypes) == 1:
         otypes = otypes[0]
 
-    yield u"""{
+    yield """{
     "@context": [
         "%s",
         { "m": "%s" }
@@ -973,7 +973,7 @@ def serialize_json_obsel(graph, obsel, bindings=None):
     for i in iter_other_arcs(graph, obsel.uri, valconv, obsel=True):
         yield i
 
-    yield u"""\n}\n"""
+    yield """\n}\n"""
 
 @register_serializer(JSONLD, "jsonld", 85, KTBS.DataGraph)
 @register_serializer(JSON, "json", 60, KTBS.DataGraph)

@@ -46,8 +46,8 @@ from .html import REST_CONSOLE
 
 _SREGISRIES = { None: _FormatRegistry() }
 _NAMESPACES = {
-    "rdf":     unicode(RDF),
-    "rdfs":    unicode(RDFS),
+    "rdf":     str(RDF),
+    "rdfs":    str(RDFS),
     }
 
 def register_serializer(content_type, extension=None, preference=80,
@@ -68,7 +68,7 @@ def register_serializer(content_type, extension=None, preference=80,
     when it fails to serialize the given graph.
     """
     if rdf_type is not None:
-        rdf_type = unicode(rdf_type)
+        rdf_type = str(rdf_type)
     registry = _SREGISRIES.get(rdf_type)
     if registry is None:
         registry = _FormatRegistry()
@@ -91,7 +91,7 @@ def iter_serializers(rdf_type=None):
     type), regardless of the preference score.
     """
     if rdf_type is not None:
-        rdf_type = unicode(rdf_type)
+        rdf_type = str(rdf_type)
         reg = _SREGISRIES.get(rdf_type)
         if reg:
             for i in reg:
@@ -105,7 +105,7 @@ def get_serializer_by_content_type(content_type, rdf_type=None):
     :return: a tuple (serializer_function, extension) or (None, None)
     """
     if rdf_type is not None:
-        rdf_type = unicode(rdf_type)
+        rdf_type = str(rdf_type)
         reg = _SREGISRIES.get(rdf_type)
         if reg:
             ret = reg.get_by_content_type(content_type)
@@ -119,7 +119,7 @@ def get_serializer_by_extension(extension, rdf_type=None):
     :return: a tuple (serializer_function, content_type) or (None, None)
     """
     if rdf_type is not None:
-        rdf_type = unicode(rdf_type)
+        rdf_type = str(rdf_type)
         reg = _SREGISRIES.get(rdf_type)
         if reg:
             ret = reg.get_by_extension(extension)
@@ -130,7 +130,7 @@ def get_serializer_by_extension(extension, rdf_type=None):
 def bind_prefix(prefix, namespace_uri):
     """I associate a namespace with a prefix for all registered serializers.
     """
-    _NAMESPACES[prefix] = unicode(namespace_uri)
+    _NAMESPACES[prefix] = str(namespace_uri)
 
 def get_prefix_bindings():
     """I return a fresh dict containing all the prefix bindings.

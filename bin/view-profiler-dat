@@ -30,13 +30,13 @@ from pstats import Stats
 from sys import argv
 
 if len(argv) < 2 or argv[1].startswith("-"):
-   print """usage:
+   print("""usage:
    %s <profiler-dat-file> [<sort-key>]
 
    where <sort-key> is a comma (,) separated list of values in
      'cumulative', 'filename', 'ncalls', 'pcalls', 'line', 'name', 'nfl',
      'stdname', 'time' (plus some aliases)
-"""
+""")
    exit()
 
 p = Stats(argv[1])

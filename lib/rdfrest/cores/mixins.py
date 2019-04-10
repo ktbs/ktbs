@@ -102,7 +102,7 @@ class BookkeepingMixin(ILocalCore):
         # NB: using time() only does not always work: time() can return the
         # same value twice; so we salt it with the previous etag (if any),
         # which should do the trick
-        new_etag = md5(token).hexdigest()
+        new_etag = md5(token.encode('utf-8')).hexdigest()
         graph.set((uri, RDFREST.etag, Literal(new_etag)))
         graph.set((uri, RDFREST.lastModified, Literal(now)))
         # TODO LATER evaluate how slow it is to generate the etag that way,
@@ -195,7 +195,7 @@ class GraphPostableMixin(ILocalCore):
         if not _trust:
             diag = self.check_posted_graph(parameters, created, graph)
             if not diag:
-                raise InvalidDataError(unicode(diag))
+                raise InvalidDataError(str(diag))
         else: # graph is trusted so it SHOULD verify the assert below
             assert self.check_posted_graph(parameters, created, graph), \
                    self.check_posted_graph(parameters, created, graph)
@@ -224,7 +224,7 @@ class GraphPostableMixin(ILocalCore):
             cls.complete_new_graph(self.service, created, None, graph)
             diag = cls.check_new_graph(self.service, created, None, graph)
             if not diag:
-                raise InvalidDataError(unicode(diag))
+                raise InvalidDataError(str(diag))
         else: # graph is trusted so it SHOULD verify the assert below
             assert cls.check_new_graph(self.service, created, None, graph), \
                    cls.check_new_graph(self.service, created, None, graph)

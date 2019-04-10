@@ -158,7 +158,7 @@ class _FSAMethod(AbstractMonosourceMethod):
 
         with target_obsels.edit({"add_obsels_only":1}, _trust=True):
             for obs in source.iter_obsels(after=after, refresh="no"):
-                last_seen = event = unicode(obs.uri)
+                last_seen = event = str(obs.uri)
                 matching_tokens = fsa.feed(event, obs.end)
                 for i, token in enumerate(matching_tokens):
                     state = KtbsFsaState(fsa, token['state'],
@@ -207,8 +207,8 @@ class _FSAMethod(AbstractMonosourceMethod):
                                 val = aggr_func(results, i)
                                 if val is not None:
                                     new_obs_add((new_obs_uri, target_attr, val))
-                            except Exception, ex:
-                                LOG.warn(ex.message)
+                            except Exception as ex:
+                                LOG.warn(ex.args[0])
 
 
 
@@ -242,7 +242,7 @@ class KtbsFsaState(State):
         return [
             (URIRef(key, self.target_model_uri),)
             + _split_source_attribute(val, self_source_model_uri)
-            for key, val in ktbs_attributes.iteritems()
+            for key, val in ktbs_attributes.items()
         ]
 
 
@@ -328,7 +328,7 @@ def _span(data, index):
         return None
 
 def _concat(data, index):
-    lst = [ unicode(tpl[index]) for tpl in data if tpl[index] is not None ]
+    lst = [ str(tpl[index]) for tpl in data if tpl[index] is not None ]
     if lst:
         return Literal(" ".join(lst))
     else:

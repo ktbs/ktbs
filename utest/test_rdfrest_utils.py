@@ -24,7 +24,7 @@ from rdfrest.util import add_uri_params, bounded_description, cache_result, \
 
 from rdflib import Graph, Namespace, URIRef
 from rdflib.compare import isomorphic
-from StringIO import StringIO
+from io import StringIO
 from unittest import skip
 
 NS1 = Namespace("http://ns1.com/#")
@@ -254,7 +254,7 @@ def test_wrap_exceptions():
     try:
         f()
         assert 0, "a MyException was expected, but nothing was raised"
-    except Exception, ex:
+    except Exception as ex:
         assert isinstance(ex, MyException), \
             "a MyException was expected, got %s" % ex
 
@@ -266,6 +266,6 @@ def test_wrap_generator_exceptions():
     try:
         list(g())
         assert 0, "a MyException was expected, but nothing was raised"
-    except Exception, ex:
+    except Exception as ex:
         assert isinstance(ex, MyException), \
             "a MyException was expected, got %s" % ex

@@ -56,7 +56,7 @@ class PrefixConjunctiveView(ConjunctiveGraph):
         self._prefix = prefix
         self._include = lambda uri: uri.startswith(prefix)
         self._whole = ConjunctiveGraph(store)
-        self._filter = u"FILTER STRSTARTS(STR(?g)," + Literal(prefix).n3() + u")"
+        self._filter = "FILTER STRSTARTS(STR(?g)," + Literal(prefix).n3() + ")"
         #self._filter = u'FILTER REGEX(str(?g), "^' + prefix + u'")' # faster in Virtuoso, but unsafe (the URI may contain special characters
         self._sparql_declaration = None
 
@@ -109,8 +109,8 @@ class PrefixConjunctiveView(ConjunctiveGraph):
     def __len__(self):
         """Number of triples in the entire conjunctive graph"""
         return int(
-            self._whole.query(u'SELECT (COUNT(?s) as ?c)'
-                              u'{GRAPH ?g {?s ?p ?o } %s}' % self._filter)
+            self._whole.query('SELECT (COUNT(?s) as ?c)'
+                              '{GRAPH ?g {?s ?p ?o } %s}' % self._filter)
             .bindings[0]['c']
         )
 
@@ -157,8 +157,8 @@ class PrefixConjunctiveView(ConjunctiveGraph):
         else:
             inner_where = "?s ?p ?o"
         store = self.store
-        for gid, in self._whole.query(u'SELECT DISTINCT ?g'
-                                      u'{GRAPH ?g { %s } %s}'
+        for gid, in self._whole.query('SELECT DISTINCT ?g'
+                                      '{GRAPH ?g { %s } %s}'
                                       % (inner_where, self._filter),
                                       #initBindings=initBindings,
                                       ):
@@ -210,7 +210,7 @@ class PrefixConjunctiveView(ConjunctiveGraph):
                 filter_clause = ""
             else:
                 filter_clause = self._filter
-            query = u'''
+            query = '''
                 SELECT ?s ?p ?o
                     ?g # selected only to please Virtuoso
                 { GRAPH ?g { ?s ?p ?o } %s}''' % filter_clause
@@ -243,8 +243,8 @@ class PrefixConjunctiveView(ConjunctiveGraph):
         else:
             filter_clause = self._filter
 
-        for s, p, o, g in self._whole.query(u'SELECT ?s ?p ?o ?g'
-                                            u'{ GRAPH ?g { ?s ?p ?o } %s}'
+        for s, p, o, g in self._whole.query('SELECT ?s ?p ?o ?g'
+                                            '{ GRAPH ?g { ?s ?p ?o } %s}'
                                             % filter_clause,
                                             initBindings=initBindings):
             ctx = graph_cache.get(g)
@@ -252,8 +252,9 @@ class PrefixConjunctiveView(ConjunctiveGraph):
                 ctx = graph_cache[g] = Graph(store, g, self)
             yield s, p, o, ctx
 
-    def triples_choices(self, (s, p, o), context=None):
+    def triples_choices(self, spo, context=None):
         """Iterate over all the triples in the entire conjunctive graph"""
+        (s, p, o) = spo
         raise NotImplemented
 
     def query(self, query_object, processor='sparql',

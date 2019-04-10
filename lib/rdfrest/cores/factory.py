@@ -84,7 +84,7 @@ def register_implementation(uri_prefix):
     def decorator(cls):
         """Decorator created by :func:`register_implementation`"""
         assert issubclass(cls, ICore)
-        assert cls.factory.im_self is cls, \
+        assert cls.factory.__self__ is cls, \
             "%s.factory should be a classmethod" % cls.__name__
         assert uri_prefix not in _IMPL_REGISTRY
         _IMPL_REGISTRY[uri_prefix] = cls.factory

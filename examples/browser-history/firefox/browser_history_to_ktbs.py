@@ -161,7 +161,7 @@ class BrowserHistoryCollector(object):
         Display the messages only in verbose mode.
         """
         if self._args.verbose:
-            print msg
+            print(msg)
 
     def profiling_asked(self):
         """Has profiling been asked in command line ?
@@ -309,22 +309,22 @@ class BrowserHistoryCollector(object):
                 # To display Process information
                 if self._args.stats and nb_obsels % 100 == 0:
                     values = self.process_info.get_values()
-                    print "=====> PROCESS INFO = %s" % str(values)
+                    print("=====> PROCESS INFO = %s" % str(values))
 
             cursor.close()
 
             if self._args.stats:
                 end_cpu = time.clock()
                 end_time = time.time()
-                print "Program execution time %f seconds" % \
-                                                (end_time - start_time)
-                print "Program CPU execution time %f seconds" % \
-                                                (end_cpu - start_cpu)
-                print "Created %i obsels on %i items" % (nb_obsels, \
-                                                         nb_browser_items)
+                print("Program execution time %f seconds" % \
+                                                (end_time - start_time))
+                print("Program CPU execution time %f seconds" % \
+                                                (end_cpu - start_cpu))
+                print("Created %i obsels on %i items" % (nb_obsels, \
+                                                         nb_browser_items))
 
-        except sqlite3.Error, err:
-            print "An error occurred:", err.args[0]
+        except sqlite3.Error as err:
+            print("An error occurred:", err.args[0])
 
         return obsels_list
 
@@ -346,16 +346,16 @@ class BrowserHistoryCollector(object):
             # To display Process information
             if self._args.stats and nb_obsels % 100 == 0:
                 values = self.process_info.get_values()
-                print "=====> PROCESS INFO = %s" % str(values)
+                print("=====> PROCESS INFO = %s" % str(values))
 
         if self._args.stats:
             end_cpu = time.clock()
             end_time = time.time()
-            print "Program execution time %f seconds" % \
-                                            (end_time - start_time)
-            print "Program CPU execution time %f seconds" % \
-                                            (end_cpu - start_cpu)
-            print "To display %i obsels." % nb_obsels
+            print("Program execution time %f seconds" % \
+                                            (end_time - start_time))
+            print("Program CPU execution time %f seconds" % \
+                                            (end_cpu - start_cpu))
+            print("To display %i obsels." % nb_obsels)
 
         return nb_obsels
 
@@ -370,15 +370,15 @@ class BrowserHistoryCollector(object):
 
         if self._args.stats:
             values = self.process_info.get_values()
-            print "=====> PROCESS INFO = %s" % str(values)
+            print("=====> PROCESS INFO = %s" % str(values))
 
             end_cpu = time.clock()
             end_time = time.time()
-            print "Program execution time %f seconds" % \
-                                            (end_time - start_time)
-            print "Program CPU execution time %f seconds" % \
-                                            (end_cpu - start_cpu)
-            print "To display obsel %s." % obsel_id
+            print("Program execution time %f seconds" % \
+                                            (end_time - start_time))
+            print("Program CPU execution time %f seconds" % \
+                                            (end_cpu - start_cpu))
+            print("To display obsel %s." % obsel_id)
 
 def collect(collectBH):
     """

@@ -276,7 +276,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
             graph.links = links = [{
                 'uri': self.uri,
                 'rel': 'canonical',
-                'etag': iter(self.iter_etags()).next(),
+                'etag': next(iter(self.iter_etags())),
                 'mstable-etag': self.get_str_mon_tag(),
             }]
             # link to next page
@@ -333,7 +333,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                         parameters[key] = obs = self.trace.get_obsel(val)
                         try:
                             begin = obs.begin
-                        except TypeError, AttributeError:
+                        except TypeError as AttributeError:
                             obs = None
                         if obs is None:
                             raise InvalidParametersError(
@@ -600,18 +600,18 @@ class ComputedTraceObsels(AbstractTraceObsels):
                         impl = trace._method_impl # friend #pylint: disable=W0212
                         try:
                             diag = impl.compute_obsels(trace, refresh_param >= 2)
-                        except BaseException, ex:
+                        except BaseException as ex:
                             LOG.warn(traceback.format_exc())
                             diag = Diagnosis(
                                 "exception raised while computing obsels",
-                                [ex.message],
-                                sys.exc_traceback,
+                                [ex.args[0]],
+                                sys.exc_info()[2],
                             )
                         if not diag:
                             self.metadata.set((self.uri, METADATA.dirty,
                                                   Literal("yes")))
 
-                            raise CanNotProceedError, unicode(diag), diag.traceback
+                            raise CanNotProceedError(str(diag)).with_traceback(diag.traceback)
             finally:
                 del self.__forcing_state_refresh
 

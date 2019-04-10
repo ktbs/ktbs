@@ -18,7 +18,7 @@
 """
 I provide kTBS CSV serializer, this is a serialization with information loss.
 """
-from cStringIO import StringIO
+from io import StringIO
 from csv import writer as csv_writer
 from itertools import groupby
 from rdflib import RDF
@@ -46,7 +46,7 @@ def serialize_csv_trace_obsels(graph, resource, bindings=None):
         sio.reset()
         sio.truncate()
 
-def iter_csv_rows(trace_uri, graph, sep=u' | '):
+def iter_csv_rows(trace_uri, graph, sep=' | '):
     """
     Convert obsels in graph to a tabular form, an iterable of unicode strings.
 
@@ -63,7 +63,7 @@ def iter_csv_rows(trace_uri, graph, sep=u' | '):
 
     if len(results0) == 0:
         # no obsel, yield minimal column header and stop
-        yield [u'id', u'type', u'begin', u'end']
+        yield ['id', 'type', 'begin', 'end']
         return
 
     ktbs_props = [ i[0] for i in results0 if i[0].startswith(KTBS.uri) ]
@@ -91,12 +91,12 @@ def iter_csv_rows(trace_uri, graph, sep=u' | '):
     select_parts = []
     where_parts = []
     for var, prop in zip(vars, props):
-        select_parts.append(u'?{0}'
+        select_parts.append('?{0}'
                          .format(var))
-        where_parts.append(u'OPTIONAL {{ ?id <{0}> ?{1} }}'
+        where_parts.append('OPTIONAL {{ ?id <{0}> ?{1} }}'
                          .format(prop, var))
 
-    obs_query = u"""SELECT ?id {0}
+    obs_query = """SELECT ?id {0}
             WHERE {{
                 ?id <http://liris.cnrs.fr/silex/2009/ktbs#hasTrace> <{1}> .
                 {2}
@@ -138,7 +138,7 @@ def make_var_name(uri, vars):
     if var_name in vars:
         i = 2
         while True:
-            attempt = u'{}{}'.format(var_name, i)
+            attempt = '{}{}'.format(var_name, i)
             if attempt not in vars:
                 var_name = attempt
                 break

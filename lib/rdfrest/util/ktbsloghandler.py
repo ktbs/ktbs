@@ -22,8 +22,8 @@ I implement a python log handler that sends log records to a kTBS instance.
 """
 
 import logging
-import httplib, urllib
-import urlparse
+import http.client, urllib.request, urllib.parse, urllib.error
+import urllib.parse
 
 import json
 
@@ -41,7 +41,7 @@ class kTBSHandler(logging.Handler):
         :param ktbsroot: URL of kTBS root to avoid posting into itself
         """
         logging.Handler.__init__(self)
-        parsed_url = urlparse.urlparse(url)
+        parsed_url = urllib.parse.urlparse(url)
 
         self.host = parsed_url.hostname
         self.port = parsed_url.port
@@ -108,7 +108,7 @@ class kTBSHandler(logging.Handler):
         """
 
         try:
-            h = httplib.HTTP(self.host, self.port)
+            h = http.client.HTTP(self.host, self.port)
             data = json.dumps(self.mapLogRecord(record))
 
             h.putrequest("POST", self.path)

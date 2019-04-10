@@ -63,12 +63,12 @@ def check_arguments(options=None):
     :param options: The Namespace object returned by parse_arg.
     """
     if not isdir(options.currentdb[0]):
-        LOG.info(u'{0:s} is not a valid original database path.'.format(options.currentdb[0]))
+        LOG.info('{0:s} is not a valid original database path.'.format(options.currentdb[0]))
         return False
 
     if not exists(options.newdb[0]):
         if not isdir(dirname(options.newdb[0])):
-            LOG.info(u'{0:s} is not a valid destination database path.'.format(options.newdb[0]))
+            LOG.info('{0:s} is not a valid destination database path.'.format(options.newdb[0]))
             return False
 
         # TODO : Add a control on valid URI ?
@@ -117,7 +117,7 @@ def show_all_graphs(gpath=None):
                                                             nb=len(all_graphs)))
 
         for subj, pred, obj, ctx in all_graphs.quads():
-            LOG.info(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
+            LOG.info("({subj}, {pred}, {obj}) IN {ctxid}".format(subj=subj,
                                     pred=pred, obj=obj, ctxid=ctx.identifier))
 
     all_graphs.close()
@@ -190,7 +190,7 @@ def build_new_database(options=None):
             else:
                 ctxid = ctx.identifier
 
-            LOG.debug(u"({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
+            LOG.debug("({subj}, {pred}, {obj}) IN {ctxid}".format(subj=nsubj,
                                     pred=npred, obj=nobj, ctxid=ctxid))
 
             new_db.addN([(nsubj, npred, nobj, ctxid),])

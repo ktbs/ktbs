@@ -22,8 +22,8 @@ from pytest import raises as assert_raises
 from rdflib import BNode, Graph, Literal, Namespace, RDF, RDFS, XSD
 from time import sleep
 
-import example2 # can not import do_tests directly, nose tries to run it...
-from example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
+from . import example2 # can not import do_tests directly, nose tries to run it...
+from .example2 import EXAMPLE, Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import InvalidDataError
 from rdfrest.cores.factory import unregister_service
@@ -344,7 +344,7 @@ class TestMixins:
                                   or vtype == val.datatype
                                   or (vtype == XSD.string
                                       and val.datatype is None)))
-                print prop, val.n3(), must_pass
+                print(prop, val.n3(), must_pass)
                 if must_pass:
                     with testitem.edit() as editable:
                         editable.add((testitem.uri, prop, val))
@@ -364,7 +364,7 @@ class TestMixins:
                 must_pass = (ntype == "uri"
                              and (vtype is None or vtype == typ))
 
-                print prop, obj, typ, must_pass
+                print(prop, obj, typ, must_pass)
                 if must_pass:
                     with testitem.edit() as editable:
                         editable.add((testitem.uri, prop, obj))

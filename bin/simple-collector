@@ -111,7 +111,7 @@ class ObselCollector(object):
         Display the messages only in verbose mode.
         """
         if self._args.verbose:
-            print msg
+            print(msg)
 
     def get_root(self):
         """
@@ -251,9 +251,9 @@ def main():
 
     while(True):
         try:
-            value = raw_input("====> ")
+            value = input("====> ")
             ocollector.add_obsel(ttrace, value)
-        except EOFError, _ex:
+        except EOFError as _ex:
             ocollector.display("Sortie du programme")
             break
 

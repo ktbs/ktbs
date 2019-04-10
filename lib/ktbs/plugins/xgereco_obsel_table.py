@@ -31,25 +31,25 @@ CTYPE = "x-gereco/table"
 @wrap_exceptions(SerializeError)
 def serialize_obsel_table(graph, resource, bindings=None, highlight=None):
 
-    yield '<html><head><style>'
+    yield b'<html><head><style>'
     yield CSS
-    yield '</style><script>'
+    yield b'</style><script>'
     yield SCRIPT
-    yield '</script></head></body>'
+    yield b'</script></head></body>'
     trace_uri = resource.uri.rsplit('/',1)[0]
     trace_id = trace_uri.rsplit('/',1)[1]
-    yield u'<p><a href="{0}/">Trace {1}</a> (<a href="{0}/@obsels.csv" target="_top" download>download as CSV</a>)</p>' \
-        .format(trace_uri, trace_id).encode('utf8')
+    yield '<p><a href="{0}/">Trace {1}</a> (<a href="{0}/@obsels.csv" target="_top" download>download as CSV</a>)</p>' \
+        .format(trace_uri, trace_id).encode('utf-8')
 
     rows = iter_csv_rows(resource.trace.uri, graph)
-    yield '<pre><table><tr>'
+    yield b'<pre><table><tr>'
     column_headers = next(rows)
     for col_name in column_headers:
-        yield u'<th>{}</th>'.format(col_name).encode('utf8')
+        yield '<th>{}</th>'.format(col_name).encode('utf-8')
     for row in rows:
         row_id = row[0].rsplit('/', 1)[1]
         classes = "highlight" if row[0] == highlight else ""
-        yield u'</tr><tr id="{}" class="{}">'.format(row_id, classes).encode('utf8')
+        yield '</tr><tr id="{}" class="{}">'.format(row_id, classes).encode('utf-8')
 
         for cell in row:
             values = cell.split(' | ')
@@ -57,15 +57,15 @@ def serialize_obsel_table(graph, resource, bindings=None, highlight=None):
             for val in values:
                 if HTTP_URI.match(val):
                     short = LAST_PART.search(val).group(1)
-                    htmlvalues.append(u'<a href="{0}">{1}</a>'.format(val, short))
+                    htmlvalues.append('<a href="{0}">{1}</a>'.format(val, short))
                 else:
                     htmlvalues.append(cgi_escape(val))
 
             yield '<td>{}</td>'.format(
-              '&nbsp;|&nbsp;'.join(i.encode('utf8') for i in htmlvalues)
-            )
-    yield '</tr></table></pre>'
-    yield '</body></html>'
+              '&nbsp;|&nbsp;'.join(htmlvalues)
+            ).encode('utf-8')
+    yield b'</tr></table></pre>'
+    yield b'</body></html>'
 
 @wrap_exceptions(SerializeError)
 def serialize_obsel_redirect(graph, resource, bindings=None):

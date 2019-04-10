@@ -239,11 +239,11 @@ class BaseMixin(KtbsResourceMixin):
         graph.add((self.uri, KTBS.contains, node))
         graph.add((node, RDF.type, KTBS.Method))
         graph.add((node, KTBS.hasParentMethod, parent))
-        for key, value in parameters.iteritems():
+        for key, value in parameters.items():
             if "=" in key:
                 raise ValueError("Parameter name can not contain '=': %s", key)
             graph.add((node, KTBS.hasParameter,
-                       Literal(u"%s=%s" % (key, value))))
+                       Literal("%s=%s" % (key, value))))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
         uris = self.post_graph(graph, None, trust, node, KTBS.Method)
@@ -358,11 +358,11 @@ class BaseMixin(KtbsResourceMixin):
         graph.add((node, KTBS.hasMethod, method))
         for src in sources:
             graph.add((node, KTBS.hasSource, src))
-        for key, value in parameters.iteritems():
+        for key, value in parameters.items():
             if "=" in key:
                 raise ValueError("Parameter name can not contain '=': %s", key)
             graph.add((node, KTBS.hasParameter,
-                       Literal(u"%s=%s" % (key, value))))
+                       Literal("%s=%s" % (key, value))))
         if label:
             graph.add((node, SKOS.prefLabel, Literal(label)))
 

@@ -71,11 +71,11 @@ from base64 import standard_b64encode
 from logging import getLogger
 from beaker.middleware import SessionMiddleware
 from webob import Request
-from ConfigParser import NoOptionError
+from configparser import NoOptionError
 
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import json
-import urlparse
+import urllib.parse
 
 LOG = getLogger(__name__)
 OAUTH_CONFIG = None  # Dictionary for the OAuth2 configuration
@@ -249,7 +249,7 @@ def start_plugin(_config):
     authx_config = section_dict('authx')
 
     # Session management
-    session_config_keys = filter(lambda k: k.startswith('beaker.session.'), authx_config)
+    session_config_keys = [k for k in authx_config if k.startswith('beaker.session.')]
     SESSION_CONFIG = {k: authx_config[k] for k in session_config_keys}
 
     # Identity provider management
@@ -288,7 +288,7 @@ def preproc_authentication(service, request, resource):
         authenticate(service, request)
         # Else, preproc_authorization() will be called afterward to invite the user to login
 
-    except Exception, e:
+    except Exception as e:
         LOG.debug("An error occurred during authentication:\t{error_msg}".format(error_msg=e))
 
     else:  # If we manage to get the user role, we continue
@@ -342,13 +342,13 @@ def github_flow(request):
         'client_id': OAUTH_CONFIG['client_id'],
         'client_secret': OAUTH_CONFIG['client_secret']
     }
-    enc_data = urllib.urlencode(data)
-    gh_resp = urllib.urlopen(OAUTH_CONFIG['access_token_endpoint'], data=enc_data)
-    gh_resp_qs = urlparse.parse_qs(gh_resp.read())
+    enc_data = urllib.parse.urlencode(data)
+    gh_resp = urllib.request.urlopen(OAUTH_CONFIG['access_token_endpoint'], data=enc_data)
+    gh_resp_qs = urllib.parse.parse_qs(gh_resp.read())
     access_token = gh_resp_qs[b'access_token'][0].decode('utf-8')
 
     # 2. Exchange access_token for user id.
-    gh_resp_id = urllib.urlopen('{api_url}?access_token={at}'
+    gh_resp_id = urllib.request.urlopen('{api_url}?access_token={at}'
                                 .format(api_url=OAUTH_CONFIG['api_endpoint'], at=access_token))
     gh_resp_id = gh_resp_id.read().decode('utf-8')
     resp_id_dec = json.loads(gh_resp_id)
@@ -358,12 +358,12 @@ def github_flow(request):
 
 def claco_flow(request):
     # 1. Exchange code for an access_token
-    claco_resp = urllib.urlopen(OAUTH_CONFIG['access_token_endpoint']+'&code='+request.GET.getall('code')[0])
+    claco_resp = urllib.request.urlopen(OAUTH_CONFIG['access_token_endpoint']+'&code='+request.GET.getall('code')[0])
     claco_resp_access_token = claco_resp.read().decode('utf-8')
     access_token = json.loads(claco_resp_access_token)['access_token']
 
     # 2. Exchange access_token for user id.
-    claco_resp_id = urllib.urlopen('{api_url}?access_token={at}'
+    claco_resp_id = urllib.request.urlopen('{api_url}?access_token={at}'
                                    .format(api_url=OAUTH_CONFIG['api_endpoint'], at=access_token))
     claco_resp_id = claco_resp_id.read().decode('utf-8')
     resp_id_dec = json.loads(claco_resp_id)

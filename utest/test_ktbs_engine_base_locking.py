@@ -1,4 +1,4 @@
-from test_ktbs_engine import KtbsTestCase
+from .test_ktbs_engine import KtbsTestCase
 from unittest import skipUnless
 from pytest import raises as assert_raises
 
@@ -42,8 +42,8 @@ class TestKtbsLongBaseNameLocking(KtbsBaseTestCase):
 
         try:
             assert self.tmp_base._get_semaphore()
-        except ValueError, ex:
-            assert 0, ex.message
+        except ValueError as ex:
+            assert 0, ex.args[0]
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class TestKtbsBaseLocking(KtbsBaseTestCase):

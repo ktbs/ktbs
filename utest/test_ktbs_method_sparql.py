@@ -337,8 +337,8 @@ class TestIssue28(KtbsTestCase):
         ctr1 = self.base.create_computed_trace(
             "c1/", KTBS.sparql,
             {
-                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
-                u"hà": u"foo",
+                "sparql": 'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                "hà": "foo",
             }, [self.src1]
         )
         assert ctr1.diagnosis is not None
@@ -348,8 +348,8 @@ class TestIssue28(KtbsTestCase):
         ctr1 = self.base.create_computed_trace(
             "c1/", KTBS.sparql,
             {
-                u"sparql": u'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
-                u"hà": u"foo",
+                "sparql": 'CONSTRUCT { [ a 42 ] } { ?s a "%()s" }',
+                "hà": "foo",
             }, [self.src1]
         )
         assert_raises(CanNotProceedError,

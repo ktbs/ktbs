@@ -40,9 +40,9 @@ try:
     import git
     GIT_LIBRARY = True
 except :
-    print "Please install GitPython in your virtual environment with :"
-    print "pip install --pre GitPython"
-    print "(system packages python-dev and zlib2g-dev required by depencies)"
+    print("Please install GitPython in your virtual environment with :")
+    print("pip install --pre GitPython")
+    print("(system packages python-dev and zlib2g-dev required by depencies)")
     GIT_LIBRARY = False
 
 def get_platform_infos():
@@ -52,39 +52,39 @@ def get_platform_infos():
     platform.version() # => '#91-Ubuntu SMP Wed Feb 19 03:54:44 UTC 2014' / '6.x.xxxx'
     platform.node() # => 'fconil-E6520' / 'xxx'
     """
-    print "--------------------------------------------------------------------------------"
-    print "Platform information"
-    print "--------------------------------------------------------------------------------"
-    print "System: ", platform.system() # => 'Linux' / 'Windows'
-    print "Release: ", platform.release() # => '3.2.0-60-generic' / '7'
-    print "Machine: ", platform.machine() # => 'x86_64' / 'AMD64'
+    print("--------------------------------------------------------------------------------")
+    print("Platform information")
+    print("--------------------------------------------------------------------------------")
+    print("System: ", platform.system()) # => 'Linux' / 'Windows'
+    print("Release: ", platform.release()) # => '3.2.0-60-generic' / '7'
+    print("Machine: ", platform.machine()) # => 'x86_64' / 'AMD64'
 
-    print "sys.platform: ", sys.platform # => 'linux2' / 'win32'
+    print("sys.platform: ", sys.platform) # => 'linux2' / 'win32'
 
 def get_git_infos(path=None):
     """
     Get git repository information if available.
     """
-    print "--------------------------------------------------------------------------------"
-    print "kTBS repository information"
-    print "--------------------------------------------------------------------------------"
+    print("--------------------------------------------------------------------------------")
+    print("kTBS repository information")
+    print("--------------------------------------------------------------------------------")
     try:
         repo = git.Repo(path)
         if git.__version__ > '0.1.7':
-            print "git branch: ", repo.active_branch.name
-            print "commit: ", repo.active_branch.commit.hexsha
+            print("git branch: ", repo.active_branch.name)
+            print("commit: ", repo.active_branch.commit.hexsha)
         else:
-            print "git branch: ", repo.active_branch
+            print("git branch: ", repo.active_branch)
             lcommits = repo.commits(start=repo.active_branch, max_count=1)
             if len(lcommits) > 0:
-                print "commit: ", lcommits[0].id
+                print("commit: ", lcommits[0].id)
             else:
-                print "No commit information"
+                print("No commit information")
 
         # remote ?
     except git.InvalidGitRepositoryError:
         # This is not a git repository
-        print "%s kTBS directory is not a git directory" % path
+        print("%s kTBS directory is not a git directory" % path)
 
 KTBS_WD = dirname(dirname(abspath(__file__)))
 
@@ -97,9 +97,9 @@ if __name__ == '__main__':
 
     get_platform_infos()
 
-    print "--------------------------------------------------------------------------------"
-    print "kTBS general information"
-    print "--------------------------------------------------------------------------------"
+    print("--------------------------------------------------------------------------------")
+    print("kTBS general information")
+    print("--------------------------------------------------------------------------------")
     try:
         if options.from_source_file:
             # Override with local source tree
@@ -109,16 +109,16 @@ if __name__ == '__main__':
         KTBS_WD = kp.location
         if KTBS_WD.endswith('lib'):
             KTBS_WD = dirname(KTBS_WD)
-        print "kTBS version: ", kp.version
+        print("kTBS version: ", kp.version)
 
     except pkg_resources.DistributionNotFound:
         # kTBS is not installed as a Package, take default built path
         LIB_DIR = join(KTBS_WD, "lib")
         sys.path.append(LIB_DIR)
         from ktbs import __version__ as ktbs_version
-        print "kTBS version: ", ktbs_version
+        print("kTBS version: ", ktbs_version)
 
-    print "kTBS directory: ", KTBS_WD
+    print("kTBS directory: ", KTBS_WD)
 
     if GIT_LIBRARY:
         get_git_infos(KTBS_WD)

@@ -104,7 +104,7 @@ class TestISparql(KtbsTestCase):
         assert_source_obsels(new_obs, [orig_obs])
         assert new_obs.begin == orig_obs.begin
         assert new_obs.end == orig_obs.end
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(orig_obs.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(orig_obs.uri)
         assert get_custom_state(ctr, 'last_seen_b') == orig_obs.begin
         assert_obsel_type(new_obs, self.X)
         assert new_obs.get_attribute_value(self.fubar) is None
@@ -117,7 +117,7 @@ class TestISparql(KtbsTestCase):
         assert_source_obsels(new_obs, [orig_obs])
         assert new_obs.begin == orig_obs.begin
         assert new_obs.end == orig_obs.end
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(orig_obs.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(orig_obs.uri)
         assert get_custom_state(ctr, 'last_seen_b') == orig_obs.begin
         assert_obsel_type(new_obs, self.X)
         assert new_obs.get_attribute_value(self.fubar) == 101+42
@@ -130,7 +130,7 @@ class TestISparql(KtbsTestCase):
         assert_source_obsels(new_obs, [orig_obs])
         assert new_obs.begin == orig_obs.begin
         assert new_obs.end == orig_obs.end
-        assert get_custom_state(ctr, 'last_seen_u') == unicode(orig_obs.uri)
+        assert get_custom_state(ctr, 'last_seen_u') == str(orig_obs.uri)
         assert get_custom_state(ctr, 'last_seen_b') == orig_obs.begin
         assert_obsel_type(new_obs, self.Y)
         assert new_obs.get_attribute_value(self.fubar) == 101-42

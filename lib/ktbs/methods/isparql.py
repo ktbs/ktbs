@@ -39,7 +39,7 @@ class _ISparqlMethod(AbstractMonosourceMethod):
     parameter_types = {
         "origin": Literal,
         "model": URIRef,
-        "sparql": unicode,
+        "sparql": str,
     }
 
     def init_state(self, computed_trace, params, cstate, diag):
@@ -94,7 +94,7 @@ class _ISparqlMethod(AbstractMonosourceMethod):
         sparql = cstate['sparql'] % {'__subselect__': subselect}
 
         rows = source_obsels.get_state({'refresh': 'no'}).query(sparql)
-        columns = [ unicode(i) for i in rows.vars ]
+        columns = [ str(i) for i in rows.vars ]
         if 'sourceObsel' not in columns:
             raise Exception("no ?sourceObsel in the SPARQL result")
         if 'begin' not in columns:
@@ -159,7 +159,7 @@ def var2predicate(varname, model_uri):
     """
     Convert a SPARQL variable to the appropriate predicate.
     """
-    varname = unicode(varname)
+    varname = str(varname)
     predicate = _VAR2PRED.get(varname)
     if predicate is None:
         if varname.startswith('sourceObsel'):

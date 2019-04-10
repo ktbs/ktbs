@@ -50,7 +50,7 @@ class _HRulesMethod(AbstractMonosourceMethod):
         for atype in src_model.iter_attribute_types():
             dtypes = atype.data_types
             if len(dtypes) == 1:
-                domains[unicode(atype.uri)] = dtypes[0]
+                domains[str(atype.uri)] = dtypes[0]
 
         rules = params['rules']
         bgps = []
@@ -67,7 +67,7 @@ class _HRulesMethod(AbstractMonosourceMethod):
                     bgp.append("?obs a <%s>." % old_type)
                 for attno, att in enumerate(subrule.get("attributes", ())):
                     rank += 1000
-                    if isinstance(att['value'], unicode):
+                    if isinstance(att['value'], str):
                         dtype = domains.get(att['uri'], XSD.string)
                         value = Literal(att['value'], datatype=dtype)
                     else:
@@ -163,7 +163,7 @@ class _HRulesMethod(AbstractMonosourceMethod):
             last_seen_b = obs.begin
 
         if last_seen_u is not None:
-            last_seen_u = unicode(last_seen_u)
+            last_seen_u = str(last_seen_u)
         cstate["last_seen_u"] = last_seen_u
         cstate["last_seen_b"] = last_seen_b
 

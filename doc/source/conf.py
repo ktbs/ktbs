@@ -50,8 +50,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'kTBS'
-copyright = u'2011, P.A Champin, F.Conil'
+project = 'kTBS'
+copyright = '2011, P.A Champin, F.Conil'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -188,8 +188,8 @@ htmlhelp_basename = 'KTBSdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'KTBS.tex', u'KTBS Documentation',
-   u'P.A Champin, F.Conil', 'manual'),
+  ('index', 'KTBS.tex', 'KTBS Documentation',
+   'P.A Champin, F.Conil', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -221,8 +221,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ktpb', u'KTPB Documentation',
-     [u'P.A Champin, F.Conil'], 1)
+    ('index', 'ktpb', 'KTPB Documentation',
+     ['P.A Champin, F.Conil'], 1)
 ]
 
 

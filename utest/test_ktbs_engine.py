@@ -429,7 +429,7 @@ class TestKtbs(KtbsTestCase):
         FILTER_LOG.info("populating t1")
         t1 = b.get("t1/")
         myot = model.create_obsel_type("#myot")
-        t1.create_obsel("o05", myot, 05)
+        t1.create_obsel("o05", myot, 5)
         t1.create_obsel("o10", myot, 10)
         t1.create_obsel("o15", myot, 15)
         t1.create_obsel("o20", myot, 20)
@@ -634,7 +634,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         assert len(my_ktbs.builtin_methods) == 9
         assert my_ktbs.bases == []
         base = my_ktbs.create_base(label="My new base")
-        print "--- base:", base
+        print("--- base:", base)
         assert base.label == "My new base"
         base.label = "My base"
         assert base.label == "My base"
@@ -642,7 +642,7 @@ class TestKtbsSynthetic(KtbsTestCase):
 
         assert base.models == []
         model1 = base.create_model(id=None, label="My first trace-model")
-        print "--- model1:", model1
+        print("--- model1:", model1)
         assert model1.label == "My first trace-model"
         assert base.models == [model1]
         assert model1.unit == KTBS.millisecond
@@ -656,7 +656,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         with assert_raises(InvalidDataError):
             model1.create_obsel_type("OpenChat") # leading '#' is missing
         open_chat = model1.create_obsel_type("#OpenChat")
-        print "--- obsel type open_chat:", open_chat
+        print("--- obsel type open_chat:", open_chat)
         assert model1.obsel_types == [open_chat]
         with assert_raises(InvalidDataError):
             model1.create_obsel_type("#OpenChat") # already in use
@@ -673,7 +673,7 @@ class TestKtbsSynthetic(KtbsTestCase):
             model1.create_attribute_type("channel", [open_chat])
             # leading '#' is missing
         channel = model1.create_attribute_type("#channel", [open_chat])
-        print "--- attribute type channel:", channel
+        print("--- attribute type channel:", channel)
         assert model1.attribute_types == [channel]
         with assert_raises(InvalidDataError):
             model1.create_attribute_type("#channel", [open_chat]) # already in use
@@ -693,7 +693,7 @@ class TestKtbsSynthetic(KtbsTestCase):
             # leading '#' is missing
         on_channel = model1.create_relation_type("#onChannel", [with_on_channel],
                                                 ["#OpenChat"])
-        print "--- relation type on_channel:", on_channel
+        print("--- relation type on_channel:", on_channel)
         assert model1.relation_types == [on_channel]
         with assert_raises(InvalidDataError):
             model1.create_relation_type("#onChannel", [open_chat], [with_on_channel])
@@ -715,7 +715,7 @@ class TestKtbsSynthetic(KtbsTestCase):
                                      {"command-line": cmdline,
                                       "model": "http://example.org/model",
                                       "origin": "1970-01-01T00:00:00Z"})
-        print "--- method1:", method1
+        print("--- method1:", method1)
         assert base.methods == [method1]
         with assert_raises(InvalidDataError):
             base.create_method("method2", model1) # parent is not a method
@@ -761,7 +761,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         with assert_raises(InvalidDataError):
             trace1 = base.create_stored_trace(trace1.uri, model2)
             # trace already exists
-        print "--- trace1:", trace1
+        print("--- trace1:", trace1)
         assert base.traces == [trace1]
         if not isinstance(trace1, HttpClientCore):
             ## see similar exception above
@@ -794,7 +794,7 @@ class TestKtbsSynthetic(KtbsTestCase):
             obs1 = trace1.create_obsel(None)
             # obsel must have an obsel type
         obs1 = trace1.create_obsel(None, open_chat.uri)
-        print "--- obs1:", obs1
+        print("--- obs1:", obs1)
         assert trace1.obsels == [obs1]
         assert obs1.obsel_type == open_chat
         assert obs1.begin <= 2, obs1.begin # approximating the delay to 2s max
@@ -815,7 +815,7 @@ class TestKtbsSynthetic(KtbsTestCase):
         with assert_raises(InvalidDataError):
             ctr = base.create_computed_trace(ctr.uri, method1)
             # trace already exists
-        print "--- ctr:", ctr
+        print("--- ctr:", ctr)
         assert len(base.traces) == 2
         if not isinstance(ctr, HttpClientCore):
             ## see similar exception above
@@ -840,11 +840,11 @@ class TestKtbsSynthetic(KtbsTestCase):
         assert ctr.get_parameter("foo") == "BAR" # inherited
         assert ctr.get_parameter("command-line") == cmdline # doubly inher.
         assert ctr.source_traces == []
-        print "---", "adding source"
+        print("---", "adding source")
         ctr.add_source_trace(trace1.uri)
         assert ctr.source_traces == [trace1]
         assert trace1.transformed_traces == [ctr]
-        print "---", "removing source"
+        print("---", "removing source")
         ctr.del_source_trace(trace1.uri)
         assert ctr.source_traces == []
         assert trace1.transformed_traces == []

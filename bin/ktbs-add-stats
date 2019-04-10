@@ -52,7 +52,7 @@ def main():
         for trace in base.traces:
             if trace.trace_statistics is not None:
                 continue
-            print trace
+            print(trace)
             stats_uri = URIRef(trace.uri + "@stats")
             with trace.edit(_trust=True) as graph:
                 graph.add((trace.uri, KTBS.hasTraceStatistics, stats_uri))

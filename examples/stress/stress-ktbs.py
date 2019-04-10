@@ -65,13 +65,13 @@ def setUp():
 
 def task():
     trace = BASE.get("t/")
-    print "Stressing %s %s times with %sx%s obsels" % (
-        ARGS.ktbs, ARGS.iterations, ARGS.nbpost, ARGS.nbobs)
+    print("Stressing %s %s times with %sx%s obsels" % (
+        ARGS.ktbs, ARGS.iterations, ARGS.nbpost, ARGS.nbobs))
     p = ARGS.nbpost*ARGS.nbobs
     results = []
-    for i in xrange(ARGS.iterations):
+    for i in range(ARGS.iterations):
         def create_P_obsels():
-            for j in xrange(ARGS.nbpost):
+            for j in range(ARGS.nbpost):
                 if ARGS.nbobs == 1:
                     if ARGS.uuid:
                         obs_id = str(uuid4())
@@ -92,13 +92,13 @@ def task():
                     trace.post_graph(g)
 
         res = timeit(create_P_obsels, number=1)
-        print "%.3fs  \t%.2f obs/s" % (res, p/res)
+        print("%.3fs  \t%.2f obs/s" % (res, p/res))
         results.append(res)
     results = results[ARGS.cold_start:]
-    print "average: %.6fs \t%.4f obs/sec" % (
+    print("average: %.6fs \t%.4f obs/sec" % (
         sum(results)/len(results),
         (p*len(results)/sum(results)),
-    )
+    ))
 
 def tearDown():
     if not ARGS.no_clean:
@@ -121,7 +121,7 @@ def main(argv):
         if rf == 0:
             break # children must not spawn children of their own
         elif rf < 0:
-            print >>stderr, "Fork failed..."
+            print("Fork failed...", file=stderr)
             break
     set_http_option("disable_ssl_certificate_validation", True)
     setUp()

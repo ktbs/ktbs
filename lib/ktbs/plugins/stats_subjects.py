@@ -20,7 +20,7 @@ from ktbs.namespace import KTBS
 def populate_stats(graph, trace):
     # Obsel type statistics
     obsels_graph = trace.obsel_collection.state
-    initNs = { '': unicode(KTBS.uri) }
+    initNs = { '': str(KTBS.uri) }
     initBindings = { 'trace': trace.uri }
 
     count_per_type_result = obsels_graph.query(COUNT_DISTINCT_SUBJECTS,

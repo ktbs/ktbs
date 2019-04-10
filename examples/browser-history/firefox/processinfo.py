@@ -38,7 +38,7 @@ class ProcessInfo():
 
         # On vérifie que le PID existe
         if not psutil.pid_exists(pid):
-            print "Le processus '%s' n'existe pas" % pid
+            print("Le processus '%s' n'existe pas" % pid)
             return
 
         # Crée l'objet psutil
@@ -56,8 +56,8 @@ class ProcessInfo():
         while process_loop == True:
             # On vérifie que le processus existe toujours
             if not psutil.pid_exists(self.pid):
-                print "Le processus '%s' n'existe plus : on arrête sa " \
-                      "surveillance" % self.pid
+                print("Le processus '%s' n'existe plus : on arrête sa " \
+                      "surveillance" % self.pid)
                 process_loop = False
                 continue
 
@@ -91,7 +91,7 @@ class ProcessInfo():
 def display(pid, data):
     """Fonction de rappel pour tester la classe ProcessInfo.
     """
-    print "DATA (%s) = %s" % (pid, str(data))
+    print("DATA (%s) = %s" % (pid, str(data)))
 
 if __name__ == "__main__":
     # Instanciation de la classe pour test

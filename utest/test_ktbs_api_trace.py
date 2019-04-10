@@ -114,8 +114,8 @@ class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
         self.t = self.b.create_stored_trace("t1/", self.m, "some_time", default_subject="alice")
 
         self.o0 = self.t.create_obsel("o0", self.ot2, 00, attributes={
-            self.ot1at1: 003,
-            self.ot1at2: 002,
+            self.ot1at1: 0o3,
+            self.ot1at2: 0o2,
         })
         self.o1 = self.t.create_obsel("o1", self.ot1, 10, attributes={
             self.ot1at1: 101,
@@ -164,8 +164,8 @@ class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
         self.t = self.b.create_stored_trace("t1/", self.m, "some_time", default_subject="alice")
 
         self.o0 = self.t.create_obsel("o0", self.ot2, 00, 30, attributes={
-            self.ot1at1: 003,
-            self.ot1at2: 002,
+            self.ot1at1: 0o3,
+            self.ot1at2: 0o2,
         })
         self.o1 = self.t.create_obsel("o1", self.ot1, 10, 30, attributes={
             self.ot1at1: 101,

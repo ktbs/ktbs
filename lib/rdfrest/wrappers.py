@@ -45,7 +45,6 @@ and :func:`.cores.factory.factory`.
 .. autofunction:: get_wrapped
 
 """
-from types import ClassType
 from rdfrest.cores import ICore
 
 _WRAPPER_REGISTRY = {}
@@ -77,7 +76,7 @@ def get_wrapped(cls, rdf_types):
         if len(parents) == 1:
             ret = cls
         else:
-            ret = ClassType(cls_name, tuple(parents), {})
+            ret = type(cls_name, tuple(parents), {})
         _CLASS_CACHE[(cls, rdf_types)] = ret
     return ret
 
@@ -92,7 +91,7 @@ def register_wrapper(rdf_type):
 
     :see also: :funcet_subclass`
     """
-    assert isinstance(rdf_type, basestring), \
+    assert isinstance(rdf_type, str), \
         "syntax: @register_wrapper(rdf_type) -- you forgot the rdf_type"
     assert rdf_type not in _WRAPPER_REGISTRY, \
         "<%s> already registered" % rdf_type

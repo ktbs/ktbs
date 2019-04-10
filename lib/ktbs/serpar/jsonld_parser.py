@@ -79,9 +79,9 @@ def parse_jsonld(content, base_uri=None, encoding="utf-8", graph=None):
         normalized_json = normalize(json_data, pylod_options(base_uri))
         # Do not use "nt" as format as it works only with latin-1
         graph.parse(data=normalized_json, format="n3")
-    except Exception, ex:
-        raise ParseError(ex.message or str(ex))
-    #print graph.serialize(format="turtle")
+    except Exception as ex:
+        raise ParseError(ex.args[0] or str(ex))
+    #print(graph.serialize(format="turtle", encoding='utf-8').decode('utf-8'))
     return graph
 
 @register_parser("application/json", "json", 60)
@@ -106,20 +106,20 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             }
             obsel_context = True
         elif json_data.get("@type") == "Base":
-            json_data.setdefault(u"inRoot", unicode(base_uri))
+            json_data.setdefault("inRoot", str(base_uri))
 
         elif json_data.get("@type") in ("StoredTrace",
                                         "ComputedTrace",
                                         "DataGraph",
                                         "TraceModel",
                                         "Method"):
-            json_data.setdefault(u"inBase", unicode(base_uri))
+            json_data.setdefault("inBase", str(base_uri))
 
         elif "@graph" in json_data:
             # this is a TraceModel
             # @graph must be a non-empty list,
             # with the first item representing the trace model
-            json_data["@graph"][0].setdefault(u"inBase", unicode(base_uri))
+            json_data["@graph"][0].setdefault("inBase", str(base_uri))
         elif ((json_data.get("hasObselList") is None)
               and
               (json_data.get("hasTraceStatistics") is None)
@@ -127,7 +127,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
               (json_data.get("hasBuiltinMethod") is None)):
             # must be an obsel
             obsel_context = True
-            json_data.setdefault(u"hasTrace", unicode(base_uri))
+            json_data.setdefault("hasTrace", str(base_uri))
 
         # add context if needed
         if "@context" not in json_data:
@@ -139,7 +139,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
                     model_uri += "#"
                 json_data["@context"] = [
                     CONTEXT_URI,
-                    { "m": unicode(model_uri) },
+                    { "m": str(model_uri) },
                 ]
 
 
@@ -148,8 +148,8 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
         # Do not use "nt" as format as it works only with latin-1
         graph.parse(data=normalized_json, format="n3")
 
-    except Exception, ex:
-        raise ParseError(ex.message or str(ex))
+    except Exception as ex:
+        raise ParseError(ex.args[0] or str(ex))
     return graph
 
 

@@ -45,13 +45,13 @@ class TestServiceConfigDefaults(object):
         Do we have to check lower/upper/mixed-case or make the test accept any
         of them ?
         """
-        assert self.service_config.get('server', 'host-name', 1) == 'localhost'
+        assert self.service_config.get('server', 'host-name', raw=1) == 'localhost'
 
     def test_server_hostport(self):
         assert self.service_config.getint('server', 'port') == 8001
 
     def test_server_basepath(self):
-        assert self.service_config.get('server', 'base-path', 1) == ''
+        assert self.service_config.get('server', 'base-path', raw=1) == ''
 
     def test_server_ipv4(self):
         assert self.service_config.getboolean('server', 'force-ipv4') == False
@@ -66,7 +66,7 @@ class TestServiceConfigDefaults(object):
         assert self.service_config.getint('server', 'max-triples') == -1
 
     def test_server_corsalloworigin(self):
-        assert self.service_config.get('server', 'cors-allow-origin', 1) == ''
+        assert self.service_config.get('server', 'cors-allow-origin', raw=1) == ''
 
     def test_server_resetconnection(self):
         assert self.service_config.getboolean('server', 'reset-connection') == False
@@ -87,7 +87,7 @@ class TestServiceConfigDefaults(object):
         assert self.service_config.has_section('rdf_database') == True
 
     def test_rdf_database_repository(self):
-        assert self.service_config.get('rdf_database', 'repository', 1) == ''
+        assert self.service_config.get('rdf_database', 'repository', raw=1) == ''
 
     def test_rdf_database_forceinit(self):
         assert self.service_config.getboolean('rdf_database', 'force-init') == False

@@ -19,7 +19,7 @@
 #    along with RDF-REST.  If not, see <http://www.gnu.org/licenses/>.
 import pytest
 
-from StringIO import StringIO
+from io import BytesIO
 
 from rdflib import Graph, Literal, RDF, RDFS, URIRef
 
@@ -27,7 +27,7 @@ from rdflib import Graph, Literal, RDF, RDFS, URIRef
 from sys import stderr
 from webob import Request
 
-from example2 import Group2Implementation, Item2Implementation, \
+from .example2 import Group2Implementation, Item2Implementation, \
     make_example2_service
 from rdfrest.exceptions import SerializeError
 from rdfrest.cores.factory import unregister_service
@@ -74,6 +74,8 @@ def request(app, url, method="GET", body=None, headers=None):
     else:
         netloc = http_host
         port = "80" # should be different if scheme == 'https'
+    if isinstance(body, str):
+        body = body.encode('utf-8')
     environ = {
         "HTTP_ACCEPT": "test/turtle,*/*;q=.1",
         "HTTP_HOST": http_host,
@@ -88,8 +90,7 @@ def request(app, url, method="GET", body=None, headers=None):
         "SERVER_PROTOCOL": "HTTP/1.1",
         "SERVER_SOFTWARE": "direct-access",
         "wsgi.errors": stderr,
-        "wsgi.file_wrapper": body and [body] or [],
-        "wsgi.input": StringIO(body or ""),
+        "wsgi.input": BytesIO(body or b""),
         "wsgi.multiprocess": "False",
         "wsgi.multithread": "False",
         "wsgi.run_once": "False",
@@ -205,7 +206,7 @@ class TestHttpFront(object):
         graph = Graph()
         graph.parse(data=content_get, publicID=URL, format="nt")
         graph.set((URIRef(URL), RDFS.label, Literal("label has been changed")))
-        new_content = graph.serialize(format="nt")
+        new_content = graph.serialize(format="nt", encoding='utf-8').decode('utf-8')
         assert resp_get.etag is not None
         reqhead = {
             "if-match": resp_get.etag,
@@ -222,7 +223,7 @@ class TestHttpFront(object):
         graph = Graph()
         graph.parse(data=content_get, publicID=URL, format="nt")
         graph.remove((URIRef(URL), RDF.type, None))
-        new_content = graph.serialize(format="nt")
+        new_content = graph.serialize(format="nt", encoding='utf-8').decode('utf-8')
         assert resp_get.etag is not None
         reqhead = {
             "if-match": resp_get.etag,
@@ -261,7 +262,7 @@ class TestHttpFront(object):
     def test_post_legal_rdf(self, app, url=URL):
         #graph = Graph()
         #graph.parse(data=POSTABLE_TURTLE, publicID=url, format="n3")
-        #new_content = graph.serialize(format="nt")
+        #new_content = graph.serialize(format="nt", encoding='utf-8').decode('utf-8')
         #reqhead = { "content-type": "text/nt" }
         reqhead = { "content-type": "text/turtle" }
         resp, content = request(app, url, "POST", POSTABLE_TURTLE, reqhead)
@@ -276,7 +277,7 @@ class TestHttpFront(object):
         graph.parse(data=POSTABLE_TURTLE, publicID=URL, format="n3")
         created = next(graph.triples((URIRef(URL), None, None)))[2]
         graph.remove((created, RDF.type, None))
-        new_content = graph.serialize(format="nt")
+        new_content = graph.serialize(format="nt", encoding='utf-8').decode('utf-8')
         reqhead = { "content-type": "text/nt" }
         resp, content = request(app, URL, "POST", new_content, reqhead)
         assert resp.status_int == 403
@@ -375,7 +376,7 @@ class TestHttpFront(object):
             "if-match": resp_get.etag,
             "content-type": resp_get.content_type,
             }
-        content_get = content_get + "#"*1000
+        content_get = content_get + b"#"*1000
         resp_put, content_put = request(app, URL, "PUT", content_get, reqhead)
         assert resp_put.status_int == 413
 
@@ -420,7 +421,7 @@ class TestHttpFront(object):
             }
         content_get += ("<> <http://example.org/other#label>"
                         + ",".join('"%s"' % i for i in range(10))
-                        + ".")
+                        + ".").encode('utf-8')
         resp_put, content_put = request(app, URL, "PUT", content_get, reqhead)
         assert resp_put.status_int == 413
 
@@ -475,7 +476,7 @@ class TestConfigNoCache:
         resp, _ = request(app, URL)
         assert 'cache-control' not in resp.headers
 
-@register_serializer("text/errer", None, 01)
+@register_serializer("text/errer", None, 0o1)
 def serialize_error(graph, uri, _bindings=None):
     """I always raise an exception.
 

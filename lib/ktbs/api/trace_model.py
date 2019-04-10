@@ -208,7 +208,7 @@ class TraceModelMixin(InBaseMixin):
                 graph_add((uri, SKOS.prefLabel, Literal(label)))
             if origins is not None:
                 # TODO remove test below when enough time has passed (2016-03-18)
-                if isinstance(origins, basestring) or isinstance(origins, ObselTypeMixin):
+                if isinstance(origins, str) or isinstance(origins, ObselTypeMixin):
                     warn("Model abstract API has changed: you should provide an *iterable* of origins")
                     origins = [origins]
                 for origin in origins:
@@ -216,7 +216,7 @@ class TraceModelMixin(InBaseMixin):
                     graph_add((uri, _HAS_REL_ORIGIN, origin_uri))
             if destinations is not None:
                 # TODO remove test below when enough time has passed (2016-03-18)
-                if isinstance(destinations, basestring) or isinstance(destinations, ObselTypeMixin):
+                if isinstance(destinations, str) or isinstance(destinations, ObselTypeMixin):
                     warn("Model abstract API has changed: you should provide an *iterable* of destinations")
                     destinations = [destinations]
                 for destination in destinations:
@@ -255,7 +255,7 @@ class TraceModelMixin(InBaseMixin):
                 graph_add((uri, SKOS.prefLabel, Literal(label)))
             if obsel_types is not None:
                 # TODO remove test below when enough time has passed (2016-03-18)
-                if isinstance(obsel_types, basestring) or isinstance(obsel_types, ObselTypeMixin):
+                if isinstance(obsel_types, str) or isinstance(obsel_types, ObselTypeMixin):
                     warn("Model abstract API has changed: you should provide an *iterable* of obsel_types")
                     obsel_types = [obsel_types]
                 for obsel_type in obsel_types:
@@ -263,7 +263,7 @@ class TraceModelMixin(InBaseMixin):
                     graph_add ((uri, _HAS_ATT_OBSELTYPE, obsel_type_uri))
             if data_types is not None:
                 # TODO remove test below when enough time has passed (2016-03-18)
-                if isinstance(data_types, basestring):
+                if isinstance(data_types, str):
                     warn("Model abstract API has changed: you should provide an *iterable* of data_types")
                     data_types = [data_types]
                 for data_type in data_types:
