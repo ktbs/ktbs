@@ -19,7 +19,7 @@ Here are the steps necessary to do so:
   as well as development files for ODBC and Python.
   On Debian/Ubuntu Linux, you can get it with::
 
-    apt-get install libvirtodbc0 unixodbc-dev python2.7-dev
+    apt-get install libvirtodbc0 unixodbc-dev python3-dev
 
 * Add the following lines in ``~/.odbc.ini`` or ``/etc/odbc.ini``::
 

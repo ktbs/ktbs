@@ -1,6 +1,12 @@
 Installing kTBS behing an Apache HTTP server
 ============================================
 
+.. warning::
+
+    This page has not yet been updated since kTBS migrated from Python 2 to Python 3.
+    Some adaptations might be required.
+    Apologies for the inconvenience.
+
 kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 
 * kTBS does not have to listen on a separate port,
@@ -8,7 +14,7 @@ kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 * kTBS can benefit from the functionalities provided by Apache modules,
   for example **HTTPS support** or **user authentication**.
 
-To communicate with Apache, kTBS uses the WSGI_ interface,
+To communicate with Apache, kTBS uses the WSGI_ interface [1]_,
 so you need to install the corresponding Apache module:
 `mod_wsgi <https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide>`_.
 

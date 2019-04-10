@@ -6,7 +6,7 @@ Instead of installing a stable kTBS version from the **PyPI** repository, you ma
 Prerequisites
 +++++++++++++
 
-Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **gcc**, **python developer files** and **virtualenv** system packages.
+Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e/ installed all dependencies.
 
 The source code of kTBS is hosted on GitHub_.  This allows you to get the latest developer version.  For this, you need to have `Git <http://git-scm.com/>`_ installed; if you don't, type.
 
@@ -47,7 +47,7 @@ If you plan to work on the source code, you might want to install developer depe
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ pip install -r requirements.d/dev.txt
+    (ktbs-env)user@mymachine:/home/user/ktbs-env$ pip install -r ktbs/requirements.d/dev.txt
 
 You can get information on the currently installed version of ktbs with the ``ktbs-info`` command.
 
@@ -55,23 +55,23 @@ You can get information on the currently installed version of ktbs with the ``kt
     :emphasize-lines: 1
 
     (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs-infos
-    (system packages python-dev and zlib2g-dev required by depencies)
+    (system packages python3-dev and zlib2g-dev required by depencies)
     --------------------------------------------------------------------------------
     Platform information
     --------------------------------------------------------------------------------
     System:  Linux
-    Release:  3.13.0-39-generic
+    Release:  4.18.0-16-generic
     Machine:  x86_64
-    sys.platform:  linux2
+    sys.platform:  linux
     --------------------------------------------------------------------------------
     kTBS general information
     --------------------------------------------------------------------------------
-    kTBS version:  0.3
-    kTBS directory:  /home/user/ktbs-env/ktbs
+    kTBS version:  0.6
+    kTBS directory:  /home/pa/dev/ktbs.prj/ktbs.gh
     --------------------------------------------------------------------------------
     kTBS repository information
     --------------------------------------------------------------------------------
     git branch:  develop
-    commit:  f8b452152358cd86917944410217de98a83e629c
+    commit:  3a9d9d20601db62aa87bc14a6a35a6604df4200f
 
 .. _GitHub: https://github.com/ktbs/ktbs

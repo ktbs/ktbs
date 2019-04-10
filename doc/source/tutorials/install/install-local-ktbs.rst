@@ -1,23 +1,20 @@
 Installing a local kTBS
 =======================
 
-Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed **python developer files** and **virtualenv** system packages.
+Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed all dependencies.
 
 .. _create-python-virtual_env:
 
 Create the Python vitual environment
 ++++++++++++++++++++++++++++++++++++
 
-Let us now create a Python virtual environment for kTBS. Once the ``python-virtualenv`` package has been installed, you have a ``virtualenv`` command to create your isolated Python virtual environment.
+Let us now create a Python virtual environment for kTBS.
 
 .. code-block:: bash
 
     $ cd /home/user
 
-    $ virtualenv ktbs-env
-    New python executable in ktbs-env/bin/python
-    Installing distribute.............................................................................................................................................................................................done.
-    Installing pip...............done.
+    $ python3 -m venv ktbs-env
 
 The virtual environnement is then activated by **sourcing** the ``activate`` script. Once it is done, you can notice that the Python interpreter used is the virtual environment Python interpreter.
 
@@ -36,24 +33,25 @@ You leave the virtual environment by running the ``deactivate`` command.
 .. code-block:: bash
 
     (ktbs-env)user@mymachine:/home/user/ktbs-env$ deactivate
-    user@mymachine:/home/user/ktbs-env#
+    user@mymachine:/home/user/ktbs-env$
 
 Install kTBS itself
 +++++++++++++++++++
 
 In the activated Python virtual environment, use the **pip** [1]_ command simply as below, it will install kTBS and its dependencies from the `PyPI <https://pypi.python.org/pypi>`_ [2]_ repository.
 
+.. warning::
+
+    Currently, the latest release of kTBS (0.6) is still designed for Python 2,
+    so the command below will fail until the next release.
+    In the meantime, you should try `install-ktbs-dev-version`:doc:.
+
+
 .. code-block:: bash
     :emphasize-lines: 1
 
     (ktbs-env)user@mymachine:/home/user/ktbs-env$ pip install ktbs
-    Downloading/unpacking ktbs
-      Downloading kTBS-0.3.tar.gz (126Kb): 126Kb downloaded
-      Running setup.py egg_info for package ktbs
-        /usr/lib/python2.7/distutils/dist.py:267: UserWarning: Unknown distribution option: 'console'
-          warnings.warn(msg)
-        
-    Downloading/unpacking rdflib==4.1.2 (from ktbs)
+    Collecting ktbs
     ...
 
 Update kTBS
