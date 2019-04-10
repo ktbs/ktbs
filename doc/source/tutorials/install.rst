@@ -22,11 +22,16 @@ Common Prerequisites
 
 kTBS is a Python_ application, so you need Python installed; more precisely, you need **version 2.7** of Python. kTBS is not compatible with older version, nor with the newer Python 3. Python 2.7 will typically be already pre-installed on your Linux distribution.
 
-As some dependencies need to be compiled, you will need the **gcc** compiler and **Python developer files**. You can get them with:
+As some dependencies need to be compiled, you will need 
+* the `gcc` compiler
+* the Python developer files,
+* the Berkeley DB developer files.
+
+You can get them with:
 
 .. code-block:: bash
 
-    $ sudo apt-get install gcc python-dev
+    $ sudo apt-get install gcc python-dev libdb5.3-dev
 
 We also advise you to use virtualenv_, this tool creates an isolated Python environment, so that kTBS and its dependencies can be installed without interference with Python packages installed in your system. To install virtualenv_, type:
 

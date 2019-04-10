@@ -8,6 +8,7 @@ python:
   - "3.6"
   
 install:
+  - "sudo apt-get install libdb5.3-dev"
   - "pip install pip setuptools --upgrade"
   - "pip install tox-travis"
 

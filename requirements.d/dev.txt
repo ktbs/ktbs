@@ -1,8 +1,9 @@
 # Get git information if the ktbs was installed from git
 GitPython==2.1.11
 # For documentation purposes
-Sphinx==1.3.1
+Sphinx==2.0.1
 # For developpers only
 pytest==3.0.7
 pylint==1.2.1
 tox==2.6.0
+sphinx_rtd_theme==0.4.3

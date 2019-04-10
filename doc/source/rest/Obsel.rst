@@ -21,7 +21,7 @@ DELETE
 ------
 
 Deletes this obsel from the trace.
-Note that this is a `non-monotonic <monotonicity>`:doc: change.
+Note that this is a `non-monotonic <../concepts/monotonicity>`:doc: change.
 
 NB: any other modification to an obsel is made through an amendment (PUT)
 of the whole `obsel collection <obsel_collection>`:ref:.
