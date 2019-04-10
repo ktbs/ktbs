@@ -234,4 +234,4 @@ def serialize_html(graph, resource, bindings=None):
     """I return a JS based REST console,
        that will then load the graph from the default serializer.
     """
-    yield REST_CONSOLE
+    yield REST_CONSOLE.encode('utf-8')
