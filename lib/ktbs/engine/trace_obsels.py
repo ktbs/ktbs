@@ -222,7 +222,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
 
             LOG.debug("%s matching obsels", len(matching_obsels))
             if len(matching_obsels) == 0:
-                matching_obsels.append(Literal(42))
+                matching_obsels.append('<tag:>')
                 # this is a hack because rdflib 4.2.2 does not support an empty VALUES list
                 # but it should not match anything
 
