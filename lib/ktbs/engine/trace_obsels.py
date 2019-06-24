@@ -268,9 +268,9 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                 maxe_triple = max(( t for t in graph.triples((None, KTBS.hasEnd, None)) ),
                                   key=lambda t: t[2].toPython() )
                 maxobs = maxe_triple[0]
-                maxe = maxe_triple[2].toPython()
+                maxobs_end = maxe_triple[2].toPython()
             else:
-                maxobs = maxe = None
+                maxobs = maxobs_end = None
 
             # canonical link
             graph.links = links = [{
@@ -298,7 +298,7 @@ class AbstractTraceObsels(AbstractTraceObselsMixin, WithLockMixin, KtbsResource)
                 links.append({'uri': self.uri + qstr, 'rel': 'next'})
 
             # compute etags
-            graph.etags = list(self.iter_etags({'maxe': maxe, 'before': before}))
+            graph.etags = list(self.iter_etags({'maxe': maxobs_end, 'before': before}))
 
             return graph
 
