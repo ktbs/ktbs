@@ -1,12 +1,6 @@
 Installing kTBS behing an Apache HTTP server
 ============================================
 
-.. warning::
-
-    This page has not yet been updated since kTBS migrated from Python 2 to Python 3.
-    Some adaptations might be required.
-    Apologies for the inconvenience.
-
 kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 
 * kTBS does not have to listen on a separate port,
@@ -16,7 +10,7 @@ kTBS can be used behing an Apache HTTP server, this has a number of advantages:
 
 To communicate with Apache, kTBS uses the WSGI_ interface [1]_,
 so you need to install the corresponding Apache module:
-`mod_wsgi <https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide>`_.
+`mod_wsgi <https://modwsgi.readthedocs.io/>`_.
 
 
 Installing and configuring Apache mod_wsgi
@@ -25,18 +19,17 @@ Installing and configuring Apache mod_wsgi
 Installing mod_wsgi
 ~~~~~~~~~~~~~~~~~~~
 
-The simplest way is to use the system package manager, the module is automatically enabled in Apache.
+The simplest way is to use the system package manager:
 
 .. code-block:: bash
 
-    $ sudo apt-get install libapache2-mod-wsgi
+    $ sudo apt-get install libapache2-mod-wsgi-py3
 
-.. note::
+Then, to enable the `mod_wsgi` module in Apache:
 
-    When using the module packaged in the system,
-    it is linked to a given Python version but it does not matter for the current version of kTBS.
-    This limitation can be solved using the new
-    `mod_wsgi-express <http://blog.dscpl.com.au/2015/04/introducing-modwsgi-express.html>`_ project.
+.. code-block:: bash
+
+    $ sudo a2enmod wsgi
  
 Preparing kTBS WSGI application
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,7 +87,7 @@ this would typically be in a new a file created in ``/etc/apache2/conf.d/``
 
     <IfModule mod_wsgi.c>
         WSGIScriptAlias /ktbs /opt/ktbs-env/application.wsgi
-        WSGIDaemonProcess myktbs processes=1 threads=4 python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages display-name=myktbs maximum-requests=256
+        WSGIDaemonProcess myktbs processes=1 threads=4 python-home=/opt/ktbs-env display-name=myktbs maximum-requests=256
         <Location /ktbs>
             WSGIProcessGroup myktbs
         </Location>
@@ -161,13 +154,22 @@ Restricting access only to obsel "viewing"
 
 Still assuming that ``/ktbs`` is the root url of your kTBS, we use here the LocationMatch_ directive to set up different rules for kTBS root, bases and traces access than for obsels access. LocationMatch_ applies the enclosed directives to URLs matching the given "regular expressions".
 
+.. note::
+
+    This example was written before "sub-bases"
+    (*i.e.* bases contained in other bases rather than the kTBS root)
+    were supported.
+    So the assumption is that any URL of depth 2 (below the kTBS root)
+    identifies a *trace*.
+
+
 The first group of directives let any user send GET and POST request to kTBS root, bases and traces. Any other HTTP request type, such as PUT or DELETE, is only allowed for user "jdoe" once authenticated.
 
-The second group of directives let any user send POST request to kTBS traces. Any other HTTP request type, GET, PUT or DELETE, is only allowed for user "jdoe" once authenticated. Thus the obsels can only be viewed, changed or deleted by "jdoe".
+The second group of directives let any user send GET requests to aspect resources of kTBS traces (`@obsels` and `@stats`). Any other HTTP request type, GET, POST or DELETE, is only allowed for user "jdoe" once authenticated. Thus the obsels can be viewed, by unauthenticated users, but only "jdoe" can modify them.
 
 .. code-block:: apache
 
-    <LocationMatch "^/(ktbs|ktbs/|ktbs/.+/|ktbs/.+/.+/)$">
+    <LocationMatch "^/(ktbs/|ktbs/.+/|ktbs/.+/.+/)$">
         AuthType Basic
         AuthName "Restricted area"
         AuthBasicProvider file
@@ -178,13 +180,13 @@ The second group of directives let any user send POST request to kTBS traces. An
         </LimitExcept>
     </LocationMatch>
 
-    <LocationMatch "^/ktbs/.+/.+/.+">
+    <LocationMatch "^/ktbs/.+/.+/@.+$">
         AuthType Basic
         AuthName "Restricted area"
         AuthBasicProvider file
         AuthUserFile /opt/ktbs-data/ktbs-users
 
-        <LimitExcept POST>
+        <LimitExcept GET>
             Require user jdoe
         </LimitExcept>
     </LocationMatch>
@@ -263,7 +265,7 @@ Replace the ``WSGIScriptAlias`` WSGI directive to point to this ``hello.wsgi`` s
 
         <IfModule mod_wsgi.c>
             WSGIScriptAlias /ktbs /opt/ktbs-env/hello.wsgi
-            WSGIDaemonProcess myktbs processes=1 threads=2 python-path=/opt/ktbs-env/ktbs/lib/python2.7/site-packages
+            WSGIDaemonProcess myktbs processes=1 threads=2 python-home=/opt/ktbs-env/
             WSGIProcessGroup myktbs
         </IfModule>
 
@@ -284,27 +286,27 @@ This is because mod_python will in that case be responsible for initialising the
 Check Python version
 ~~~~~~~~~~~~~~~~~~~~
 
-Check that Python 2.7 is used for main Python, python-dev, virtualenv and mod_wsgi.
+Check that the same version of Python 3.x is used for main Python, python-dev, virtualenv and mod_wsgi.
 
 .. rubric:: Notes
 
 .. [1] see Python Enhancement Proposals 333 and 3333: https://www.python.org/dev/peps/pep-0333/, https://www.python.org/dev/peps/pep-3333/
 .. [2] https://github.com/ktbs/ktbs
-.. [3] https://code.google.com/p/modwsgi/wiki/QuickConfigurationGuide
-.. [4] https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives
+.. [3] https://modwsgi.readthedocs.io/en/develop/user-guides/quick-configuration-guide.html
+.. [4] https://modwsgi.readthedocs.io/en/develop/user-guides/configuration-guidelines.html#
 .. [5] the protocol, server name and port number depend on the enclosing ``VirtualHost`` directive
-.. [6] https://code.google.com/p/modwsgi/wiki/VirtualEnvironments
+.. [6] https://modwsgi.readthedocs.io/en/develop/user-guides/virtual-environments.html
 
 
 .. _WSGI: http://webpython.codepoint.net/wsgi_tutorial
 .. _`WSGI application interface`: http://webpython.codepoint.net/wsgi_application_interface
-.. _WSGIScriptAlias: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIScriptAlias
-.. _WSGIDaemonProcess: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIDaemonProcess 
-.. _WSGIProcessGroup: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIProcessGroup
+.. _WSGIScriptAlias: https://modwsgi.readthedocs.io/en/develop/configuration-directives/WSGIScriptAlias.html
+.. _WSGIDaemonProcess: https://modwsgi.readthedocs.io/en/develop/configuration-directives/WSGIDaemonProcess.html
+.. _WSGIProcessGroup: https://modwsgi.readthedocs.io/en/develop/configuration-directives/WSGIProcessGroup.html
 .. _Process_group: https://en.wikipedia.org/wiki/Process_group
-.. _`Apache authentication`: https://httpd.apache.org/docs/2.2/en/howto/auth.html
-.. _htpasswd: https://httpd.apache.org/docs/2.2/programs/htpasswd.html
-.. _Location: https://httpd.apache.org/docs/2.2/en/mod/core.html#location
-.. _`various authorization schemes`: https://httpd.apache.org/docs/2.2/en/howto/access.html
-.. _LocationMatch: https://httpd.apache.org/docs/2.2/en/mod/core.html#locationmatch
+.. _`Apache authentication`: https://httpd.apache.org/docs/2.4/en/howto/auth.html
+.. _htpasswd: https://httpd.apache.org/docs/2.4/programs/htpasswd.html
+.. _Location: https://httpd.apache.org/docs/2.4/en/mod/core.html#location
+.. _`various authorization schemes`: https://httpd.apache.org/docs/2.4/en/howto/access.html
+.. _LocationMatch: https://httpd.apache.org/docs/2.4/en/mod/core.html#locationmatch
 .. _WSGIPassAuthorization: https://code.google.com/p/modwsgi/wiki/ConfigurationDirectives#WSGIPassAuthorization
