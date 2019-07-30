@@ -110,13 +110,6 @@ class TestkTBSCmdlineConfig(object):
         ktbs_config = parse_configuration_options(options)
         assert ktbs_config.get('server', 'cache-control') == ""
 
-    def test_server_flashallow(self):
-        options, args = self.opt.parse_args(['ktbs',
-                                             '--flash-allow'])
-
-        ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.getboolean('server', 'flash-allow') == True
-
     def test_server_maxtriples(self):
         options, args = self.opt.parse_args(['ktbs',
                                              '--max-triples=1000'])
@@ -292,15 +285,6 @@ class TestkTBSFileConfig(object):
 
         ktbs_config = get_ktbs_configuration(fhandler)
         assert ktbs_config.getboolean('server', 'no-cache') == True
-
-    def test_server_flashallow(self):
-        fhandler = StringIO()
-        fhandler.writelines(["[server]\n",
-                             "flash-allow = true\n"])
-        fhandler.seek(0)
-
-        ktbs_config = get_ktbs_configuration(fhandler)
-        assert ktbs_config.getboolean('server', 'flash-allow') == True
 
     def test_server_maxtriples(self):
         fhandler = StringIO()

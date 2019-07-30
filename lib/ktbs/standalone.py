@@ -63,9 +63,6 @@ def main():
     if ktbs_config.getboolean('server', 'force-ipv4'):
         kwargs['ipv6'] = False
 
-    if ktbs_config.getboolean('server', 'flash-allow'):
-        application = FlashAllower(application)
-
     if ktbs_config.has_option('server', 'base-path'):
         base_path = ktbs_config.get('server', 'base-path')
         application = SimpleRouter([(base_path, application)])
@@ -135,9 +132,6 @@ def parse_configuration_options(options=None):
         if options.no_cache is not None:
             config.set('server', 'cache-control', "")
 
-        if options.flash_allow is not None:
-            config.set('server', 'flash-allow', 'true')
-
         if options.max_triples is not None:
             config.set('server', 'max-triples', str(options.max_triples))
 
@@ -189,8 +183,6 @@ def build_cmdline_options():
                    help="customize Cache-Control header of HTTP server")
     ogr.add_option("-N", "--no-cache", action="store_true",
                    help="disable Cache-Control header (equivalent to -C \"\")")
-    ogr.add_option("-F", "--flash-allow", action="store_true",
-                   help="serve a policy file allowing Flash applets to connect")
     ogr.add_option("-t", "--threads",
                    help="sets the number of worker threads for the server")
     ogr.add_option("-T", "--max-triples",
@@ -256,39 +248,3 @@ class NoCache(object):
     def __setitem__(self, key, name):
         "Do not really store the item."
         pass
-
-class FlashAllower(object):
-    """
-    I wrap a WSGI application in order to make it accessible to Flash applets.
-
-    This is done by serving /crossdomain.xml .
-    """
-    #pylint: disable-msg=R0903
-    #    too few public methods
-
-    def __init__(self, app, *domains):
-        """
-        * app: the wrapped WSGI application
-        * domains: a list of allowed domains (if empty, '*' is assumed)
-        """
-        if not domains:
-            domains = ["*"]
-        allow = [ '<allow-access-from domain="%s"/>' % i for i in domains ]
-        self.xml = xml = (
-           '<?xml version="1.0"?>\n'
-           '<!DOCTYPE cross-domain-policy SYSTEM '
-           '"http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">\n'
-           '<cross-domain-policy>\n%s\n</cross-domain-policy>\n'
-        ) % "\n".join(allow)
-        self.size = str(len(xml))
-        self.app = app
-
-    def __call__(self, env, start_response):
-        if env["PATH_INFO"] == "/crossdomain.xml":
-            start_response("200 OK", [
-              ("content-type", "application/xml"),
-              ("content-size", self.size),
-            ])
-            return [self.xml]
-        else:
-            return self.app(env, start_response)

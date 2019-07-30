@@ -59,9 +59,6 @@ class TestServiceConfigDefaults(object):
     def test_server_maxbytes(self):
         assert self.service_config.getint('server', 'max-bytes') == -1
 
-    def test_server_flashallow(self):
-        assert self.service_config.getboolean('server', 'flash-allow') == False
-
     def test_server_maxtriples(self):
         assert self.service_config.getint('server', 'max-triples') == -1
 
