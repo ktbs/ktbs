@@ -34,7 +34,7 @@ from os import getpid
 #from .namespace import KTBS
 from .engine.service import KtbsService
 
-LOG = logging.getLogger("ktbs")
+LOG = logging.getLogger("ktbs.server")
 
 def main():
     """I launch KTBS as a standalone HTTP server.
@@ -47,12 +47,12 @@ def main():
 
     apply_global_config(ktbs_config)
 
-    LOG.info("KTBS pid: %d" % getpid())
+    LOG.info("PID: %d" % getpid())
 
     ktbs_service = KtbsService(ktbs_config)  #.service
     atexit.register(lambda: ktbs_service.store.close())
 
-    application = HttpFrontend(ktbs_service, ktbs_config)
+    application = RequestLogger(HttpFrontend(ktbs_service, ktbs_config))
 
     kwargs = {
         'host': ktbs_config.get('server', 'host-name', raw=1),
@@ -67,10 +67,11 @@ def main():
         base_path = ktbs_config.get('server', 'base-path')
         application = SimpleRouter([(base_path, application)])
 
-    LOG.info("KTBS server at %s" % ktbs_service.root_uri)
+    LOG.info("listening on %s" % ktbs_service.root_uri)
 
     serve(
         application,
+        _quiet=True, # prevent waitress from re-configuring logging
         **kwargs
     )
 
@@ -248,3 +249,40 @@ class NoCache(object):
     def __setitem__(self, key, name):
         "Do not really store the item."
         pass
+
+
+class RequestLogger(object):
+    """
+    I wrap a WSGI application in order to log every request.
+    """
+    #pylint: disable-msg=R0903
+    #    too few public methods
+
+    def __init__(self, app):
+        """
+        * app: the wrapped WSGI application
+        """
+        self.app = app
+
+    def __call__(self, env, start_response):
+        stored_status = None
+        def my_start_response(status, response_headers, exc_info=None):
+            nonlocal stored_status
+            stored_status = status
+            start_response(status, response_headers, exc_info)
+
+        parts = self.app(env, my_start_response)
+        for part in parts:
+            yield part
+
+        query_string = env.get('QUERY_STRING')
+        LOG.info(''.join([
+            stored_status[:3],
+            ' ',
+            env['REQUEST_METHOD'],
+            ' ',
+            env['SCRIPT_NAME'],
+            env['PATH_INFO'],
+            '?' if query_string else '',
+            query_string or '',
+        ]))
