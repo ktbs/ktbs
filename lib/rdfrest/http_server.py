@@ -280,7 +280,7 @@ class HttpFrontend(object):
         for link in links:
             uri = link.pop('uri')
             link_props = ';'.join( '%s="%s"' % item for item in link.items() )
-            link_val = ('<%s>;%s' % (uri, link_props)).encode('utf-8')
+            link_val = '<%s>;%s' % (uri, link_props)
             headerlist.append(("link", link_val))
 
         # check triples & bytes limitations and serialize
