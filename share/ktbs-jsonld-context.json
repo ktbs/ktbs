@@ -1,14 +1,14 @@
-{ "@context":
-{
-    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+{"@context":{
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "skos": "http://www.w3.org/2004/02/skos/core#",
     "k": "http://liris.cnrs.fr/silex/2009/ktbs#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
 
     "AttributeType": "k:AttributeType",
     "Base": "k:Base",
     "BuiltinMethod": "k:BuiltinMethod",
     "ComputedTrace": "k:ComputedTrace",
+    "DataGraph": "k:DataGraph",
     "KtbsRoot": "k:KtbsRoot",
     "Method": "k:Method",
     "Obsel": "k:Obsel",
@@ -16,6 +16,7 @@
     "RelationType": "k:RelationType",
     "StoredTrace": "k:StoredTrace",
     "StoredTraceObsels": "k:StoredTraceObsels",
+    "TraceStatistics": "k:TraceStatistics",
     "TraceModel": "k:TraceModel",
 
     "contains": { "@id": "k:contains", "@type": "@id" },
@@ -25,14 +26,20 @@
     "begin": { "@id": "k:hasBegin", "@type": "xsd:integer" },
     "beginDT": { "@id": "k:hasBeginDT", "@type": "xsd:dateTime" },
     "hasBuiltinMethod": { "@id": "k:hasBuiltinMethod", "@type": "@vocab" },
-    "hasDefaultSubject": "k:hasDefaultSubject",
+    "hasContext": { "@id": "k:hasContext", "@type": "@id" },
+    "version": "k:hasVersion",
+    "defaultSubject": "k:hasDefaultSubject",
+    "hasDefaultSubject": { "@id": "k:hasDefaultSubject", "@type": "@id" },
+    "diagnosis": "k:hasDiagnosis",
     "end": { "@id": "k:hasEnd", "@type": "xsd:integer" },
     "endDT": { "@id": "k:hasEndDT", "@type": "xsd:dateTime" },
     "hasMethod": { "@id": "k:hasMethod", "@type": "@vocab" },
     "hasModel": { "@id": "k:hasModel", "@type": "@id" },
+    "obselCount": { "@id": "k:hasObselCount", "@type": "xsd:integer" },
     "hasObselList": { "@id": "k:hasObselCollection", "@type": "@id" },
+    "hasTraceStatistics": { "@id": "k:hasTraceStatistics", "@type": "@id" },
     "origin": { "@id": "k:hasOrigin" },
-    "parameters": "k:hasParameter",
+    "parameter": "k:hasParameter",
     "hasParentMethod": { "@id": "k:hasParentMethod", "@type": "@vocab" },
     "hasParentModel": { "@id": "k:hasParentModel", "@type": "@id" },
     "hasRelationOrigin": { "@id": "k:hasRelationDomain", "@type": "@id" },
@@ -40,19 +47,24 @@
     "hasSource": { "@id": "k:hasSource", "@type": "@id" },
     "hasSourceObsel": { "@id": "k:hasSourceObsel", "@type": "@id" },
     "subject": "k:hasSubject",
+    "hasSubject": { "@id": "k:hasSubject", "@type": "@id" },
     "hasSuperObselType": { "@id": "k:hasSuperObselType", "@type": "@id" },
     "hasSuperRelationType": { "@id": "k:hasSuperRelationType", "@type": "@id" },
     "hasTrace": { "@id": "k:hasTrace", "@type": "@id" },
-    "traceBegin": { "@id": "k:hasTraceBeginse", "@type": "xsd:integer" },
+    "traceBegin": { "@id": "k:hasTraceBegin", "@type": "xsd:integer" },
     "traceBeginDT": { "@id": "k:hasTraceBeginDT", "@type": "xsd:dateTime" },
     "traceEnd": { "@id": "k:hasTraceEnd", "@type": "xsd:integer" },
     "traceEndDT": { "@id": "k:hasTraceEndDT", "@type": "xsd:dateTime" },
     "hasUnit": { "@id": "k:hasUnit", "@type": "@vocab" },
-    "version": "k:hasVersion",
 
     "external": "k:external",
     "filter": "k:filter",
+    "fsa": "k:fsa",
     "fusion": "k:fusion",
+    "hrules": "k:hrules",
+    "isparql": "k:isparql",
+    "parallel": "k:parallel",
+    "pipe": "k:pipe",
     "sparql": "k:sparql",
 
     "sequence": "k:sequence",
@@ -64,7 +76,8 @@
     "obsels": { "@reverse": "k:hasTrace", "@type": "@id" },
     "isMethodOf": { "@reverse": "k:hasMethod", "@type": "@id" },
     "isParentMethodOf": { "@reverse": "k:hasParentMethod", "@type": "@id" },
+    "isSourceOf": { "@reverse": "k:hasSource", "@type": "@id" },
 
-    "label": "skos:prefLabel"
-}
-}
+    "label": "skos:prefLabel",
+    "additionalType": { "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type","@type": "@id" }
+}}
