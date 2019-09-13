@@ -360,7 +360,42 @@ class _ModelElementMixin(KtbsResourceMixin):
         ret = self.factory(model_uri, [KTBS.TraceModel])
         assert isinstance(ret, TraceModelMixin)
         return ret
-        
+
+    def get_suggested_color(self):
+        """
+        Return the suggested color of this element, if any.
+        """
+        lit = self.state.value(self.uri, KTBS.hasSuggestedColor)
+        if lit is not None:
+            lit = str(lit)
+        return lit
+
+    def set_suggested_color(self, color):
+        """
+        Sets the suggested color of this element.
+        """
+        color = Literal(color)
+        with self.edit(_trust=True) as graph:
+            graph.set((self.uri, KTBS.hasSuggestedColor, color))
+
+    def get_suggested_symbol(self):
+        """
+        Return the suggested symbol of this element, if any.
+        """
+        lit = self.state.value(self.uri, KTBS.hasSuggestedSymbol)
+        if lit is not None:
+            lit = str(lit)
+        return lit
+
+    def set_suggested_symbol(self, symbol):
+        """
+        Sets the suggested symbol of this element.
+        """
+        assert len(symbol) == 1
+        symbol = Literal(symbol)
+        with self.edit(_trust=True) as graph:
+            graph.set((self.uri, KTBS.hasSuggestedSymbol, symbol))
+
     def remove(self):
         """Edit the containing model to remove this element.
         """

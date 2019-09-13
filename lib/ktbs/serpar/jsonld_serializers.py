@@ -479,6 +479,16 @@ def serialize_json_model(graph, tmodel, bindings=None):
             yield """,\n            "hasSuperObselType": %s """ \
               % dumps(stypes)
 
+        suggested_color = otype.suggested_color
+        if suggested_color:
+            yield """,\n            "suggestedColor": %s """ \
+              % dumps(suggested_color)
+
+        suggested_symbol = otype.suggested_symbol
+        if suggested_symbol:
+            yield """,\n            "suggestedSymbol": %s """ \
+              % dumps(suggested_symbol)
+
         for i in iter_other_arcs(graph, otype.uri, valconv, "\n            "):
             yield i
 
@@ -498,6 +508,16 @@ def serialize_json_model(graph, tmodel, bindings=None):
         if data_types:
             yield """,\n            "hasAttributeDatatype": %s """ \
                 % dumps([ valconv_uri(dt) for dt in data_types ])
+
+        suggested_color = atype.suggested_color
+        if suggested_color:
+            yield """,\n            "suggestedColor": %s """ \
+              % dumps(suggested_color)
+
+        suggested_symbol = atype.suggested_symbol
+        if suggested_symbol:
+            yield """,\n            "suggestedSymbol": %s """ \
+              % dumps(suggested_symbol)
 
         for i in iter_other_arcs(graph, atype.uri, valconv, "\n            "):
             yield i
@@ -524,6 +544,16 @@ def serialize_json_model(graph, tmodel, bindings=None):
         if destinations:
             yield """,\n            "hasRelationDestination": %s """ \
                 % dumps([ valconv_uri(coerce_to_uri(d)) for d in destinations ],)
+
+        suggested_color = rtype.suggested_color
+        if suggested_color:
+            yield """,\n            "suggestedColor": %s """ \
+              % dumps(suggested_color)
+
+        suggested_symbol = rtype.suggested_symbol
+        if suggested_symbol:
+            yield """,\n            "suggestedSymbol": %s """ \
+              % dumps(suggested_symbol)
 
         for i in iter_other_arcs(graph, rtype.uri, valconv, "\n            "):
             yield i

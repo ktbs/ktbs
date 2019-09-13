@@ -469,6 +469,12 @@ class TestJsonHashModel(KtbsTestCase):
         at2 = self.model.create_attribute_type("#at2", [ot2], [XSD.integer])
         rt1 = self.model.create_relation_type("#rt1", [ot1], [ot1])
         rt2 = self.model.create_relation_type("#rt2", [ot1], [ot2], [rt1])
+        ot1.suggested_color = "red"
+        ot1.suggested_symbol = "♥"
+        at1.suggested_color = "blue"
+        at2.suggested_symbol = "#"
+        rt1.suggested_color = "green"
+        rt2.suggested_symbol = "→"
 
         json_content = b"".join(
             serialize_json_model(self.model.state, self.model))
@@ -487,6 +493,8 @@ class TestJsonHashModel(KtbsTestCase):
                 {
                     '@id': '#OT1',
                     '@type': 'ObselType',
+                    "suggestedColor": "red",
+                    "suggestedSymbol": "♥",
                 },
                 {
                     '@id': '#OT2',
@@ -498,18 +506,21 @@ class TestJsonHashModel(KtbsTestCase):
                     '@type': 'AttributeType',
                     'hasAttributeObselType': ['#OT1',],
                     'hasAttributeDatatype': ['xsd:string',],
+                    "suggestedColor": "blue",
                 },
                 {
                     '@id': '#at2',
                     '@type': 'AttributeType',
                     'hasAttributeObselType': ['#OT2',],
                     'hasAttributeDatatype': ['xsd:integer',],
+                    "suggestedSymbol": "#",
                 },
                 {
                     '@id': '#rt1',
                     '@type': 'RelationType',
                     'hasRelationOrigin': ['#OT1',],
                     'hasRelationDestination': ['#OT1',],
+                    "suggestedColor": "green",
                 },
                 {
                     '@id': '#rt2',
@@ -517,6 +528,7 @@ class TestJsonHashModel(KtbsTestCase):
                     'hasRelationOrigin': ['#OT1',],
                     'hasRelationDestination': ['#OT2',],
                     'hasSuperRelationType': ['#rt1',],
+                    "suggestedSymbol": "→",
                 },
             ]
         })

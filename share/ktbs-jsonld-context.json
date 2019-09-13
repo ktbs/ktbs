@@ -48,6 +48,8 @@
     "hasSourceObsel": { "@id": "k:hasSourceObsel", "@type": "@id" },
     "subject": "k:hasSubject",
     "hasSubject": { "@id": "k:hasSubject", "@type": "@id" },
+    "suggestedColor": "k:hasSuggestedColor",
+    "suggestedSymbol": "k:hasSuggestedSymbol",
     "hasSuperObselType": { "@id": "k:hasSuperObselType", "@type": "@id" },
     "hasSuperRelationType": { "@id": "k:hasSuperRelationType", "@type": "@id" },
     "hasTrace": { "@id": "k:hasTrace", "@type": "@id" },
