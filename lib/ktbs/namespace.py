@@ -42,6 +42,8 @@ KTBS_NS_URI = "http://liris.cnrs.fr/silex/2009/ktbs"
 KTBS_NS_URIREF = URIRef(KTBS_NS_URI)
 
 KTBS_NS_TTL = """
+# this file was generated from the kTBS source code (lib/ktbs/namespace.py)
+
 @base <%s> .
 @prefix : <#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -51,10 +53,16 @@ KTBS_NS_TTL = """
 
 <>
     a owl:Ontology;
-    rdfs:label "kTBS vocabulary v0.9"@en, "Vocabulaire kTBS v0.9"@fr;
-    owl:versionInfo "0.9";
-    # TODO SOON more metadata about vocabulary?
+    rdfs:label "kTBS vocabulary v0.9.1"@en, "Vocabulaire kTBS v0.9.1"@fr;
+    owl:versionInfo "0.9.1";
+    # TODO more metadata about vocabulary?
 .
+# 0.9   initial version
+# 0.9.1 (2019-09-13)
+#       fixed some inconsistencies wrt implementation
+#       added missing builtin methods
+#       added symbol and color hints for model elements
+#       added parameter declaration
 
 ################################################################
 #
@@ -100,7 +108,7 @@ KTBS_NS_TTL = """
                    "contient"@fr;
         rdfs:domain :Base ;
         rdfs:range [ a owl:Class ;
-                     owl:unionOf (:TraceModel :AbstractTrace :Method) ] ;
+                     owl:unionOf (:TraceModel :AbstractTrace :Method :Base :DataGraph) ] ;
     .
 
 :TraceModel
@@ -241,19 +249,26 @@ KTBS_NS_TTL = """
                "Une méthode quelconque de calcul de m-trace"@fr;
 .
 
+    :acceptsParameter
+        a owl:ObjectProperty, owl:InverseFunctionalProperty ;
+        rdfs:label "accepts parameter"@en, "accepte le paramètre"@fr;
+        rdfs:domain :AbstractMethod ;
+        rdfs:range :ParameterDeclaration ;
+    .
+
 :BuiltinMethod
     a owl:Class ;
     rdfs:subClassOf :AbstractMethod ;
     rdfs:label "Built-in m-trace computation method"@en,
                "Méthode de calcul de m-trace pré-définie"@fr;
-.    
+.
 
 :Method
     a owl:Class ;
     rdfs:subClassOf :AbstractMethod ;
     rdfs:label "User-defined m-trace computation method"@en,
                "Méthode de calcul de m-trace définie par l'utilisateur"@fr;
-.    
+.
 
     :hasParentMethod
         a owl:ObjectProperty, owl:FunctionalProperty ;
@@ -263,6 +278,29 @@ KTBS_NS_TTL = """
     .
 
     #:hasParameter also has :Method in its domain (see above)
+
+:ParameterDeclaration
+    a owl:Class ;
+    rdfs:subClassOf rdf:Property;
+    rdfs:label "Parameter declaration of a method"@en,
+               "Déclaration de paramètre d'une méthode"@fr;
+.
+
+    :hasParameterName
+        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        rdfs:label "has parent method"@en, "a pour méthode parent"@fr;
+        rdfs:domain :ParameterDeclaration ;
+        rdfs:range xsd:string ;
+    .
+
+    :isRequired
+        a owl:DatatypeProperty, owl:FunctionalProperty ;
+        rdfs:label "is a required parameter"@en, "est un paramètre obligatoire"@fr;
+        rdfs:domain :ParameterDeclaration ;
+        rdfs:range xsd:boolean ;
+    .
+
+    #also accepts rdfs:range, rdfs:comment
 
 :Obsel
     a owl:Class ;
@@ -335,6 +373,26 @@ KTBS_NS_TTL = """
         rdfs:range :ObselType ;
     .
 
+    :hasSuggestedColor
+        a owl:ObjectProperty, owl:FunctionalProperty ;
+        rdfs:label "has suggested color"@en,
+                   "suggestion de couleur"@fr;
+        rdfs:comment "A CSS color description, that is best suited to graphically represent the obsel/attribute/relation type.";
+        rdfs:domain [ a owl:Class ;
+                      owl:unionOf (:ObselType :AttributeType :RelationType) ] ;
+        rdfs:range xsd:string ; # any CSS color
+    .
+
+    :hasSuggestedSymbol
+        a owl:ObjectProperty, owl:FunctionalProperty ;
+        rdfs:label "has suggested symbol"@en,
+                   "suggestion de symbole"@fr;
+        rdfs:comment "A single unicode character, that is best suited to represent the obsel/attribute/relation type.";
+        rdfs:domain [ a owl:Class ;
+                      owl:unionOf (:ObselType :AttributeType :RelationType) ] ;
+        rdfs:range xsd:string ; # any single unicode character
+    .
+
 :AttributeType
     a rdfs:Class ;
     rdfs:label "Attribute type"@en, "Type d'attriut"@fr ;
@@ -353,6 +411,8 @@ KTBS_NS_TTL = """
         rdfs:domain :AttributeType ;
         # TODO LATER should we use owl:Datatype? define our onw Datatype class?
     .
+
+    #also accepts :hasSuggestedColor and :hasSuggestedSymbol
 
 
 :RelationType
@@ -440,7 +500,7 @@ KTBS_NS_TTL = """
 
 :StoredTraceObsels
     a owl:Class ;
-    rdfs:subClassOf :AbstractTraceObsels, 
+    rdfs:subClassOf :AbstractTraceObsels,
         [   a owl:Restriction ;
             owl:onProperty [ owl:inverseOf :hasObselCollection ] ;
             owl:someValuesFrom :StoredTrace ;
@@ -451,7 +511,7 @@ KTBS_NS_TTL = """
 
 :ComputedTraceObsels
     a owl:Class ;
-    rdfs:subClassOf :AbstractTraceObsels, 
+    rdfs:subClassOf :AbstractTraceObsels,
         [   a owl:Restriction ;
             owl:onProperty [ owl:inverseOf :hasObselCollection ] ;
             owl:someValuesFrom :ComputedTrace ;
@@ -487,30 +547,171 @@ KTBS_NS_TTL = """
 #
 ################################################################
 
-:external a :BuiltinMethod ; rdfs:label "external"@en,
-                                        "externe"@fr .
-:filter   a :BuiltinMethod ; rdfs:label "filter"@en,
-                                        "filtre"@fr .
-:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,
-                                        "fusion"@fr .
-:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,
-                                        "SPARQL"@fr .
-:isparql  a :BuiltinMethod ; rdfs:label "Incremental SPARQL"@en,
-                                        "SPARQL incrémental"@fr .
-:fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
-                                        "Automate à états fini"@fr .
-:hrules   a :BuiltinMethod ; rdfs:label "Hubble-type rules"@en,
-                                        "Règles au format Hubble"@fr .
-:pipe     a :BuiltinMethod ; rdfs:label "pipe"@en,
-                                        "chaîne"@fr .
-:parallel a :BuiltinMethod ; rdfs:label "parallel"@en,
-                                        "parallèle"@fr .
-
 :sequence    a :Unit ; rdfs:label "sequence"@en,    "séquence"@fr .
 :second      a :Unit ; rdfs:label "second"@en,      "seconde"@fr .
 :millisecond a :Unit ; rdfs:label "millisecond"@en, "milliseconde"@fr .
 
-# TODO SOON define owl:sameAs of units with dbpedia URIs
+# TODO define owl:sameAs of units with dbpedia URIs
+
+:external a :BuiltinMethod ; rdfs:label "external"@en,
+                                        "externe"@fr .
+:filter   a :BuiltinMethod ; rdfs:label "filter"@en,
+                                        "filtre"@fr .
+:fsa      a :BuiltinMethod ; rdfs:label "Finite-state automaton"@en,
+                                        "Automate à états fini"@fr .
+:fusion   a :BuiltinMethod ; rdfs:label "fusion"@en,
+                                        "fusion"@fr .
+:hrules   a :BuiltinMethod ; rdfs:label "Hubble-type rules"@en,
+                                        "Règles au format Hubble"@fr .
+:isparql  a :BuiltinMethod ; rdfs:label "Incremental SPARQL"@en,
+                                        "SPARQL incrémental"@fr .
+:parallel a :BuiltinMethod ; rdfs:label "parallel"@en,
+                                        "parallèle"@fr .
+:pipe     a :BuiltinMethod ; rdfs:label "pipe"@en,
+                                        "chaîne"@fr .
+:sparql   a :BuiltinMethod ; rdfs:label "SPARQL"@en,
+                                        "SPARQL"@fr .
+
+:filter :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "after";
+    rdfs:comment "the integer timestamp below which obsels are filtered out"@en;
+    rdfs:range xsd:integer;
+],[
+    :hasParameterName "before";
+    rdfs:comment "the integer timestamp above which obsels are filtered out"@en;
+    rdfs:range xsd:integer;
+],[
+    :hasParameterName "afterDT";
+    rdfs:comment "the datetype timestamp below which obsels are filtered out"@en;
+    rdfs:range xsd:dateTime;
+],[
+    :hasParameterName "beforeDT";
+    rdfs:comment "the integer timestamp above which obsels are filtered out"@en;
+    rdfs:range xsd:dateTime;
+],[
+    :hasParameterName "otypes";
+    rdfs:comment "space-separated list of obsel type URIs; only obsels of these types (or their subtypes) will be kept"@en;
+    rdfs:range :ParamTypeOtypes;
+],[
+    :hasParameterName "bgp";
+    rdfs:comment "a SPARQL Basic Graph Pattern used to express additional criteria"@en;
+    rdfs:range :ParamTypeSparqlBGP;
+].
+
+:fusion :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+].
+
+:fsa :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "fsa";
+    :isRequired true;
+    rdfs:comment "the description of the FSA"@en;
+    rdfs:range :ParamTypeFSA;
+].
+
+:hrules :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "rules";
+    :isRequired true;
+    rdfs:comment "the description of the rules"@en;
+    rdfs:range :ParamTypeHRules;
+].
+
+:isparql :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "sparql";
+    :isRequired true;
+    rdfs:comment "a SPARQL SELECT query"@en;
+    rdfs:range :ParamTypeSparql;
+].
+
+:sparql :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "sparql";
+    :isRequired true;
+    rdfs:comment "a SPARQL CONSTRUCT query"@en;
+    rdfs:range :ParamTypeSparql;
+],[
+    :hasParameterName "scope";
+    rdfs:comment "graph against which the SPARQL query must be executed"@en;
+    rdfs:range ("trace" "base" "store");
+],[
+    :hasParameterName "inherits";
+    rdfs:comment "inherit properties from source obsel"@en;
+    rdfs:range xsd:boolean;
+].
+
+:parallel :acceptsParameter [
+    :hasParameterName "model";
+    rdfs:comment "the model of the computed trace"@en, "le modèle de la trace calculée"@fr;
+    rdfs:range :TraceModel;
+],[
+    :hasParameterName "origin";
+    rdfs:comment "the origin of the computed trace"@en, "l'origine de la trace calculée"@fr;
+    rdfs:range :ParamTypeOrigin;
+],[
+    :hasParameterName "methods";
+    :isRequired true;
+    rdfs:range :ParamTypeMethods;
+].
+
+:pipe :acceptsParameter [
+    :hasParameterName "methods";
+    :isRequired true;
+    rdfs:range :ParamTypeMethods;
+].
+
+# specific parameter ranges, to be used by GUI
+:ParamTypeOrigin rdfs:comment "This parameter accepts any string that is a valid trace origin"@en.
+:ParamTypeOtypes rdfs:comment "This parameter accepts a space separated list of obsel type IRIs (from the source trace's model)"@en.
+:ParamTypeSparqlBGP rdfs:comment "This parameter accepts a Sparql Basic Graph Pattern"@en.
+:ParamTypeFSA rdfs:comment "This parameter accepts the JSON description of a Finite State Automaton"@en.
+:ParamTypeHRules rdfs:comment "This parameter accepts the JSON description of a Hubble stylesheet"@en.
+:ParamTypeSparql rdfs:comment "This parameter accepts a Sparql query"@en.
+:ParamTypeMethods rdfs:comment "This parameter accepts a space sperataed list of method IRIs"@en.# TODO SOON define owl:sameAs of units with dbpedia URIs
 
 """ % KTBS_NS_URI
 
@@ -525,7 +726,7 @@ for subject, _, _ in KTBS_NS_GRAPH.triples((None, RDF.type, None)):
         if len(splitted) > 1:
             KTBS_IDENTIFIERS.add(splitted[1])
 
-KTBS = ClosedNamespace(KTBS_NS_URI + "#", 
+KTBS = ClosedNamespace(KTBS_NS_URI + "#",
                        KTBS_IDENTIFIERS,
                        )
 
