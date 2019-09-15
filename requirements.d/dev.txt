@@ -1,5 +1,3 @@
-# Get git information if the ktbs was installed from git
-GitPython==2.1.11
 # For documentation purposes
 Sphinx==2.0.1
 # For developpers only

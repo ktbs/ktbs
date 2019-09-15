@@ -7,3 +7,4 @@ PyLD==0.6.7
 posix_ipc==0.9.8
 fsa4streams==0.8
 waitress==1.1.0
+GitPython==2.1.11
