@@ -106,7 +106,12 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
             }
             obsel_context = True
         elif json_data.get("@type") == "Base":
-            json_data.setdefault("inRoot", str(base_uri))
+            if 'inBase' not in json_data:
+                json_data.setdefault('inRoot', str(base_uri))
+                # NB: we should instead use 'inBase' when the target is a Base,
+                # but we do not know the target at this point.
+                # So ktbs.engine.base handles this special case,
+                # and will replace it with the correct predicate.
 
         elif json_data.get("@type") in ("StoredTrace",
                                         "ComputedTrace",

@@ -276,7 +276,28 @@ class TestJsonBase(KtbsTestCase):
         assert ret[0] == self.my_ktbs.uri + base_id
         newbase = self.my_ktbs.factory(ret[0], [KTBS.Base])
         assert isinstance(newbase, BaseMixin)
+        assert newbase.state.value(self.my_ktbs.uri, KTBS.hasBase) == ret[0]
+        assert newbase.state.value(self.my_ktbs.uri, KTBS.contains) is None
 
+    def test_post_subbase(self):
+        """
+        Test posting a base with minimal JSON (no @context, no inRoot...)
+        """
+
+        b1 = self.my_ktbs.get_base('b1/')
+        base_id = "b2/"
+        graph = parse_json(dumps(
+        {
+            "@type": "Base",
+            "@id": base_id,
+        }), b1.uri)
+        ret = b1.post_graph(graph)
+        assert len(ret) == 1
+        assert ret[0] == b1.uri + base_id
+        newbase = self.my_ktbs.factory(ret[0], [KTBS.Base])
+        assert isinstance(newbase, BaseMixin)
+        assert newbase.state.value(b1.uri, KTBS.contains) == ret[0]
+        assert newbase.state.value(b1.uri, KTBS.hasBase) is None
 
 class TestJsonMethod(KtbsTestCase):
 
