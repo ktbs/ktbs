@@ -1,5 +1,8 @@
 #!/bin/sh
 
+echo "cleaning old semaphores"
+rm /dev/shm/sem.*
+
 # ensure kTBS install is up-to-date
 pip install -e /src
 pip install `grep GitPython /src/requirements.d/dev.txt`
