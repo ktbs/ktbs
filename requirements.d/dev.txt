@@ -1,5 +1,5 @@
 # For documentation purposes
-Sphinx==2.0.1
+Sphinx==2.2.0
 # For developpers only
 pytest==3.0.7
 pylint==1.2.1

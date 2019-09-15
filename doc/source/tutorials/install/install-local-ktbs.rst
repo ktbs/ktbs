@@ -1,67 +1,57 @@
 Installing a local kTBS
 =======================
 
-Make sure you have read and executed :ref:`common-prerequisites` instructions, i.e installed all dependencies.
+Make sure you have read and executed the :ref:`common-prerequisites` instructions, i.e installed all dependencies, and a Python virtual environment.
 
 .. _create-python-virtual_env:
 
-Create the Python vitual environment
-++++++++++++++++++++++++++++++++++++
+Installing  the development version (recommended)
++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Let us now create a Python virtual environment for kTBS.
+Ensure that you have `activated your virtual environment <activate-venv>`:ref:.
+Get the source code and install it in your virtual environment with `pip -e`.
+
+.. code-block:: bash
+    :emphasize-lines: 1,10
+
+    (ktbs-env) $ git clone https://github.com/ktbs/ktbs.git
+    Cloning into 'ktbs'...
+    remote: Enumerating objects: 53, done.
+    remote: Counting objects: 100% (53/53), done.
+    remote: Compressing objects: 100% (36/36), done.
+    remote: Total 6842 (delta 17), reused 37 (delta 15), pack-reused 6789
+    Receiving objects: 100% (6842/6842), 2.72 MiB | 1.11 MiB/s, done.
+    Resolving deltas: 100% (4400/4400), done.
+
+    (ktbs-env) $ pip install -e ktbs/
+
+.. note::
+
+    The ``-e`` option makes pip install the current project in editable mode.
+    It means that whenever you update the repository with ``git pull``, of if you edit the code, the changes will be taken into account automatically.
+
+If you intend to contribute, you might also want to install the developer's dependencies:
 
 .. code-block:: bash
 
-    $ cd /home/user
+    (ktbs-env) $ pip install -r ktbs/requirements.d/dev.txt
 
-    $ python3 -m venv ktbs-env
+Installing the stable version
++++++++++++++++++++++++++++++
 
-The virtual environnement is then activated by **sourcing** the ``activate`` script. Once it is done, you can notice that the Python interpreter used is the virtual environment Python interpreter.
-
-.. code-block:: bash
-    :emphasize-lines: 6
-
-    user@mymachine:/home/user$ cd ktbs-env/
-
-    user@mymachine:/home/user/ktbs-env$ source bin/activate
-
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ which python
-    /home/user/ktbs-env/bin/python
-
-You leave the virtual environment by running the ``deactivate`` command.
+**Instead** of installing kTBS from the source code,
+you can install it and its dependencies from `PyPI <https://pypi.python.org/pypi>`_.
+Ensure that you have `activated your virtual environment <activate-venv>`:ref:,
+and simply type:
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ deactivate
-    user@mymachine:/home/user/ktbs-env$
-
-Install kTBS itself
-+++++++++++++++++++
-
-In the activated Python virtual environment, use the **pip** [1]_ command simply as below, it will install kTBS and its dependencies from the `PyPI <https://pypi.python.org/pypi>`_ [2]_ repository.
-
-.. warning::
-
-    Currently, the latest release of kTBS (0.6) is still designed for Python 2,
-    so the command below will fail until the next release.
-    In the meantime, you should try `install-ktbs-dev-version`:doc:.
+    (ktbs-env) $ pip install ktbs
 
 
-.. code-block:: bash
-    :emphasize-lines: 1
-
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ pip install ktbs
-    Collecting ktbs
-    ...
-
-Update kTBS
-~~~~~~~~~~~
-
-If you further want to update kTBS to the latest version, just type:
-
-.. code-block:: bash
-
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ pip install ktbs -U
+Note however that the stable version is not updated very often,
+and so might very quickly be outdated compared to the development version.
+Hence, this option is **not recommended**.
 
 Testing the installed kTBS
 ++++++++++++++++++++++++++
@@ -70,61 +60,11 @@ Once installed, just run the **ktbs** command, it launches an internal HTTP serv
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs
-    INFO 08/06/2015 05:20:49 PM ktbs Using IPV4
-    INFO 08/06/2015 05:20:49 PM ktbs KTBS server at http://localhost:8001/
+    (ktbs-env) $ ktbs
+    INFO	2019-09-15 14:28:18 CEST	ktbs.server	PID: 26566
+    INFO	2019-09-15 14:28:18 CEST	ktbs.server	listening on http://localhost:8001/
 
 You stop kTBS with ``Ctrl-C``.
-
-REST console
-~~~~~~~~~~~~
-
-Enter the kTBS root URL in a browser and use the built-in web interface, named *REST console*,  to interact with kTBS.
-
-.. image:: ktbs-rest-console.png
-
-Command line clients
-~~~~~~~~~~~~~~~~~~~~
-
-You can send HTTP requests to kTBS with the `wget <http://man7.org/linux/man-pages/man1/wget.1.html>`_ (or `curl <http://curl.haxx.se/docs/manpage.html>`_) command line tools, here a GET request with wget asking kTBS a response using the Turtle format.
-
-.. code-block:: bash
-    :emphasize-lines: 1
-
-    $ wget -qO- --header="Accept: text/turtle" http://localhost:8001/
-
-    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-    @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-    @prefix xml: <http://www.w3.org/XML/1998/namespace> .
-    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-
-    <> a :KtbsRoot ;
-        :hasBuiltinMethod :external,
-            :filter,
-            :fusion,
-            :sparql ;
-        :hasVersion "0.3" .
-
-The same request with curl :
-
-.. code-block:: bash
-    :emphasize-lines: 1
-
-    $ curl -H "Accept: text/turtle" http://localhost:8001/
-    @prefix : <http://liris.cnrs.fr/silex/2009/ktbs#> .
-    @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-    @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-    @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-    @prefix xml: <http://www.w3.org/XML/1998/namespace> .
-    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
-
-    <> a :KtbsRoot ;
-        :hasBuiltinMethod :external,
-            :filter,
-            :fusion,
-            :sparql ;
-        :hasVersion "0.3" .
 
 Make the trace bases persistent
 +++++++++++++++++++++++++++++++
@@ -135,7 +75,7 @@ This can be done with the ``-r`` option.
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs -r <dirname>
+    (ktbs-env) $ ktbs -r <dirname>
 
 A directory named ``<dirname>`` will be used to store the trace bases; if it does not exist, it will be automatically created and initialized.
 
@@ -143,54 +83,22 @@ A directory named ``<dirname>`` will be used to store the trace bases; if it doe
 
   You must *not* create the directory for the store; if the directory already exists, kTBS will assume that it is correctly initialized, and fail if it is not the case (*e.g.* if it is empty).
 
-kTBS help
-+++++++++
-
-There are a number of other options for configuring kTBS; to display them with their documentation, type.
-
-.. code-block:: bash
-
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs --help
-
-    Usage: ktbs [options]
-
-    HTTP-based Kernel for Trace-Based Systems
-
-    Options:
-      -h, --help            show this help message and exit
-      -H HOST_NAME, --host-name=HOST_NAME
-      -p PORT, --port=PORT  
-      -b BASE_PATH, --base-path=BASE_PATH
-      -r REPOSITORY, --repository=REPOSITORY
-                            the filename/identifier of the RDF database (default:
-                            in memory)
-      -c CONFIGFILE, --configfile=CONFIGFILE
-      -n NS_PREFIX, --ns-prefix=NS_PREFIX
-                            a namespace prefix declaration as 'prefix:uri'
-      -P PLUGIN, --plugin=PLUGIN
-                            loads the given plugin
-
-      Advanced options:
-      ...
 
 .. _ktbs-configuration-file:
 
-kTBS configuration file
-+++++++++++++++++++++++
+Advanced configuration
+++++++++++++++++++++++
 
-If you use a regular set of configuration parameters, you may be interested to use a kTBS configuration file.
+There are a lot more configuration options that you can set on the command lines
+(type ``ktbs --help`` for a list).
+But a safer way to configure your kTBS instance is to store those options in a configuration file.
+An example is provided in the `example/conf/`__ directory of the source code.
+Then, pass the configuration file as an argument to kTBS:
 
 .. code-block:: bash
 
-    (ktbs-env)user@mymachine:/home/user/ktbs-env$ ktbs -c my-specific-options.conf
+    (ktbs-env) $ ktbs my.conf
+    INFO	2019-09-15 14:28:18 CEST	ktbs.server	PID: 26567
+    INFO	2019-09-15 14:28:18 CEST	ktbs.server	listening on http://localhost:1234/
 
-Here is kTBS configuration file example that you find in kTBS source code [3]_.
-
-.. literalinclude:: ../../../../examples/conf/ktbs.conf
-    :language: ini
-
-.. [1] Python Package Installer
-
-.. [2] the Python Package Index
-
-.. [3] https://github.com/ktbs/ktbs/blob/develop/examples/conf/ktbs.conf
+__ https://github.com/ktbs/ktbs/tree/develop/examples/conf/

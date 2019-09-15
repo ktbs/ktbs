@@ -26,8 +26,8 @@ See the tutorial_.
 Documentation
 =============
 
-.. image:: https://readthedocs.org/projects/kernel-for-trace-based-systems/badge/?version=latest
-    :target: http://kernel-for-trace-based-systems.readthedocs.org/en/latest/index.html
+.. image:: https://readthedocs.org/projects/ktbs/badge/?version=latest
+    :target: http://ktbs.readthedocs.org/en/latest/
     :alt: Latest documentation
 
 Tests

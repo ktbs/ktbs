@@ -1,11 +1,31 @@
 Installing kTBS behind an Nginx HTTP server
 ===========================================
 
-`Unlike Apache <install-ktbs-behind-apache>`:doc:, Nginx does not supports the WSGI_ protocol.
-As a consequence, Nginx must be configured as a *proxy*.
+Nginx can be used as a proxy in front of a running instance of kTBS.
+This has a number of advantages:
 
-.. _Unlike Apache: 
-.. _WSGI: http://wsgi.org/
+* adds HTTPS support;
+* allows kTBS to co-exist with other services under the same domain name and port number;
+* allows to add access control (not documented yet).
+
+kTBS configuration
+++++++++++++++++++
+
+kTBS must first be `installed <install-local-ktbs>`:doc: 
+and run independently, listening on a local port.
+It must also be aware of the public URI under which it is published
+(in the example above: `https://your.domain.com/path/to/ktbs/`).
+This is achieved with the following configuration directives:
+
+.. code-block:: ini
+
+  [server]
+  scheme = http
+  host-name = localhost
+  port = 8002
+
+  fixed-root-uri = https://your.domain.com/path/to/ktbs/
+
 
 Nginx configuration
 +++++++++++++++++++
@@ -25,26 +45,3 @@ Here is an example Nginx configuration file:
           }
   }
 
-assuming that kTBS is running on the same server, and listening on port 8002 (see below).
-
-kTBS configuration
-++++++++++++++++++
-
-kTBS must be run independantly, listening on a local port.
-It must also be aware of the public URI underwhich it is published
-(in the example above: `https://your.domain.com/path/to/ktbs/`).
-This is achieved with the followin configuration directives:
-
-.. code-block:: ini
-
-  [server]
-  scheme = http
-  host-name = localhost
-  port = 8002
-
-  fixed-root-uri = https://your.domain.com/path/to/ktbs/
-
-Alternative
-+++++++++++
-
-As an alternative, Nginx can also be run as a proxy in front of `uWSGI <install-ktbs-behind-uwsgi>`:doc:.

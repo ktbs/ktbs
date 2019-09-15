@@ -218,7 +218,7 @@ The type(s) of the obsels to which the relation can point is specified with ``:h
        :hasRelationRange <#EnterChatRoom> .
 
 
-.. _inheritance:
+.. _inheritance-ttl:
 
 Inheritance of obsel types
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
