@@ -197,7 +197,8 @@ def build_cmdline_options():
 
     ogr = OptionGroup(opt, "Logging options")
     ogr.add_option("--loggers", action="append",
-                   help="for which module(s), you want to activate logging (ktbs, rdfrest, rdflib, ...)")
+                   help="for which python module(s), you want to activate logging (defaults to ktbs)",
+                   default=["ktbs"],)
 
     ogr.add_option("--console-level", 
                    choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
