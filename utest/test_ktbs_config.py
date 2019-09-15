@@ -164,10 +164,10 @@ class TestkTBSCmdlineConfig(object):
 
     def test_logging_one_logger(self):
         options, args = self.opt.parse_args(['ktbs',
-                                             '--loggers=ktbs'])
+                                             '--loggers=rdfrest'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs rdfrest'
 
     def test_logging_multiple_loggers(self):
         options, args = self.opt.parse_args(['ktbs',
@@ -175,7 +175,7 @@ class TestkTBSCmdlineConfig(object):
                                              '--loggers=rdfrest'])
 
         ktbs_config = parse_configuration_options(options)
-        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs rdfrest'
+        assert ktbs_config.get('logging', 'loggers', raw=1) == 'ktbs ktbs rdfrest'
 
     def test_logging_consolelevel(self):
         options, args = self.opt.parse_args(['ktbs',
