@@ -109,7 +109,10 @@ class Base(WithLockMixin, BaseMixin, KtbsPostableMixin, KtbsResource):
                         {
                             VALUES ?p { rdfs:label skos:prefLabel }
                             GRAPH $base { $base :contains ?s }
-                            GRAPH ?s    { ?s ?p ?o }
+                            GRAPH ?s    {
+                                $base :contains ?s.
+                                ?s ?p ?o.
+                            }
                         }
                     ''', initNs=initNs, initBindings=initBindings)
                 )
