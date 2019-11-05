@@ -105,9 +105,6 @@ def register_service(service):
 
 def unregister_service(service):
     """Unregister a `.local.Service`:class:.
-
-    NB: this beed normally not be called directlt, as
-    :meth:`.local.Serice.__del__` already does it.
     """
     assert isinstance(service, rdfrest.cores.local.Service)
     if service.root_uri in _IMPL_REGISTRY:

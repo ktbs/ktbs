@@ -63,7 +63,6 @@ from ..util.config import apply_logging_config
 
 NS = Namespace("tag:silex.liris.cnrs.fr.2012.08.06.rdfrest:")
 
-
 ################################################################
 #
 # Service
@@ -154,7 +153,6 @@ class Service(object):
     def __del__(self):
         try:
             self.store.close()
-            unregister_service(self)
         except BaseException:
             pass
 
