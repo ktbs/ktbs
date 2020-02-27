@@ -8,6 +8,13 @@ GET
 
 Retrieve a description of the root. This description contains configuration settings of the kTBS, and references to its children resources, of type `Base`:doc:.
 
+It is also possible to enrich the graph returned by GET with information about the bases in this root,
+using the property ``prop`` containing a comma-separated list of the following properties:
+
+* ``comment`` to display the ``rdfs:comment``\ s of bases,
+* ``label`` to display the ``rdfs:label``\ s of ``skos:prefLabel`` of bases.
+
+
 PUT
 ---
 
