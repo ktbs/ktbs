@@ -182,7 +182,7 @@ class TestJsonRoot(KtbsTestCase):
             '@type': 'KtbsRoot',
             'hasBase': [
                 {'@id': 'b1/', 'label': 'base 1' },
-                {'@id': 'b2/',},
+                'b2/',
                 {'@id': 'b3/', 'label': 'base 3' },
             ],
             'version': '%s%s' % (ktbs_version, ktbs_commit),
