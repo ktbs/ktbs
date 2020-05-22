@@ -14,6 +14,8 @@ A trace complies with its model if all its obsels have a type defined by the mod
 
 Note that it is not required for a trace to comply with its model at any time. This is intended to let the user decide whether the trace or the model itself should be fixed.
 
+.. _origin:
+
 Origin
 ------
 

@@ -18,8 +18,9 @@
 """
 This is a standalone version of an HTTP-based KTBS.
 """
-import atexit
 import logging
+import signal
+import os
 from optparse import OptionParser, OptionGroup
 from socket import getaddrinfo, AF_INET6, AF_INET, SOCK_STREAM
 from waitress import serve
@@ -29,12 +30,20 @@ from rdfrest.util.wsgi import SimpleRouter
 from rdfrest.http_server import HttpFrontend
 from .config import get_ktbs_configuration
 
-from os import getpid
-
 #from .namespace import KTBS
 from .engine.service import KtbsService
 
 LOG = logging.getLogger("ktbs.server")
+
+def convert_sigterm_to_sigint(_signum, _frame):
+    """
+    Signal handler registered to SIGTERM.
+
+    Allows a more graceful end,
+    where services are cleanly __del__'ed, closing their respective stores.
+    """
+    os.kill(os.getpid(), signal.SIGINT)
+signal.signal(signal.SIGTERM, convert_sigterm_to_sigint)
 
 def main():
     """I launch KTBS as a standalone HTTP server.
@@ -47,10 +56,9 @@ def main():
 
     apply_global_config(ktbs_config)
 
-    LOG.info("PID: %d" % getpid())
+    LOG.info("PID: %d", os.getpid())
 
     ktbs_service = KtbsService(ktbs_config)  #.service
-    atexit.register(lambda: ktbs_service.store.close())
 
     application = RequestLogger(HttpFrontend(ktbs_service, ktbs_config))
 

@@ -19,12 +19,14 @@
 I provide the implementation of ktbs:KtbsRoot .
 """
 
+from rdflib import ConjunctiveGraph, Graph, RDF, RDFS
 from rdfrest.exceptions import MethodNotAllowedError
 
 from .resource import KtbsPostableMixin, KtbsResource
 from .lock import WithLockMixin
 from ..api.ktbs_root import KtbsRootMixin
 from ..namespace import KTBS
+from ..utils import SKOS
 
 
 class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
@@ -33,6 +35,28 @@ class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
     ######## ILocalCore (and mixins) implementation  ########
 
     RDF_MAIN_TYPE = KTBS.KtbsRoot
+
+    def check_parameters(self, to_check, parameters, method):
+        """I implement :meth:`~rdfrest.cores.local.ILocalCore.check_parameters`
+
+        I also convert parameters values from strings to usable datatypes.
+        """
+        if parameters is not None:
+            to_check_again = None
+            if method in ("get_state", "force_state_refresh"):
+                for key in to_check:
+                    val = parameters[key]
+                    if key == 'prop':
+                        parameters[key] = val.split(',')
+                    else:
+                        if to_check_again is None:
+                            to_check_again = []
+                        to_check_again.append(key)
+            else:
+                to_check_again = to_check
+            if to_check_again:
+                super(KtbsRoot, self).check_parameters(to_check_again, parameters,
+                                                       method)
 
     def delete(self, parameters=None, _trust=True):
         """I override :meth:`rdfrest.util.EditableCore.delete`.
@@ -60,3 +84,55 @@ class KtbsRoot(WithLockMixin, KtbsRootMixin, KtbsPostableMixin, KtbsResource):
                    WHERE { <%s> ktbs:hasBase ?c . ?c a ktbs:Base . }
         """ % (KTBS, self.uri)
         return self._find_created_default(new_graph, query)
+
+    ######## ICore implementation  ########
+
+    def get_state(self, parameters=None):
+        """I override `~rdfrest.cores.ICore.get_state`:meth:
+
+        I support parameter "prop" to enrich the KtbsRoot description with additional information.
+        I consider an empty dict as equivalent to no dict.
+        """
+        state = super(KtbsRoot, self).get_state(parameters)
+        if not parameters:
+            return state
+
+        enriched_state = Graph()
+        enriched_state += state
+        whole = ConjunctiveGraph(self.service.store)
+        initNs = { '': KTBS, 'rdfs': RDFS, 'skos': SKOS }
+        initBindings = { 'base': self.uri }
+        for prop in parameters['prop']:
+            if prop == 'comment':
+                enriched_state.addN(
+                    (s, RDFS.comment, o, enriched_state)
+                    for s, o, _ in whole.query('''
+                        SELECT ?s ?o
+                          $root # selected solely to please Virtuoso
+                        {
+                            GRAPH $root { $root :hasBase ?s }
+                            GRAPH ?s    { ?s rdfs:comment ?o }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            elif prop == 'label':
+                enriched_state.addN(
+                    (s, p, o, enriched_state)
+                    for s, p, o, _ in whole.query('''
+                        SELECT ?s ?p ?o
+                          $root # selected solely to please Virtuoso
+                        {
+                            VALUES ?p { rdfs:label skos:prefLabel }
+                            GRAPH $root { $root :hasBase ?s }
+                            GRAPH ?s    {
+                                $root :hasBase ?s.
+                                ?s ?p ?o.
+                            }
+                        }
+                    ''', initNs=initNs, initBindings=initBindings)
+                )
+            else:
+                pass # ignoring unrecognized properties
+                # should we signal them instead (diagnosis?)
+
+        return enriched_state

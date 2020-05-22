@@ -166,6 +166,29 @@ class TestJsonRoot(KtbsTestCase):
         })
         assert_roundtrip(json_content, self.my_ktbs)
 
+    def test_enriched_root(self):
+        self.my_ktbs.create_base("b1/", label="base 1")
+        self.my_ktbs.create_base("b2/")
+        self.my_ktbs.create_base("b3/", label="base 3")
+        params = lambda: {'prop':'comment,label',}
+        json_content = b"".join(
+            serialize_json_root(self.my_ktbs.get_state(params()), self.my_ktbs))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            'hasBuiltinMethod': _BUILTIN_METHODS,
+            '@id': 'http://localhost:12345/',
+            '@type': 'KtbsRoot',
+            'hasBase': [
+                {'@id': 'b1/', 'label': 'base 1' },
+                'b2/',
+                {'@id': 'b3/', 'label': 'base 3' },
+            ],
+            'version': '%s%s' % (ktbs_version, ktbs_commit),
+        })
+        assert_roundtrip(json_content, self.my_ktbs, params())
+
 
 class TestJsonBase(KtbsTestCase):
 

@@ -285,6 +285,7 @@ def serialize_json_root(graph, root, bindings=None):
 
     valconv = ValueConverter(root.uri)
     valconv_uri = valconv.uri
+    valconv_lit = valconv.literal
 
     try:
         ktbs_version = next(graph.objects(root.uri, KTBS.hasVersion))
@@ -305,7 +306,36 @@ def serialize_json_root(graph, root, bindings=None):
                                                    KTBS.hasBuiltinMethod)])
 
     len_root_uri = len(root.uri)
-    bases = [ "%s" % b.uri[len_root_uri:] for b in root.iter_bases()]
+    bases = []
+    for b in root.iter_bases():
+        bi = "%s" % b.uri[len_root_uri:]
+        triples = graph.triples((b.uri, None, None))
+        comments = []
+        labels = []
+        rdfs_labels = []
+        for _, pred, obj in triples:
+            if pred == RDFS.comment:
+                comments.append(valconv_lit(obj))
+            if pred == SKOS.prefLabel:
+                labels.append(valconv_lit(obj))
+            if pred == RDFS.label:
+                rdfs_labels.append(valconv_lit(obj))
+        if comments or labels or rdfs_labels:
+            bi = { "@id": bi }
+        if comments:
+            if len(comments) == 1:
+                comments = comments[0]
+            bi['comment'] = comments
+        if labels:
+            bi['label'] = labels[0]
+            if len(labels) > 1:
+                bi['skosPrefLabel'] = labels[1:]
+        if rdfs_labels:
+            if len(rdfs_labels) == 1:
+                rdfs_labels = rdfs_labels[0]
+            bi['rdfs:label'] = rdfs_labels
+        bases.append(bi)
+
     if len(bases):
         yield """,
     "hasBase" : %s
@@ -352,7 +382,7 @@ def serialize_json_base(graph, base, bindings=None):
             valconv_lit(j) for j in graph.objects(i.uri, RDFS.comment) ]
         if rdfs_comments:
             if len(rdfs_comments) > 1: rdfs_comments = rdfs_comments[0]
-            item['rdf:comments'] = rdfs_comments
+            item['rdfs:comment'] = rdfs_comments
 
         method = graph.value(i.uri, KTBS.hasMethod)
         if method:
@@ -377,7 +407,7 @@ def serialize_json_base(graph, base, bindings=None):
             valconv_lit(j) for j in graph.objects(i.uri, RDFS.label) ]
         if rdfs_labels:
             if len(rdfs_labels): rdfs_labels = rdfs_labels[0]
-            item['rdf:label'] = rdfs_labels
+            item['rdfs:label'] = rdfs_labels
 
         obselCount = graph.value(i.uri, KTBS.hasObselCount)
         if obselCount is not None:
