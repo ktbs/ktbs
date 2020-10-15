@@ -492,7 +492,7 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
                     try:
                         diag = self._method_impl.compute_trace_description(self)
                     except BaseException as ex:
-                        LOG.warn(traceback.format_exc())
+                        LOG.warning(traceback.format_exc())
                         diag = Diagnosis(
                             "exception raised while computing trace description",
                             [ex.args[0]]

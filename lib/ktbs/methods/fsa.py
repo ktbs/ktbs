@@ -208,7 +208,7 @@ class _FSAMethod(AbstractMonosourceMethod):
                                 if val is not None:
                                     new_obs_add((new_obs_uri, target_attr, val))
                             except Exception as ex:
-                                LOG.warn(ex.args[0])
+                                LOG.warning(ex.args[0])
 
 
 

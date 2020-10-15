@@ -78,6 +78,8 @@ class HttpKtbsTestCaseMixin(object):
     def setup(self):
         super(HttpKtbsTestCaseMixin, self).setup()
         ktbs_config = get_ktbs_configuration()
+        ktbs_config.set('server', 'send-traceback', 'true')
+        ktbs_config.set('logging', 'console-level', 'DEBUG')
         app = HttpFrontend(self.service, ktbs_config)
         #app = HttpFrontend(self.service, cache_control="max-age=60")
 

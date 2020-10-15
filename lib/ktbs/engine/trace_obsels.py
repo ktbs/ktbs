@@ -601,7 +601,7 @@ class ComputedTraceObsels(AbstractTraceObsels):
                         try:
                             diag = impl.compute_obsels(trace, refresh_param >= 2)
                         except BaseException as ex:
-                            LOG.warn(traceback.format_exc())
+                            LOG.warning(traceback.format_exc())
                             diag = Diagnosis(
                                 "exception raised while computing obsels",
                                 [ex.args[0]],

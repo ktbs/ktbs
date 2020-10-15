@@ -23,7 +23,7 @@ to all the resources exposed by kTBS.
 """
 
 from rdfrest.http_server import \
-    register_middleware, unregister_middleware, MyResponse, BOTTOM
+    best_match, register_middleware, unregister_middleware, MyResponse, BOTTOM
 from rdfrest.util.prefix_conjunctive_view import PrefixConjunctiveView
 from warnings import warn
 from webob import Request
@@ -130,16 +130,16 @@ class SparqlEndpointMiddleware(object):
 
         if result.graph is not None:
             ctype = serfmt = (
-                request.accept.best_match(self.CONSTRUCT_CTYPES)
+                best_match(request.accept, self.CONSTRUCT_CTYPES)
                 or "text/turtle"
             )
         elif result.askAnswer is not None:
-            ctype = request.accept.best_match(self.ASK_CTYPES)
+            ctype = best_match(request.accept, self.ASK_CTYPES)
             if ctype is None:
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
         else:
-            ctype = request.accept.best_match(self.SELECT_CTYPES)
+            ctype = best_match(request.accept, self.SELECT_CTYPES)
             if ctype is None:
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]

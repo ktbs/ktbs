@@ -38,12 +38,13 @@ from rdfrest.parsers import register_parser
 from rdfrest.exceptions import ParseError
 
 
-def load_document(url):
+def load_document(url, _options):
     """
     A specialized document loader that proxies the kTBS context.
     """
     if url == CONTEXT_URI:
         return {
+            'contentType': 'application/ld+json',
             'contextUrl': None,
             'documentUrl': CONTEXT_URI,
             'document': CONTEXT_JSON,
@@ -160,7 +161,7 @@ def parse_json(content, base_uri=None, encoding="utf-8", graph=None):
 
 CONTEXT_URI = "http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context"
 
-CONTEXT_JSON = """{"@context":{
+CONTEXT_SRC = """{"@context":{
     "xsd": "http://www.w3.org/2001/XMLSchema#",
     "skos": "http://www.w3.org/2004/02/skos/core#",
     "k": "http://liris.cnrs.fr/silex/2009/ktbs#",
@@ -246,6 +247,7 @@ CONTEXT_JSON = """{"@context":{
     "additionalType": { "@id": "http://www.w3.org/1999/02/22-rdf-syntax-ns#type","@type": "@id" }
 }}"""
 
+CONTEXT_JSON=loads(CONTEXT_SRC)
 
 # TODO LATER split this plugin into a customizable generic version for rdfrest,
 # and a specialization of it for kTBS

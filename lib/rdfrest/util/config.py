@@ -24,7 +24,7 @@ I provide configuration functions for the rdfrest Service.
 import json
 import logging
 import logging.config
-from configparser import NoOptionError, SafeConfigParser
+from configparser import NoOptionError, ConfigParser
 
 from ..serializers import bind_prefix
 
@@ -44,7 +44,7 @@ def get_service_configuration(configfile_handler=None):
     # and not :
     # repository =
     # which will return an empty string whatever 'allow_no_value' value is set
-    config = SafeConfigParser(allow_no_value=True)
+    config = ConfigParser(allow_no_value=True)
 
     # Setting default values
     config.add_section('server')
@@ -80,7 +80,7 @@ def get_service_configuration(configfile_handler=None):
 
     # Loading from config file
     if configfile_handler is not None:
-        config.readfp(configfile_handler)
+        config.read_file(configfile_handler)
 
     return config
 

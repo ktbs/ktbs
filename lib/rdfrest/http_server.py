@@ -56,6 +56,11 @@ class MyResponse(Response):
     default_content_type = "text/plain"
     default_conditional_response = True
 
+    def __init__(self, body=None, status=None, headerlist=None, **kw):
+        if 'charset' not in kw:
+            kw['charset'] = 'utf-8'
+        Response.__init__(self, body, status, headerlist, **kw)
+
 class HttpFrontend(object):
     """The role of the WSGI front-end is to relay requests to and response
     from the service through the HTTP protocol.
@@ -223,8 +228,10 @@ class HttpFrontend(object):
         else:
             headerlist.append(("vary", "accept"))
             serializer = None
-            ctype = request.accept.best_match(
-                ser[1] for ser in iter_serializers(rdf_type) )
+            ctype = best_match(
+                request.accept,
+                [ ser[1] for ser in iter_serializers(rdf_type) ]
+            )
             if ctype is None:
                 # 406 Not Acceptable
                 version_list = []
@@ -729,3 +736,14 @@ def unregister_pre_processor(preproc, quiet=False):
             return
     if not quiet:
         raise ValueError("pre-processor not registered")
+
+def best_match(accepter, offers):
+    """
+    Return the best acceptable offer from 'offers' by 'accepter',
+    or None if there is no match.
+    """
+    ao = accepter.acceptable_offers(offers)
+    if ao:
+        return ao[0][0]
+    else:
+        None

@@ -609,8 +609,8 @@ def serialize_json_trace(graph, trace, bindings=None):
     "@context": "%s",
     "@id": "%s",
     "@type": "%s",
-    "hasObselList": "@obsels",
-    "hasTraceStatistics": "@stats" """ % (
+    "hasObselList": "./@obsels",
+    "hasTraceStatistics": "./@stats" """ % (
         CONTEXT_URI,
         trace.uri,
         trace.RDF_MAIN_TYPE[LEN_KTBS:],

@@ -93,7 +93,7 @@ class _SparqlMethod(IMethod):
             result = data.query(sparql, base=source.obsel_collection.uri).graph
             replace_obsels(computed_trace, result, ("inherit" in parameters))
         except Exception as exc:
-            LOG.warn(traceback.format_exc())
+            LOG.warning(traceback.format_exc())
             diag.append(str(exc))
 
         return diag

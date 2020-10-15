@@ -211,7 +211,8 @@ class HttpClientCore(ICore):
         """
         if parameters is None:
             content_type, rdflib_format = self._state.store.prefered_format
-            data = graph.serialize(format=rdflib_format, encoding='utf-8')
+            encoding = 'utf-8' if rdflib_format not in ['nt', 'nq'] else None
+            data = graph.serialize(format=rdflib_format, encoding=encoding)
             headers = {
                 'content-type': content_type,
                 }
