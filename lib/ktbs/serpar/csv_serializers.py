@@ -39,11 +39,11 @@ def serialize_csv_trace_obsels(graph, resource, bindings=None):
     sio = StringIO()
     csvw = csv_writer(sio)
     for row in iter_csv_rows(resource.trace.uri, graph):
-        csvw.writerow([ i.encode('utf-8') for i in row ])
+        csvw.writerow([ i for i in row ])
         # immediately yield each line
-        yield sio.getvalue()
+        yield sio.getvalue().encode("utf-8")
         # then empty sio before writing next line
-        sio.reset()
+        sio.seek(0)
         sio.truncate()
 
 def iter_csv_rows(trace_uri, graph, sep=' | '):
