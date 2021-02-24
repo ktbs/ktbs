@@ -466,7 +466,8 @@ class ComputedTrace(ComputedTraceMixin, FolderishMixin, AbstractTrace):
         I systematically call :meth:`force_state_refresh` to ensure all
         computations have been performed.
         """
-        self.force_state_refresh(parameters)
+        if not self._edit_context:
+            self.force_state_refresh(parameters)
         return super(ComputedTrace, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):

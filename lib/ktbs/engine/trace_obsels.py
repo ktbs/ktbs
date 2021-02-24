@@ -566,7 +566,8 @@ class ComputedTraceObsels(AbstractTraceObsels):
         I support parameter 'refresh' to bypass the updating of the obsels,
         or force a recomputation of the trace.
         """
-        self.force_state_refresh(parameters)
+        if not self._edit_context:
+            self.force_state_refresh(parameters)
         return super(ComputedTraceObsels, self).get_state(parameters)
 
     def force_state_refresh(self, parameters=None):
