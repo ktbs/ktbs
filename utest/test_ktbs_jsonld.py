@@ -122,6 +122,10 @@ class TestJsonRoot(KtbsTestCase):
                    RDF.type,
                    URIRef("http://example.org/ns/other-type"),
                    ))
+            g.add((self.my_ktbs.uri,
+                   RDFS.label,
+                   Literal("my RDFS label"),
+                   ))
 
         json_content = b"".join(
             serialize_json_root(self.my_ktbs.state, self.my_ktbs))
@@ -134,6 +138,7 @@ class TestJsonRoot(KtbsTestCase):
             '@type': 'KtbsRoot',
             'additionalType': [ 'http://example.org/ns/other-type' ],
             'label': 'My customized ktbs root',
+            'rdfs:label': 'my RDFS label',
             'version': '%s%s' % (ktbs_version, ktbs_commit),
             'http://example.org/ns/strprop': 'Hello world',
             'http://example.org/ns/numberprop': 42,
@@ -220,6 +225,10 @@ class TestJsonBase(KtbsTestCase):
                    URIRef("http://example.org/ns/strprop"),
                    Literal("Hello world")
                    ))
+            g.add((self.base.uri,
+                   RDFS.label,
+                   Literal("my RDFS label")
+                   ))
         json_content = b"".join(
             serialize_json_base(self.base.state, self.base))
         json = loads(json_content)
@@ -230,6 +239,7 @@ class TestJsonBase(KtbsTestCase):
             '@type': 'Base',
             'inRoot': '../',
             'label': 'My customized base',
+            'rdfs:label': 'my RDFS label',
             'http://example.org/ns/strprop': 'Hello world',
         })
         assert_roundtrip(json_content, self.base)
@@ -321,6 +331,38 @@ class TestJsonBase(KtbsTestCase):
         assert isinstance(newbase, BaseMixin)
         assert newbase.state.value(b1.uri, KTBS.contains) == ret[0]
         assert newbase.state.value(b1.uri, KTBS.hasBase) is None
+
+    def test_multilingual_property(self):
+        with self.base.edit() as g:
+            g.add((self.base.uri,
+                   URIRef("tag:message"),
+                   Literal("Hello world", lang="en")
+                   ))
+            g.add((self.base.uri,
+                   URIRef("tag:message"),
+                   Literal("Bonjour le monde", lang="fr")
+                   ))
+        json_content = b"".join(
+            serialize_json_base(self.base.state, self.base))
+        json = loads(json_content)
+        assert_jsonld_equiv(json, {
+            '@context':
+                'http://liris.cnrs.fr/silex/2011/ktbs-jsonld-context',
+            '@id': 'http://localhost:12345/b1/',
+            '@type': 'Base',
+            'inRoot': '../',
+            'tag:message': [
+                {
+                    '@value': 'Hello world',
+                    '@language': 'en',
+                },
+                {
+                    '@value': 'Bonjour le monde',
+                    '@language': 'fr',
+                },
+            ],
+        })
+        assert_roundtrip(json_content, self.base)
 
 class TestJsonMethod(KtbsTestCase):
 

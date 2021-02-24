@@ -138,10 +138,7 @@ def add_other_arcs(jsonobj, graph, uri, valconv, obsel=False):
 
     valconv_uri = valconv.uri
     valconv_lit = valconv.literal
-    if obsel:
-        pred_conv = valconv_uri
-    else:
-        pred_conv = lambda x: x
+    pred_conv = valconv_uri
 
     if not obsel:
         types = [ i for i in graph.objects(uri, RDF.type)
@@ -168,7 +165,7 @@ def add_other_arcs(jsonobj, graph, uri, valconv, obsel=False):
                     else { "@id": valconv_uri(i[2]), "hasTrace": "./" }
                     for i in tuples ]
         else:
-            obj = [ i[2] for i in tuples ]
+            obj = [ valconv.val2jsonobj(i[2]) for i in tuples ]
         if len(obj) == 1:
             obj = obj[0]
         jsonobj[pred_conv(pred)] = obj
@@ -196,10 +193,7 @@ def iter_other_arcs(graph, uri, valconv, indent="\n    ", obsel=False):
 
     val2json = valconv.val2json
     valconv_uri = valconv.uri
-    if obsel:
-        pred_conv = valconv_uri
-    else:
-        pred_conv = lambda x: x
+    pred_conv = valconv_uri
 
     if not obsel:
         types = [ i for i in graph.objects(uri, RDF.type)
