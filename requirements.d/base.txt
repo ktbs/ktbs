@@ -1,7 +1,7 @@
 bsddb3==6.2.7
 rdflib==5.0.0
 rdflib-jsonld==0.5.0
-httplib2==0.18.1
+httplib2==0.19.0
 WebOb==1.8.6
 PyLD==2.0.3
 posix_ipc==1.0.5
