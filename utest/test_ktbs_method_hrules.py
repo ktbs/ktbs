@@ -402,7 +402,7 @@ class TestHRules(KtbsTestCase):
         ]
 
         for i in range(5):
-            self.src.create_obsel(f"o{i}", self.otypeA, i,
+            self.src.create_obsel(f"o{i}", self.otypeA, i*5,
                                   attributes={self.atypeV: Literal(i*5)})
 
         for (i, op) in enumerate(['==', '!=', '<', '>', '>=', '<=',]):
@@ -413,12 +413,12 @@ class TestHRules(KtbsTestCase):
                                                   [self.src],)
             got = [obs.begin for obs in ctr.obsels]
             exp = {
-                '==': [2,],
-                '!=': [0, 1, 3, 4,],
-                '<': [0, 1,],
-                '>': [3, 4,],
-                '<=': [0, 1, 2,],
-                '>=': [2, 3, 4,],
+                '==': [10,],
+                '!=': [0, 5, 15, 20,],
+                '<': [0, 5,],
+                '>': [15, 20,],
+                '<=': [0, 5, 10,],
+                '>=': [10, 15, 20,],
             }[op]
             assert got == exp
 
@@ -433,7 +433,7 @@ class TestHRules(KtbsTestCase):
                             {
                                 'uri': self.atypeW.uri,
                                 'operator': '==',
-                                'value': 'c',
+                                'value': '2',
                             },
                         ],
                     },
@@ -441,11 +441,12 @@ class TestHRules(KtbsTestCase):
             },
         ]
 
-        for (i, c) in enumerate("abcde"):
-            self.src.create_obsel(f"o{c}", self.otypeA, i,
-                                  attributes={self.atypeW: Literal(c)})
+        for i in range(0, 6):
+            isq = i**2
+            self.src.create_obsel(f"o{i}", self.otypeA, isq,
+                                  attributes={self.atypeW: Literal(str(isq))})
 
-        for (i, op) in enumerate(['==', '!=', '<', '>', '>=', '<=',]):
+        for (i, op) in enumerate(['==', '!=', '<', '>', '>=', '<=', 'contains']):
             base_rules[0]['rules'][0]['attributes'][0]['operator'] = op
             ctr = self.base.create_computed_trace(f"ctr{i}/", KTBS.hrules,
                                                   {"rules": dumps(base_rules),
@@ -453,11 +454,12 @@ class TestHRules(KtbsTestCase):
                                                   [self.src],)
             got = [obs.begin for obs in ctr.obsels]
             exp = {
-                '==': [2,],
-                '!=': [0, 1, 3, 4,],
-                '<': [0, 1,],
-                '>': [3, 4,],
-                '<=': [0, 1, 2,],
-                '>=': [2, 3, 4,],
+                '==': [],
+                '!=': [0, 1, 4, 9, 16, 25],
+                '<': [0, 1, 16],
+                '>': [4, 9, 25],
+                '<=': [0, 1, 16],
+                '>=': [4, 9, 25],
+                'contains': [25,]
             }[op]
-            assert got == exp
+            assert got == exp, f"for {op}"

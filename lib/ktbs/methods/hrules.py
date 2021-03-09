@@ -74,14 +74,14 @@ class _HRulesMethod(AbstractMonosourceMethod):
                         dtype = att['value'].get('@datatype', XSD.string)
                         value = Literal(att['value']['@value'], datatype=dtype)
                     att['sparql_value'] = value.n3()
-                    if att['operator'] == '==':
-                        att['sparql_op'] = '='
-                    else:
-                        att['sparql_op'] = att['operator']
+                    filter_template = FILTER_TEMPLATE.get(att['operator'])
+                    if filter_template is None:
+                        diag.append("WARN: unrecognized operator %(operator)s" % att)
+                        filter_template = "FALSE"
                     att['var'] = '?att%s' % attno
-                    bgp.append('?obs <%(uri)s> %(var)s. '
-                               'FILTER(%(var)s %(sparql_op)s %(sparql_value)s).'
-                               % att)
+                    bgp.append('?obs <%(uri)s> %(var)s. FILTER(' % att)
+                    bgp.append(filter_template % att)
+                    bgp.append(').')
                 bgp = "".join(bgp)
                 rank -= rulepos
                 bgps.append([rank, new_type, bgp])
@@ -166,5 +166,15 @@ class _HRulesMethod(AbstractMonosourceMethod):
             last_seen_u = str(last_seen_u)
         cstate["last_seen_u"] = last_seen_u
         cstate["last_seen_b"] = last_seen_b
+
+FILTER_TEMPLATE = {
+    '==': '%(var)s = %(sparql_value)s',
+    '!=': '%(var)s != %(sparql_value)s',
+    '<' : '%(var)s < %(sparql_value)s',
+    '>' : '%(var)s > %(sparql_value)s',
+    '<=': '%(var)s <= %(sparql_value)s',
+    '>=': '%(var)s >= %(sparql_value)s',
+    'contains': 'CONTAINS(STR(%(var)s), STR(%(sparql_value)s))',
+}
 
 register_builtin_method_impl(_HRulesMethod())

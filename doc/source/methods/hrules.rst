@@ -49,8 +49,11 @@ Each *subrule* is a JSON object with the following attributes:
 Each *attribute constraint* is a JSON object with the following attributes:
 
 - ``uri`` is an attribute type IRI (from the source trace's model).
-- ``operator`` is one of the following strings: ``==``, ``!=``,
-  ``<``, ``>``, ``<=``, ``>=``.
+- ``operator`` is one of the following strings:
+
+  * ``==``, ``!=``, ``<``, ``>``, ``<=``, ``>=`` have their usual meaning;
+  * ``contains`` checks that a string attribute contains the given value as a substring.
+
 - ``value`` is either a JSON string or a `JSON-LD value object`_.
 
 .. _JSON-LD value object: http://json-ld.org/spec/latest/json-ld/#value-objects
@@ -92,7 +95,7 @@ the following precedence applies:
 * a subrule which specifies an obsel type has precedence over a subrule which does not,
   regardless of their number of attribute constraints or position in the rule structure;
 
-* a subrules with more attribute constraings has precedence over a subrule with less attributes constraints,
+* a subrules with more attribute constraints has precedence over a subrule with less attributes constraints,
   regardless of their position in the rule structure;
 
 * a subrule higher in the rule structure has precedence over a subrule lower in the rule structure.
