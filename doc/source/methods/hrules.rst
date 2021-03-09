@@ -49,7 +49,7 @@ Each *subrule* is a JSON object with the following attributes:
 Each *attribute constraint* is a JSON object with the following attributes:
 
 - ``uri`` is an attribute type IRI (from the source trace's model).
-- ``operator`` is one of the following strings: ``==``,
+- ``operator`` is one of the following strings: ``==``, ``!=``,
   ``<``, ``>``, ``<=``, ``>=``.
 - ``value`` is either a JSON string or a `JSON-LD value object`_.
 
