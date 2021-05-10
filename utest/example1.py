@@ -314,7 +314,7 @@ class GroupMixin(ItemMixin):
 
 # IMPLEMENTATION
 
-_IDENT_RE = RegExp("[a-zA-Z_0-9]+\Z")
+_IDENT_RE = RegExp(r"[a-zA-Z_0-9]+\Z")
 
 def check_ident(ident):
     """Check whether an identifier is syntactically valid"""

@@ -134,12 +134,12 @@ class SparqlEndpointMiddleware(object):
                 or "text/turtle"
             )
         elif result.askAnswer is not None:
-            ctype = best_match(request.accept, self.ASK_CTYPES)
+            ctype = best_match(request.accept, list(self.ASK_CTYPES))
             if ctype is None:
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
         else:
-            ctype = best_match(request.accept, self.SELECT_CTYPES)
+            ctype = best_match(request.accept, list(self.SELECT_CTYPES))
             if ctype is None:
                 ctype = "application/sparql-results+json"
             serfmt = self.SELECT_CTYPES[ctype]
