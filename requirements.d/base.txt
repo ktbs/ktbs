@@ -6,5 +6,5 @@ WebOb==1.8.6
 PyLD==2.0.3
 posix_ipc==1.0.5
 fsa4streams==0.8
-waitress==2.1.1
+waitress==2.1.2
 GitPython==3.1.9
