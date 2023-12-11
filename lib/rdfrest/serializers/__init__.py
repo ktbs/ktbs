@@ -199,7 +199,7 @@ def _serialize_with_rdflib(rdflib_format, graph, bindings, base_uri):
     if base_uri is not None and not isinstance(base_uri, URIRef):
         base_uri = coerce_to_uri(base_uri)
     # We use yield to prevent the serialization to happen if a 304 is returned
-    yield ser.serialize(None, format=rdflib_format, base=base_uri)
+    yield ser.serialize(None, format=rdflib_format, base=base_uri).encode('utf-8')
 
 @register_serializer("text/nt",    "nt",  40)
 @register_serializer("text/plain", "txt", 20)

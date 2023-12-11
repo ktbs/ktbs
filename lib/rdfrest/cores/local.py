@@ -46,7 +46,7 @@ from weakref import WeakValueDictionary
 
 from os.path import exists
 from rdflib import Graph, plugin as rdflib_plugin, Namespace, RDF, RDFS, URIRef
-from rdflib.store import Store
+from rdflib.store import Store, VALID_STORE
 from rdflib.compare import graph_diff
 
 from ..exceptions import CanNotProceedError, InvalidDataError, \
@@ -109,17 +109,19 @@ class Service(object):
         repository = service_config.get('rdf_database', 'repository', raw=1)
         if not repository:
             init_repo = True
-            repository = ":IOMemory:"
+            repository = ":Memory:"
         elif repository[0] != ":":
             init_repo = not exists(repository)
-            repository = ":Sleepycat:%s" % repository
+            repository = ":BerkeleyDB:%s" % repository
 
         # Whether we should force data repository initialization
         if service_config.getboolean('rdf_database', 'force-init'):
             init_repo = True
 
         _, store_type, config_str = repository.split(":", 2)
-        store = rdflib_plugin.get(store_type, Store)(config_str)
+        store = rdflib_plugin.get(store_type, Store)()
+        if store.open(config_str) not in [None, VALID_STORE]:
+            raise Exceprion(f"Could not initialize store {store_type} with {config_str}")
 
         self.store_config_str = config_str
         self.store = store
@@ -891,7 +893,7 @@ class EditableCore(LocalCore):
                     # * testing that a graph contains a triple is less
                     #   costly than adding it or removing it (which involves
                     #   updating several indexes -- this is verified by
-                    #   IOMemory, and roughly so by Sleepycat)
+                    #   Memory, and roughly so by Sleepycat)
                     # so the following should more efficient than simply
                     # emptying self_graph and then filling it with
                     # editable_graph

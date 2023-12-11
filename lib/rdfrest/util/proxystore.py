@@ -145,7 +145,7 @@ class ProxyStore(Store):
         """ ProxyStore initialization.
 
             Creates an empty Graph, intializes the HTTP client.
-            Use the defaut for internal graph storage, i.e IOMemory.
+            Use the defaut for internal graph storage, i.e Memory.
             The URIref of the graph must be supplied either in identifier or
             in configuration parameter. It will be checked by open().
             The cache file path could be given in the configuration dictionary
@@ -499,7 +499,7 @@ class ProxyStore(Store):
 
         :param triple: Triple (subject, predicate, object) to remove.
         :param context: ProxyStore is not context aware but it's internal
-            cache IOMemory store is. Avoid context parameter.
+            cache Memory store is. Avoid context parameter.
 
         :returns: An iterator over the triples.
         """

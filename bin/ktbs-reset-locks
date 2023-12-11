@@ -48,8 +48,8 @@ def get_args():
     parser.add_argument('repository', nargs=1, type=str,
                         help='the filename/identifier of the RDF database. '
                              'Must be of the form :store_type:configuration_string. '
-                             'e.g. :Sleepycat:/path/to/sleepycat.db . '
-                             'If :store_type: is missing, then we assume it is :Sleepycat:.')
+                             'e.g. :BerkeleyDB:/path/to/sleepycat.db . '
+                             'If :store_type: is missing, then we assume it is :BerkeleyDB:.')
 
     parser.add_argument('-l', '--log-level', nargs=1, type=str, default=['info'],
                         choices=('debug', 'info', 'warning', 'error', 'critical'),
@@ -64,7 +64,7 @@ def get_store_info(repository):
     :param str repository: repository type and configuration in the form `:type:configuration`.
     """
     if repository[0] != ':':
-        repository = ':Sleepycat:' + repository
+        repository = ':BerkeleyDB:' + repository
     _, store_type, store_config = repository.split(':', 2)
 
     return store_type, store_config
@@ -125,8 +125,8 @@ def reset(resource_uri):
 def main(repository, log_level):
     """Entry point for the script."""
     store_type, store_config = get_store_info(repository)
-    if store_type == 'IOMemory':
-        raise ValueError('Cannot use IOMemory as repository. Try rebooting to get rid of the locks.')
+    if store_type == 'Memory':
+        raise ValueError('Cannot use Memory as repository. Try rebooting to get rid of the locks.')
 
     # Set logging level
     logging.basicConfig(level=log_level.upper())

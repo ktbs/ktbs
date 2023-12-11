@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-# A tool for exporting a new RDFlib Sleepycat store as N-Quads.
+# A tool for exporting a new RDFlib BerkeleyDB store as N-Quads.
 #
-# Useful for migrating Sleepycat stores across different version of Python.
+# Useful for migrating BerkeleyDB stores across different version of Python.
 
 from __future__ import unicode_literals, print_function
 
@@ -35,7 +35,7 @@ def main():
     else:
         stdout = open(1, mode='bw')
 
-    g = rdflib.ConjunctiveGraph('Sleepycat')
+    g = rdflib.ConjunctiveGraph('BerkeleyDB')
     g.open(sys.argv[1])
     g.serialize(stdout, format='nquads')
 

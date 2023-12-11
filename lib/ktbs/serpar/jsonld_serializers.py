@@ -65,7 +65,7 @@ class ValueConverter(object):
             str(RDFS): 'rdfs',
         })
         self._prefixes = [
-            (ns, prefix, len(ns)) for ns, prefix in prefixes.items()
+            (ns, prefix, len(str(ns))) for ns, prefix in prefixes.items()
         ]
 
     def uri(self, uri, _len_ktbs=LEN_KTBS):

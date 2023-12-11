@@ -25,13 +25,13 @@ except NameError:
 
 from ktbs.namespace import KTBS
 
-STORE_TYPE = 'Sleepycat'
+STORE_TYPE = 'BerkeleyDB'
 LOG = logging.getLogger("ktbs-rebase")
 
 def parse_options():
     """
     Extract command line options.
-    Later : add store type (if different than Sleepycat).
+    Later : add store type (if different than BerkeleyDB).
     """
     parser = ArgumentParser(description="Creates a new database with a kTBS base URI modified.")
     parser.add_argument("currentdb", nargs=1,
@@ -79,13 +79,13 @@ def check_arguments(options=None):
 
 def show_graph(gpath=None, gid=None):
     """
-    Display the identified STORE_TYPE (Sleepycat for the moment) graph.
+    Display the identified STORE_TYPE (BerkeleyDB for the moment) graph.
 
     :param gpath: the full path of the store database.
     :param gid: the URI of the graph.
 
     http://answers.semanticweb.com/questions/24797/rdflib-persistence/24803
-    Sleepycat is a store for named graphs (or datasets), it will keep track 
+    BerkeleyDB is a store for named graphs (or datasets), it will keep track 
     of what graph a triple is in. When you create a Graph a random ID is 
     generated - if you create a NEW graph, the ID will be different.
     """
@@ -95,7 +95,7 @@ def show_graph(gpath=None, gid=None):
     gstate = graph.open(gpath, create=False)
 
     if gstate == VALID_STORE:
-        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('The BerkeleyDB store {sp} is valid.'.format(sp=gpath))
         LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath, nb=len(graph)))
 
         for subj, pred, obj in graph:
@@ -112,7 +112,7 @@ def show_all_graphs(gpath=None):
     gstate = all_graphs.open(gpath, create=False)
 
     if gstate == VALID_STORE:
-        LOG.info('The Sleepycat store {sp} is valid.'.format(sp=gpath))
+        LOG.info('The BerkeleyDB store {sp} is valid.'.format(sp=gpath))
         LOG.info('{sp} graph contains {nb:d} items.'.format(sp=gpath,
                                                             nb=len(all_graphs)))
 
@@ -137,7 +137,7 @@ def build_new_database(options=None):
     ngs = new_db.open(options.newdb[0], create=True)
 
     if (ogs == VALID_STORE) and (ngs == VALID_STORE):
-        LOG.info('The Sleepycat current store \'{osp}\' and \'{nsp}\' new store '
+        LOG.info('The BerkeleyDB current store \'{osp}\' and \'{nsp}\' new store '
                  'are valid.'.format(osp=options.currentdb[0],
                                      nsp=options.newdb[0]))
 

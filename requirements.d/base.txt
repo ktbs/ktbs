@@ -1,10 +1,9 @@
-bsddb3==6.2.7
-rdflib==5.0.0
-rdflib-jsonld==0.6.0
-httplib2==0.19.0
-WebOb==1.8.6
+berkeleydb==18.1.8
+rdflib==6.0.0
+httplib2==0.22.0
+WebOb==1.8.7
 PyLD==2.0.3
-posix_ipc==1.0.5
+posix_ipc==1.1.1
 fsa4streams==0.8
 waitress==2.1.2
-GitPython==3.1.9
+GitPython==3.1.40

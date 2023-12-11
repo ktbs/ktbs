@@ -206,7 +206,7 @@ class TestHttpFront(object):
         graph = Graph()
         graph.parse(data=content_get, publicID=URL, format="nt")
         graph.set((URIRef(URL), RDFS.label, Literal("label has been changed")))
-        new_content = graph.serialize(format="nt").decode('utf-8')
+        new_content = graph.serialize(format="nt")
         assert resp_get.etag is not None
         reqhead = {
             "if-match": resp_get.etag,
@@ -223,7 +223,7 @@ class TestHttpFront(object):
         graph = Graph()
         graph.parse(data=content_get, publicID=URL, format="nt")
         graph.remove((URIRef(URL), RDF.type, None))
-        new_content = graph.serialize(format="nt").decode('utf-8')
+        new_content = graph.serialize(format="nt")
         assert resp_get.etag is not None
         reqhead = {
             "if-match": resp_get.etag,
@@ -262,7 +262,7 @@ class TestHttpFront(object):
     def test_post_legal_rdf(self, app, url=URL):
         #graph = Graph()
         #graph.parse(data=POSTABLE_TURTLE, publicID=url, format="n3")
-        #new_content = graph.serialize(format="nt").decode('utf-8')
+        #new_content = graph.serialize(format="nt")
         #reqhead = { "content-type": "text/nt" }
         reqhead = { "content-type": "text/turtle" }
         resp, content = request(app, url, "POST", POSTABLE_TURTLE, reqhead)
@@ -277,7 +277,7 @@ class TestHttpFront(object):
         graph.parse(data=POSTABLE_TURTLE, publicID=URL, format="n3")
         created = next(graph.triples((URIRef(URL), None, None)))[2]
         graph.remove((created, RDF.type, None))
-        new_content = graph.serialize(format="nt").decode('utf-8')
+        new_content = graph.serialize(format="nt")
         reqhead = { "content-type": "text/nt" }
         resp, content = request(app, URL, "POST", new_content, reqhead)
         assert resp.status_int == 403
