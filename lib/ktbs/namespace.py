@@ -716,7 +716,7 @@ KTBS_NS_TTL = """
 """ % KTBS_NS_URI
 
 KTBS_NS_GRAPH = Graph("Memory", identifier=KTBS_NS_URIREF)
-KTBS_NS_GRAPH.load(StringIO(KTBS_NS_TTL), KTBS_NS_URIREF, "n3")
+KTBS_NS_GRAPH.parse(StringIO(KTBS_NS_TTL), KTBS_NS_URIREF, "n3")
 
 KTBS_IDENTIFIERS = set()
 

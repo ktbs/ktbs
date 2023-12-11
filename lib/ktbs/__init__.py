@@ -56,28 +56,15 @@ except ImportError:
     GIT_LIBRARY_INSTALLED = False
 
 if GIT_LIBRARY_INSTALLED:
-    from pkg_resources import get_distribution, DistributionNotFound
+    from pathlib import Path
     from os.path import dirname, abspath, join
 
-    KTBS_WD = ""
-
     try:
-        kp = get_distribution('kTBS')
-        KTBS_PKG_INSTALLED = True
-        KTBS_WD = kp.location
-        if KTBS_WD.endswith('lib'):
-            KTBS_WD = dirname(KTBS_WD)
-
-    except DistributionNotFound:
-        KTBS_PKG_INSTALLED = False
-
-    if not KTBS_PKG_INSTALLED:
-        try:
-            KTBS_WD = dirname(dirname(abspath(__file__)))
+        KTBS_WD = str(Path(__file__).parent.parent.parent)
             
-        except NameError:
-            # __file__ is not define in py2exe
-            pass
+    except NameError:
+        # __file__ is not define in py2exe
+        pass
 
     if len(KTBS_WD) > 0:
         __commitno__ = get_git_infos(KTBS_WD)

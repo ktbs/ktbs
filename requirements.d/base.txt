@@ -1,5 +1,5 @@
 berkeleydb==18.1.8
-rdflib==6.0.0
+rdflib==7.0.0
 httplib2==0.22.0
 WebOb==1.8.7
 PyLD==2.0.3
