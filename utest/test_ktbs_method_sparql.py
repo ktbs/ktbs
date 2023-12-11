@@ -28,8 +28,8 @@ from .test_ktbs_engine import KtbsTestCase
 
 class TestSparql(KtbsTestCase):
 
-    def setup(self):
-        super(TestSparql, self).setup()
+    def setup_method(self):
+        super(TestSparql, self).setup_method()
         self.base = self.my_ktbs.create_base("b/")
         self.model = self.base.create_model("m")
         self.otype1 = self.model.create_obsel_type("#ot1")
@@ -324,8 +324,8 @@ class TestSparql(KtbsTestCase):
 
 class TestIssue28(KtbsTestCase):
 
-    def setup(self):
-        super(TestIssue28, self).setup()
+    def setup_method(self):
+        super(TestIssue28, self).setup_method()
         self.base = self.my_ktbs.create_base("b/")
         self.model = self.base.create_model("m")
         self.origin = "orig-abc"

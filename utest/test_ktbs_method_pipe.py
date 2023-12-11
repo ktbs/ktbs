@@ -49,8 +49,8 @@ logging.basicConfig()
 
 class TestPipe(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.log = PIPE_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")

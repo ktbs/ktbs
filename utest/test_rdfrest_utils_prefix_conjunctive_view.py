@@ -32,7 +32,7 @@ class TestDefaultStore(object):
     def get_store(self):
         return Graph().store
 
-    def setup(self):
+    def setup_method(self):
         self.s = self.get_store()
         self.g1 = Graph(self.s, EX['g1/'])
         self.g2 = Graph(self.s, EX['g1/g2'])
@@ -48,7 +48,7 @@ class TestDefaultStore(object):
         self.p12 = PrefixConjunctiveView(EX['g1/'], self.s, BNode('p12'))
         self.pab = PrefixConjunctiveView(EX['pab/'], self.s, BNode('pab'))
 
-    def teardown(self):
+    def teardown_method(self):
         self.g1.remove((None, None, None))
         self.g2.remove((None, None, None))
         self.ga.remove((None, None, None))

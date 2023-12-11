@@ -54,13 +54,13 @@ class KtbsTestCase(object):
     my_ktbs = None
     service = None
 
-    def setup(self):
+    def setup_method(self):
         ktbs_config = get_ktbs_configuration()
         ktbs_config.set('server', 'port', '12345')
         self.service = KtbsService(ktbs_config)
         self.my_ktbs = self.service.get(self.service.root_uri, [KTBS.KtbsRoot])
 
-    def teardown(self):
+    def teardown_method(self):
         if self.service is not None:
             unregister_service(self.service)
             self.service = None
@@ -75,8 +75,8 @@ class HttpKtbsTestCaseMixin(object):
 
     httpd = None
 
-    def setup(self):
-        super(HttpKtbsTestCaseMixin, self).setup()
+    def setup_method(self):
+        super(HttpKtbsTestCaseMixin, self).setup_method()
         ktbs_config = get_ktbs_configuration()
         ktbs_config.set('server', 'send-traceback', 'true')
         ktbs_config.set('logging', 'console-level', 'DEBUG')
@@ -93,14 +93,14 @@ class HttpKtbsTestCaseMixin(object):
                                                   [KTBS.KtbsRoot])
             assert isinstance(self.my_ktbs, KtbsRootMixin)
         except:
-            self.teardown()
+            self.teardown_method()
             raise
 
-    def teardown(self):
+    def teardown_method(self):
         if self.httpd:
             self.httpd.shutdown()
             self.httpd = None
-        super(HttpKtbsTestCaseMixin, self).teardown()
+        super(HttpKtbsTestCaseMixin, self).teardown_method()
 
 
 class TestKtbs(KtbsTestCase):
@@ -513,8 +513,8 @@ class TestObsels(KtbsTestCase):
     service = None
     epoch = datetime(1970, 1, 1, 0, 0, 0, 0, UTC)
 
-    def setup(self):
-        super(TestObsels, self).setup()
+    def setup_method(self):
+        super(TestObsels, self).setup_method()
         self.base = b = self.my_ktbs.create_base("b/")
         self.model = m = b.create_model("m")
         self.ot = m.create_obsel_type("#OT1")
@@ -924,10 +924,10 @@ class TestMakeKtbs(object):
     my_ktbs = None
     service = None
 
-    def setup(self):
+    def setup_method(self):
         self.my_ktbs = make_ktbs()
 
-    def teardown(self):
+    def teardown_method(self):
         if self.my_ktbs is not None:
             unregister_service(self.my_ktbs.service)
 

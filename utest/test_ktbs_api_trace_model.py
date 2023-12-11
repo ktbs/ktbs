@@ -214,8 +214,8 @@ class SuperTypeMixin:
 
 class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
         self.model = self.base.create_model(id="ModelTest", label="Test model")
         self.target = self.model
@@ -414,8 +414,8 @@ class TestKtbsTraceModel(RelAndAttTypeMixin, KtbsTestCase):
 
 class TestKtbsObselType(RelAndAttTypeMixin, SuperTypeMixin, KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
         self.model = self.base.create_model(id="ModelTest", label="Test model")
         self.otype = self.model.create_obsel_type(id="#ObselTypeTest")
@@ -437,8 +437,8 @@ class TestKtbsObselType(RelAndAttTypeMixin, SuperTypeMixin, KtbsTestCase):
 
 class TestKtbsRelationType(SuperTypeMixin, KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
         self.model = self.base.create_model(id="ModelTest", label="Test model")
         self.otype1 = self.model.create_obsel_type(id="#ObselType1")

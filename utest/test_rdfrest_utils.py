@@ -190,7 +190,7 @@ class TestDiagnosis():
 class TestCacheResult():
     counter = 0
 
-    def setup(self):
+    def setup_method(self):
         class A(object):
             class_counter = 0
 
@@ -214,7 +214,7 @@ class TestCacheResult():
         self.A = A
         self.B = B
 
-    def teardown(self):
+    def teardown_method(self):
         del self.A
         del self.B
 

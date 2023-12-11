@@ -49,8 +49,8 @@ def assert_source_obsels(obsel, source_obsels):
 
 class TestFSA(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.log = FSA_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")
@@ -190,8 +190,8 @@ class TestFSA(KtbsTestCase):
 
 class TestFSAAsk(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.log = FSA_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")
@@ -368,8 +368,8 @@ class TestFSAAsk(KtbsTestCase):
 
 class TestFSAMaxDuration(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.log = FSA_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")
@@ -423,8 +423,8 @@ class TestFSAMaxDuration(KtbsTestCase):
 
 class TestFSAKtbsSpecificProperties(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.log = FSA_LOG
         self.base = self.my_ktbs.create_base("b/")
         self.model_src = self.base.create_model("ms")

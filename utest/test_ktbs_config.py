@@ -45,7 +45,7 @@ class TestkTBSCmdlineConfig(object):
     managed.
     """
 
-    def setup(self):
+    def setup_method(self):
         self.opt = build_cmdline_options()
 
     def tearDown(self):

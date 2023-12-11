@@ -41,7 +41,7 @@ class TestMixins:
     root = None
     item = None
 
-    def setup(self):
+    def setup_method(self):
         service_config = get_service_configuration()
         service_config.set('server', 'port', '11235')
         service_config.set('server', 'base-path', '/foo')
@@ -52,7 +52,7 @@ class TestMixins:
         assert isinstance(self.root, Group2Implementation)
         self.items = []
 
-    def teardown(self):
+    def teardown_method(self):
         if self.items is not None:
             for i in self.items:
                 try:

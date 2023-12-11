@@ -197,12 +197,12 @@ class TestJsonRoot(KtbsTestCase):
 
 class TestJsonBase(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonBase, self).setup()
+    def setup_method(self):
+        super(TestJsonBase, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
 
-    def teardown(self):
-        super(TestJsonBase, self).teardown()
+    def teardown_method(self):
+        super(TestJsonBase, self).teardown_method()
         self.base = None
 
     def test_bare_base(self):
@@ -366,14 +366,14 @@ class TestJsonBase(KtbsTestCase):
 
 class TestJsonMethod(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonMethod, self).setup()
+    def setup_method(self):
+        super(TestJsonMethod, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.method = self.base.create_method("meth1", KTBS.filter,
                                               { "after": 42 })
 
-    def teardown(self):
-        super(TestJsonMethod, self).teardown()
+    def teardown_method(self):
+        super(TestJsonMethod, self).teardown_method()
         self.base = None
         self.method = None
 
@@ -490,13 +490,13 @@ class TestJsonMethod(KtbsTestCase):
 
 class TestJsonHashModel(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonHashModel, self).setup()
+    def setup_method(self):
+        super(TestJsonHashModel, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1",)
 
-    def teardown(self):
-        super(TestJsonHashModel, self).teardown()
+    def teardown_method(self):
+        super(TestJsonHashModel, self).teardown_method()
         self.base = None
         self.model = None
 
@@ -648,13 +648,13 @@ class TestJsonHashModel(KtbsTestCase):
 
 class TestJsonSlashModel(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonSlashModel, self).setup()
+    def setup_method(self):
+        super(TestJsonSlashModel, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1/",)
 
-    def teardown(self):
-        super(TestJsonSlashModel, self).teardown()
+    def teardown_method(self):
+        super(TestJsonSlashModel, self).teardown_method()
         self.base = None
         self.model = None
 
@@ -833,16 +833,16 @@ class TestJsonSlashModel(KtbsTestCase):
 
 class TestJsonTwoModels(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonTwoModels, self).setup()
+    def setup_method(self):
+        super(TestJsonTwoModels, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl1",)
         self.other_ktbs = make_ktbs("http://example.org/")
         self.other_base = self.other_ktbs.create_base("another/")
         self.other_model = self.other_base.create_model("model",)
 
-    def teardown(self):
-        super(TestJsonTwoModels, self).teardown()
+    def teardown_method(self):
+        super(TestJsonTwoModels, self).teardown_method()
         if self.other_ktbs is not None:
             unregister_service(self.other_ktbs.service)
             self.other_ktbs = None
@@ -900,15 +900,15 @@ class TestJsonTwoModels(KtbsTestCase):
 
 class TestJsonStoredTrace(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonStoredTrace, self).setup()
+    def setup_method(self):
+        super(TestJsonStoredTrace, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def teardown(self):
-        super(TestJsonStoredTrace, self).teardown()
+    def teardown_method(self):
+        super(TestJsonStoredTrace, self).teardown_method()
         self.base = None
         self.model = None
         self.t1 = None
@@ -1041,8 +1041,8 @@ class TestJsonStoredTrace(KtbsTestCase):
 
 class TestJsonComputedTrace(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonComputedTrace, self).setup()
+    def setup_method(self):
+        super(TestJsonComputedTrace, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.t1 = self.base.create_stored_trace("t1/", self.model,
@@ -1052,8 +1052,8 @@ class TestJsonComputedTrace(KtbsTestCase):
                                                   { "after": 42 },
                                                   [self.t1])
 
-    def teardown(self):
-        super(TestJsonComputedTrace, self).teardown()
+    def teardown_method(self):
+        super(TestJsonComputedTrace, self).teardown_method()
         self.base = None
         self.model = None
         self.t1 = None
@@ -1159,8 +1159,8 @@ class TestJsonComputedTrace(KtbsTestCase):
 
 class TestJsonObsels(KtbsTestCase):
 
-    def setup(self):
-        super(TestJsonObsels, self).setup()
+    def setup_method(self):
+        super(TestJsonObsels, self).setup_method()
         self.base = self.my_ktbs.create_base("b1/")
         self.model = self.base.create_model("modl",)
         self.ot1 = ot1 = self.model.create_obsel_type("#OT1")
@@ -1170,8 +1170,8 @@ class TestJsonObsels(KtbsTestCase):
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def teardown(self):
-        super(TestJsonObsels, self).teardown()
+    def teardown_method(self):
+        super(TestJsonObsels, self).teardown_method()
         self.base = None
         self.model = self.ot1 = self.at1 = self.at2 = self.rt1 = None
         self.t1 = None
@@ -1379,17 +1379,17 @@ class TestJsonObsels(KtbsTestCase):
 class TestJsonStats(KtbsTestCase):
 
 
-    def setup(self):
-        super(TestJsonRoot, self).setup()
+    def setup_method(self):
+        super(TestJsonRoot, self).setup_method()
         # load stats plugins which are enabled by default in the global config
         trace_stats.add_plugin(stats_per_type.populate_stats)
 
-    def teardown(self):
-        super(TestJsonRoot, self).teardown()
+    def teardown_method(self):
+        super(TestJsonRoot, self).teardown_method()
         trace_stats.remove_plugin(stats_per_type.populate_stats)
 
-    def setup(self):
-        super(TestJsonStats, self).setup()
+    def setup_method(self):
+        super(TestJsonStats, self).setup_method()
 
         # load stats plugins which are enabled by default in the global config
         trace_stats.add_plugin(stats_per_type.populate_stats)
@@ -1401,8 +1401,8 @@ class TestJsonStats(KtbsTestCase):
         self.t1 = self.base.create_stored_trace("t1/", self.model,
                                                 "1970-01-01T00:00:00Z")
 
-    def teardown(self):
-        super(TestJsonStats, self).teardown()
+    def teardown_method(self):
+        super(TestJsonStats, self).teardown_method()
         self.base = None
         self.model = self.ot1 = self.ot2 = None
         self.t1 = None

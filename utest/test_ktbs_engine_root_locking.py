@@ -17,18 +17,18 @@ SKIP_MSG_SEMAPHORE_VALUE = "Platform doesn't support getting the semaphore value
 #@skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
 class KtbsRootTestCase(KtbsTestCase):
 
-    def setup(self):
+    def setup_method(self):
         # Run the kTBS on another from the other tests to prevent reusing existing semaphores
         self.my_ktbs = make_ktbs("http://localhost:54321/")
         self.service = self.my_ktbs.service
 
-    def teardown(self):
-        """Override :meth:`KtbsTestCase.teardown`
+    def teardown_method(self):
+        """Override :meth:`KtbsTestCase.teardown_method`
 
         Adds semaphore unlinking at the end of each test.
         """
         semaphore = self.my_ktbs._get_semaphore()
-        super(KtbsRootTestCase, self).teardown()
+        super(KtbsRootTestCase, self).teardown_method()
         semaphore.unlink()
 
 

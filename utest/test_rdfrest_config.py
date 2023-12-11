@@ -31,10 +31,10 @@ class TestServiceConfigDefaults(object):
     Test RDF-REST Service creation with default values.
     """
 
-    def setup(self):
+    def setup_method(self):
         self.service_config = get_service_configuration()
 
-    def teardown(self):
+    def teardown_method(self):
         del self.service_config
 
     def test_server_section(self):

@@ -22,12 +22,12 @@ class KtbsBaseTestCase(KtbsTestCase):
     tmp_base = None
     tmp_base_name = 'tmp_base/'
 
-    def setup(self):
-        super(KtbsBaseTestCase, self).setup()
+    def setup_method(self):
+        super(KtbsBaseTestCase, self).setup_method()
         self.tmp_base = self.my_ktbs.create_base(self.tmp_base_name)
 
-    def teardown(self):
-        super(KtbsBaseTestCase, self).teardown()
+    def teardown_method(self):
+        super(KtbsBaseTestCase, self).teardown_method()
         self.tmp_base.delete()
 
 
@@ -163,13 +163,13 @@ class TestKtbsBaseLocking(KtbsBaseTestCase):
 class KtbsModelTestCase(KtbsBaseTestCase):
     model = None
 
-    def setup(self):
-        super(KtbsModelTestCase, self).setup()
+    def setup_method(self):
+        super(KtbsModelTestCase, self).setup_method()
         self.model = self.tmp_base.create_model()
 
-    def teardown(self):
+    def teardown_method(self):
         self.model.delete()
-        super(KtbsModelTestCase, self).teardown()
+        super(KtbsModelTestCase, self).teardown_method()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -229,13 +229,13 @@ class KtbsMethodTestCase(KtbsBaseTestCase):
 
     method = None
 
-    def setup(self):
-        super(KtbsMethodTestCase, self).setup()
+    def setup_method(self):
+        super(KtbsMethodTestCase, self).setup_method()
         self.method = self.tmp_base.create_method(parent=KTBS.filter)
 
-    def teardown(self):
+    def teardown_method(self):
         self.method.delete()
-        super(KtbsMethodTestCase, self).teardown()
+        super(KtbsMethodTestCase, self).teardown_method()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)
@@ -290,13 +290,13 @@ class KtbsTraceTestCase(KtbsModelTestCase):
 
     trace = None
 
-    def setup(self):
-        super(KtbsTraceTestCase, self).setup()
+    def setup_method(self):
+        super(KtbsTraceTestCase, self).setup_method()
         self.trace = self.tmp_base.create_stored_trace(model=self.model)
 
-    def teardown(self):
+    def teardown_method(self):
         self.trace.delete()
-        super(KtbsTraceTestCase, self).teardown()
+        super(KtbsTraceTestCase, self).teardown_method()
 
 
 @skipUnless(posix_ipc.SEMAPHORE_VALUE_SUPPORTED, SKIP_MSG_SEMAPHORE_VALUE)

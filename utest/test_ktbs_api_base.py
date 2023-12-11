@@ -36,8 +36,8 @@ KTBS_ROOT = "http://localhost:12345/"
 
 class TestKtbsBase(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
 
     ######## get information ########
@@ -385,8 +385,8 @@ class TestKtbsBase(KtbsTestCase):
 
 class TestKtbsBasePopulated(KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.base = self.my_ktbs.create_base(id="BaseTest/", label="Test base")
         self.subbase = self.base.create_base(id="BaseWithId/",
                                             label="Test subbase")

@@ -19,7 +19,7 @@
 I provide the implementation of ktbs:StoredTrace and ktbs:ComputedTrace .
 """
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import getLogger
 
 from rdflib import BNode, Graph, Literal, URIRef, XSD
@@ -286,7 +286,7 @@ class StoredTrace(StoredTraceMixin, KtbsPostableMixin, AbstractTrace):
                 # it will be misinterpreted for a year
                 new_graph.add((uri, KTBS.hasOrigin, origin))
             elif str(origin) == "now":
-                origin = Literal("%sZ" % datetime.utcnow().isoformat())
+                origin = Literal("%sZ" % datetime.now(timezone.utc).isoformat())
                 new_graph.set((uri, KTBS.hasOrigin, origin))
 
 

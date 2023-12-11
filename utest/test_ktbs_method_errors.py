@@ -75,7 +75,7 @@ class _ErrorMethodResource(LocalCore):
 
 class TestMethodErrorHandling(KtbsTestCase):
 
-    def setup(self):
+    def setup_method(self):
         config = get_service_configuration()
         config.set('server', 'fixed-root-uri', _ErrorMethod.uri)
         self.error_method_service = Service(classes=[_ErrorMethodResource],
@@ -84,7 +84,7 @@ class TestMethodErrorHandling(KtbsTestCase):
         self.method_impl = _ErrorMethod()
         register_builtin_method_impl(self.method_impl)
 
-        KtbsTestCase.setup(self)
+        KtbsTestCase.setup_method(self)
 
         base = self.base = self.my_ktbs.create_base("b/")
         model = base.create_model("m")
@@ -94,8 +94,8 @@ class TestMethodErrorHandling(KtbsTestCase):
         origin = "orig-abc"
         src1 = self.src1 = base.create_stored_trace("s1/", model, origin=origin)
 
-    def teardown(self):
-        KtbsTestCase.teardown(self)
+    def teardown_method(self):
+        KtbsTestCase.teardown_method(self)
         unregister_builtin_method_impl(self.method_impl)
         unregister_service(self.error_method_service)
 

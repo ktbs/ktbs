@@ -33,7 +33,7 @@ class TestExample1:
     service = None
     root = None
 
-    def setup(self):
+    def setup_method(self):
         service_config = get_service_configuration()
         service_config.set('server', 'port', '11235')
         service_config.set('server', 'base-path', '/foo')
@@ -42,7 +42,7 @@ class TestExample1:
         self.root = self.service.get(self.ROOT_URI, [EXAMPLE.Group])
         assert isinstance(self.root, GroupMixin)
 
-    def teardown(self):
+    def teardown_method(self):
         if self.root is not None:
             del self.root
         if self.service is not None:

@@ -102,8 +102,8 @@ class _TestIterObselsMixin(object):
 
 class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.b = self.my_ktbs.create_base("b/")
         self.m = self.b.create_model("m")
         self.ot1 = self.m.create_obsel_type("#OT1")
@@ -143,17 +143,17 @@ class TestIterObsels(_TestIterObselsMixin, KtbsTestCase):
         })
         self.obsels = [ self.o0, self.o1, self.o2, self.o3, self.o4, self.o5]
 
-    def teardown(self):
+    def teardown_method(self):
         self.t.delete()
         self.m.delete()
         self.b.delete()
-        KtbsTestCase.teardown(self)
+        KtbsTestCase.teardown_method(self)
 
 
 class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
 
-    def setup(self):
-        KtbsTestCase.setup(self)
+    def setup_method(self):
+        KtbsTestCase.setup_method(self)
         self.b = self.my_ktbs.create_base("b/")
         self.m = self.b.create_model("m")
         self.ot1 = self.m.create_obsel_type("#OT1")
@@ -193,9 +193,9 @@ class TestIterObselsDuration(_TestIterObselsMixin, KtbsTestCase):
         })
         self.obsels = [ self.o0, self.o1, self.o2, self.o3, self.o4, self.o5]
 
-    def teardown(self):
+    def teardown_method(self):
         self.t.delete()
         self.m.delete()
         self.b.delete()
-        KtbsTestCase.teardown(self)
+        KtbsTestCase.teardown_method(self)
 

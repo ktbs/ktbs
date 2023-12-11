@@ -25,8 +25,8 @@ from .test_ktbs_engine import KtbsTestCase
 
 class TestOverrideParameter(KtbsTestCase):
 
-    def setup(self):
-        super(TestOverrideParameter, self).setup()
+    def setup_method(self):
+        super(TestOverrideParameter, self).setup_method()
         self.base = self.my_ktbs.create_base("b/")
         model = self.base.create_model("m")
         otype1 = self.otype1 = model.create_obsel_type("#ot1")

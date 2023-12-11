@@ -1,7 +1,6 @@
 # For documentation purposes
 Sphinx==2.2.0
 # For developers only
-pytest==6.1.1
+pytest==7.4.3
 pylint==2.6.0
-tox==3.20.1
 sphinx_rtd_theme==0.4.3

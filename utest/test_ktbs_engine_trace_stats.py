@@ -9,8 +9,8 @@ from ktbs.engine.trace_stats import NS
 class TestKtbsTraceObsels(KtbsTestCase):
     """Test features of obsel collections."""
 
-    def setup(self):
-        super(TestKtbsTraceObsels, self).setup()
+    def setup_method(self):
+        super(TestKtbsTraceObsels, self).setup_method()
         self.base = b = self.my_ktbs.create_base("b/")
         self.model = m = b.create_model("m")
         self.ot1 = ot1 = m.create_obsel_type("#OT1")
