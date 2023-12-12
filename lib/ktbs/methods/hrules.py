@@ -58,6 +58,9 @@ class _HRulesMethod(AbstractMonosourceMethod):
             if not rule.get('visible', True):
                 continue
             new_type = rule["id"]
+            # heuristics to deal with https://github.com/ktbs/taaabs3/issues/7
+            if '/' not in new_type and '#' not in new_type:
+                new_type = '#'.join([params["model"], new_type])
             for subrule in rule['rules']:
                 rank = 0
                 bgp = []

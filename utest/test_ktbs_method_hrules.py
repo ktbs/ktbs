@@ -463,3 +463,87 @@ class TestHRules(KtbsTestCase):
                 'contains': [25,]
             }[op]
             assert got == exp, f"for {op}"
+
+    def test_ktbs4la_bug(self):
+        """
+        kTBS4LA generates rules with a bare name instead of a type IRI.
+        This is a bug in kTBS4LA, but the method deals with it gracefuly.
+        This test checks that.
+        """
+        base_rules = [
+            {
+                'id': "otX",
+                'visible': True,
+                'rules': [
+                    {
+                        'type': self.otypeA.uri,
+                    },
+                    {
+                        'type': self.otypeB.uri,
+                        'attributes': [
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '==',
+                                'value': '0',
+                            },
+                        ],
+                    },
+                    {
+                        'attributes': [
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '>',
+                                'value': '0',
+                            },
+                            {
+                                'uri': self.atypeV.uri,
+                                'operator': '<',
+                                'value': '10',
+                            },
+                        ],
+                    },
+                ]
+            },
+            {
+                'id': "otY",
+                'visible': False,
+                'rules': [
+                    {
+                        'type': self.otypeE.uri,
+                    },
+                ]
+            },
+            {
+                'id': "otZ",
+                #'visible': True, ## this is the default
+                'rules': [
+                    {
+                        'type': self.otypeD.uri,
+                    },
+                ]
+            },
+        ]
+        ctr = self.base.create_computed_trace("ctr/", KTBS.hrules,
+                                         {"rules": dumps(base_rules),
+                                          "model": self.model_dst.uri,},
+                                         [self.src],)
+        oE = self.src.create_obsel("oE", self.otypeE, 0)
+        assert len(ctr.obsels) == 0 # no new obsel, rule is not visible
+        oA = self.src.create_obsel("oA", self.otypeA, 1)
+        assert len(ctr.obsels) == 1 # new obsel
+        assert_obsel_type(ctr.obsels[-1], self.otypeX)
+        assert_source_obsels(ctr.obsels[-1], [oA,])
+        oB1 = self.src.create_obsel("oB1", self.otypeB, 2)
+        assert len(ctr.obsels) == 1 # no new obsel, oB1 has no attribute atF
+        oB2 = self.src.create_obsel("oB2", self.otypeB, 3,
+                                    attributes={self.atypeV: Literal(42)})
+        assert len(ctr.obsels) == 1 # no new obsel, oB2 has atV != 0
+        oB3 = self.src.create_obsel("oB3", self.otypeB, 4,
+                                    attributes={self.atypeV: Literal(0)})
+        assert len(ctr.obsels) == 2 # new obsel
+        assert_obsel_type(ctr.obsels[-1], self.otypeX)
+        assert_source_obsels(ctr.obsels[-1], [oB3,])
+        oD = self.src.create_obsel("oD", self.otypeD, 5)
+        assert len(ctr.obsels) == 3 # new obsel
+        assert_obsel_type(ctr.obsels[-1], self.otypeZ)
+        assert_source_obsels(ctr.obsels[-1], [oD,])

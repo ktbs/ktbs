@@ -14,7 +14,7 @@
 #
 #    You should have received a copy of the GNU Lesser General Public License
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
-from rdflib import BNode
+from rdflib import BNode, Variable
 
 from ktbs.engine.trace_stats import add_plugin, remove_plugin, NS
 from ktbs.namespace import KTBS
@@ -35,8 +35,8 @@ def populate_stats(graph, trace):
         for res in  count_per_type_result.bindings:
             ot_infos = BNode()
 
-            graph.add((ot_infos, NS.nb, res['nb']))
-            graph.add((ot_infos, NS.hasObselType, res['t']))
+            graph.add((ot_infos, NS.nb, res[Variable('nb')]))
+            graph.add((ot_infos, NS.hasObselType, res[Variable('t')]))
 
             graph.add((trace.uri, NS.obselCountPerType, ot_infos))
 

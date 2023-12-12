@@ -16,6 +16,7 @@
 #    along with KTBS.  If not, see <http://www.gnu.org/licenses/>.
 from ktbs.engine.trace_stats import add_plugin, NS
 from ktbs.namespace import KTBS
+from rdflib import Variable
 
 def populate_stats(graph, trace):
     # Obsel type statistics
@@ -30,7 +31,7 @@ def populate_stats(graph, trace):
     if (count_per_type_result is not None and
        len(count_per_type_result.bindings) > 0):
 
-        nbs = count_per_type_result.bindings[0]['nbs']
+        nbs = count_per_type_result.bindings[0][Variable('nbs')]
         if nbs.value > 0:
             graph.add((trace.uri, NS.distinctSubjects, nbs))
 

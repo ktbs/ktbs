@@ -25,7 +25,7 @@ defined by a prefix URI for all named graphs.
 
 from itertools import chain
 import logging
-from rdflib import ConjunctiveGraph, Graph, Literal
+from rdflib import ConjunctiveGraph, Graph, Literal, Variable
 from rdflib.paths import Path
 from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.sparql import Query
@@ -111,7 +111,7 @@ class PrefixConjunctiveView(ConjunctiveGraph):
         return int(
             self._whole.query('SELECT (COUNT(?s) as ?c)'
                               '{GRAPH ?g {?s ?p ?o } %s}' % self._filter)
-            .bindings[0]['c']
+            .bindings[0][Variable('c')]
         )
 
     def __contains__(self, triple_or_quad):

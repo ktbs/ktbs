@@ -171,7 +171,7 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
         ## using initBinfings would be cleaner, but Virtuoso does not supports it :-()
         count_obsels = COUNT_OBSELS.replace('$trace', trace.uri.n3())
         count_result = obsels_graph.query(count_obsels, initNs=initNs)
-        count = count_result.bindings[0]['c']
+        count = count_result.bindings[0][Variable('c')]
         graph.add((trace.uri, NS.obselCount, count))
 
         # Duration statistics
@@ -184,9 +184,13 @@ class TraceStatistics(TraceStatisticsMixin, WithLockMixin, KtbsResource):
             and len(duration_result.bindings[0]) > 0):
 
             b = duration_result.bindings[0]
-            graph.add((trace.uri, NS.minTime, b['minb']))
-            graph.add((trace.uri, NS.maxTime, b['maxe']))
-            graph.add((trace.uri, NS.duration, b['duration']))
+            for p, o in [
+                (NS.minTime, b[Variable('minb')]),
+                (NS.maxTime, b[Variable('maxe')]),
+                (NS.duration, b[Variable('duration')]),
+            ]:
+                if o is not None:
+                    graph.add((trace.uri, p, o))
 
         for plugin in _PLUGINS:
             try:

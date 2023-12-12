@@ -51,3 +51,28 @@ import rdflib
 assert rdflib.__version__[0] == "7"
 
 import rdfrest.util.compat
+
+# Monkeypatching OxRdflib
+try:
+    import oxrdflib
+    old_query = oxrdflib.OxigraphStore.query
+
+    def new_query(self, query, initNs, initBindings, queryGraph, **kwargs):
+        """
+        Monkeypatched version of OxigraphStore.query, destructuring prepared queries
+        """
+        if isinstance(query, rdflib.plugins.sparql.sparql.Query) and hasattr(query, "_original_args"):
+            query, initInitNs, base = query._original_args
+            initInitNs.update(initNs)
+            initNs = initInitNs
+            if base:
+                kwargs.setdefault('base', base)
+        base = kwargs.pop('base', None)
+        if base != None:
+            query = f'BASE <{base}>\n{query}'
+        return old_query(self, query, initNs, initBindings, queryGraph, **kwargs)
+
+    oxrdflib.OxigraphStore.query = new_query
+
+except ImportError:
+    pass

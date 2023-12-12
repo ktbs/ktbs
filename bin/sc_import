@@ -11,7 +11,7 @@ import rdflib
 import sys
 
 def usage():
-    print("""usage: (<data.nq.gz gunzip | )  {} [sleepycat-directory]
+    print("""usage: (<data.nq.gz gunzip | )  {} <directory | :StoreType:options>
 
 Imports the N-Quads format on stdin into a new RDFlib Sleeycat store.
 """.format(sys.argv[0]), file=sys.stderr)
@@ -24,19 +24,19 @@ def main():
     elif sys.argv[1] in ["-h", "--help"]:
         usage()
         exit()
-    elif exists(sys.argv[1]):
-        print("ERROR: {} exists; I cannot overwrite existing directory\n".format(sys.argv[1]), file=sys.stderr)
-        usage()
-        exit(2)
-
 
     if sys.version_info[0] == 2:
         stdin = sys.stdin
     else:
         stdin = open(0, mode='br')
 
-    g = rdflib.Dataset('BerkeleyDB')
-    g.open(sys.argv[1], True)
+    if sys.argv[1].startswith(':'):
+        _, storeType, options = sys.argv[1].split(':')
+    else:
+        storeType = 'BerkeleyDB'
+        options = sys.argv[1]
+    g = rdflib.Dataset(storeType)
+    g.open(options, True)
     g.parse(stdin, format='nquads')
 
 if __name__ == '__main__':

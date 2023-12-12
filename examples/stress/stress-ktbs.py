@@ -11,7 +11,7 @@ from rdflib import Graph, BNode
 from rdflib import Literal
 from rdfrest.cores.http_client import set_http_option, add_http_credentials
 from ktbs.client import get_ktbs
-from ktbs.engine.service import make_ktbs
+from ktbs.engine.service import make_ktbs, KtbsService
 from ktbs.namespace import KTBS
 from ktbs.config import get_ktbs_configuration
 
@@ -60,6 +60,7 @@ def setUp():
     BASE = my_ktbs.create_base(label="stress-ktbs-base")
     model = BASE.create_model("m")
     model.unit = KTBS.millisecond
+    model.create_obsel_type("#obsel")
     BASE.create_stored_trace("t/", "m", "2012-09-06T00:00:00Z",
                              default_subject="Alice")
 
@@ -77,7 +78,7 @@ def task():
                         obs_id = str(uuid4())
                     else:
                         obs_id = None
-                    trace.create_obsel(obs_id, "#obsel", subject="Alice",
+                    trace.create_obsel(obs_id, "../m#obsel", subject="Alice",
                                        no_return=True)
                 else:
                     g = Graph()
