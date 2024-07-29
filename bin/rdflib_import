@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 #
-# A tool for importing N-Quads into a new RDFlib BerkeleyDB store.
+# A tool for importing N-Quads into a new RDFlib store.
 #
-# Useful for migrating BerkeleyDB stores across different version of Python.
+# Useful for migrating stores across different version of Python or store types.
 
 from __future__ import unicode_literals, print_function
 

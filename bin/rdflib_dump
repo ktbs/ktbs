@@ -13,7 +13,7 @@ import sys
 def usage():
     print("""usage: {} <directory | :StoreType:options>  ( | gzip > data.nq.gz )
 
-Dumps the content of an RDFlib Sleeycat on the standard output,
+Dumps the content of an RDFlib store on the standard output,
 in the N-Quads format.
 """.format(sys.argv[0]), file=sys.stderr)
 
